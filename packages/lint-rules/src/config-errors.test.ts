@@ -1,0 +1,200 @@
+import { join } from 'node:path'
+import { describe, expect, it } from 'vitest'
+import {
+  buildConsumerLintRulesWithoutAgentRulesets,
+  buildConsumerLintRulesWithoutEditorRulesets,
+  buildConsumerLintRulesWithoutTsconfigRootDir,
+  buildEveryRulesetLintRules,
+  EMPTY_TSCONFIG_ROOT_DIR,
+} from './__tests__/factories/lint-rules-factories.ts'
+import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
+import { buildTeamOxlintConfig } from './__tests__/factories/team-config-factories.ts'
+import { NO_TEAM_ESLINT_CONFIG, NO_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
+import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
+import { mergeEslintConfig } from './eslint.ts'
+import { defineLintRules, type LintRules } from './index.ts'
+import { mergeOxlintConfig } from './oxlint.ts'
+
+// A consumer meets these errors when an engine or `check` loads its config: each names the file to fix first.
+const validLintRules = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR)
+const PACKAGE_JSON = 'package.json'
+
+// Types are stripped when agents-inc.lint.mts loads, so a name the types refuse still reaches the
+// runtime check; each call below is marked where the types refuse it.
+const withMisspelledAgentRuleset = {
+  ...validLintRules,
+  agentRulesets: { ...validLintRules.agentRulesets, quality: ['corectness'] },
+}
+const withMisspelledEditorRuleset = {
+  ...validLintRules,
+  editorRulesets: { ...validLintRules.editorRulesets, quality: ['corectness'] },
+}
+
+describe('an error in agents-inc.lint.mts', () => {
+  it('is named by defineLintRules, with the agent set in its path', () => {
+    // @ts-expect-error corectness is no quality ruleset
+    expect(() => defineLintRules(withMisspelledAgentRuleset)).toThrowError(
+      new Error('agents-inc.lint.mts: agentRulesets.quality: unknown ruleset "corectness"'),
+    )
+  })
+
+  it('is named by defineLintRules, with the editor set in its path', () => {
+    // @ts-expect-error corectness is no quality ruleset
+    expect(() => defineLintRules(withMisspelledEditorRuleset)).toThrowError(
+      new Error('agents-inc.lint.mts: editorRulesets.quality: unknown ruleset "corectness"'),
+    )
+  })
+
+  it('is named by defineLintRules when the agent set is missing', () => {
+    // @ts-expect-error agentRulesets is required
+    expect(() => defineLintRules(buildConsumerLintRulesWithoutAgentRulesets(EMPTY_TSCONFIG_ROOT_DIR))).toThrowError(
+      new Error('agents-inc.lint.mts: agentRulesets: missing'),
+    )
+  })
+
+  it('is named by defineLintRules when the editor set is missing', () => {
+    // @ts-expect-error editorRulesets is required
+    expect(() => defineLintRules(buildConsumerLintRulesWithoutEditorRulesets(EMPTY_TSCONFIG_ROOT_DIR))).toThrowError(
+      new Error('agents-inc.lint.mts: editorRulesets: missing'),
+    )
+  })
+
+  it('is absent from a valid config, both sets given', () => {
+    expect(() => defineLintRules(validLintRules)).not.toThrow()
+  })
+})
+
+// tsconfigRootDir is checked when the config is defined: required, an absolute path, an existing
+// folder (decisions.md, 2026-10-14 "real run 3 ... triage"). Real run 3 met each refusal below as
+// something else: left out, a raw TypeError (case E16); '.', a parse error on every TS file that
+// blamed parserOptions (E18); a missing folder, an error blaming package.json, or ESLint silently
+// running without oxlint (E17). Each value below fails one condition alone, beside one passing all,
+// and each message names the condition it fails: a wrong reason sends the consumer after the wrong
+// problem (fix round 3's review, break V2-1).
+describe('tsconfigRootDir in agents-inc.lint.mts', () => {
+  const tempProjects = setUpTempProjects()
+  const projectDir = tempProjects.create({ files: { [PACKAGE_JSON]: packageJsonText(buildPackageJsonListingOxlint()) } })
+  const refusedValues = [
+    { value: '.', refused: 'as a relative path to a folder', reason: 'is not an absolute path' },
+    { value: join(projectDir, 'no-such-folder'), refused: 'as an absolute path to nothing', reason: 'does not exist' },
+    { value: join(projectDir, PACKAGE_JSON), refused: 'as an absolute path to a file', reason: 'is not a folder' },
+  ]
+
+  it('is refused left out, naming the file, the key and that it is missing', () => {
+    // @ts-expect-error tsconfigRootDir is required
+    expect(() => defineLintRules(buildConsumerLintRulesWithoutTsconfigRootDir())).toThrowError(
+      new Error('agents-inc.lint.mts: tsconfigRootDir: missing'),
+    )
+  })
+
+  it('is refused when it is no string, naming the file, the key, the value and that it is no string', () => {
+    // @ts-expect-error tsconfigRootDir is a string
+    expect(() => defineLintRules({ ...validLintRules, tsconfigRootDir: 42 })).toThrowError(
+      new Error('agents-inc.lint.mts: tsconfigRootDir: "42" is not a string'),
+    )
+  })
+
+  it.each(refusedValues)('is refused $refused, naming the file, the key, the value and the condition it fails', ({ value, reason }) => {
+    expect(() => defineLintRules({ ...validLintRules, tsconfigRootDir: value })).toThrowError(
+      new Error(`agents-inc.lint.mts: tsconfigRootDir: "${value}" ${reason}`),
+    )
+  })
+
+  it('is accepted as the absolute path of an existing folder', () => {
+    expect(() => defineLintRules({ ...validLintRules, tsconfigRootDir: projectDir })).not.toThrow()
+  })
+})
+
+// Owner, 2026-10-10: allowSuppressions is the one place that decides the suppression rules, so
+// setting one in rules is refused, naming the key that does. Each call is refused by the types too.
+describe('a suppression rule set in agents-inc.lint.mts', () => {
+  it('is refused in rules when it is house/no-suppressions, naming allowSuppressions', () => {
+    // @ts-expect-error house/no-suppressions is set by allowSuppressions
+    expect(() => defineLintRules({ ...validLintRules, rules: { 'house/no-suppressions': 'off' } })).toThrowError(
+      new Error('agents-inc.lint.mts: rules: "house/no-suppressions" is set by allowSuppressions'),
+    )
+  })
+
+  it('is refused in rules when it is @typescript-eslint/ban-ts-comment, naming allowSuppressions', () => {
+    // @ts-expect-error @typescript-eslint/ban-ts-comment is set by allowSuppressions
+    expect(() => defineLintRules({ ...validLintRules, rules: { '@typescript-eslint/ban-ts-comment': 'warn' } })).toThrowError(
+      new Error('agents-inc.lint.mts: rules: "@typescript-eslint/ban-ts-comment" is set by allowSuppressions'),
+    )
+  })
+
+  it('is refused in rules when it is unicorn/no-abusive-eslint-disable, naming allowSuppressions', () => {
+    // @ts-expect-error unicorn/no-abusive-eslint-disable is set by allowSuppressions
+    expect(() => defineLintRules({ ...validLintRules, rules: { 'unicorn/no-abusive-eslint-disable': 'error' } })).toThrowError(
+      new Error('agents-inc.lint.mts: rules: "unicorn/no-abusive-eslint-disable" is set by allowSuppressions'),
+    )
+  })
+
+  it("is refused in a file override's rules, with the index of the entry in the path", () => {
+    expect(() =>
+      defineLintRules({
+        ...validLintRules,
+        fileOverrides: [
+          { files: ['legacy/**'], allowSuppressions: true },
+          // @ts-expect-error @typescript-eslint/ban-ts-comment is set by allowSuppressions
+          { files: ['legacy/**'], rules: { 'no-debugger': 'off', '@typescript-eslint/ban-ts-comment': 'off' } },
+        ],
+      }),
+    ).toThrowError(
+      new Error('agents-inc.lint.mts: fileOverrides[1].rules: "@typescript-eslint/ban-ts-comment" is set by allowSuppressions'),
+    )
+  })
+
+  it('is absent from a config that allows suppressions through allowSuppressions and sets other rules', () => {
+    const allowingSuppressions = {
+      ...validLintRules,
+      allowSuppressions: true,
+      rules: { 'no-debugger': 'off' },
+      fileOverrides: [{ files: ['strict/**'], allowSuppressions: false, rules: { 'no-debugger': 'error' } }],
+    } satisfies LintRules
+
+    expect(() => defineLintRules(allowingSuppressions)).not.toThrow()
+  })
+})
+
+// A team's eslint.config.mjs is untyped, and an oxlint.config.mts may be checked loosely, so either
+// may hand a merge the other engine's part. The error names the config file that passed it.
+describe("a part handed to the other engine's merge", () => {
+  const tempProjects = setUpTempProjects()
+  const projectWithOxlint = tempProjects.create({
+    files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) },
+    linkedPackages: [INSTALLED_OXLINT],
+  })
+
+  /** Both parts of a project whose package.json lists oxlint, the oxlint one checked present. */
+  function bothParts() {
+    const { eslint, oxlint } = defineLintRules(buildEveryRulesetLintRules(projectWithOxlint)).editorRulesets
+    if (oxlint === undefined) throw new Error('a project whose package.json lists oxlint got no oxlint part')
+    return { eslint, oxlint }
+  }
+
+  it('is refused by mergeEslintConfig when it is the oxlint part, the error naming eslint.config.mjs', () => {
+    const { oxlint } = bothParts()
+
+    // @ts-expect-error the oxlint part is no ESLint part
+    expect(() => mergeEslintConfig([], oxlint, NO_TEAM_OXLINT_CONFIG)).toThrowError(/^eslint\.config\.mjs: /u)
+  })
+
+  it('is accepted by mergeEslintConfig when it is the ESLint part', () => {
+    const { eslint } = bothParts()
+
+    expect(() => mergeEslintConfig([], eslint, NO_TEAM_OXLINT_CONFIG)).not.toThrow()
+  })
+
+  it('is refused by mergeOxlintConfig when it is the ESLint part, the error naming oxlint.config.mts', () => {
+    const { eslint } = bothParts()
+
+    // @ts-expect-error the ESLint part is no oxlint part
+    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), eslint, NO_TEAM_ESLINT_CONFIG)).toThrowError(/^oxlint\.config\.mts: /u)
+  })
+
+  it('is accepted by mergeOxlintConfig when it is the oxlint part', () => {
+    const { oxlint } = bothParts()
+
+    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, NO_TEAM_ESLINT_CONFIG)).not.toThrow()
+  })
+})

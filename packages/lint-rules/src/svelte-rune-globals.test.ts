@@ -1,0 +1,84 @@
+import type { Linter } from 'eslint'
+import { describe, expect, it } from 'vitest'
+import { agentConfigsOf } from './__tests__/agent-configs.ts'
+import {
+  MODULE_RUNES,
+  RUNE_TEST_MODULES,
+  SVELTE_RUNES,
+  SVELTE_SOURCE_FILES,
+  TEST_FILES_OF_NO_RUNE_MODULE,
+} from './__tests__/cases/svelte-components.ts'
+import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
+import { buildConsumerLintRules, EMPTY_TSCONFIG_ROOT_DIR } from './__tests__/factories/lint-rules-factories.ts'
+import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
+import { writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
+import { setUpTempProjects } from './__tests__/temp-projects.ts'
+import { mergeEslintConfig } from './eslint.ts'
+import { defineLintRules, type LintRules } from './index.ts'
+
+// Svelte 5's runes are globals in .svelte.js and .svelte.ts modules in ESLint too, in every config
+// we write (decisions.md, 2026-10-14 "real run 3, scale lane"), and in no other JS or TS file. Our
+// ESLint part lints JS and TS files alone, so no .svelte file. Read from ESLint's own merge of each
+// config for the file, as the rules there see it; svelte-runes.integration.test.ts runs the rules.
+
+const { globalsFor } = setUpEslintConfigOracle()
+const tempProjects = setUpTempProjects()
+const projectListingOxlint = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) } })
+
+const RUNE_MODULES = [SVELTE_SOURCE_FILES.jsModule, SVELTE_SOURCE_FILES.tsModule]
+const NO_SVELTE_FILES = [SVELTE_SOURCE_FILES.notARuneModule, SVELTE_SOURCE_FILES.tsFileWritingToARune]
+
+/** Our settings with the ruleset that ships no-undef and no-global-assign in both sets, rooted where given. */
+function correctnessIn(tsconfigRootDir: string): LintRules {
+  return buildConsumerLintRules(tsconfigRootDir, { agentRulesets: { quality: ['correctness'] }, editorRulesets: { quality: ['correctness'] } })
+}
+
+/** The editor ESLint part merged into a team config with no block. */
+function mergedIntoAnEmptyTeamConfig(tsconfigRootDir: string): Linter.Config[] {
+  const { eslint } = defineLintRules(correctnessIn(tsconfigRootDir)).editorRulesets
+  return mergeEslintConfig([], eslint, writeTeamOxlintConfigSettingNoRule(eslint))
+}
+
+/** Whether ESLint reads the name as a global: set, and not turned off. */
+function isDefinedGlobal(value: unknown): boolean {
+  return value !== undefined && value !== 'off'
+}
+
+async function runesDefinedIn(config: Linter.Config[], file: string, runes: readonly string[]): Promise<string[]> {
+  const globals = await globalsFor(config, file)
+  return runes.filter((rune) => isDefinedGlobal(globals[rune]))
+}
+
+// The config's name in full in its title, which $-interpolation would cut short.
+const CONFIGS = [
+  { config: 'the agent build', build: () => agentConfigsOf(defineLintRules(correctnessIn(projectListingOxlint))).eslint },
+  { config: 'the editor part of a project whose package.json lists oxlint, merged into an empty team config', build: () => mergedIntoAnEmptyTeamConfig(projectListingOxlint) },
+  { config: 'the editor part of a project whose package.json lists no oxlint, merged into an empty team config', build: () => mergedIntoAnEmptyTeamConfig(EMPTY_TSCONFIG_ROOT_DIR) },
+]
+
+CONFIGS.forEach(({ config, build }) => {
+  describe(`Svelte 5's runes in ESLint, in ${config}`, () => {
+    it.each(RUNE_MODULES)('are each a global in the rune module %s, every rune a module may use', async (file) => {
+      expect(await runesDefinedIn(build(), file, MODULE_RUNES)).toStrictEqual(MODULE_RUNES)
+    })
+
+    it.each(NO_SVELTE_FILES)('are no global in %s, which is no Svelte file', async (file) => {
+      expect(await runesDefinedIn(build(), file, SVELTE_RUNES)).toStrictEqual([])
+    })
+  })
+})
+
+// Svelte's tests of runes are rune modules too, by vite-plugin-svelte's rule (decisions.md, 2026-10-14
+// "fix round 4 closed"): `.svelte.` in the file's name, then a name ending in js or ts. A file that
+// meets one half of the rule alone, or holds `.svelte.` in a folder's name, is no rune module.
+CONFIGS.forEach(({ config, build }) => {
+  describe(`Svelte 5's runes in ESLint, in Svelte's tests of runes and files named like them, in ${config}`, () => {
+    it.each(RUNE_TEST_MODULES)('are each a global in the test %s, a rune module, every rune a module may use', async (file) => {
+      expect(await runesDefinedIn(build(), file, MODULE_RUNES)).toStrictEqual(MODULE_RUNES)
+    })
+
+    it.each(TEST_FILES_OF_NO_RUNE_MODULE)('are no global in %s, which is no rune module', async (file) => {
+      expect(await runesDefinedIn(build(), file, SVELTE_RUNES)).toStrictEqual([])
+    })
+  })
+})
