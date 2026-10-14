@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Node tooling",
+  "extends": "./base.json",
+
+  // nodenext makes tsc reject an extensionless relative import, which Node's type stripping
+  // cannot load; erasableSyntaxOnly rejects the syntax (enums, namespaces) it cannot strip.
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  }
+}
