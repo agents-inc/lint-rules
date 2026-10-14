@@ -1,0 +1,196 @@
+import {
+  bannerAloneOnItsLine,
+  bannerAndLabelBlock,
+  bareReturnAboveUnreachableValue,
+  blockBannerTrailingCode,
+  cliFlagComments,
+  comparisonInProse,
+  dashNote,
+  declarationsWithoutComment,
+  docBlockWithMarkdownHeading,
+  docBlockWithTitledHeading,
+  explanatoryComment,
+  functionWithoutComment,
+  indentedTitledBanner,
+  labelLeftAfterFirstPass,
+  labelTrailingCode,
+  lintDirectiveReason,
+  markdownTableComments,
+  multiLineBlockBannerAfterReturn,
+  multiLineBlockBannerBetweenStatements,
+  multiLineBlockBannerEndingItsLine,
+  paragraphBetweenRuns,
+  spacedHyphens,
+  titledAsteriskBanner,
+  titledBannerFramingASentence,
+  titledBannerTrailingCode,
+  titledBannerWithShortLeadingRun,
+  titledBlockBanner,
+  titledBlockBannerTrailingCode,
+  titledDashBanner,
+  titledEqualsBanner,
+  todoWithDashes,
+  totalDeclaration,
+  twoCharacterFrame,
+  unevenTitledBanner,
+} from '../__tests__/cases/no-section-banner.ts'
+import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
+import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
+import { housePlugin } from '../index.ts'
+
+houseRuleTester.run('no-section-banner', housePlugin.rules['no-section-banner'], {
+  valid: [
+    buildValidCase('stays silent on a comment that explains something', explanatoryComment, {
+      filename: 'no-section-banner.ts',
+    }),
+    buildValidCase('stays silent on a note led by two hyphens', dashNote, { filename: 'no-section-banner.ts' }),
+    buildValidCase('stays silent on single hyphens between words', spacedHyphens, { filename: 'no-section-banner.ts' }),
+    buildValidCase('stays silent on a run of hyphens between words, with no frame', todoWithDashes, {
+      filename: 'no-section-banner.ts',
+    }),
+    // `--` is a dash in prose, so a title framed only by two-character runs is too weak a signal to delete on.
+    buildValidCase('stays silent on a title framed by two-character runs on both sides', twoCharacterFrame, {
+      filename: 'no-section-banner.ts',
+    }),
+    buildValidCase('stays silent on comments quoting CLI flags and the -- argument separator', cliFlagComments, {
+      filename: 'no-section-banner.ts',
+    }),
+    buildValidCase('stays silent on the reason a lint directive gives after --', lintDirectiveReason, {
+      filename: 'no-section-banner.ts',
+    }),
+    buildValidCase(
+      'stays silent on a paragraph opened by a run on its first line and closed by one on its last',
+      paragraphBetweenRuns,
+      { filename: 'no-section-banner.ts' },
+    ),
+    buildValidCase('stays silent on a comparison operator in prose', comparisonInProse, {
+      filename: 'no-section-banner.ts',
+    }),
+    buildValidCase('stays silent on a doc block holding a framed heading among its prose', docBlockWithTitledHeading, {
+      filename: 'no-section-banner.ts',
+    }),
+    buildValidCase('stays silent on a doc block holding a markdown heading', docBlockWithMarkdownHeading, {
+      filename: 'no-section-banner.ts',
+    }),
+    buildValidCase('stays silent on a markdown table written in line comments', markdownTableComments, {
+      filename: 'no-section-banner.ts',
+    }),
+  ],
+  invalid: [
+    buildInvalidCase('reports a banner-and-label block and deletes it line by line', bannerAndLabelBlock, {
+      filename: 'no-section-banner.ts',
+      errors: [
+        { messageId: 'banner', line: 1 },
+        { messageId: 'label', line: 2 },
+        { messageId: 'banner', line: 3 },
+      ],
+      output: [labelLeftAfterFirstPass, totalDeclaration],
+    }),
+    buildInvalidCase('deletes a banner alone on its line together with that line', bannerAloneOnItsLine, {
+      filename: 'no-section-banner.ts',
+      errors: [{ messageId: 'banner', line: 2 }],
+      output: declarationsWithoutComment,
+    }),
+    buildInvalidCase('keeps the line break when deleting a label comment that trails code', labelTrailingCode, {
+      filename: 'no-section-banner.ts',
+      errors: [{ messageId: 'label', line: 1 }],
+      output: declarationsWithoutComment,
+    }),
+    buildInvalidCase('keeps the line break when deleting a block banner that trails code', blockBannerTrailingCode, {
+      filename: 'no-section-banner.ts',
+      errors: [{ messageId: 'banner', line: 1 }],
+      output: declarationsWithoutComment,
+    }),
+    buildInvalidCase(
+      'reports a title framed by hyphen runs as a banner, label word and all, and deletes its line',
+      titledDashBanner,
+      {
+        filename: 'no-section-banner.ts',
+        errors: [{ messageId: 'banner', line: 2 }],
+        output: declarationsWithoutComment,
+      },
+    ),
+    buildInvalidCase('reports a title framed by equals runs and deletes its line', titledEqualsBanner, {
+      filename: 'no-section-banner.ts',
+      errors: [{ messageId: 'banner', line: 2 }],
+      output: declarationsWithoutComment,
+    }),
+    buildInvalidCase('reports a title framed by asterisk runs and deletes its line', titledAsteriskBanner, {
+      filename: 'no-section-banner.ts',
+      errors: [{ messageId: 'banner', line: 2 }],
+      output: declarationsWithoutComment,
+    }),
+    buildInvalidCase('reports a titled block banner and deletes its line', titledBlockBanner, {
+      filename: 'no-section-banner.ts',
+      errors: [{ messageId: 'banner', line: 2 }],
+      output: declarationsWithoutComment,
+    }),
+    buildInvalidCase('reports a title framed by runs of unequal length', unevenTitledBanner, {
+      filename: 'no-section-banner.ts',
+      errors: [{ messageId: 'banner', line: 2 }],
+      output: declarationsWithoutComment,
+    }),
+    buildInvalidCase(
+      'reports a title framed by a two-character run on one side when the other run is longer',
+      titledBannerWithShortLeadingRun,
+      {
+        filename: 'no-section-banner.ts',
+        errors: [{ messageId: 'banner', line: 2 }],
+        output: declarationsWithoutComment,
+      },
+    ),
+    buildInvalidCase('reports a framed sentence as a banner', titledBannerFramingASentence, {
+      filename: 'no-section-banner.ts',
+      errors: [{ messageId: 'banner', line: 2 }],
+      output: declarationsWithoutComment,
+    }),
+    buildInvalidCase('deletes an indented titled banner together with its indentation and line', indentedTitledBanner, {
+      filename: 'no-section-banner.ts',
+      errors: [{ messageId: 'banner', line: 2 }],
+      output: functionWithoutComment,
+    }),
+    buildInvalidCase('keeps the line break when deleting a titled banner that trails code', titledBannerTrailingCode, {
+      filename: 'no-section-banner.ts',
+      errors: [{ messageId: 'banner', line: 1 }],
+      output: declarationsWithoutComment,
+    }),
+    buildInvalidCase(
+      'keeps the line break when deleting a titled block banner that trails code',
+      titledBlockBannerTrailingCode,
+      {
+        filename: 'no-section-banner.ts',
+        errors: [{ messageId: 'banner', line: 1 }],
+        output: declarationsWithoutComment,
+      },
+    ),
+    // The banner's line break becomes the deletion's: the blanks on both sides of the comment go,
+    // and the code after it starts a line indented like the line the comment started on.
+    buildInvalidCase(
+      'keeps the two statements on separate lines when deleting a block banner spanning lines between them',
+      multiLineBlockBannerBetweenStatements,
+      {
+        filename: 'no-section-banner.ts',
+        errors: [{ messageId: 'banner', line: 1 }],
+        output: declarationsWithoutComment,
+      },
+    ),
+    buildInvalidCase(
+      'keeps return on its own line when deleting a block banner spanning lines after it, so the function still returns undefined',
+      multiLineBlockBannerAfterReturn,
+      {
+        filename: 'no-section-banner.ts',
+        errors: [{ messageId: 'banner', line: 2 }],
+        output: bareReturnAboveUnreachableValue,
+      },
+    ),
+    buildInvalidCase(
+      'adds no blank line when deleting a block banner spanning lines that trails code and ends its line',
+      multiLineBlockBannerEndingItsLine,
+      {
+        filename: 'no-section-banner.ts',
+        errors: [{ messageId: 'banner', line: 1 }],
+        output: declarationsWithoutComment,
+      },
+    ),
+  ],
+})
