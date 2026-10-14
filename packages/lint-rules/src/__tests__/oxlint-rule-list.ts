@@ -1,0 +1,26 @@
+import { spawnSync } from 'node:child_process'
+import { join } from 'node:path'
+import { oxlintPluginListedAs } from './oxlint-rule-keys.ts'
+import { INSTALLED_OXLINT } from './temp-projects.ts'
+
+/** One rule as `oxlint --rules -f json` prints it: its plugin as `scope` (`jsx_a11y`), its name as `value`. */
+type ListedRule = { readonly scope: string; readonly value: string }
+
+const OXLINT_BIN = join(INSTALLED_OXLINT.dir, 'bin', 'oxlint')
+
+/**
+ * The plugins of the oxlint this repo installs, in the order its own rule list keeps them, as the
+ * catalog spells them: one per run of rules of one plugin, so a plugin whose rules are not kept
+ * together comes twice.
+ */
+export function pluginsInTheInstalledOxlintsRuleOrder(): string[] {
+  const plugins = installedOxlintRules().map(({ scope }) => oxlintPluginListedAs(scope))
+  return plugins.filter((plugin, index) => plugins[index - 1] !== plugin)
+}
+
+function installedOxlintRules(): readonly ListedRule[] {
+  const { status, stdout, stderr } = spawnSync(process.execPath, [OXLINT_BIN, '--rules', '-f', 'json'], { encoding: 'utf8' })
+  if (status !== 0) throw new Error(`oxlint --rules exited ${String(status)}: ${stderr}`)
+  // Parse boundary: oxlint's JSON rule list.
+  return JSON.parse(stdout) as ListedRule[]
+}

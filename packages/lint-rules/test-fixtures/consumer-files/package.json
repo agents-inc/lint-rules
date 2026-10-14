@@ -1,0 +1,8 @@
+{
+  "name": "consumer-files-fixture",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "oxlint": "~1.87.0"
+  }
+}

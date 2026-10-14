@@ -1,0 +1,5 @@
+{
+  "name": "eslint-fallback-fixture",
+  "private": true,
+  "type": "module"
+}

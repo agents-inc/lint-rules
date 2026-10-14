@@ -1,0 +1,79 @@
+import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { afterAll } from 'vitest'
+
+/** File contents by path relative to the project. */
+export type ProjectFiles = Readonly<Record<string, string>>
+
+/** A package installed into a project by a link: its name under node_modules and the directory it points to. */
+export type LinkedPackage = { readonly name: string; readonly dir: string }
+
+export type TempProject = {
+  /** Copied from, when the project starts as a fixture directory. */
+  readonly fixturesDir?: string
+  readonly files?: ProjectFiles
+  readonly linkedPackages?: readonly LinkedPackage[]
+}
+
+export type TempProjects = {
+  /** A new project directory, holding the fixtures and then the files, and resolving each linked package. */
+  readonly create: (project: TempProject) => string
+}
+
+const TEMP_DIR_PREFIX = 'lint-rules-project-'
+const PROJECT_DIR_NAME = 'project'
+const NODE_MODULES = 'node_modules'
+
+/** A package as this repo installs it, to link into a project that must resolve it. */
+export function installedPackage(name: string): LinkedPackage {
+  return { name, dir: dirname(createRequire(import.meta.url).resolve(`${name}/package.json`)) }
+}
+
+/** The oxlint this repo installs, at the version the package was generated against. */
+export const INSTALLED_OXLINT = installedPackage('oxlint')
+
+/** This package, as a consumer installs it: its package.json `exports` lead to `dist`. */
+export const THIS_PACKAGE: LinkedPackage = {
+  name: '@agents-inc/lint-rules',
+  dir: fileURLToPath(new URL('../..', import.meta.url)),
+}
+
+/**
+ * Temp projects, removed after the suite. A project sits one level below a root whose node_modules
+ * holds the linked packages: Node and the engines resolve them by walking up, while neither engine,
+ * linting the project, walks into them. Call it at the top of a test file or a describe block: it
+ * registers that scope's cleanup.
+ */
+export function setUpTempProjects(): TempProjects {
+  const roots: string[] = []
+
+  afterAll(() => {
+    roots.forEach((root) => rmSync(root, { recursive: true, force: true }))
+  })
+
+  return {
+    create: ({ fixturesDir, files = {}, linkedPackages = [] }) => {
+      const root = mkdtempSync(join(tmpdir(), TEMP_DIR_PREFIX))
+      roots.push(root)
+      const projectDir = join(root, PROJECT_DIR_NAME)
+      mkdirSync(projectDir)
+      if (fixturesDir !== undefined) cpSync(fixturesDir, projectDir, { recursive: true })
+      Object.entries(files).forEach(([file, content]) => writeFileCreatingItsDir(join(projectDir, file), content))
+      linkedPackages.forEach((linked) => linkPackage(join(root, NODE_MODULES, linked.name), linked.dir))
+      return projectDir
+    },
+  }
+}
+
+function writeFileCreatingItsDir(path: string, content: string): void {
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, content)
+}
+
+function linkPackage(linkPath: string, target: string): void {
+  mkdirSync(dirname(linkPath), { recursive: true })
+  symlinkSync(target, linkPath, 'dir')
+}

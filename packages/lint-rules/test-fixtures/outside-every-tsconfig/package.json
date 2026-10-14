@@ -1,0 +1,5 @@
+{
+  "name": "outside-every-tsconfig-fixture",
+  "private": true,
+  "type": "module"
+}
