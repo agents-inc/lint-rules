@@ -1,0 +1,695 @@
+[
+  {
+    "id": "@eslint-community/eslint-comments/disable-enable-pair",
+    "status": "needs-owner",
+    "why": "New plugin. Matters only where allowSuppressions is true; r1 said drop and re-check once the suppression ban landed.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 104 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@eslint-community/eslint-comments/no-duplicate-disable",
+    "status": "needs-owner",
+    "why": "New plugin. Matters only where allowSuppressions is true; r1 said drop and re-check once the suppression ban landed.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 1 hit",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@eslint-community/eslint-comments/require-description",
+    "status": "needs-owner",
+    "why": "New plugin. Matters only where allowSuppressions is true; r1 said drop and re-check once the suppression ban landed.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 600 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@typescript-eslint/consistent-type-exports",
+    "status": "recommended",
+    "why": "Adopt (r1): a type re-exported as a value. conventions, ESLint typed.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 7 hits, 0 FP of 7",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@typescript-eslint/consistent-type-imports",
+    "status": "recommended",
+    "why": "Adopt (r1): a value import used only as a type. conventions, oxlint, `{ disallowTypeAnnotations: false }`.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 3,274 hits in 1,806 files, 24 of 33 repos; 2 FP of 20 at defaults, both removed by the option",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@typescript-eslint/dot-notation",
+    "status": "recommended",
+    "why": "Adopt (r1): `obj['key']` where `obj.key` works. conventions, ESLint typed, `{ allowPrivateClassPropertyAccess: true, allowProtectedClassPropertyAccess: true }`; never core dot-notation.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 5 hits, 0 FP of 5",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@typescript-eslint/no-namespace",
+    "status": "recommended",
+    "why": "Adopt (r1): `namespace X {}`. type-safety, oxlint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@typescript-eslint/no-unnecessary-qualifier",
+    "status": "recommended",
+    "why": "Adopt (r1): `Ns.X` inside namespace `Ns`. redundancy, ESLint typed; nearly moot once no-namespace ships.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@typescript-eslint/no-unsafe-enum-assignment",
+    "status": "recommended",
+    "why": "Adopt (r1): a number or string assigned to an enum type. type-safety, ESLint typed; low value, as no-unsafe-type-assertion reports all 4 hits.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 4 hits, 0 FP of 4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@typescript-eslint/parameter-properties",
+    "status": "considering",
+    "why": "Not measured yet: volume only (44 hits), as is eslint-plugin-erasable-syntax-only; TS 5.8 erasableSyntaxOnly covers it at compile time.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@typescript-eslint/prefer-includes",
+    "status": "needs-owner",
+    "why": "r1: skip. Its unique form is `/foo/.test(s)`; its indexOf half reports every unicorn/prefer-includes site twice.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 2 true hits of the unique form",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@typescript-eslint/prefer-readonly",
+    "status": "recommended",
+    "why": "Adopt (r1): a private class member never reassigned. immutability, ESLint typed.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 191 hits, 0 FP of 10",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@typescript-eslint/prefer-string-starts-ends-with",
+    "status": "recommended",
+    "why": "Adopt (r1): `/^x/.test(s)`, `indexOf(x) === 0`, `slice(-2) === …`. modern-js, ESLint typed; ship only this version, not the unicorn twin.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 14 hits, 0 FP of 14",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@typescript-eslint/promise-function-async",
+    "status": "needs-owner",
+    "why": "r1: hold until an option exempts React render callbacks, or until annotating them is accepted.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 288 hits; 10 of 10 plain hits true; 46 (16%) are render callbacks (React 19 ReactNode includes Promise)",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "@typescript-eslint/use-unknown-in-catch-callback-variable",
+    "status": "recommended",
+    "why": "Adopt (r1): `.catch((e) => …)` without `e: unknown`. type-safety, ESLint typed.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 80 hits, 0 FP of 10",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "accessor-pairs",
+    "status": "recommended",
+    "why": "Adopt (r1): a setter with no getter. correctness, oxlint, with test-file ignores; double-reports a subclass setter with unicorn/no-incomplete-accessor-override.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 11 hits in 1 repo; 3 FP of 11 (write-only canvas stubs in test doubles)",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "ai-guard/no-console-in-handler",
+    "status": "considering",
+    "why": "Not measured yet: a server rule with 0 hits in a frontend corpus; needs a Node/Express corpus.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "ai-guard/no-sql-string-concat",
+    "status": "considering",
+    "why": "Not measured yet: a server rule with 0 hits in a frontend corpus; needs a Node/Express corpus.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "ai-guard/require-auth-middleware",
+    "status": "considering",
+    "why": "Not measured yet: a server rule with 0 hits in a frontend corpus; needs a Node/Express corpus.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "ai-guard/require-authz-check",
+    "status": "considering",
+    "why": "Not measured yet: a server rule with 0 hits in a frontend corpus; needs a Node/Express corpus.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "anti-slop-effect/no-manual-effect-error-tag",
+    "status": "needs-owner",
+    "why": "r1: no, unless an Effect libs ruleset is wanted; no corpus repo uses Effect.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: prefer-effect-match fired 152 times on non-Effect code",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "anti-slop-effect/no-manual-tag-comparison",
+    "status": "needs-owner",
+    "why": "r1: no, unless an Effect libs ruleset is wanted; no corpus repo uses Effect.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: prefer-effect-match fired 152 times on non-Effect code",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "anti-slop-effect/no-manual-tagged-construction",
+    "status": "needs-owner",
+    "why": "r1: no, unless an Effect libs ruleset is wanted; no corpus repo uses Effect.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: prefer-effect-match fired 152 times on non-Effect code",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "anti-slop-effect/no-service-constructor-imports",
+    "status": "needs-owner",
+    "why": "r1: no, unless an Effect libs ruleset is wanted; no corpus repo uses Effect.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: prefer-effect-match fired 152 times on non-Effect code",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "anti-slop-effect/prefer-effect-match",
+    "status": "needs-owner",
+    "why": "r1: no, unless an Effect libs ruleset is wanted; no corpus repo uses Effect.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: prefer-effect-match fired 152 times on non-Effect code",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "anti-slop/no-reduce-accumulator-copy",
+    "status": "recommended",
+    "why": "Adopt (r1): as a house port: a reducer that copies its accumulator each step (quadratic). performance, ESLint. Upstream misses named reducers under typescript-eslint, and its advice must point to flatMap, map or Object.fromEntries.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 1 authored hit (+25 in bundles), 0 FP of 1 authored",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "anti-slop/require-safety-comment-for-type-assertion",
+    "status": "needs-owner",
+    "why": "r1: reject; the unsafe half is covered by no-unsafe-type-assertion and the rest is policy. Broken under ESLint; would need a port.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 10,095 hits; of 12 read, 8 unsafe casts already reported, 4 (33%) safe casts",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "better-tailwindcss/no-unknown-classes",
+    "status": "considering",
+    "why": "Not measured yet: dead Tailwind classes (a real defect class in freecut); measure on the 2 Tailwind v4 repos.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "cssicorn/*",
+    "status": "considering",
+    "why": "Not measured yet: eslint-cssicorn, and unicorn's CSS rules; the languages list is empty and has no parsers yet.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "e18e/prefer-get-or-insert",
+    "status": "needs-owner",
+    "why": "New plugin. r1: its fix writes an API Node 22.23 lacks, so it would join the parked Node-22 list.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: fix measured on Node 22.23",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "e18e/prefer-throw-if-no-entry",
+    "status": "needs-owner",
+    "why": "r1: skip; a new dependency for one rule.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "github/a11y-no-title-attribute",
+    "status": "considering",
+    "why": "Not measured yet: volume only (172 hits); not fixture-run.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "github/a11y-svg-has-accessible-name",
+    "status": "considering",
+    "why": "Not measured yet: volume only (175 hits); not fixture-run.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "github/no-inner-html",
+    "status": "considering",
+    "why": "Not measured yet: volume only (58 hits); probably covered by unicorn/no-unsafe-dom-html; not fixture-run.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "house/require-class-helper",
+    "status": "needs-owner",
+    "why": "Measured before shipping (owner 2026-10-10): className/class must be a literal, a template with nothing interpolated, a name, a lookup or a call to a helper (default cn, clsx, cx, cva, twMerge). The owner decides after the numbers. Clear FP 21% at defaults, 7% with classNames/classnames added to helpers; 91 choose-one-of-two-class ternaries (8%) are the owner's call.",
+    "evidence": "Tester 2026-10-10, 4,779 unique JSX/TSX files from the owner's local repos (not the cli monorepo), 0 fatal: 1,133 reports in 620 files (111 in the owner's own projects); 239 clear FP (172 classNames-style helpers); with classNames/classnames in helpers 961 reports, 67 clear FP; 58 true hits interpolate a possibly-undefined className",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "json/*",
+    "status": "considering",
+    "why": "Not measured yet: @eslint/json; the languages list is empty and has no parsers, so the engines cannot reach JSON files yet.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "jsx-a11y/anchor-ambiguous-text",
+    "status": "recommended",
+    "why": "Adopt (r1): `<a>Click here</a>`. accessibility, oxlint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 1 hit, 0 FP of 1",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "llm-core/no-redundant-comments",
+    "status": "needs-owner",
+    "why": "r1: reject at its FP rate (new single-author plugin).",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 18 of 25 hits narrate the next line; 7 of 25 (28%) are intent or domain comments",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "markdown/*",
+    "status": "considering",
+    "why": "Not measured yet: @eslint/markdown; the languages list is empty and has no parsers yet.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "no-array-constructor",
+    "status": "recommended",
+    "why": "Adopt (r1): `Array(a, b)`, `new Array(1, 2, 3)`. correctness, oxlint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "no-case-declarations",
+    "status": "recommended",
+    "why": "Adopt (r1): `const`/`let` directly in a `case`. correctness, oxlint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "no-console",
+    "status": "needs-owner",
+    "why": "r1: do not ship. If wanted: `allow: ['warn', 'error']`, turned off per path with fileOverrides.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 1,452 hits in 28 of 33 repos; 24 FP of 30 (scripts, CLIs, servers, dev warnings)",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "no-empty",
+    "status": "recommended",
+    "why": "Adopt (r1): empty blocks, including `catch {}`; a comment inside satisfies it. correctness, oxlint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 3 hits in 1 repo (+274 in bundles), 0 FP of 3",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "no-implicit-coercion",
+    "status": "considering",
+    "why": "Not measured yet: volume only (507 hits); the gate filed it as a preference.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "no-magic-numbers",
+    "status": "considering",
+    "why": "Not measured yet: a tuned version with tests exempt (CLAUDE.md: no magic numbers); needs its own pass.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "no-new-wrappers",
+    "status": "recommended",
+    "why": "Adopt (r1): `new String()`, `new Number()`. correctness, oxlint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits; the gate recorded this hole",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "no-object-constructor",
+    "status": "recommended",
+    "why": "Adopt (r1): `new Object()`. modern-js, oxlint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "no-self-compare",
+    "status": "recommended",
+    "why": "Adopt (r1): `x !== x`. correctness, oxlint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "no-sequences",
+    "status": "recommended",
+    "why": "Adopt (r1): the comma operator. correctness, oxlint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 1 hit, 0 FP",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "no-useless-assignment",
+    "status": "recommended",
+    "why": "Adopt (r1): a dead store. redundancy, oxlint; sonarjs/no-dead-store also reports 17 of its 70 hits.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 70 hits in 54 files, 6 repos; 0 FP of 14",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "oxc/bad-bitwise-operator",
+    "status": "considering",
+    "why": "Not measured yet: worth a look; the fixture did not trigger it.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "oxc/no-barrel-file",
+    "status": "considering",
+    "why": "Not measured yet: worth a look.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "package-json/*",
+    "status": "considering",
+    "why": "Not measured yet: eslint-plugin-package-json; the languages list is empty and has no parsers yet.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "playwright/*",
+    "status": "considering",
+    "why": "Not measured yet: eslint-plugin-playwright, which needs a Playwright libs ruleset the owner names.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "prefer-object-has-own",
+    "status": "recommended",
+    "why": "Adopt (r1): `Object.prototype.hasOwnProperty.call`. modern-js, oxlint, autofixes.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 22 hits, 0 FP of 22",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "radix",
+    "status": "recommended",
+    "why": "Adopt (r1): `parseInt(x)` with no radix. correctness, oxlint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 47 hits in 24 files, 5 repos; 0 FP of 15",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "react-google-translate/no-conditional-text-nodes-with-siblings",
+    "status": "needs-owner",
+    "why": "r1: not now; re-measure when the plugin (1.1.0, published 2026-10-09) matures.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 321 hits; of 14 read, 6 crash shapes, 3 stale text, 5 FP (36%)",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "secure-coding/*",
+    "status": "considering",
+    "why": "Not measured yet: eslint-plugin-secure-coding, not run.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "security/*",
+    "status": "considering",
+    "why": "Not measured yet: eslint-plugin-security, not run.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "shadcn/no-arbitrary-values",
+    "status": "considering",
+    "why": "Too early: custom values are sometimes needed (owner 2026-10-10). Needs @shadcn/lint (new, pre-1.0) and supports Tailwind v4 only.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 857 hits, 2.2% clear FP (3.4% with debatable ones); 78% of the Tailwind v4 hits are off-scale sizes",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "shadcn/no-raw-colors",
+    "status": "needs-owner",
+    "why": "Strict opt-in: waits on an opt-in category (owner 2026-10-10). decisions.md since records opt-in rulesets (option A) with strict-design-tokens (libs.styling) starting with this rule; not built, and it needs @shadcn/lint (new, pre-1.0).",
+    "evidence": "docs/work/rule-candidates-r1.md §3: 18 FP of 20 (90%) as a default rule: status, brand and SVG colours with no token",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "sonarjs/composite-assertions",
+    "status": "recommended",
+    "why": "Adopt (r1): `expect(a && b).toBeTruthy()`. tests, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "sonarjs/no-debounce-throttle-in-render",
+    "status": "recommended",
+    "why": "Adopt (r1): a debounce/throttle created in a component body. react, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "sonarjs/no-duplicate-parameterized-test-case",
+    "status": "recommended",
+    "why": "Adopt (r1): duplicate rows in `it.each`. tests, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "sonarjs/no-duplicated-branches",
+    "status": "recommended",
+    "why": "Adopt (r1): two if/else or switch branches with the same body. correctness, ESLint, beside sonarjs/no-all-duplicated-branches (move the two together).",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 22 hits in 15 files, 5 repos; 2 FP of 22 (per-case comments, symmetric clamps)",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "sonarjs/no-empty-parameterized-test-dataset",
+    "status": "recommended",
+    "why": "Adopt (r1): `it.each([])`, whose body never runs. tests, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "sonarjs/no-networkidle-wait",
+    "status": "considering",
+    "why": "Not measured yet: needs a Playwright libs ruleset the owner names.",
+    "evidence": "docs/work/rule-candidates-r1.md §4",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "sonarjs/prefer-native-axios-alternative",
+    "status": "needs-owner",
+    "why": "r1: hold; one rule does not justify an axios libs ruleset.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 2 true hits (deprecated CancelToken), which no-deprecated misses",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "sonarjs/synchronous-exception-assertions",
+    "status": "recommended",
+    "why": "Adopt (r1): `expect(async () => …).toThrow()`, which never fails. tests, ESLint typed.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "symbol-description",
+    "status": "recommended",
+    "why": "Adopt (r1): `Symbol()` with no description. conventions, oxlint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-async-iterator-callback",
+    "status": "recommended",
+    "why": "Adopt (r1): an async callback to an iterator helper, never awaited. correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-conflicting-constraints",
+    "status": "recommended",
+    "why": "Adopt (r1): `<input min={10} max={5}>`. correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-incomplete-accessor-override",
+    "status": "recommended",
+    "why": "Adopt (r1): a subclass setter that hides the inherited getter. correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-ineffective-csp-directives",
+    "status": "recommended",
+    "why": "Adopt (r1): CSP directives a `<meta>` CSP ignores. security, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-invalid-boolean-attribute-value",
+    "status": "recommended",
+    "why": "Adopt (r1): `setAttribute('disabled', 'false')`. browser, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-invalid-dom-token",
+    "status": "recommended",
+    "why": "Adopt (r1): `classList.add('a b')` (throws). browser, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-invalid-integrity",
+    "status": "recommended",
+    "why": "Adopt (r1): a malformed SRI `integrity` value. security, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-invalid-intl-options",
+    "status": "recommended",
+    "why": "Adopt (r1): conflicting or missing Intl options. correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-invalid-property-descriptor",
+    "status": "recommended",
+    "why": "Adopt (r1): `get` mixed with `value`/`writable` (throws). correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-invalid-response-options",
+    "status": "recommended",
+    "why": "Adopt (r1): `new Response('', { status: 204 })` (throws). correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-invalid-style-set-property",
+    "status": "recommended",
+    "why": "Adopt (r1): `style.setProperty('backgroundColor', …)` (no-op). browser, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-invalid-temporal-arithmetic",
+    "status": "recommended",
+    "why": "Adopt (r1): `Temporal.Instant.add({ days })` (throws). correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-invalid-url-protocol-comparison",
+    "status": "recommended",
+    "why": "Adopt (r1): `url.protocol === 'https'` (always false). correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-prevent-default-in-passive-listener",
+    "status": "recommended",
+    "why": "Adopt (r1): `preventDefault` in a passive listener. browser, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-unsafe-json-serialization",
+    "status": "recommended",
+    "why": "Adopt (r1): `JSON.stringify` of a Set, Map or BigInt. correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-unused-builtin-method-return",
+    "status": "recommended",
+    "why": "Adopt (r1): a `.map()` result thrown away, `.some()` used as a loop. correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 5 hits, 0 FP of 5",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-unused-iterator-helper",
+    "status": "recommended",
+    "why": "Adopt (r1): a lazy iterator helper never consumed. correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-url-in-search-params",
+    "status": "recommended",
+    "why": "Adopt (r1): `new URLSearchParams('https://…?q=1')`. correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-useless-set-construction",
+    "status": "recommended",
+    "why": "Adopt (r1): `set.union(new Set(other))`. redundancy, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/no-using-resource-escape",
+    "status": "recommended",
+    "why": "Adopt (r1): returning a `using` resource, already disposed. correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/prefer-at",
+    "status": "recommended",
+    "why": "Adopt (r1): `a[a.length - 1]`. modern-js, oxlint; the fix types the result `T | undefined`.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 275 hits, 0 FP of 16",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/prefer-escaped-irregular-whitespace",
+    "status": "recommended",
+    "why": "Adopt (r1): an invisible NBSP or zero-width character in a string. correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 6 hits, 0 FP of 6",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/prefer-iterator-zip",
+    "status": "parked",
+    "why": "Its fix writes an API Node 22.23 lacks (measured). Waits on the Node-version question the owner parked (questions.md \"Parked\").",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 2 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/prefer-json-import",
+    "status": "needs-owner",
+    "why": "r1: reject, on the unicorn/prefer-module \"migration rule\" precedent; the fix needs import attributes and resolveJsonModule.",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 6 hits, 1 FP",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/prefer-literal-ascii",
+    "status": "recommended",
+    "why": "Adopt (r1): `'\\x41'` instead of `'A'`. conventions, ESLint; converges with unicorn/no-hex-escape.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits (2,877 in minified bundles)",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/prefer-single-call",
+    "status": "recommended",
+    "why": "Adopt (r1): consecutive `arr.push()` calls. redundancy, oxlint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 482 hits (204 in one code generator), 0 FP of 12",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/prefer-temporal-conversion",
+    "status": "recommended",
+    "why": "Adopt (r1): `Temporal.Instant.from(zoned)` instead of `zoned.toInstant()`. modern-js, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/prefer-uint8array-hex",
+    "status": "parked",
+    "why": "Its fix writes an API Node 22.23 lacks (measured). Waits on the Node-version question the owner parked (questions.md \"Parked\").",
+    "evidence": "docs/work/rule-candidates-r1.md §2: 42 hits",
+    "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/require-text-decoder-streaming",
+    "status": "recommended",
+    "why": "Adopt (r1): `decode(chunk)` without `{ stream: true }`. correctness, ESLint.",
+    "evidence": "docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
+    "recorded": "2026-10-10"
+  }
+]

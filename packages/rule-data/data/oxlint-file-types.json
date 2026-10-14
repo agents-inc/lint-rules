@@ -1,0 +1,161 @@
+{
+  "lintedByDefault": {
+    "extensions": ["js", "mjs", "cjs", "jsx", "ts", "mts", "cts", "tsx", "vue", "svelte", "astro"],
+    "source": "measured, oxlint 1.87 CLI on one file of each type: it lints these, declaration files among them, and no .json, .md, .html or .css file"
+  },
+  "declarationFiles": {
+    "globs": ["**/*.d.ts", "**/*.d.*.ts", "**/*.d.mts", "**/*.d.cts"],
+    "source": "read from oxc tag oxlint_v1.87.0, crates/oxc_span/src/source_type.rs, is_ts_declaration: a .ts file with .d. in its name after its first character, and a .d.mts or .d.cts file; measured with no-unused-vars, silent in a.d.ts, b.d.mts and x.d.css.ts"
+  },
+  "guards": [
+    {
+      "skips": ["js", "mjs", "cjs", "jsx"],
+      "skipsDeclarationFiles": false,
+      "source": "read from each rule's should_run, oxc tag oxlint_v1.87.0 (crates/oxc_linter/src/rules): TypeScript only (source_type is_typescript). The script of a .vue, .svelte or .astro file is TypeScript where lang=\"ts\" says so, which no glob tells, so those files count as TypeScript. Measured, oxlint 1.87 CLI: typescript/no-this-alias reports in a.ts and in .vue, .svelte and .astro files with lang=\"ts\", not in a.js or c.cjs; typescript/ban-ts-comment in a.ts and a .vue with lang=\"ts\", not in a.js, a.mjs or a .vue with a plain script",
+      "rules": [
+        "jest/no-untyped-mock-factory",
+        "typescript/adjacent-overload-signatures",
+        "typescript/ban-ts-comment",
+        "typescript/ban-types",
+        "typescript/consistent-generic-constructors",
+        "typescript/consistent-indexed-object-style",
+        "typescript/explicit-function-return-type",
+        "typescript/explicit-member-accessibility",
+        "typescript/explicit-module-boundary-types",
+        "typescript/method-signature-style",
+        "typescript/no-confusing-non-null-assertion",
+        "typescript/no-duplicate-enum-values",
+        "typescript/no-empty-interface",
+        "typescript/no-explicit-any",
+        "typescript/no-extra-non-null-assertion",
+        "typescript/no-import-type-side-effects",
+        "typescript/no-misused-new",
+        "typescript/no-namespace",
+        "typescript/no-non-null-asserted-optional-chain",
+        "typescript/no-non-null-assertion",
+        "typescript/no-restricted-types",
+        "typescript/no-this-alias",
+        "typescript/no-unnecessary-type-constraint",
+        "typescript/no-unsafe-declaration-merging",
+        "typescript/no-wrapper-object-types",
+        "typescript/parameter-properties",
+        "typescript/prefer-as-const",
+        "typescript/prefer-namespace-keyword",
+        "typescript/prefer-ts-expect-error",
+        "typescript/triple-slash-reference",
+        "typescript/unified-signatures",
+        "vue/define-emits-declaration",
+        "vue/define-props-declaration",
+        "vue/require-typed-ref"
+      ]
+    },
+    {
+      "skips": ["js", "mjs", "cjs", "jsx", "vue", "svelte", "astro"],
+      "skipsDeclarationFiles": false,
+      "source": "read from each rule's should_run, oxc tag oxlint_v1.87.0 (crates/oxc_linter/src/rules): typescript/consistent-type-imports TypeScript only and no .vue, .svelte or .astro file; vitest/require-mock-type-parameters an extension ending ts or tsx",
+      "rules": ["typescript/consistent-type-imports", "vitest/require-mock-type-parameters"]
+    },
+    {
+      "skips": ["ts", "mts", "cts", "tsx", "vue", "svelte", "astro"],
+      "skipsDeclarationFiles": false,
+      "source": "read from should_run, oxc tag oxlint_v1.87.0 (crates/oxc_linter/src/rules/eslint/getter_return.rs): no TypeScript, a .vue, .svelte or .astro file's script counting as TypeScript. Measured, oxlint 1.87 CLI: reports in a.js and c.cjs, not in a.ts or in .vue, .svelte and .astro files with lang=\"ts\"",
+      "rules": ["getter-return"]
+    },
+    {
+      "skips": ["js", "mjs", "cjs", "jsx", "ts", "mts", "cts", "tsx", "svelte", "astro"],
+      "skipsDeclarationFiles": false,
+      "source": "read from each rule's should_run, oxc tag oxlint_v1.87.0 (crates/oxc_linter/src/rules/vue): a .vue file only. Some also ask for <script setup> or its absence, which no glob tells, so they count as running in every .vue file",
+      "rules": [
+        "vue/max-props",
+        "vue/next-tick-style",
+        "vue/no-async-in-computed-properties",
+        "vue/no-computed-properties-in-data",
+        "vue/no-deprecated-data-object-declaration",
+        "vue/no-deprecated-delete-set",
+        "vue/no-deprecated-model-definition",
+        "vue/no-deprecated-props-default-this",
+        "vue/no-expose-after-await",
+        "vue/no-lifecycle-after-await",
+        "vue/no-multiple-slot-args",
+        "vue/no-reserved-component-names",
+        "vue/no-reserved-keys",
+        "vue/no-reserved-props",
+        "vue/no-this-in-before-route-enter",
+        "vue/no-watch-after-await",
+        "vue/require-default-export",
+        "vue/require-direct-export",
+        "vue/require-prop-type-constructor",
+        "vue/require-slots-as-functions",
+        "vue/return-in-computed-property",
+        "vue/return-in-emits-validator",
+        "vue/valid-define-options",
+        "vue/valid-next-tick"
+      ]
+    },
+    {
+      "skips": ["vue", "svelte", "astro"],
+      "skipsDeclarationFiles": false,
+      "source": "read from oxc tag oxlint_v1.87.0 (crates/oxc_linter/src): the React Compiler's rules through should_run_react_compiler (utils/react_compiler.rs), unicorn/no-empty-file through its should_run: no .vue, .svelte or .astro file",
+      "rules": [
+        "react/capitalized-calls",
+        "react/error-boundaries",
+        "react/exhaustive-effect-dependencies",
+        "react/globals",
+        "react/hooks",
+        "react/immutability",
+        "react/incompatible-library",
+        "react/invariant",
+        "react/memo-dependencies",
+        "react/no-deriving-state-in-effects",
+        "react/preserve-manual-memoization",
+        "react/purity",
+        "react/refs",
+        "react/rule-suppression",
+        "react/set-state-in-effect",
+        "react/set-state-in-render",
+        "react/static-components",
+        "react/syntax",
+        "react/todo",
+        "react/unsupported-syntax",
+        "react/use-memo",
+        "react/void-use-memo",
+        "unicorn/no-empty-file"
+      ]
+    },
+    {
+      "skips": [],
+      "skipsDeclarationFiles": true,
+      "source": "read from each rule's should_run, oxc tag oxlint_v1.87.0 (crates/oxc_linter/src/rules): no declaration file (source_type is_typescript_definition)",
+      "rules": [
+        "typescript/no-useless-empty-export",
+        "unicorn/consistent-function-scoping",
+        "unicorn/prefer-string-raw",
+        "vue/prefer-import-from-vue"
+      ]
+    },
+    {
+      "skips": ["vue", "svelte", "astro"],
+      "skipsDeclarationFiles": true,
+      "source": "read from should_run, oxc tag oxlint_v1.87.0 (crates/oxc_linter/src/rules/eslint/no_unused_vars/mod.rs): no declaration file and no .vue, .svelte or .astro file. Measured, oxlint 1.87 CLI: reports in a.js, a.ts and c.cjs, not in b.d.ts or in .vue, .svelte and .astro files with lang=\"ts\"",
+      "rules": ["no-unused-vars"]
+    },
+    {
+      "skips": ["vue", "svelte"],
+      "skipsDeclarationFiles": false,
+      "source": "read from each rule's should_run, oxc tag oxlint_v1.87.0 (crates/oxc_linter/src/rules): no .vue or .svelte file. Measured, oxlint 1.87 CLI: prefer-const reports in a.js, a.ts, c.astro and c.cjs, not in c.vue or c.svelte",
+      "rules": ["no-unassigned-vars", "prefer-const", "react/rules-of-hooks"]
+    },
+    {
+      "skips": ["svelte"],
+      "skipsDeclarationFiles": false,
+      "source": "read from should_run, oxc tag oxlint_v1.87.0 (crates/oxc_linter/src/rules/eslint/no_unused_labels.rs): no .svelte file",
+      "rules": ["no-unused-labels"]
+    },
+    {
+      "skips": ["cjs"],
+      "skipsDeclarationFiles": false,
+      "source": "read from should_run, oxc tag oxlint_v1.87.0 (crates/oxc_linter/src/rules/unicorn/prefer_module.rs): no .cjs file. Measured, oxlint 1.87 CLI: reports in a.js, a.ts, c.astro, c.svelte and c.vue, not in c.cjs",
+      "rules": ["unicorn/prefer-module"]
+    }
+  ]
+}

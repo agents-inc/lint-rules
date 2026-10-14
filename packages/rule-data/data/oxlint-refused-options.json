@@ -1,0 +1,20 @@
+{
+  "source": "measured, oxlint 1.87 CLI, and checked against the installed engines by oxlint-refused-options.integration.test.ts: every option list typescript-eslint 8.71.1's extension of each core rule routed to oxlint takes, given to oxlint's copy of the core rule one list at a time. oxlint refuses only no-redeclare's, with \"Invalid configuration for rule\", and then loads none of the config. Of the options only the extension takes, each given on a fixture whose report it changes there, oxlint loads two and reports as without them: D11 counts those as refused, as the decided setting would otherwise be dropped silently",
+  "rules": [
+    {
+      "rule": "class-methods-use-this",
+      "refusedKeys": ["ignoreClassesThatImplementAnInterface"],
+      "source": "accepted and not honoured, for true and 'public-fields' alike: oxlint reports the method of a class implementing an interface with the option as without it, where typescript-eslint's extension leaves it alone"
+    },
+    {
+      "rule": "no-redeclare",
+      "refusedKeys": ["ignoreDeclarationMerge"],
+      "source": "unknown field `ignoreDeclarationMerge`, expected `builtinGlobals`, for true and false alike"
+    },
+    {
+      "rule": "no-unused-vars",
+      "refusedKeys": ["enableAutofixRemoval"],
+      "source": "accepted and not honoured: `oxlint --fix` leaves an unused import in place with the option as without it, where `eslint --fix` with typescript-eslint's extension removes it; the option changes only what a fix does"
+    }
+  ]
+}

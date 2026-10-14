@@ -1,0 +1,152 @@
+[
+  {
+    "name": "correctness",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "type-safety",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "security",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "accessibility",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "performance",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "complexity",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "declarative",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "immutability",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "modern-js",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "redundancy",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "modules",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "import-order",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "naming",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "comments",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "ordering",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "conventions",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "tests",
+    "list": "quality",
+    "domain": null,
+    "env": null
+  },
+  {
+    "name": "react",
+    "list": "libs",
+    "domain": "ui",
+    "env": null
+  },
+  {
+    "name": "vitest",
+    "list": "libs",
+    "domain": "testing",
+    "env": null
+  },
+  {
+    "name": "testing-library",
+    "list": "libs",
+    "domain": "testing",
+    "env": null
+  },
+  {
+    "name": "storybook",
+    "list": "libs",
+    "domain": "testing",
+    "env": null
+  },
+  {
+    "name": "react-hook-form",
+    "list": "libs",
+    "domain": "forms",
+    "env": null
+  },
+  {
+    "name": "css-modules",
+    "list": "libs",
+    "domain": "styling",
+    "env": null
+  },
+  {
+    "name": "node",
+    "list": "runtimes",
+    "domain": null,
+    "env": "node"
+  },
+  {
+    "name": "browser",
+    "list": "runtimes",
+    "domain": null,
+    "env": "browser"
+  }
+]
