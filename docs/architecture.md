@@ -1,0 +1,309 @@
+# Architecture
+
+How the built pieces fit, and the flows that matter. What was decided and why: [plan.md](plan.md).
+
+## Packages
+
+| Package | Owns |
+| --- | --- |
+| `packages/rule-data` (private) | The hand-edited data in `data/`: `rules.json` (the canonical list: every rule we ship, with its ruleset or `alwaysOn`, engine, options and file scope, plus `whenSuppressions` on the rules `allowSuppressions` sets and `eslintBecause` on each rule ESLint runs because oxlint's version is measurably worse), `ruleset-definitions.json` (every ruleset with its list, libs domain and runtime env, in the order a consumer lists them), `oxlint-scopes.json` (oxlint scope → ESLint prefix, plus per-rule exceptions), `eslint-fallback-skips.json` (the oxlint-run rules an ESLint part without oxlint leaves out, each with its reason, checked by `eslint-fallback-skips.test.ts`), `rule-candidates.json` (the considering list: rules we might ship, each with a status and reason, checked by `rule-candidates.test.ts`), `oxlint-file-types.json` (the file types oxlint lints, and the rules whose guard skips some of them, each with where it was read or measured, checked against the installed oxlint by `oxlint-file-types.integration.test.ts`) and `oxlint-refused-options.json` (the options of a typescript-eslint extension that oxlint's copy of the core rule refuses or accepts without honouring, with where each was measured, checked against the installed oxlint by `oxlint-refused-options.integration.test.ts`). The ESLint plugin registry, `eslintPlugins` in `src/eslint-plugins.ts` (rule-ID prefix → plugin). The generator in `src/generate/` and its committed output in `src/generated/`. The `catalog` in `src/catalog.ts`. `consumerConfigFiles` in `src/consumer-config-files.ts`, the one source of the consumer's file names. |
+| `packages/eslint-plugin-house` (private) | The `house/*` rules, one file each in `src/rules/`, exported as `housePlugin`. |
+| `packages/lint-rules` (published as `@agents-inc/lint-rules`) | The consumer API: `defineLintRules` (`.`), `mergeOxlintConfig` (`./oxlint`), `mergeEslintConfig` (`./eslint`); the internal `agentSettingsOf` (`src/agent-settings.ts`), which no export names, for `check`; and the core in `src/core/`. tsdown inlines the private packages into `dist/`; every ESLint plugin is a `dependency`, and `eslint`, `oxlint` and `typescript` are peers. `dist.test.ts` checks that no `@workspace/` name and no undeclared import reaches `dist/`. |
+| `packages/typescript-config` (private) | Shared tsconfigs. |
+
+The private packages export their `.ts` source with no build step.
+
+Mutation testing of `packages/lint-rules/src/` (StrykerJS), and how it reaches the integration tests,
+which load the built `dist/`: [mutation testing](work/mutation-testing.md).
+
+## Data flow
+
+```
+data/rules.json, ruleset-definitions.json, oxlint-scopes.json      (hand-edited)
+installed oxlint, ESLint and the plugins in eslintPlugins
+        │  generate: readInstalledEngines → buildInventory → buildRouting
+        ▼
+src/generated/inventory.json, routing.json, rule-ids.ts, ruleset-names.ts   (committed)
+        │
+        ▼
+catalog: every RuleId → engine, oxlint name and spellings, ESLint aliases, same-module names, shipped settings
+        │
+        ▼
+core: validateLintRules → resolveRuleLayers → editor set: editorPartsOf → mergeOxlintPart | mergeEslintPart
+                                            → agent set: buildOxlintConfig | buildEslintConfig
+        │
+        ▼
+entry points: defineLintRules (index.ts), mergeOxlintConfig (oxlint.ts), mergeEslintConfig (eslint.ts)
+```
+
+- `readInstalledEngines` (`read-installed.ts`) lists oxlint's rules (`oxlint --rules --format=json`),
+  ESLint's built-in rules and every registered plugin's rules. `buildInventory` joins them on the
+  canonical (ESLint) ID through `oxlint-scopes.json`. `buildRouting` makes every rule a `RuleId`
+  except a deprecated ESLint-only rule we do not ship, and gives each an engine: the canonical list's,
+  else oxlint when oxlint has a version that needs no type information, else ESLint
+  (`defaultEngineOf`).
+- `lint-rules` reads rules, rulesets and the rules `allowSuppressions` sets (`isSuppressionRoute`)
+  from the `catalog`, and names none (`names-no-rule.test.ts`).
+- Each merge also reads the team's configs: [Reading the team's configs](#reading-the-teams-configs).
+
+## How a consumer's config becomes two engine configs
+
+1. **Load and validate** (`defineLintRules`, `index.ts`). A team's `oxlint.config.mts` and
+   `eslint.config.mjs` each import `agents-inc.lint.mts`. Types are stripped at load, so
+   `defineLintRules` runs `validateLintRules` on both sets, which throws on a `tsconfigRootDir`
+   that is not the absolute path of an existing folder, a missing set, an unknown ruleset, domain or
+   rule ID, a ruleset in the wrong list, a bad severity, an
+   `allowSuppressions` that is not a boolean, or a rule `allowSuppressions` sets named in `rules`.
+   Every config error names the file to fix (`configErrorIn`). It then reads whether the project
+   uses oxlint (`projectUsesOxlint`: whether the `package.json` nearest to `tsconfigRootDir` lists
+   `oxlint` in `dependencies` or `devDependencies`; none above it is read, nor is `node_modules`),
+   returns the editor parts (step 5), and records the agent set under each part
+   (`recordAgentSettings`), from which `agentSettingsOf` gives the agent builders their input
+   (steps 3 and 4).
+2. **Resolve layers** (`resolveRuleLayers`, engine-neutral).
+   - Top level: every always-on rule and every rule of a listed ruleset at `error` with its shipped
+     options (`isTurnedOnUnder`), then `rules` on top, then the rules `allowSuppressions` sets, at
+     their setting in its mode (`suppressionRulesIn`), which is `banned` unless it is true. A
+     severity alone keeps the options in force. A shipped rule keeps its own `files` and `ignores`
+     wherever it is set, so softening a rule never widens where it runs. The env is each listed
+     runtime's.
+   - Each `fileOverrides` entry: a list it gives replaces the top-level list for its files (`libs`
+     whole, so `libs: {}` is none); a list it leaves out is inherited. It is emitted as a
+     difference from the top level (`rulesetChanges`: dropped rules `off`, added rules on; and env
+     changes), then the entry's own `rules`. An always-on rule is on whatever an entry lists, so
+     only `rules` turn it off; `listOfRulesetRule` throws if a ruleset change ever names one.
+   - An entry that gives `allowSuppressions` sets every rule it decides at the entry's mode
+     (`suppressionsSetBy`), so it wins over the top level and earlier entries. One that leaves it
+     out sets none of them, and the mode before it stands.
+   - Overlap: entries keep their order and the later wins. An entry re-states, at its own setting,
+     every rule and env an earlier entry changed in a list this entry gives. A list it leaves out
+     keeps what earlier entries set there (`restatedBy`).
+   - A slash-free glob gets `**/` (`normalizeGlob`): oxlint matches it at any depth, ESLint only at
+     the root.
+3. **The agent set's oxlint config** (`buildOxlintConfig`). No `extends`. Every category is `off`,
+   so only named rules run. `plugins` holds the plugin of every rule emitted anywhere, because oxlint silently skips a rule
+   whose plugin is missing. Each rule is written under its `oxlintName` as `[severity, ...options]`,
+   because a bare severity resets oxlint's options. `env` is `builtin`, `es2024` and the runtimes;
+   `ignorePatterns` is `**/node_modules/**` plus `ignores`; `reportUnusedDisableDirectives` is off.
+   Overrides: first each framework's globals in its files (`framework-globals.ts`), whatever
+   rulesets are listed: the `svelte` env (Svelte 5's runes) on Svelte's components and rune modules,
+   `$$props`, `$$restProps` and `$$slots` read-only on its components, and the `vue` and `astro`
+   envs on theirs; then one per top-level rule with `ignores`, turning it off there, then the top
+   level's TS-file rules; then per entry, one for its ruleset,
+   env and `allowSuppressions` changes, one for its own rules, one per rule it turns on that has
+   `ignores` (as `excludeFiles`), ones turning a core rule off on its TS files alone (D11 in
+   [decisions](work/decisions.md)), and last its TS-file rules. A layer has TS-file rules
+   (`tsFileRules`, `twin-pairs.ts`) only where it names both a core rule and typescript-eslint's
+   extension of it: the core rule at the extension's setting on the layer's TS files, within its own
+   `ignores`, or off there where oxlint refuses an option of it; and the extension at its setting
+   there, off in the layer's other files (D9, D11). An oxlint rule cannot be turned on in `files` of
+   its own: `oxlintSettingsOf` throws, and `canonical-list.test.ts` keeps such a rule out of the data.
+4. **The agent set's ESLint config** (`buildEslintConfig`). Named blocks, in this order:
+   - `agents-inc/ignores`: the global ignores.
+   - `agents-inc/base`: every JS and TS file, `tseslint.parser`, every plugin (with `css-modules`,
+     `react` and `react-hook-form` through `fixupPluginRules` in `core/eslint-compat.ts`), the stub
+     plugins, `buildEslintSettings`, the runtime globals, and the untyped rules.
+   - `agents-inc/svelte-runes`: the same runes (the `globals` package's `svelte` env) on Svelte's
+     rune modules, each file whose name holds `.svelte.` and ends in `.js` or `.ts`; naming `.svelte`
+     files would make ESLint lint them, which our parser cannot read.
+   - `agents-inc/typed`: TS files with the project service, only when a typed rule is on, less the
+     files without type information (step 8).
+   - `agents-inc/scope/<id>`: one block per rule with its own `files` or `ignores`, then one per
+     rule the top level gives its TS files alone (step 3), as an entry's `/scope/<id>` blocks end
+     with its own. A nested `files` array ANDs globs (`filesMatchingAll`).
+   - `agents-inc/file-overrides/<n>`, with `/typed` and `/scope/<id>` blocks: each entry's changes
+     and rules. A dropped runtime turns off only the globals no remaining runtime defines.
+   - `agents-inc/twins-off/<n>`: sub-agents always run oxlint, which runs a core rule and
+     typescript-eslint's extension of it as one rule, so each extension our blocks run is off
+     wherever our oxlint part runs the core rule it extends (`extensionsOffWhereOxlintRunsTheirCore`;
+     the pair's setting is decided as beside oxlint by `agentBuildLayersOf`, `twin-pairs.ts`; D10 in
+     [decisions](work/decisions.md)).
+   - `agents-inc/oxlint-rules-off`: every oxlint-routed ID and its ESLint aliases `off`, so no
+     earlier block runs a rule twice.
+
+   `agents-inc/base` sets `linterOptions.noInlineConfig` from the top-level mode
+   (`readsNoDirectivesIn`): true where suppressions are banned. A directive applies before any rule
+   runs, so without this `/* eslint-disable */` would switch the ban off for its own file. An entry
+   that gives `allowSuppressions` sets the option on its own block (`inlineConfigGuardOf`), which is
+   emitted even when it sets no rule; an entry that leaves it out leaves the option alone, so it
+   layers as the mode does. oxlint has no such guard.
+
+   Each oxlint-routed ID under a plugin prefix gets a do-nothing rule, so a suppression comment for
+   it loads where the ban is off: in a stub plugin when no plugin registers its prefix, and in a
+   copy of our plugin (never the plugin itself) when ours lacks the name.
+5. **The editor parts** (`editorPartsOf`, `editor-parts.ts`): plain data, no plugin objects, so
+   importing a part loads nothing of ESLint's. The editor set is resolved with suppressions
+   allowed (an `allowSuppressions` anywhere decides for sub-agents only).
+   - Beside oxlint, the oxlint part holds the oxlint-routed rules and `turnedOnInEslint`, every rule
+     the ESLint part turns on (step 7). The ESLint part holds the rest, plus the oxlint part's layers
+     (`oxlintLayers`), from which its merge works out where our oxlint part runs a rule, as oxlint
+     reads it, for D10 (step 6): `whereOurOxlintPartRuns` in `where-our-parts-run.ts`, which the
+     agent build's `twins-off` blocks (step 4) ask too. It reads, oxlint's way
+     (`ignores-read-by-each-engine.ts`), the agent build's `ignorePatterns`, which is
+     `**/node_modules/**` and our `ignores` (`filesOxlintLeavesOutOf`), and keeps to the file types
+     each rule runs on (rule-data's `oxlint-file-types.json`). The files our ESLint part does not
+     lint in a merge (`ourEslintPartOf`) are read ESLint's way: our `ignores`, which are not global
+     in an editor merge, then its own default ignores (`**/node_modules/`, `.git/`), which hold there
+     whatever our negated lines say (`filesEslintLeavesOutOf` of
+     `ignoresEslintAppliesToOurEditorPart`).
+   - Without oxlint there is no oxlint part. The ESLint part also takes each oxlint-routed rule
+     ESLint has a version of, but those in rule-data's `eslint-fallback-skips.json`
+     (`runsInEslintWithoutOxlint`).
+6. **The ESLint merge** (`mergeEslintConfig` in `eslint.ts`, then `mergeEslintPart` in
+   `merge-eslint-config.ts`). The team's config goes through ESLint's `defineConfig`; two objects
+   under one prefix in it is a config error.
+   - One plugin object per prefix (`pluginsForEveryBlock`): where the team registers a prefix of
+     ours, its object, with our module for each rule we run, a stub for each oxlint-only name beside
+     oxlint, and the compat layer where the prefix needs it. Every plugin we register carries our
+     version beside its own, so ESLint's `--cache` key changes with our package
+     (`withOurVersionInEachCacheKey`).
+   - Block order: our blocks, as in step 4 from `agents-inc/base` to the file overrides; where a
+     team block sets a setting one of ours yields to (an eslint-plugin-n setting, under `settings.n`
+     or `settings.node`, that the plugin would read ours in place of, or an import-x resolver
+     setting: `settingsOfOurs`, `eslint-settings.ts`), ours moves from
+     `agents-inc/base` into `agents-inc/base/settings/<n>` blocks kept to the files no team block
+     sets one in (`ourSettingsBeside`; a team block whose `files` or `ignores` holds a function is
+     read as reaching every file it may); the team's blocks as `defineConfig` returns them, changed
+     only by the shared plugin objects, none of their statements deleted; beside oxlint, last, each
+     typescript-eslint extension our blocks still run, off where our oxlint part runs a core rule it
+     extends (`extensionsOffWhereOxlintRunsTheirCore`, the agent build's `twins-off`; D10).
+   - Every rule the team sets ([Reading the team's configs](#reading-the-teams-configs)) is left
+     out of both our parts' layers before any block is built (`ourLayersLeavingOut`,
+     `rules-the-team-sets.ts`). Coming first is not enough: a later bare severity keeps an earlier
+     block's options. Our rules are also kept out of the files our `ignores` leave out as ESLint
+     reads them: a block of ours whose rules may not run everywhere it applies is split into copies
+     kept to their files (`confinedBeside`; the file conditions are in `file-conditions.ts`). Where
+     the team's global ignores may take files back from ESLint's default ignores
+     (`eslintDefaultIgnoresHoldBeside`), ours are kept out of all that step 5's ESLint reading
+     leaves out, so every block of ours that states rules is split and `agents-inc/base/confined/0`
+     holds the base rules; otherwise those defaults keep every block out of `node_modules` and
+     `.git`, and our blocks keep their names.
+   - Without oxlint (`twinsOnTsFiles`), each core rule the ESLint part takes over from oxlint that
+     typescript-eslint has a current extension of runs as that extension on TS files, in a
+     `…/ts-extensions` block after the block stating it; JS files keep the core rule
+     (`blocksTakingOverOnTsFiles`, `build-eslint-config.ts`). In each layer (the top level, an
+     entry) the two names are one rule: the setting the layer's own `rules` give either name, else
+     its rulesets', decides both, and where the core rule refuses the extension's options, the core
+     rule keeps its own setting on JS files (`takeoverOf`). A typed extension's
+     `…/typed-ts-extensions` block keeps to the files with type information, so the core rule runs
+     in the rest, and where an extension refuses the options given, the core rule keeps running on
+     TS files there (`acceptsEntry`).
+   - Typed rules: where a team block turns on `project` or `projectService`, ours give no type
+     information, and each typed block of ours becomes a copy within each team block that switches
+     type information on, or, stating its rules `off`, off again, in the team's order
+     (`typeInformationFor`, `keptToTypedFiles`). A team `basePath` is applied by putting its globs
+     under that path from the root (`teamFilesFromTheRoot`).
+   - `reportUnusedDisableDirectives` is `off` beside oxlint only; `noInlineConfig` is never set.
+     The team's blocks come after ours, so its own `languageOptions`, `settings` and
+     `linterOptions` stand wherever its blocks set them.
+7. **The oxlint merge** (`mergeOxlintConfig` in `oxlint.ts`, then `mergeOxlintPart` in
+   `merge-oxlint-config.ts`). It throws when there is no oxlint part, when the oxlint that
+   resolves from `tsconfigRootDir` is outside our oxlint peer range, or when that oxlint's
+   `configuration_schema.json` cannot be read or lacks a rule or plugin name of the catalog's
+   oxlint list, any of which the merge may write (`refuseUnsupportedInstalledOxlint`,
+   `installed-oxlint.ts`; the schema is read once per process), and when the team's config extends
+   a config by path at any depth, which oxlint refuses in a JS or TS config (`refuseAPathInExtends`;
+   #43). It reads the team's config as oxlint 1.87 resolves it, rule keys included
+   (`oxlintRuleKeyed`); the comment at the top of `oxlint-config-reading.ts` says how, and
+   `merge-oxlint-config.differential.integration.test.ts` checks the result against the CLI.
+   - Root `plugins`: every plugin the team's config lists or gets from oxlint's defaults, at its
+     roots and in its overrides, plus the plugin of each rule the merge states in an override of
+     ours (`everyPluginListed`).
+   - Overrides, in order: what the merged root changes for the team, put back
+     (`offWhereTheRootRunsThem`, `categorySwitchesOf`); where neither the team's config nor any
+     config it extends writes `correctness`, oxlint's default copy of each rule our ESLint part
+     turns on (`turnedOnInEslint`, twins included) that the team does not set, off in every file
+     (`copiesOxlintsDefaultRunsBesideOurEslintPart`; owner 2026-10-14); ours, which only turn rules
+     on, each exactly where our part alone runs it and with its options there, kept out of
+     `**/node_modules/**`, our `ignores` and the files a later override of ours turns it off in by
+     `excludeFiles` (`ourOnStatements`; our `ignores` read as oxlint reads them, step 5, so the
+     files a negated line takes back get an override of their own); the team's, without the
+     statements oxlint ignores for it. Nothing of ours follows the team's. Every rule the team sets
+     ([Reading the team's configs](#reading-the-teams-configs)) is left out of ours
+     (`ourLayersLeavingOut`), and our env and globals leave out each key the team's root env and
+     globals set. Where the team extends objects, the first three go in a first extended config
+     (`placedFirstInLine`), so they still come before the team's extended overrides.
+   - `extends`: each config the team extends as an object, without the statements oxlint ignores
+     for it. `options`: the team's, with `reportUnusedDisableDirectives: 'off'` where it leaves that
+     out. Every other key, `ignorePatterns` included, is the team's.
+8. **The consumer's own config files** (`consumerConfigFiles`). The two shipped rules they break,
+   `perfectionist/sort-objects` and `unicorn/no-top-level-side-effects`, carry them in `ignores`.
+   Every block of ours that can run a typed rule ignores them, and, where the type information is
+   ours, each TS file no tsconfig takes in, as a literal path (`filesWithoutTypeInformation`): a
+   typed rule there is a fatal parse error that switches off every rule in the file. So these files
+   get every untyped rule and no project service of ours. `tsFilesOutsideEveryTsconfig`
+   (`ts-files-outside-every-tsconfig.ts`) finds those TS files by the project service's own search,
+   with the TypeScript typescript-eslint resolves; `buildEslintConfig` takes the list as an
+   argument, and the ESLint merge computes it only where no team block gives type information.
+
+## Reading the team's configs
+
+Both merges drop the same rules (owner 2026-10-14): those the team's ESLint config or its oxlint
+config sets, closed under typescript-eslint twins (`rulesTheTeamSets`, `rules-the-team-sets.ts`).
+Each merge reads the config it is given, and the team's config for the other engine from the path
+its third argument gives (`{ oxlintConfig }` or `{ eslintConfig }`, relative to `tsconfigRootDir`,
+or `null`; `other-engine-config.ts`).
+
+- **ESLint config** (`ruleIdsTheTeamsEslintConfigSets`, `eslint-config-reading.ts`): every rule key
+  of every block `defineConfig` returns, at any severity, whatever the block's `files`, `ignores`
+  or `basePath`, read as each rule of ours it is an ESLint name of. A key under a prefix the team
+  registers one of our plugins under (the same object, or one of the same name) names our rule too
+  (`prefixesOfOurPluginsIn`): antfu's `ts/x` sets our `@typescript-eslint/x`, and under antfu's
+  `react`, which holds @eslint-react where we register eslint-plugin-react, a key sets the rule of
+  each.
+- **oxlint config** (`ruleIdsTheTeamsOxlintConfigSets`, `oxlint-config-reading.ts`), as oxlint 1.87
+  resolves it, configs it extends included: a rule key at any severity where oxlint counts the
+  statement (the `eslint` scope, or a plugin listed at the root or in that override); each rule of
+  a plugin listed anywhere that a category the config writes on runs, nursery included, and a
+  type-aware one only with `options.typeAware: true`; and a key under a JS plugin's prefix that is
+  an ESLint name of ours. oxlint's own `correctness: warn`, where no config writes `correctness`,
+  sets no rule (step 7 turns its copies of our ESLint rules off).
+- **Loading**, with `require()`, so the merges stay synchronous. Two configs each naming the other
+  would be a module cycle, which Node refuses, so a read puts the process in reading mode while it
+  runs: a merge called then returns the team's config as given and hands it to the read, which
+  takes it, or, where the file calls no merge of ours, its default export. A JSON oxlint config is
+  parsed, each path it extends read from the extending file's folder. Every failure is a
+  `configErrorIn` error naming the config file calling the merge: the argument left out (by the
+  ESLint merge only where the project lists oxlint), neither a path nor `null`, a path with no
+  file, a file that throws, uses top-level await, exports no config, holds a key no config of that
+  engine holds (a `package.json`, say: `refuseKeysNoConfigHolds`, with oxlint's keys from the
+  schema of the oxlint our package resolves), or calls our merge more than once. What neither merge
+  reads: [plan.md, Open](plan.md#open).
+
+## Change a rule
+
+Run the generator and the tests after every data change. `canonical-list.test.ts` lists offenders:
+unsorted or duplicate IDs, a rule its engine lacks, an `oxlintName` that does not map back, an
+unknown ruleset, `files` or `typed` on an oxlint rule, neither or both of a ruleset and `alwaysOn`, a
+missing assignment, an `eslintBecause` on a rule oxlint runs or that oxlint has no untyped version of.
+
+- **Change a shipped rule** (options, ruleset or `alwaysOn`, `files`, `ignores`): edit its entry in `data/rules.json`.
+- **Ship a rule:** add an entry, sorted by `id`: the ESLint ID, `ruleset` or `alwaysOn: true` (on
+  whatever rulesets are listed), `engine`, `oxlintName`
+  exactly when oxlint runs it (oxlint's `--rules` spelling), `options`, `typed`, optional `files`
+  and `ignores`, and `assignment`. A rule we do not ship needs no entry: it is already a `RuleId`.
+- **Move a rule between engines:** change `engine`, add or remove `oxlintName`. An oxlint rule
+  carries neither `files` nor `typed`, and a rule whose ESLint name differs from oxlint's stays in
+  ESLint (`catalog.test.ts`), so one suppression comment works in both. A rule moved to ESLint
+  because oxlint's version is measurably worse gets `eslintBecause`, the reason and the
+  measurement ([plan](plan.md#routing-the-canonical-list)), and its ID goes into the list
+  `src/__tests__/cases/routed-to-eslint-for-a-reason.ts` pins. Consumers change nothing.
+- **Add an ESLint plugin:** add it to the `dependencies` of `rule-data` and `lint-rules`, register it
+  in `eslintPlugins` (through `checkedPlugin` when its types do not fit `ESLint.Plugin`), name its
+  package in `src/generate/eslint-plugin-package-names.ts`, and add its prefix to
+  `PREFIXES_NEEDING_COMPAT` in `lint-rules/src/core/eslint-compat.ts` if it calls context methods ESLint 10
+  removed. `eslint-plugins.test.ts` checks the registry against the dependencies.
+- **Add a ruleset** (users type its name, so the owner names it): add it to
+  `data/ruleset-definitions.json` in the order consumers list it, and update the pinned list in
+  `canonical-list.test.ts`.
+- **Add a house rule:** a file in `eslint-plugin-house/src/rules/` with its test, registered in
+  `housePlugin` and in the names `plugin.test.ts` pins.
+
+## Keeping the generated files fresh
+
+- `bun run --cwd packages/rule-data generate` writes the four files in `src/generated/`. The script
+  runs under Node, because bun cannot load the plugins.
+- `generated-files.test.ts` builds them in memory (`generateFiles`) and fails when any differs from
+  the committed file. A data edit without a regenerate fails it, and so does an engine or plugin
+  upgrade, since `inventory.json` records every version. `eslint-plugins.test.ts` also compares the
+  installed plugin versions with the inventory's.
