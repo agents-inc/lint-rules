@@ -1,7 +1,7 @@
 import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterAll } from 'vitest'
 
@@ -27,6 +27,16 @@ const TEMP_DIR_PREFIX = 'lint-rules-project-'
 const PROJECT_DIR_NAME = 'project'
 const NODE_MODULES = 'node_modules'
 
+/**
+ * Whether the directory is a project setUpTempProjects made: `project`, in a folder of its own under
+ * the temp dir. Not the temp dir, nor a shared folder in it, which a write would leave for every
+ * later spec of the test file.
+ */
+export function isATempProject(dir: string): boolean {
+  const root = dirname(dir)
+  return basename(dir) === PROJECT_DIR_NAME && basename(root).startsWith(TEMP_DIR_PREFIX) && dirname(root) === tmpdir()
+}
+
 /** A package as this repo installs it, to link into a project that must resolve it. */
 export function installedPackage(name: string): LinkedPackage {
   return { name, dir: dirname(createRequire(import.meta.url).resolve(`${name}/package.json`)) }
@@ -42,7 +52,8 @@ export const THIS_PACKAGE: LinkedPackage = {
 }
 
 /**
- * Temp projects, removed after the suite. A project sits one level below a root whose node_modules
+ * Temp projects, removed after the suite, or with the test file's temp dir where the suite never
+ * runs (temp-dir-per-test-file.ts). A project sits one level below a root whose node_modules
  * holds the linked packages: Node and the engines resolve them by walking up, while neither engine,
  * linting the project, walks into them. Call it at the top of a test file or a describe block: it
  * registers that scope's cleanup.
