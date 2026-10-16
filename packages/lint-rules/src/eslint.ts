@@ -4,6 +4,7 @@ import type { Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
 import { configErrorIn } from './core/config-error.ts'
 import { describePartGiven, type EslintPart, isEslintPart } from './core/editor-parts.ts'
+import { refuseUnsupportedInstalledEslint } from './core/installed-eslint.ts'
 import { mergeEslintPart, type TeamEslintConfig } from './core/merge-eslint-config.ts'
 import { ruleIdsTheTeamsOxlintConfigSets } from './core/oxlint-config-reading.ts'
 import { handOverToTheRead, isInReadingMode, pathOfTheOtherConfigGiven, readTheTeamsOxlintConfig, TEAMS_OXLINT_CONFIG } from './core/other-engine-config.ts'
@@ -20,6 +21,7 @@ const OXLINT_IS_LISTED = 'the package.json nearest to tsconfigRootDir lists oxli
  * blocks. `theirs` is anything ESLint's `defineConfig` takes; `eslint` is the part exactly as
  * `agents-inc.lint.mts` exports it; `oxlintConfig` the path of the team's oxlint config, relative
  * to tsconfigRootDir, or null where the project has none, read only where the project lists oxlint.
+ * It refuses an ESLint below 10 installed for the project.
  *
  * Your engine configs override the editor set. If your `eslint.config.mjs` or `oxlint.config.mts`
  * sets a rule anywhere (in any block or override, in a preset you extend, or through an oxlint
@@ -33,6 +35,7 @@ const OXLINT_IS_LISTED = 'the package.json nearest to tsconfigRootDir lists oxli
  */
 export function mergeEslintConfig(theirs: TeamEslintConfig, eslint: EslintPart, teamOxlintConfig: TeamOxlintConfigPath): Linter.Config[] {
   const part = eslintPartGiven(eslint)
+  refuseUnsupportedInstalledEslint(part.tsconfigRootDir)
   const oxlintConfigPath = part.usesOxlint ? pathOfTheOtherConfigGiven(teamOxlintConfig, TEAMS_OXLINT_CONFIG, OXLINT_IS_LISTED) : null
   if (isInReadingMode()) return handedOverToTheRead(theirs)
   const setByTheTeamsOxlintConfig = part.usesOxlint ? ruleIdsTheTeamsOxlintConfigSets(readTheTeamsOxlintConfig(oxlintConfigPath, part.tsconfigRootDir), catalog) : []
