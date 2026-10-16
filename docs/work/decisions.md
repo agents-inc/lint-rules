@@ -25,7 +25,7 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
 - Porting house comments: keep a rule's purpose as `meta.docs.description`; drop measurements and history.
 - The runtime plugin registry is `prefix → plugin`; npm package names live in a separate table for the
   generator and tests, so no private package name reaches `dist/`.
-- `settings.react.version: 'detect'` (silences eslint-plugin-react's per-run warning in React projects).
+- `settings.react.version`: `detect` where React resolves from `tsconfigRootDir`, else `999.999.999`, the version eslint-plugin-react assumes when detection fails, given outright so it prints nothing (spec-core.md C13).
 - ESLint test assertions on calculated config compare severity only: ESLint fills defaults and keeps
   earlier options when a later block gives a bare severity.
 - turbo's `AGENTS.md`: opt out (`agentGuidance: false`) and delete it.
@@ -54,6 +54,7 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   (`allowDefaultProject` broke tsconfigs that include them). Their names have one source, exported by rule-data.
 
 ## Superseded (old → new → why)
+- `settings.react.version: 'detect'` everywhere → only where React resolves → in a project without React, `detect` printed eslint-plugin-react's warning on every run (spec-core.md C13).
 - "Each entry re-states every rule and runtime an earlier entry changed" → re-states only the lists it gives
   → a rules-only entry must not undo an earlier entry's runtimes (implementer's reading, owner-reviewable).
 - Consumer files `.ts` + `allowDefaultProject` → `.mts` + left out of the typed block → owner chose `.mts`;
@@ -379,3 +380,41 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   our no-undef runs; #72 and #73 documented; #58 packed-install test; #66 debugged before deciding; typed-config-files: the
   three config files get the type-aware lint rules; lib-structure approved as proposed; check: autofix first, no run log,
   cut long output; init: the gate's ignores plus generated files, the approved text.
+- Owner 2026-10-14: "We need to deploy this to npm as well. You should see how change logs are handled inside the CLI
+  monorepo and set that up here too. And then we will later bump the version, add to change logs and publish to npm."
+  Correction to plan.md's "Publishing: changesets": old, changesets; new, hand-written changelogs as in `~/dev/cli`
+  (`packages/lint-rules/CHANGELOG.md` summary index plus `changelogs/<version>.md` per release; checklist in
+  docs/release.md); why, the owner asked for the CLI's setup. Readings by the orchestrator, carded for the owner:
+  "a new `error` rule is a major release" means a minor bump while the version is 0.x (npm's `^0.x` treats the minor as
+  breaking; the CLI is at 0.168); before each publish a `prepublishOnly` script builds, typechecks and tests, as the CLI
+  does, added with the other manifest fixes at the first release. Open for the owner: the licence (the CLI is MIT).
+- Owner 2026-10-15 (proposal, not yet decided): "the sorting rules should also be opt in (perfectionist/sort-*). Because if
+  you run this in a new repo, you just get bombarded by what is essentially just sorting stuff." The sorting rules sit in
+  two rulesets: `ordering` (21 rules: 18 perfectionist sort-*, regexp/sort-alternatives, regexp/sort-flags, plus
+  default-case-last and sonarjs/shorthand-property-grouping) and `import-order` (7: import-x/order, five perfectionist
+  sort-*, plus import-x/first). The lanes add an `optIn` flag on every ruleset, all false; opt-in means `init` leaves the
+  ruleset out of a new config and names it in a comment. Orchestrator's proposal to the owner: flag both opt-in after the
+  lanes land; first move the two rules that don't sort (default-case-last, import-x/first) to rulesets that stay on.
+- Owner 2026-10-15, decided: "I don't mind having these rules, but I agree that yes, these rules in ESLint should be
+  opt-in … If they choose to opt into these sorting rules, then they would have to make sure it doesn't conflict … We
+  could literally add a comment there to say these will conflict with formatter sorting. Choose one or something."
+  So: `ordering` and `import-order` become opt-in, and `init`'s opt-in comment says they conflict with a formatter that
+  sorts the same code; pick one. Built after the cli, core and data lanes land (they add the opt-in flag and `init`).
+  Orchestrator's calls, carded: `default-case-last` moves to `conventions` and `import-x/first` to `modules` (neither
+  sorts, neither autofixes the order away); `sonarjs/shorthand-property-grouping` stays in `ordering`.
+- Orchestrator 2026-10-15 (carded): `check` no longer puts files back after an interrupted or failed run. Two review rounds
+  in a row found the undo overwriting edits other agents made meanwhile (CLAUDE.md: fix what produces a loop). Fixes
+  already written stay, as with `eslint --fix`, and before exiting 130, 143 or 2 `check` prints the "autofixed" line
+  naming the files it rewrote. The undo was the cli spec's design ("the pass is undone"), not an owner answer.
+- Orchestrator 2026-10-15, correction to the sorting opt-in entry: `default-case-last` is not moved to `conventions`; the
+  owner's earlier answer r2-d76 dropped it (perfectionist's `sort-switch-case` covers it), and the data lane has landed
+  that drop. With `ordering` opt-in, teams that don't opt in lose the check, so whether to bring it back is now an owner
+  card. `sonarjs/shorthand-property-grouping` is likewise dropped (r2-c10). `import-x/first` still moves to `modules`.
+- Owner 2026-10-14 evening, on the remaining-questions page (read 2026-10-15): licence MIT, like the CLI; below 1.0 a new
+  `error` rule is a minor bump; a `prepublishOnly` script builds, typechecks and tests before every publish. All three
+  land with the first release's manifest edits (docs/release.md's "Before the first publish").
+- Owner 2026-10-15 (sequence): finish the current round; then a StrykerJS pass over every change not yet run through it;
+  then an expressive-TypeScript pass (the `meta-design-expressive-typescript` skill) over the whole codebase, making
+  reused or imperative code declarative and shared ("now that we have a well covered code base"); then wait for the
+  owner's next answers, which inform the next tests. Docs as concise as possible. Extends the 2026-10-14 "make the tests
+  DRY" to-do to all code.
