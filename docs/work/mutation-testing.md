@@ -9,6 +9,8 @@ catches marks code no test checks. Each package has its own config at the repo r
 [`stryker.eslint-plugin-house.config.mjs`](../../stryker.eslint-plugin-house.config.mjs). Run
 everything from the repo root, on Node 22.18 or later.
 
+To set it up in another repo, such as `~/dev/cli`: [playbook](mutation-testing-playbook.md).
+
 ## Run it
 
 - **A round's changed lines:** `node scripts/mutate-changed-lines.mts`. It passes Stryker each hunk
