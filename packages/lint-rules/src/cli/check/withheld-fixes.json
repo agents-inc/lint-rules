@@ -1,0 +1,8 @@
+{
+  "@eslint-react/x-no-missing-context-display-name": "Its fix writes code that does not parse: `X.displayName = \"X\";` lands before the declaration's statement (gate, 5.19.0; re-measured on 5.24.10, still so).",
+  "perfectionist/sort-arrays": "Reorders values whose order the program reads: ['B', 'KB', 'MB', 'GB', 'TB'] was sorted, so 1 MB printed as \"1.0 KB\" (gate, measured).",
+  "perfectionist/sort-maps": "Reorders entries whose order the program reads, as sort-arrays does (gate).",
+  "perfectionist/sort-objects": "Reorders keys whose order the program reads, as sort-arrays does (gate).",
+  "perfectionist/sort-sets": "Reorders members whose order the program reads, as sort-arrays does (gate).",
+  "unicorn/prefer-optional-catch-binding": "P3: its fix removes an unused `catch (error)` binding, after which preserve-caught-error, which has no fix, no longer reports the missing `cause`, so the cause is lost silently (measured, check-fixes F-5)."
+}
