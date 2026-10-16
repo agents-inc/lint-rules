@@ -228,3 +228,77 @@ export function Records() {
   return <button onClick={() => { reset(); archiveAll() }}>{records.length + Object.keys(config).length}</button>
 }
 `
+
+export const setterCalledInsideUpdater = `import { useState } from 'react'
+
+export function Cart({ item }: { readonly item: string }) {
+  const [items, setItems] = useState<string[]>([])
+  const [count, setCount] = useState(0)
+
+  const add = () =>
+    setItems((prev) => {
+      setCount(prev.length + 1)
+      return [...prev, item]
+    })
+
+  return <button onClick={add}>{count}{items.length}</button>
+}
+`
+
+export const storageWriteThroughWindow = `import { useState } from 'react'
+
+export function Theme() {
+  const [theme, setTheme] = useState('light')
+
+  const toggle = () =>
+    setTheme((prev) => {
+      const next = prev === 'light' ? 'dark' : 'light'
+      window.localStorage.setItem('theme', next)
+      return next
+    })
+
+  return <button onClick={toggle}>{theme}</button>
+}
+`
+
+// The updater builds handlers that write storage when called, and calls none of them.
+export const effectsInFunctionsTheUpdaterOnlyBuilds = `import { useState } from 'react'
+
+type Handlers = { save?: () => void; flush?: () => void; clear?: () => void }
+
+export function DraftHandlers({ draft }: { readonly draft: string }) {
+  const [handlers, setHandlers] = useState<Handlers>({})
+
+  const rebuild = () =>
+    setHandlers((prev) => {
+      const save = () => localStorage.setItem('draft', draft)
+      const flush = function () {
+        localStorage.removeItem('draft')
+      }
+      function clear() {
+        sessionStorage.clear()
+      }
+      return { ...prev, save, flush, clear }
+    })
+
+  return <button onClick={rebuild}>{Object.keys(handlers).length}</button>
+}
+`
+
+// A callback handed to a call that is not an array iteration may run later, outside the update.
+export const effectInCallbackHandedToNonIteratingCall = `import { useState } from 'react'
+
+type Registry = { onFlush: (run: () => void) => void }
+
+export function Queue({ registry, job }: { readonly registry: Registry; readonly job: string }) {
+  const [jobs, setJobs] = useState<string[]>([])
+
+  const enqueue = () =>
+    setJobs((prev) => {
+      registry.onFlush(() => localStorage.setItem('last-job', job))
+      return [...prev, job]
+    })
+
+  return <button onClick={enqueue}>{jobs.length}</button>
+}
+`

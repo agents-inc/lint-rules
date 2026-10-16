@@ -149,3 +149,12 @@ export class ThemeStore {
   }
 }
 `
+
+// A custom hook runs on every render of the component calling it, and renders no JSX itself.
+export const createContextInCustomHook = `import { createContext, useContext } from 'react'
+
+export function useThemeContext() {
+  const ThemeContext = createContext('light')
+  return useContext(ThemeContext)
+}
+`

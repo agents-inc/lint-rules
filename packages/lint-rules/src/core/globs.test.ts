@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeGlob } from './globs.ts'
+import { literalGlobOf, normalizeGlob, pathNamedBy } from './globs.ts'
 
 // oxlint matches a slash-free glob at any depth and ESLint only at the root, so the package
 // writes every such glob in the form both engines read the same way.
@@ -18,5 +18,22 @@ describe('normalizeGlob', () => {
 
   it('leaves a glob that already matches at any depth as it is', () => {
     expect(normalizeGlob('**/x')).toBe('**/x')
+  })
+
+  it('lets a negated slash-free glob match at any depth, its ! kept in front', () => {
+    expect(normalizeGlob('!*.gen.ts')).toBe('!**/*.gen.ts')
+  })
+})
+
+// A path with glob syntax in it, as a Next.js route folder has.
+const PATH_WITH_GLOB_SYNTAX = 'app/[locale]/page.tsx'
+
+describe('pathNamedBy', () => {
+  it('names the path a literal glob of it matches, its glob syntax included', () => {
+    expect(pathNamedBy(literalGlobOf(PATH_WITH_GLOB_SYNTAX))).toBe(PATH_WITH_GLOB_SYNTAX)
+  })
+
+  it('names no path for a glob matching more than one', () => {
+    expect(pathNamedBy('app/*/page.tsx')).toBeNull()
   })
 })

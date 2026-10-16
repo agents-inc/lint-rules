@@ -28,6 +28,26 @@ describe('overrideFilesOf', () => {
       term: buildFilesTerm(['**/*.ts', '*.config.ts']),
       written: [{ files: ['./*.config.ts'], excludeFiles: ['!**/*.ts'] }],
     },
+    {
+      how: 'a glob of every file, then a folder glob, as the folder glob alone',
+      term: buildFilesTerm(['**/*', 'src/**']),
+      written: [{ files: ['src/**'] }],
+    },
+    {
+      how: 'a folder glob, then a glob of every file, as the folder glob alone',
+      term: buildFilesTerm(['src/**', '**/*']),
+      written: [{ files: ['src/**'] }],
+    },
+    {
+      how: "a glob the term's earlier globs join into, as that glob alone",
+      term: buildFilesTerm(['src/**', '**/*.ts', 'src/**/*.ts']),
+      written: [{ files: ['src/**/*.ts'] }],
+    },
+    {
+      how: 'two globs of the config folder alone as the first in files, and the second negated at any depth in excludeFiles',
+      term: buildFilesTerm(['*.config.ts', '*.spec.ts']),
+      written: [{ files: ['./*.config.ts'], excludeFiles: ['!**/*.spec.ts'] }],
+    },
   ])('writes $how', ({ term, written }) => {
     expect(overrideFilesOf([term])).toStrictEqual(written)
   })

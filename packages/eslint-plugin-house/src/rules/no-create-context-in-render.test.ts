@@ -5,6 +5,7 @@ import {
   contextRetainedByUseRef,
   contextRetainedByUseStateInitialValue,
   createContextInComponent,
+  createContextInCustomHook,
   hookReadingImportedContext,
   lazyModuleLevelSingleton,
   locallyDeclaredCreateContext,
@@ -45,6 +46,10 @@ houseRuleTester.run('no-create-context-in-render', housePlugin.rules['no-create-
     buildInvalidCase('reports createContext called inside a component', createContextInComponent, {
       filename: 'no-create-context-in-render.tsx',
       errors: [{ messageId: 'inRender', line: 4 }],
+    }),
+    buildInvalidCase('reports createContext called inside a custom hook, naming the hook', createContextInCustomHook, {
+      filename: 'no-create-context-in-render.tsx',
+      errors: [{ messageId: 'inRender', line: 4, data: { name: 'useThemeContext' } }],
     }),
   ],
 })

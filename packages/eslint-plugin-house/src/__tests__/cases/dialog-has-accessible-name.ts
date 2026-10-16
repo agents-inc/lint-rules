@@ -75,3 +75,10 @@ export const roleDialogNamedByTemplateLabelledby = `export const FieldDialog = (
   </div>
 )
 `
+
+export const intrinsicDialogWithoutName = `export const ShortcutsSheet = ({ open, children }) => (
+  <dialog className="sheet" open={open}>
+    {children}
+  </dialog>
+)
+`

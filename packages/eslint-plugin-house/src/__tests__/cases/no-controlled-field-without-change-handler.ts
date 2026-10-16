@@ -117,3 +117,32 @@ export function RowEditor({ rows }: { readonly rows: Array<{ id: string; v: stri
   )
 }
 `
+
+export const textareaAndSelectWithoutHandler = `export function ProfileFields({ bio, size }: { readonly bio: string; readonly size: string }) {
+  return (
+    <>
+      <textarea value={bio} />
+      <select value={size}>
+        <option value="m">Medium</option>
+      </select>
+    </>
+  )
+}
+`
+
+// The label's attributes are not change handlers, so nothing drives the field.
+export const fieldInsideLabelWithoutHandler = `export function NameField({ name }: { readonly name: string }) {
+  return (
+    <label className="field" htmlFor="name">
+      Name
+      <input id="name" value={name} />
+    </label>
+  )
+}
+`
+
+// Only `type` says the value is not the content: a field named "image" holds an image URL.
+export const fieldNamedLikeAnInputType = `export function ImageUrlField({ imageUrl }: { readonly imageUrl: string }) {
+  return <input name="image" value={imageUrl} />
+}
+`

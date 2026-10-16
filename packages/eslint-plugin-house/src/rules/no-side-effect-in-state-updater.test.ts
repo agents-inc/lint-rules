@@ -1,7 +1,9 @@
 import {
   arrayAndMapCopies,
   copiedSearchParamsMutated,
+  effectInCallbackHandedToNonIteratingCall,
   effectsInEventHandler,
+  effectsInFunctionsTheUpdaterOnlyBuilds,
   effectsInsideUpdater,
   localSetMutatedInFilter,
   nonReactSetApis,
@@ -10,7 +12,9 @@ import {
   pureComputationOnPrevAndProps,
   pureSetHelperAndBuilderApi,
   pureSetHelpersAssignedAndMapped,
+  setterCalledInsideUpdater,
   setterStoredInHandler,
+  storageWriteThroughWindow,
 } from '../__tests__/cases/no-side-effect-in-state-updater.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
@@ -35,6 +39,14 @@ houseRuleTester.run('no-side-effect-in-state-updater', housePlugin.rules['no-sid
       'stays silent on pure set* helpers assigned to a local and called inside a map',
       pureSetHelpersAssignedAndMapped,
     ),
+    buildValidCase(
+      'stays silent on effects inside arrow, function-expression and declared functions the updater builds but never calls',
+      effectsInFunctionsTheUpdaterOnlyBuilds,
+    ),
+    buildValidCase(
+      'stays silent on an effect inside a callback handed to a call that is not an array iteration',
+      effectInCallbackHandedToNonIteratingCall,
+    ),
   ],
   invalid: [
     buildInvalidCase('reports a URL revoke, a storage write and a ref write inside a state updater', effectsInsideUpdater, {
@@ -44,6 +56,14 @@ houseRuleTester.run('no-side-effect-in-state-updater', housePlugin.rules['no-sid
         { messageId: 'effect', line: 10 },
         { messageId: 'refWrite', line: 11 },
       ],
+    }),
+    buildInvalidCase('reports a state setter called inside another state updater', setterCalledInsideUpdater, {
+      filename: 'no-side-effect-in-state-updater.tsx',
+      errors: [{ messageId: 'nestedUpdate', line: 9, data: { name: 'setCount' } }],
+    }),
+    buildInvalidCase('reports a storage write reached through window. inside a state updater', storageWriteThroughWindow, {
+      filename: 'no-side-effect-in-state-updater.tsx',
+      errors: [{ messageId: 'effect', line: 9, data: { name: 'window.localStorage.setItem' } }],
     }),
   ],
 })

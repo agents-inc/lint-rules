@@ -5,6 +5,7 @@ import {
   destructuredUuidField,
   keyedOnDataId,
   keyedOnIndex,
+  loneElementKeyedByMinter,
   methodReadingExistingId,
   mintedInsideHandler,
   mintedInsideUseMemo,
@@ -12,6 +13,7 @@ import {
   mintedOutsideKey,
   mintedOutsideListCallback,
   mintedWhileBuildingList,
+  minterHandedToCachingHelperInKey,
   nameBasedUuid,
   randomUuidKeyInMap,
 } from '../__tests__/cases/no-unstable-list-keys.ts'
@@ -34,6 +36,11 @@ houseRuleTester.run('no-unstable-list-keys', housePlugin.rules['no-unstable-list
     buildValidCase('stays silent on an id minted inside an event handler', mintedInsideHandler),
     buildValidCase('stays silent on a destructured uuid field', destructuredUuidField),
     buildValidCase('stays silent on a list key minted by a function not in its minters', customMinterKeyInMap),
+    buildValidCase('stays silent on a minted key on a lone element, outside any list callback', loneElementKeyedByMinter),
+    buildValidCase(
+      'stays silent on a minter wrapped in a function the key hands to a caching helper',
+      minterHandedToCachingHelperInKey,
+    ),
   ],
   invalid: [
     buildInvalidCase('reports a list key minted by crypto.randomUUID()', randomUuidKeyInMap, {

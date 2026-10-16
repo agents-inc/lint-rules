@@ -3,6 +3,7 @@ import {
   alertdialogNamedByTranslatedLabel,
   dynamicRole,
   intrinsicDialogWithDynamicLabelledby,
+  intrinsicDialogWithoutName,
   intrinsicDialogWithPresentationRole,
   menuRole,
   roleDialogNamedByAriaLabel,
@@ -38,6 +39,10 @@ houseRuleTester.run('dialog-has-accessible-name', housePlugin.rules['dialog-has-
     buildInvalidCase('reports a role="dialog" with no aria-label, aria-labelledby or title', roleDialogWithoutName, {
       filename: 'dialog-has-accessible-name.jsx',
       errors: [{ messageId: 'unnamed', line: 2 }],
+    }),
+    buildInvalidCase('reports a <dialog> with no role and no accessible name, naming it <dialog>', intrinsicDialogWithoutName, {
+      filename: 'dialog-has-accessible-name.jsx',
+      errors: [{ messageId: 'unnamed', line: 2, data: { what: '<dialog>' } }],
     }),
   ],
 })

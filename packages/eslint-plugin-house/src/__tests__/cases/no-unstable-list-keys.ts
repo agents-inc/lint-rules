@@ -203,3 +203,35 @@ export function TagList({ tags }: { tags: string[] }) {
 }`
 
 export const customMinter = 'makeId'
+
+// A lone element has no siblings to reconcile against: a fresh key only remounts it, often on purpose.
+export const loneElementKeyedByMinter = `import { nanoid } from 'nanoid'
+
+export function FreshForm() {
+  return <form key={nanoid()} />
+}
+`
+
+// The helper decides when the minter runs: once per row, cached, not on every render.
+export const minterHandedToCachingHelperInKey = `import { nanoid } from 'nanoid'
+
+const ids = new WeakMap<object, string>()
+
+function idFor(row: object, mint: () => string): string {
+  const known = ids.get(row)
+  if (known !== undefined) return known
+  const id = mint()
+  ids.set(row, id)
+  return id
+}
+
+export function Rows({ rows }: { readonly rows: { label: string }[] }) {
+  return (
+    <ul>
+      {rows.map(row => (
+        <li key={idFor(row, () => nanoid())}>{row.label}</li>
+      ))}
+    </ul>
+  )
+}
+`
