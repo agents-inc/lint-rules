@@ -24,7 +24,8 @@ import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 // Our ignores, each engine reading them its own way (decisions.md, fix round 1 review: ESLint as
 // global ignores, oxlint as ignorePatterns, negated lines taking files back), in the editor merges
 // through the built package, linted by the real ESLint and oxlint. The agent build hands our ignores
-// to each engine as they are, so where it reports a rule is where our part for that engine runs it.
+// to each engine as our layers hold them, so where it reports a rule is where our part for that
+// engine runs it.
 // Owed in every file, as on the grid (editor-merges.both-engines.integration.test.ts): merged into
 // empty team configs, our rules report where the agent build reports them, per engine; beside the
 // team, which sets every rule here, the team's alone in every file, never from both engines.

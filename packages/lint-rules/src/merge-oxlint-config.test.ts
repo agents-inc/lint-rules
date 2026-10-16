@@ -254,7 +254,10 @@ describe('mergeOxlintConfig, given a team config setting every key', () => {
     expect(ignorePatternsOf(merged())).toStrictEqual(TEAM_CONFIG.ignorePatterns)
   })
 
-  // Nothing of ours follows the team's overrides (decisions.md, "Owner 2026-10-14").
+  // Nothing of ours follows the team's overrides (decisions.md, "Owner 2026-10-14"). Our part runs
+  // react-hooks/rule-suppression and unicorn/no-abusive-eslint-disable, as suppressions are allowed in
+  // the editor parts (r2-d22, q-r1), and the team's root lists neither plugin: the compensations for
+  // listing them come first, a part none of ours or the team's.
   it("puts ours first in line, in a first extended config, then the team's overrides, and nothing after them", () => {
     const config = merged()
     const parts = ourEditorParts(fields)
@@ -263,7 +266,7 @@ describe('mergeOxlintConfig, given a team config setting every key', () => {
     expect({
       firstInLine: partsOfTheMergeIn(firstInLine, [], parts),
       own: partsOfTheMergeIn(overridesOf(config), overridesOf(TEAM_CONFIG), parts),
-    }).toStrictEqual({ firstInLine: ['ours'], own: ["the team's"] })
+    }).toStrictEqual({ firstInLine: ['none of these', 'ours'], own: ["the team's"] })
   })
 
   it("keeps the team's options, with unused disable directives unreported, which ESLint's suppressions would be", () => {
@@ -514,25 +517,54 @@ describe('mergeOxlintConfig, given the options and env of the team', () => {
 
   // Where the team's root states every rule our part runs, no override of ours is left turning a
   // rule on, so our env stands in an override of its own (found by breaking that decision, fix round 2).
-  it("keeps our runtime's env in every file, where the team's root states every rule our part runs", () => {
+  // The env probed is es2024, which is no runtime's: a runtime's env is ours only where our own
+  // no-undef runs (#68), and here the team's root states no-undef too. The root lists the plugin of
+  // each rule, as oxlint counts a root's statement only of a plugin it lists: react's, for
+  // react-hooks/rule-suppression (r2-d22).
+  it("keeps our env in every file, where the team's root states every rule our part runs", () => {
     const oxlint = oxlintPartOf(ourEditorParts({}, { editorRulesets: { runtimes: ['browser'] } }))
     const teamRootStatingEveryRuleOfOurs = Object.fromEntries(oxlintNamesOfRulesOurPartRuns(oxlint).map((oxlintName): [string, 'error'] => [oxlintName, 'error']))
-    const config = mergeOxlintConfig(buildTeamOxlintConfig({ rules: teamRootStatingEveryRuleOfOurs }), oxlint, NO_TEAM_ESLINT_CONFIG)
+    const config = mergeOxlintConfig(
+      buildTeamOxlintConfig({ plugins: ROOT_LISTING_EVERY_PLUGIN_OF_OURS, rules: teamRootStatingEveryRuleOfOurs }),
+      oxlint,
+      NO_TEAM_ESLINT_CONFIG,
+    )
 
     expect({
-      browser: oxlintConfigForFile(config, 'src/a.ts').env['browser'],
+      es2024: oxlintConfigForFile(config, 'src/a.ts').env['es2024'],
       rulesTheOverridesTurnOn: rulesOnInOxlint({ overrides: overridesOf(config) }),
-    }).toStrictEqual({ browser: true, rulesTheOverridesTurnOn: [] })
+    }).toStrictEqual({ es2024: true, rulesTheOverridesTurnOn: [] })
   })
 
+  // Our runtime's env is ours where our own no-undef runs (#68): the correctness ruleset ships it,
+  // for JS files, so the files read are JS files.
   it("keeps the env an override of the team's sets in its files, and ours elsewhere", () => {
-    const { oxlint } = ourEditorParts({}, { editorRulesets: { runtimes: ['browser'] } })
-    const config = mergeOxlintConfig(buildTeamOxlintConfig({ overrides: [{ files: ['**/*.test.ts'], env: { browser: false } }] }), oxlint, NO_TEAM_ESLINT_CONFIG)
+    const { oxlint } = ourEditorParts({}, { editorRulesets: { quality: ['correctness'], runtimes: ['browser'] } })
+    const config = mergeOxlintConfig(buildTeamOxlintConfig({ overrides: [{ files: ['**/*.test.js'], env: { browser: false } }] }), oxlint, NO_TEAM_ESLINT_CONFIG)
 
     expect({
-      inTheTeamsFiles: oxlintConfigForFile(config, 'src/a.test.ts').env['browser'],
-      elsewhere: oxlintConfigForFile(config, 'src/a.ts').env['browser'],
+      inTheTeamsFiles: oxlintConfigForFile(config, 'src/a.test.js').env['browser'],
+      elsewhere: oxlintConfigForFile(config, 'src/a.js').env['browser'],
     }).toStrictEqual({ inTheTeamsFiles: false, elsewhere: true })
+  })
+})
+
+// Our env, each key in the overrides of ours that give it: oxlint's builtins with our rules, our
+// runtime's in an override of its own where our no-undef runs (#68), and each framework's and the
+// test runners' in their files. The correctness ruleset ships no-undef.
+describe('the env of ours mergeOxlintConfig writes, beside a team config setting none', () => {
+  it("gives each key once, our runtime's apart from the rest, in no override giving an empty env", () => {
+    const { oxlint } = ourEditorParts({}, { editorRulesets: { quality: ['correctness'], runtimes: ['browser'] } })
+    const config = mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, NO_TEAM_ESLINT_CONFIG)
+
+    expect(overridesOf(config).flatMap(({ env }) => (env === undefined ? [] : [env]))).toStrictEqual([
+      { builtin: true, es2024: true },
+      { browser: true },
+      { svelte: true },
+      { vue: true },
+      { astro: true },
+      { vitest: true, jest: true },
+    ])
   })
 })
 

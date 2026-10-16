@@ -61,6 +61,16 @@ export const OURS_STATING_BOTH_MAX_PARAMS_NAMES: OurFields = {
   rules: { 'max-params': MAX_3, '@typescript-eslint/max-params': MAX_2 },
 }
 
+/** An entry over the TS files in the project's root folder alone, `./*.ts`, stating max-params at max 3 and typescript-eslint's at max 2. */
+export const OURS_STATING_BOTH_MAX_PARAMS_NAMES_IN_AN_ENTRY_OVER_THE_ROOTS_TS_FILES: OurFields = {
+  fileOverrides: [{ files: ['./*.ts'], rules: { 'max-params': MAX_3, '@typescript-eslint/max-params': MAX_2 } }],
+}
+
+/** An entry over the TS files in the root's src folder alone, `./src/*.ts`, stating max-params at max 3 and typescript-eslint's at max 2. */
+export const OURS_STATING_BOTH_MAX_PARAMS_NAMES_IN_AN_ENTRY_OVER_THE_ROOT_SRC_FOLDERS_TS_FILES: OurFields = {
+  fileOverrides: [{ files: ['./src/*.ts'], rules: { 'max-params': MAX_3, '@typescript-eslint/max-params': MAX_2 } }],
+}
+
 /** An entry stating both names, max 3 and max 2; one stating max-params alone, at max 3; one stating typescript-eslint's alone, at max 2. */
 export const OURS_STATING_BOTH_MAX_PARAMS_NAMES_BESIDE_ONE_ALONE: OurFields = {
   fileOverrides: [
@@ -170,6 +180,12 @@ export const unusedParameterSourceFiles = {
   'scripts/s.ts': TS_UNUSED_PARAMETER_SOURCE,
   'scripts/s.js': JS_UNUSED_PARAMETER_SOURCE,
 } as const
+
+/** A TS file in the project's root folder, and one in src/. */
+export const maxParamsSourceFilesAtTheRootAndInSrc = { 'a.ts': TS_SOURCE, 'src/a.ts': TS_SOURCE } as const
+
+/** A TS file in the project's root folder, in src/, and in a folder below src/. */
+export const maxParamsSourceFilesAtTheRootInSrcAndBelowIt = { 'a.ts': TS_SOURCE, 'src/a.ts': TS_SOURCE, 'src/deep/a.ts': TS_SOURCE } as const
 
 /** A TS and a JS file under each entry's folder. */
 export const maxParamsSourceFilesUnderEachEntry = {

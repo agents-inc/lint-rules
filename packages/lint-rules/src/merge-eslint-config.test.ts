@@ -1,4 +1,5 @@
-import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { basename, dirname, join } from 'node:path'
 import { catalog } from '@workspace/rule-data'
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
 import { pluginPrefixOf } from '@workspace/rule-data/rule-id-parts'
@@ -23,7 +24,7 @@ import {
 } from './__tests__/cases/editor-merge-sources.ts'
 import { listItemWithoutAKey } from './__tests__/cases/eslint-merge-sources.ts'
 import { suppressionOfARuleNobodyDefines } from './__tests__/cases/suppression-comments.ts'
-import { SVELTE_RUNES_ESLINT_BLOCK_NAME } from './__tests__/cases/svelte-components.ts'
+import { SVELTE_RUNES_ESLINT_BLOCK_NAME, TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME } from './__tests__/cases/svelte-components.ts'
 import { TEAM_CONFIG_MODULE, teamBlockWithFunctionFiles, teamBlockWithFunctionIgnores, unusedVariable } from './__tests__/cases/team-eslint-projects.ts'
 import { NOT_LINTED, type RuleIdsReportedByFile, setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
 import { ABSENT, type CalculatedEntry, calculatedEntryOf } from './__tests__/eslint-entries-owed.ts'
@@ -56,6 +57,7 @@ import {
   type TeamTypeInformation,
 } from './__tests__/factories/team-config-factories.ts'
 import { pathsOfFunctionsIn } from './__tests__/functions-in.ts'
+import { resolversImportXReads } from './__tests__/import-x-settings.ts'
 import { sameModuleNamesOfEach, sameRuleNamesOfEach, type TwinPair, twinPairsOf } from './__tests__/other-eslint-names.ts'
 import { changesSince, snapshotOf } from './__tests__/plugin-snapshots.ts'
 import { rulesNotFoundAmong } from './__tests__/rules-not-found.ts'
@@ -292,8 +294,8 @@ const UNUSED_STATE_UNDER_ITS_OTHER_NAME = '@eslint-react/no-unused-state'
 const SAME_MODULE_NAMES_THE_WALK_REACHES = [MISSING_KEY_UNDER_ITS_OTHER_NAME]
 
 const tempProjects = setUpTempProjects()
-// The oxlint it installs lets the twin walk merge our oxlint part too: only one in the package's
-// peer range merges.
+// The oxlint it installs lets the twin walk merge our oxlint part too: only one whose schema holds
+// every name the merge writes merges.
 const PROJECT_WITH_OXLINT = tempProjects.create({
   files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) },
   linkedPackages: [INSTALLED_OXLINT],
@@ -315,22 +317,20 @@ function typedProjectWithoutOxlint(source: string): string {
     },
   })
 }
+// Twins the walk must reach: each the twin of a rule we state, and not stated by us. Not
+// consistent-return or no-implied-eval, which we ship beside their typed twins (q-r6), nor
+// no-invalid-this: every ruleset listed turns functional/no-this-expressions on, which covers our
+// twin of it (r2-d77).
 const PROJECTS_THE_TWIN_WALK_READS = [
   {
     project: 'whose package.json lists oxlint',
     projectDir: PROJECT_WITH_OXLINT,
-    reaches: [
-      TWIN_OF_NO_UNUSED_VARS,
-      '@typescript-eslint/prefer-promise-reject-errors',
-      CORE_TWIN_OF_THE_TYPED_EXTENSION,
-      'no-implied-eval',
-      'no-invalid-this',
-    ],
+    reaches: [TWIN_OF_NO_UNUSED_VARS, '@typescript-eslint/prefer-promise-reject-errors'],
   },
   {
     project: 'whose package.json lists no oxlint',
     projectDir: PROJECT_WITHOUT_OXLINT,
-    reaches: ['@typescript-eslint/prefer-promise-reject-errors', CORE_TWIN_OF_THE_TYPED_EXTENSION, 'no-implied-eval', 'no-invalid-this'],
+    reaches: ['@typescript-eslint/prefer-promise-reject-errors'],
   },
 ]
 
@@ -498,7 +498,7 @@ async function languageOptionsAndSettingsIn(config: Linter.Config[], file: strin
   return {
     parser: isRecord(parser) && isRecord(parser['meta']) ? parser['meta']['name'] : undefined,
     jsx: isRecord(parserOptions) && isRecord(parserOptions['ecmaFeatures']) ? parserOptions['ecmaFeatures']['jsx'] : undefined,
-    window: isRecord(globals) ? globals['window'] : undefined,
+    $state: isRecord(globals) ? globals['$state'] : undefined,
     reactVersion: isRecord(react) ? react['version'] : undefined,
   }
 }
@@ -1903,11 +1903,13 @@ describe("our blocks, beside a team config that takes nothing back from ESLint's
   const ourBlocksUnmovedBesideOxlint: readonly OurBlockStating[] = [
     { name: 'agents-inc/base', states: [ARRAY_TYPE, 'no-var'] },
     { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
+    { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
     { name: 'agents-inc/typed', states: [FLOATING_PROMISES] },
   ]
   const ourBlocksUnmovedWithoutOxlint: readonly OurBlockStating[] = [
     { name: 'agents-inc/base', states: [ARRAY_TYPE, NO_DEBUGGER, 'no-var'] },
     { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
+    { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
     { name: 'agents-inc/typed', states: [FLOATING_PROMISES] },
   ]
   const shapes: readonly BlockNamesShape[] = [
@@ -1918,12 +1920,14 @@ describe("our blocks, beside a team config that takes nothing back from ESLint's
       owedBesideOxlint: [
         { name: 'agents-inc/base', states: [ARRAY_TYPE, 'no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
+        { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [FLOATING_PROMISES] },
         { name: 'agents-inc/file-overrides/0', states: ['no-var'] },
       ],
       owedWithoutOxlint: [
         { name: 'agents-inc/base', states: [ARRAY_TYPE, NO_DEBUGGER, 'no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
+        { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [FLOATING_PROMISES] },
         { name: 'agents-inc/file-overrides/0', states: ['no-var'] },
       ],
@@ -1936,11 +1940,13 @@ describe("our blocks, beside a team config that takes nothing back from ESLint's
       owedBesideOxlint: [
         { name: 'agents-inc/base', states: ['no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
+        { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [FLOATING_PROMISES] },
       ],
       owedWithoutOxlint: [
         { name: 'agents-inc/base', states: [NO_DEBUGGER, 'no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
+        { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [FLOATING_PROMISES] },
       ],
     },
@@ -1952,6 +1958,7 @@ describe("our blocks, beside a team config that takes nothing back from ESLint's
         { name: 'agents-inc/base', states: [] },
         { name: 'agents-inc/base/confined/0', states: [ARRAY_TYPE, 'no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
+        { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [] },
         { name: 'agents-inc/typed/confined/0', states: [FLOATING_PROMISES] },
         { name: 'agents-inc/file-overrides/0/confined/0', states: ['no-var'] },
@@ -1960,6 +1967,7 @@ describe("our blocks, beside a team config that takes nothing back from ESLint's
         { name: 'agents-inc/base', states: [] },
         { name: 'agents-inc/base/confined/0', states: [ARRAY_TYPE, NO_DEBUGGER, 'no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
+        { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [] },
         { name: 'agents-inc/typed/confined/0', states: [FLOATING_PROMISES] },
         { name: 'agents-inc/file-overrides/0/confined/0', states: ['no-var'] },
@@ -1974,6 +1982,15 @@ describe("our blocks, beside a team config that takes nothing back from ESLint's
       how: "the team's global ignores, read from a basePath outside the project, its parent, leave dist/ out and take nothing back",
       fields: { rules },
       teamConfig: [buildTeamEslintBlock('team/global-ignores', { basePath: '..', ignores: ['dist/'] }), teamBlockStatingNoneOfOurs],
+      owedBesideOxlint: ourBlocksUnmovedBesideOxlint,
+      owedWithoutOxlint: ourBlocksUnmovedWithoutOxlint,
+    },
+    // spec-core.md C8: read as ESLint reads it, from the project's parent, the negated glob takes back
+    // a sibling folder's node_modules alone, which no file of the project is in.
+    {
+      how: "the team's global ignores, read from a basePath outside the project, its parent, leave dist/ out and take back a sibling folder's node_modules alone",
+      fields: { rules },
+      teamConfig: [buildTeamEslintBlock('team/global-ignores', { basePath: '..', ignores: ['dist/', '!sibling/node_modules/'] }), teamBlockStatingNoneOfOurs],
       owedBesideOxlint: ourBlocksUnmovedBesideOxlint,
       owedWithoutOxlint: ourBlocksUnmovedWithoutOxlint,
     },
@@ -2037,6 +2054,7 @@ describe("our blocks, beside a team config whose global ignores take every node_
         { name: 'agents-inc/base', states: [] },
         { name: 'agents-inc/base/confined/0', states: [ARRAY_TYPE, 'no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
+        { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [] },
         { name: 'agents-inc/typed/confined/0', states: [FLOATING_PROMISES] },
       ],
@@ -2050,6 +2068,7 @@ describe("our blocks, beside a team config whose global ignores take every node_
         { name: 'agents-inc/base', states: [] },
         { name: 'agents-inc/base/confined/0', states: [ARRAY_TYPE, NO_DEBUGGER, 'no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
+        { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [] },
         { name: 'agents-inc/typed/confined/0', states: [FLOATING_PROMISES] },
       ],
@@ -2114,14 +2133,100 @@ describe("the team's blocks in the merged config", () => {
   )
 })
 
+// spec-core.md C8 (my-basepath-bug): every reading of a team block's files and ignores under a
+// basePath outside the project reads them as ESLint does, from that path, so the project's files
+// they match are the block's. ESLint's own calculated config for the team's block alone is the
+// oracle: our typed rule runs in exactly the files where that block gives types.
+describe('a team block giving types whose basePath lies outside the project', () => {
+  const PROJECT_FOLDER = basename(PROJECT_WITH_OXLINT)
+  const FILES_READ = ['src/a.ts', 'src/legacy/a.ts', 'src/legacy/keep/a.ts', 'scripts/b.ts']
+  const EVERY_TS_FILE = ['**/*.ts']
+  // An absolute basePath here lies in the test file's temp dir, whose name changes every run, so the
+  // title names each basePath by `basePathNamed`: Stryker picks a mutant's tests by the titles of an earlier run.
+  const blocks: readonly { readonly basePath: string; readonly basePathNamed: string; readonly files: readonly string[]; readonly ignores?: readonly string[] }[] = [
+    { basePath: '..', basePathNamed: '..', files: EVERY_TS_FILE },
+    { basePath: '../elsewhere', basePathNamed: '../elsewhere', files: EVERY_TS_FILE },
+    { basePath: dirname(PROJECT_WITH_OXLINT), basePathNamed: "the project's parent", files: EVERY_TS_FILE },
+    { basePath: join(tmpdir(), 'lint-rules-a-folder-outside-every-project'), basePathNamed: 'a folder outside every project', files: EVERY_TS_FILE },
+    { basePath: '..', basePathNamed: '..', files: [`${PROJECT_FOLDER}/src/**`] },
+    { basePath: '..', basePathNamed: '..', files: ['*/src/**'] },
+    { basePath: '..', basePathNamed: '..', files: ['sibling/**'] },
+    { basePath: '..', basePathNamed: '..', files: EVERY_TS_FILE, ignores: ['**/legacy/**', '!**/legacy/keep/**'] },
+  ]
+
+  // ESLint lints a file only where a block's files match it by a glob not ending in `/**`: our base
+  // block does for every TS file, so the oracle reads the team's block beside one that does the same.
+  const BLOCK_LINTING_EVERY_TS_FILE: Linter.Config = { name: 'oracle/every-ts-file', files: EVERY_TS_FILE }
+
+  /** Where ESLint, run from the project, gives types from the team's config, every TS file linted: error where it does, off where not. */
+  async function typedByTheTeamAlone(teamConfig: Linter.Config[]): Promise<Record<string, string>> {
+    const typed = await Promise.all(
+      FILES_READ.map(async (file): Promise<[string, string]> => {
+        const calculated = await calculatedConfigInProjectFor(PROJECT_WITH_OXLINT, [BLOCK_LINTING_EVERY_TS_FILE, ...teamConfig], file)
+        const parserOptions: unknown = calculated === undefined || calculated.languageOptions === undefined ? undefined : calculated.languageOptions['parserOptions']
+        return [file, isRecord(parserOptions) && parserOptions['projectService'] === true ? 'error' : 'off']
+      }),
+    )
+    return Object.fromEntries(typed)
+  }
+
+  async function ourTypedRuleIn(config: Linter.Config[]): Promise<Record<string, string>> {
+    const severities = await Promise.all(
+      FILES_READ.map(async (file): Promise<[string, string]> => [file, (await ruleSeverityInProjectFor(PROJECT_WITH_OXLINT, config, file, FLOATING_PROMISES)) ?? 'off']),
+    )
+    return Object.fromEntries(severities)
+  }
+
+  it.each(blocks)('runs our typed rule where ESLint gives types from it: basePath $basePathNamed, files $files, ignores $ignores', async ({ basePath, files, ignores = [] }) => {
+    const teamConfig = [buildTeamTypedEslintBlock('team-typed', 'projectService', { basePath, files: [...files], ignores: [...ignores] })]
+
+    expect(await ourTypedRuleIn(mergedEditorEslintConfig(PROJECT_WITH_OXLINT, TYPED_RULE_ON, teamConfig))).toStrictEqual(await typedByTheTeamAlone(teamConfig))
+  })
+
+  // The oracle reads the project's files as types given somewhere: a case reaching none would make
+  // every expectation off, which an off-everywhere merge passes too.
+  it("gives each file read types where the block names its parent's every TS file, in ESLint's own reading", async () => {
+    expect(await typedByTheTeamAlone([buildTeamTypedEslintBlock('team-typed', 'projectService', { basePath: '..', files: EVERY_TS_FILE })])).toStrictEqual({
+      'src/a.ts': 'error',
+      'src/legacy/a.ts': 'error',
+      'src/legacy/keep/a.ts': 'error',
+      'scripts/b.ts': 'error',
+    })
+  })
+})
+
+// The same reading for the team's settings: an import-x resolver set from the project's parent is
+// the team's in the files it reaches, so ours leaves them (O8).
+describe('a team block setting an import-x resolver whose basePath lies outside the project', () => {
+  const resolverSetting = { 'import-x/resolver': { node: { extensions: ['.ts', '.js'] } } }
+
+  async function resolverKeyReadIn(teamConfig: Linter.Config[], file: string): Promise<string> {
+    const merged = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, { rules: { 'import-x/named': 'error' } }, teamConfig)
+    const calculated = await calculatedConfigInProjectFor(PROJECT_WITH_OXLINT, merged, file)
+    if (calculated === undefined) throw new Error(`ESLint does not lint ${file}`)
+    return resolversImportXReads(calculated.settings).key
+  }
+
+  it("is the team's where it reaches the file from the project's parent, and ours where it reaches a sibling folder alone", async () => {
+    expect({
+      fromTheParent: await resolverKeyReadIn([buildTeamEslintBlock('team/resolver', { basePath: '..', files: ['**/*.ts'], settings: resolverSetting })], 'src/a.ts'),
+      fromASibling: await resolverKeyReadIn([buildTeamEslintBlock('team/resolver', { basePath: '../elsewhere', files: ['**/*.ts'], settings: resolverSetting })], 'src/a.ts'),
+    }).toStrictEqual({ fromTheParent: 'import-x/resolver', fromASibling: 'import-x/resolver-next' })
+  })
+})
+
 // Q-E: the team's language options, settings and linter options stand, key by key, in the
 // files of the team block that sets them; ours apply elsewhere. noInlineConfig is never ours.
+// The global probed is a Svelte rune, ours in every rune module whatever rulesets are listed: our
+// runtime globals are ours only where our own no-undef runs (#68), which beside oxlint is nowhere in
+// ESLint. The project lists no React, so our React version is the one eslint-plugin-react assumes
+// without it (spec-core.md C13).
 describe("the team's language options, settings and linter options", () => {
   const teamParser = buildTeamParser('team-parser')
   const teamConfig = [
     buildTeamEslintBlock('team', {
       files: LEGACY_FILES,
-      languageOptions: { parser: teamParser, parserOptions: { ecmaFeatures: { jsx: false } }, globals: { window: 'off' } },
+      languageOptions: { parser: teamParser, parserOptions: { ecmaFeatures: { jsx: false } }, globals: { $state: 'off' } },
       settings: { react: { version: '18.3' } },
     }),
   ]
@@ -2133,11 +2238,11 @@ describe("the team's language options, settings and linter options", () => {
       const config = mergedBesideATeamOxlintConfigSettingNoRule(teamConfig, eslint)
 
       expect({
-        inTheTeamsFiles: await languageOptionsAndSettingsIn(config, 'legacy/a.ts'),
-        elsewhere: await languageOptionsAndSettingsIn(config, 'src/a.ts'),
+        inTheTeamsFiles: await languageOptionsAndSettingsIn(config, 'legacy/a.svelte.ts'),
+        elsewhere: await languageOptionsAndSettingsIn(config, 'src/a.svelte.ts'),
       }).toStrictEqual({
-        inTheTeamsFiles: { parser: 'team-parser', jsx: false, window: 'off', reactVersion: '18.3' },
-        elsewhere: { parser: TYPESCRIPT_ESLINT_PARSER_NAME, jsx: true, window: false, reactVersion: 'detect' },
+        inTheTeamsFiles: { parser: 'team-parser', jsx: false, $state: 'off', reactVersion: '18.3' },
+        elsewhere: { parser: TYPESCRIPT_ESLINT_PARSER_NAME, jsx: true, $state: false, reactVersion: '999.999.999' },
       })
     },
   )
@@ -2258,14 +2363,13 @@ describe('the base block', () => {
     ])
   })
 
+  // Our runtime globals go only where our own no-undef runs (#68): with no oxlint, in the JS files
+  // the correctness ruleset ships it for.
   it.each([
     { runtime: 'browser', defined: 'window', undefinedGlobal: 'process' },
     { runtime: 'node', defined: 'process', undefinedGlobal: 'window' },
-  ] as const)('defines the globals of $runtime, listed in the editor set, and not those of another', async ({ runtime, defined, undefinedGlobal }) => {
-    const { eslint } = defineLintRules(
-      buildConsumerLintRules(PROJECT_WITH_OXLINT, { editorRulesets: { runtimes: [runtime] } }),
-    ).editorRulesets
-    const globals = await globalsFor(mergedBesideATeamOxlintConfigSettingNoRule([], eslint), 'src/a.ts')
+  ] as const)('defines the globals of $runtime, listed in the editor set, and not those of another, where our no-undef runs', async ({ runtime, defined, undefinedGlobal }) => {
+    const globals = await globalsFor(mergedWithoutOxlint({ editorRulesets: { quality: ['correctness'], runtimes: [runtime] } }, {}), 'src/a.js')
 
     expect({ defined: globals[defined] !== undefined, undefinedGlobal: globals[undefinedGlobal] }).toStrictEqual({
       defined: true,
@@ -2823,12 +2927,17 @@ describe('a typed rule of ours, beside a team block that gives type information 
     expect(await severitiesOf(config, FLOATING_PROMISES, ['src/a.ts', 'scripts/b.ts'])).toStrictEqual({ 'src/a.ts': 'error', 'scripts/b.ts': 'off' })
   })
 
-  // ESLint applies such a block to no file of the project, so it gives none types.
-  it.each(['..', '../elsewhere'])('runs in no file where the basePath of the only block giving types lies outside the project, %s', async (basePath) => {
+  // ESLint reads a block whose basePath lies outside the project from there, so its parent's
+  // `**/*.ts` gives every TS file of the project types, and a sibling folder's none (spec-core.md C8,
+  // my-basepath-bug: before it, the merge read both as giving no file types).
+  it.each([
+    { basePath: '..', owed: 'error' },
+    { basePath: '../elsewhere', owed: 'off' },
+  ])('runs where ESLint gives types from the only block giving them, whose basePath lies outside the project: $basePath, $owed', async ({ basePath, owed }) => {
     const teamConfig = [buildTeamTypedEslintBlock('team-typed', 'projectService', { basePath, files: ['**/*.ts'] })]
     const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, TYPED_RULE_ON, teamConfig)
 
-    expect(await severitiesOf(config, FLOATING_PROMISES, ['src/a.ts'])).toStrictEqual({ 'src/a.ts': 'off' })
+    expect(await severitiesOf(config, FLOATING_PROMISES, ['src/a.ts'])).toStrictEqual({ 'src/a.ts': owed })
   })
 
   it("runs in a file a negated ignore of that block takes back, read from its basePath", async () => {
@@ -3004,30 +3113,80 @@ function mergedWithoutOxlint(rulesets: Parameters<typeof buildConsumerLintRules>
   return mergedBesideATeamOxlintConfigSettingNoRule(teamConfig, defineLintRules(buildConsumerLintRules(PROJECT_WITHOUT_OXLINT, rulesets, fields)).editorRulesets.eslint)
 }
 
+/** The rule's entry as its ruleset ships it: at error, with its shipped options. */
+function shippedEntryOf(ruleId: string): Linter.RuleEntry {
+  const route = catalog.rules.get(ruleId)
+  if (route === undefined || route.shipped === null) throw new Error(`${ruleId} is not a rule we ship`)
+  return ['error', ...route.shipped.options]
+}
+
 // D9, the rest of the layer rule (decisions.md): the highest layer stating either name of a twin
 // pair decides its setting, wherever in the layer it is stated. On JS files the core rule runs with
-// that setting within its own shipped files and ignores; on a TS file without type information it
-// runs in place of a typed extension, with the setting of the layer below where it refuses the
-// extension's options. A layer turning the pair off leaves no entry of either name, where a later
-// bare severity of the team's would bring back the options of an off.
+// that setting wherever the layer reaches where the layer names the extension alone (q61, owner:
+// the ruleset's own files and ignores no longer limit it), and within its own shipped files and
+// ignores where the layer names the core rule; on a TS file without type information it runs in
+// place of a typed extension, with the setting of the layer below where it refuses the extension's
+// options. A layer turning the pair off leaves no entry of either name, where a later bare severity
+// of the team's would bring back the options of an off.
 describe("typescript-eslint's extension of a core rule a listed ruleset ships, set in our own layers, in a project whose package.json lists no oxlint", () => {
-  it("runs the extension our rules set in every TS file, and the core rule with that setting only in the JS files it ships for", async () => {
+  // no-unused-vars ships ignoring **/scripts/** and **/*.config.{ts,js,mjs,cjs}, among others.
+  it("runs the extension our rules set in every TS file, and the core rule with that setting in every JS file, those the ruleset ships it ignoring included", async () => {
     const setting = ['error', { args: 'none' }] satisfies Linter.RuleEntry
     const config = mergedWithoutOxlint({ editorRulesets: { quality: ['redundancy'] } }, { rules: { [TWIN_OF_NO_UNUSED_VARS]: setting } })
     const extension = await entryEslintCalculatesFor(TWIN_OF_NO_UNUSED_VARS, setting)
     const coreRule = await entryEslintCalculatesFor(NO_UNUSED_VARS, setting)
 
-    expect({
-      running: await runningEntriesOf(config, [NO_UNUSED_VARS, TWIN_OF_NO_UNUSED_VARS], ['src/a.ts', 'src/a.js', 'scripts/a.ts', 'src/a.stories.tsx']),
-      inAJsFileItShipsIgnoring: await entriesByFileOf(config, [NO_UNUSED_VARS, TWIN_OF_NO_UNUSED_VARS], ['scripts/a.js']),
-    }).toStrictEqual({
-      running: {
-        'src/a.ts': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: extension },
-        'src/a.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
-        'scripts/a.ts': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: extension },
-        'src/a.stories.tsx': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: extension },
-      },
-      inAJsFileItShipsIgnoring: { 'scripts/a.js': { [NO_UNUSED_VARS]: ABSENT, [TWIN_OF_NO_UNUSED_VARS]: ABSENT } },
+    expect(
+      await runningEntriesOf(config, [NO_UNUSED_VARS, TWIN_OF_NO_UNUSED_VARS], ['src/a.ts', 'src/a.js', 'scripts/a.ts', 'scripts/a.js', 'tool.config.js', 'src/a.stories.tsx']),
+    ).toStrictEqual({
+      'src/a.ts': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: extension },
+      'src/a.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'scripts/a.ts': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: extension },
+      'scripts/a.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'tool.config.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'src/a.stories.tsx': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: extension },
+    })
+  })
+
+  it("runs the core rule with an entry's setting of the extension in every JS file of the entry, those the ruleset ships it ignoring included, and keeps the ruleset's limit outside the entry", async () => {
+    const setting = ['error', { args: 'none' }] satisfies Linter.RuleEntry
+    const config = mergedWithoutOxlint(
+      { editorRulesets: { quality: ['redundancy'] } },
+      { fileOverrides: [{ files: ['scripts/**', 'src/**'], rules: { [TWIN_OF_NO_UNUSED_VARS]: setting } }] },
+    )
+    const extension = await entryEslintCalculatesFor(TWIN_OF_NO_UNUSED_VARS, setting)
+    const coreRule = await entryEslintCalculatesFor(NO_UNUSED_VARS, setting)
+
+    expect(await runningEntriesOf(config, [NO_UNUSED_VARS, TWIN_OF_NO_UNUSED_VARS], ['scripts/a.js', 'scripts/a.ts', 'src/a.js', 'tool.config.js'])).toStrictEqual({
+      'scripts/a.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'scripts/a.ts': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: extension },
+      'src/a.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'tool.config.js': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+    })
+  })
+
+  it("keeps the ruleset's limit on the core rule, leaving the JS files it ships ignoring with neither name, where our rules set the core rule itself", async () => {
+    const setting = ['error', { args: 'none' }] satisfies Linter.RuleEntry
+    const config = mergedWithoutOxlint({ editorRulesets: { quality: ['redundancy'] } }, { rules: { [NO_UNUSED_VARS]: setting } })
+
+    expect(await runningEntriesOf(config, [NO_UNUSED_VARS, TWIN_OF_NO_UNUSED_VARS], ['src/a.js', 'scripts/a.js', 'tool.config.js'])).toStrictEqual({
+      'src/a.js': { [NO_UNUSED_VARS]: await entryEslintCalculatesFor(NO_UNUSED_VARS, setting), [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'scripts/a.js': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'tool.config.js': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+    })
+  })
+
+  // q61, a written limit (owner card): the core rule refuses an option only the extension takes, so
+  // it keeps the ruleset's setting within the ruleset's limit, and the JS files outside that limit
+  // get neither name.
+  it("runs the core rule with the ruleset's setting within its limit, and leaves the JS files outside it with neither name, where our rules give the extension options the core rule refuses", async () => {
+    const setting = ['error', { enableAutofixRemoval: { imports: true } }] satisfies Linter.RuleEntry
+    const config = mergedWithoutOxlint({ editorRulesets: { quality: ['redundancy'] } }, { rules: { [TWIN_OF_NO_UNUSED_VARS]: setting } })
+
+    expect(await runningEntriesOf(config, [NO_UNUSED_VARS, TWIN_OF_NO_UNUSED_VARS], ['src/a.js', 'scripts/a.js', 'tool.config.js'])).toStrictEqual({
+      'src/a.js': { [NO_UNUSED_VARS]: await entryEslintCalculatesFor(NO_UNUSED_VARS, shippedEntryOf(NO_UNUSED_VARS)), [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'scripts/a.js': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'tool.config.js': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: 'off' },
     })
   })
 
@@ -3091,7 +3250,7 @@ describe('our ignores, written as each form a folder or file is named in, beside
   ]
   const IGNORE_VALUES: readonly { readonly ignore: string; readonly leftOut: readonly string[] }[] = [
     { ignore: 'generated', leftOut: ['generated/index.js', 'src/generated/index.js'] },
-    { ignore: 'legacy/', leftOut: ['legacy/index.js'] },
+    { ignore: 'legacy/', leftOut: ['legacy/index.js', 'src/legacy/index.js'] },
     { ignore: '**/gen', leftOut: ['gen/index.js', 'src/gen/index.js'] },
     { ignore: 'vendor/**', leftOut: ['vendor/index.js'] },
     { ignore: 'a.js', leftOut: ['a.js', 'src/a.js'] },
@@ -3148,10 +3307,10 @@ describe('our ignores, a folder by its name and a negated value taking a folder 
 
   // ESLint keeps a folder a negated value names inside one an earlier value names left out with the
   // outer folder (measured, ESLint 10.12), so the editor merge owes the agent build's files there
-  // too (fix round 2, G1).
+  // too (fix round 2, G1). legacy/ names every legacy folder (q62), src/legacy among them.
   it('keep our rules out of exactly the files the agent build leaves out, where the negated value names a folder inside the one legacy/ names', async () => {
     const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOthers()), ...projectFiles } })
-    const owed = ['src/index.js', 'src/legacy/index.js', 'src/legacy/keep/index.js']
+    const owed = ['src/index.js']
 
     expect(await filesReportingOurRule(projectDir, ['legacy/', '!legacy/keep/'])).toStrictEqual({ editor: owed, agent: owed })
   })

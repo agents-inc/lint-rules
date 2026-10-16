@@ -1,0 +1,199 @@
+import { join } from 'node:path'
+import { catalog } from '@workspace/rule-data'
+import type { OxlintConfig } from 'oxlint'
+import { describe, expect, it } from 'vitest'
+import {
+  ESLINT_CONFIG_NESTING_ENV,
+  ESLINT_CONFIG_NESTING_NO_DEBUGGER_OFF,
+  JSON_FILE_HOLDING_AN_OBJECT,
+  JSON_FILES_HOLDING_NO_OBJECT,
+  KEYS_OF_THE_EXTENDED_TSCONFIG_NO_OXLINT_CONFIG_HOLDS,
+  MODULE_EXPORTING_AN_OBJECT,
+  MODULES_EXPORTING_NO_OBJECT,
+  MODULES_FAILING_AS_THEY_LOAD,
+  OXLINTRC_EXTENDING_A_TSCONFIG,
+  OXLINTRC_EXTENDING_A_TSCONFIG_FILES,
+  VALUES_THAT_ARE_NO_PATH,
+} from './__tests__/cases/other-engine-config-refusals.ts'
+import {
+  filesOf,
+  NO_DEBUGGER,
+  NO_EMPTY_PATTERN,
+  NO_VAR,
+  OURS_RUN_BY_ESLINT,
+  OURS_RUN_BY_OXLINT,
+  TEAM_OXLINTRC_EXTENDING_THROUGH_A_FOLDER,
+  teamOxlintrcExtendingThroughAFolderFiles,
+} from './__tests__/cases/other-engine-configs.ts'
+import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
+import { buildConsumerLintRules } from './__tests__/factories/lint-rules-factories.ts'
+import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
+import { buildTeamOxlintConfig } from './__tests__/factories/team-config-factories.ts'
+import { oxlintEntryOfRuleFor, severityOfOxlintEntry } from './__tests__/oxlint-config-oracle.ts'
+import { NO_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
+import { INSTALLED_OXLINT, type ProjectFiles, setUpTempProjects } from './__tests__/temp-projects.ts'
+import { mergeEslintConfig } from './eslint.ts'
+import { defineLintRules, type LintRules } from './index.ts'
+import { mergeOxlintConfig } from './oxlint.ts'
+
+// What each merge says when the team's other config cannot be read, beside merge-other-engine-
+// config.test.ts: the error names the config file calling the merge and describes what it was
+// given, an array, null, an object or a primitive, each in its own words; a config module failing
+// as it loads gives its own reason, whatever code its error carries, and a string thrown is the
+// reason itself. An ESLint config is judged by every block, at any depth of nested arrays, as ESLint's
+// defineConfig reads them; and a JSON oxlint config by every config it extends by path, each before
+// what that one extends is read. Each refusal sits beside a case that is read.
+
+type OurRules = NonNullable<LintRules['rules']>
+
+const tempProjects = setUpTempProjects()
+const { ruleSeverityInProjectFor } = setUpEslintConfigOracle()
+
+const SOURCE_FILE = 'src/a.tsx'
+const NOT_STATED = 'not stated'
+
+/** A project listing oxlint, with the installed oxlint, holding the files given. */
+function projectListingOxlint(files: ProjectFiles = {}): string {
+  return tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()), ...files }, linkedPackages: [INSTALLED_OXLINT] })
+}
+
+/** Both parts of the project, our settings listing no ruleset and turning on the rules given. */
+function partsOf(projectDir: string, rules: OurRules = {}): ReturnType<typeof defineLintRules>['editorRulesets'] {
+  return defineLintRules(buildConsumerLintRules(projectDir, {}, { rules })).editorRulesets
+}
+
+function oxlintPartOf(projectDir: string, rules: OurRules = {}): NonNullable<ReturnType<typeof defineLintRules>['editorRulesets']['oxlint']> {
+  const { oxlint } = partsOf(projectDir, rules)
+  if (oxlint === undefined) throw new Error('the project lists oxlint, so it has an oxlint part')
+  return oxlint
+}
+
+/** The severity the merged config states the rule at in the file, under any spelling oxlint takes it by: NOT_STATED where none applies there. */
+function severityStatedFor(merged: OxlintConfig, file: string, ruleId: string): string {
+  const route = catalog.rules.get(ruleId)
+  if (route === undefined) throw new Error(`${ruleId} is no rule of ours`)
+  const entry = oxlintEntryOfRuleFor(merged, file, route.oxlintSpellings)
+  return entry === undefined ? NOT_STATED : severityOfOxlintEntry(entry)
+}
+
+describe("mergeEslintConfig's third argument, where it is neither a path nor null", () => {
+  const { eslint } = partsOf(projectListingOxlint())
+
+  it.each(VALUES_THAT_ARE_NO_PATH)('is refused where oxlintConfig is $what, the error describing it as $described', ({ value, described }) => {
+    // @ts-expect-error oxlintConfig is a path or null
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: value })).toThrowError(
+      new Error(`eslint.config.mjs: oxlintConfig must be a path or null, and was given ${described}`),
+    )
+  })
+
+  it('is accepted where oxlintConfig is null, the project having no oxlint config', () => {
+    expect(() => mergeEslintConfig([], eslint, NO_TEAM_OXLINT_CONFIG)).not.toThrow()
+  })
+})
+
+describe("mergeOxlintConfig's third argument, where it is neither a path nor null", () => {
+  const oxlint = oxlintPartOf(projectListingOxlint())
+
+  it.each(VALUES_THAT_ARE_NO_PATH)('is refused where eslintConfig is $what, the error describing it as $described', ({ value, described }) => {
+    // @ts-expect-error eslintConfig is a path or null
+    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: value })).toThrowError(
+      new Error(`oxlint.config.mts: eslintConfig must be a path or null, and was given ${described}`),
+    )
+  })
+
+  it('is accepted where eslintConfig is null, the project having no ESLint config', () => {
+    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: null })).not.toThrow()
+  })
+})
+
+describe("a file named as the team's oxlint config that holds no config object, read by mergeEslintConfig", () => {
+  const projectDir = projectListingOxlint(filesOf([...JSON_FILES_HOLDING_NO_OBJECT, JSON_FILE_HOLDING_AN_OBJECT, ...MODULES_EXPORTING_NO_OBJECT, MODULE_EXPORTING_AN_OBJECT]))
+  const { eslint } = partsOf(projectDir)
+
+  it.each(JSON_FILES_HOLDING_NO_OBJECT)('is refused where it is JSON holding $what, the error saying it holds $described', ({ file, described }) => {
+    const path = join(projectDir, file)
+
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: file })).toThrowError(
+      new Error(`eslint.config.mjs: could not read your oxlint config at ${path}: ${path} holds ${described}, not a JSON object`),
+    )
+  })
+
+  it('is read where it is JSON holding an object', () => {
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: JSON_FILE_HOLDING_AN_OBJECT.file })).not.toThrow()
+  })
+
+  it.each(MODULES_EXPORTING_NO_OBJECT)('is refused where it is a module exporting $what by default, the error saying it exports $described', ({ file, described }) => {
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: file })).toThrowError(
+      new Error(`eslint.config.mjs: could not read your oxlint config at ${join(projectDir, file)}: its default export is ${described}, not an oxlint config object`),
+    )
+  })
+
+  it('is read where it is a module exporting an object by default', () => {
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: MODULE_EXPORTING_AN_OBJECT.file })).not.toThrow()
+  })
+})
+
+// A config read while another loads that awaits at its top level is refused in words of our own
+// (merge-other-engine-config.test.ts); any other failure gives its own reason. Each merge reads files
+// of its own project: Node 23 answers a second require() of a module that threw with an internal
+// error of its own (measured, Node 23.10; Node 22.23 throws the module's error again).
+describe("a config module that fails as it loads, named as the team's other config", () => {
+  const eslintProjectDir = projectListingOxlint(filesOf(MODULES_FAILING_AS_THEY_LOAD))
+  const oxlintProjectDir = projectListingOxlint(filesOf(MODULES_FAILING_AS_THEY_LOAD))
+  const { eslint } = partsOf(eslintProjectDir)
+  const oxlint = oxlintPartOf(oxlintProjectDir)
+
+  it.each(MODULES_FAILING_AS_THEY_LOAD)('is refused by mergeEslintConfig where it $what, the error giving its own reason', ({ file, reason }) => {
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: file })).toThrowError(
+      new Error(`eslint.config.mjs: could not read your oxlint config at ${join(eslintProjectDir, file)}: ${reason}`),
+    )
+  })
+
+  it.each(MODULES_FAILING_AS_THEY_LOAD)('is refused by mergeOxlintConfig where it $what, the error giving its own reason', ({ file, reason }) => {
+    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: file })).toThrowError(
+      new Error(`oxlint.config.mts: could not read your ESLint config at ${join(oxlintProjectDir, file)}: ${reason}`),
+    )
+  })
+})
+
+describe('a team ESLint config nesting its blocks in arrays, read by mergeOxlintConfig', () => {
+  const projectDir = projectListingOxlint(filesOf([ESLINT_CONFIG_NESTING_ENV, ESLINT_CONFIG_NESTING_NO_DEBUGGER_OFF]))
+  const oxlint = oxlintPartOf(projectDir, OURS_RUN_BY_OXLINT)
+
+  it("is refused where a block nested three arrays deep holds eslintrc's env, the error naming it", () => {
+    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: ESLINT_CONFIG_NESTING_ENV.file })).toThrowError(
+      new Error(
+        `oxlint.config.mts: could not read your ESLint config at ${join(projectDir, ESLINT_CONFIG_NESTING_ENV.file)}: it is not an ESLint config: no ESLint config holds env`,
+      ),
+    )
+  })
+
+  it('is read where a block nested three arrays deep turns no-debugger off: our part drops no-debugger, and keeps no-empty-pattern', () => {
+    const merged = mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: ESLINT_CONFIG_NESTING_NO_DEBUGGER_OFF.file })
+
+    expect({ noDebugger: severityStatedFor(merged, SOURCE_FILE, NO_DEBUGGER), noEmptyPattern: severityStatedFor(merged, SOURCE_FILE, NO_EMPTY_PATTERN) }).toStrictEqual({
+      noDebugger: NOT_STATED,
+      noEmptyPattern: 'error',
+    })
+  })
+})
+
+describe('a team JSON oxlint config extending another file by path, read by mergeEslintConfig', () => {
+  const projectDir = projectListingOxlint({ ...filesOf(OXLINTRC_EXTENDING_A_TSCONFIG_FILES), ...teamOxlintrcExtendingThroughAFolderFiles })
+  const { eslint } = partsOf(projectDir, OURS_RUN_BY_ESLINT)
+
+  // The error names the team's file, though the keys listed are the extended file's.
+  it('is refused where the file it extends is a tsconfig.json, judged by its keys before what it extends is read', () => {
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: OXLINTRC_EXTENDING_A_TSCONFIG.file })).toThrowError(
+      new Error(
+        `eslint.config.mjs: could not read your oxlint config at ${join(projectDir, OXLINTRC_EXTENDING_A_TSCONFIG.file)}: it is not an oxlint config: no oxlint config holds ${KEYS_OF_THE_EXTENDED_TSCONFIG_NO_OXLINT_CONFIG_HOLDS}`,
+      ),
+    )
+  })
+
+  it('is read where each file it extends is an oxlint config: our part drops no-var, which one of them sets', async () => {
+    const merged = mergeEslintConfig([], eslint, { oxlintConfig: TEAM_OXLINTRC_EXTENDING_THROUGH_A_FOLDER })
+
+    expect(await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, NO_VAR)).toBeUndefined()
+  })
+})

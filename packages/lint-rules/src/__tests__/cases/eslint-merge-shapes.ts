@@ -138,10 +138,9 @@ const OUR_IGNORES_A_FOLDER_BY_NAME = buildEslintMergeShapeValue('our ignores nam
 const OUR_IGNORES_A_FOLDER_WITH_A_TRAILING_SLASH = buildEslintMergeShapeValue('our ignores name one vendor folder with a trailing slash, as legacy/vendor/', {
   ours: { ignores: ['legacy/vendor/'] },
 })
-// A name ending in its only slash, which ESLint reads at the root alone and oxlint in any folder
-// (measured, ESLint 10.12 and oxlint 1.87): beside oxlint, our oxlint part runs nothing in
-// src/vendor and legacy/vendor, so the team's setting stands there (fix round 1 review, Must fix 1).
-const OUR_IGNORES_A_FOLDER_ENDING_IN_ITS_ONLY_SLASH = buildEslintMergeShapeValue('our ignores name the vendor folders by vendor/, which the engines read differently', {
+// A name ending in its only slash, every folder of that name in both engines (q62); ESLint read it
+// at the root alone before (fix round 1 review, Must fix 1).
+const OUR_IGNORES_A_FOLDER_ENDING_IN_ITS_ONLY_SLASH = buildEslintMergeShapeValue('our ignores name the vendor folders by vendor/, every folder of that name', {
   ours: { ignores: ['vendor/'] },
 })
 

@@ -614,12 +614,12 @@ describe("our runtimes, merged into a team oxlint config that sets no env, besid
   })
 })
 
-// Our runtime in an entry of ours alone sets oxlint's env in that entry's files even where the entry
-// turns every rule of the runtime off, so no override of ours that states a rule holds the env: the
-// env goes on an override of its own, and the globals reach the team's rules there too, as ours
-// where the team sets no env (questions.md #47).
+// Our runtime in an entry of ours alone, which turns every rule of the runtime off, beside a team
+// that sets no-undef: no-undef is the team's, so ours runs nowhere, and our runtime's globals are
+// ours only where our own no-undef runs (#68, which reverses #47 for a runtime's env). The team's
+// no-undef reports the browser's window in that entry's files too, as its config alone does.
 describe("our runtimes in an entry of ours alone, which turns the runtime's rules off, merged into a team oxlint config that sets no env", () => {
-  it("declare their globals for the team's no-undef in that entry's files: it reports the name nobody declares there, and the browser's window only elsewhere", () => {
+  it("declare no globals for the team's no-undef: it reports the name nobody declares, and the browser's window, in that entry's files and elsewhere", () => {
     const { merged } = findingsWithTheTeamAloneAndMergedWith(
       { file: 'browser-entry-only.oxlint.config.mts', config: buildTeamOxlintConfig({ rules: { 'no-undef': 'error' } }) },
       {
@@ -635,7 +635,7 @@ describe("our runtimes in an entry of ours alone, which turns the runtime's rule
       THE_BROWSER_PROJECT_IN_TWO_FOLDERS,
     )
 
-    expect(findingsOf(merged, NO_UNDEF)).toStrictEqual(['lib/i.js:2 eslint(no-undef)', 'src/i.js:1 eslint(no-undef)', 'src/i.js:2 eslint(no-undef)'])
+    expect(findingsOf(merged, NO_UNDEF)).toStrictEqual(['lib/i.js:1 eslint(no-undef)', 'lib/i.js:2 eslint(no-undef)', 'src/i.js:1 eslint(no-undef)', 'src/i.js:2 eslint(no-undef)'])
   })
 })
 
@@ -688,13 +688,13 @@ const OURS_TURNING_ARRAY_TYPE_ON = { '@typescript-eslint/array-type': 'error' } 
 
 // Our ignores, however each engine reads them, keep only our rules out of their files (D-a): the
 // team's rule stands in every file, as its config alone gives it (decisions.md, "Owner 2026-10-14").
-// ESLint matches a value ending in a slash at the root alone, where oxlint matches it in any folder;
-// ESLint's lib/** leaves out the folder itself, so a negated line under it takes no file back, where
-// oxlint's .gitignore reading takes the file back (measured, ESLint 10.12 and oxlint 1.87).
-describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint config that turns it on, beside our ignores the engines read differently', () => {
+// A value ending in a slash names every folder of that name in both engines (q62). ESLint's lib/**
+// leaves out the folder itself, so a negated line under it takes no file back, where oxlint's
+// .gitignore reading takes the file back (measured, ESLint 10.12 and oxlint 1.87).
+describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint config that turns it on, beside our ignores', () => {
   it.each([
     {
-      how: 'a folder ending in a slash, legacy/, which ESLint leaves out at the root alone',
+      how: 'a folder ending in a slash, legacy/, which names every legacy folder',
       ignores: ['legacy/'],
       project: THE_TRAILING_SLASH_PROJECT,
       teamAlone: ['legacy/a.ts:1 typescript(array-type)', 'src/a.ts:1 typescript(array-type)', 'src/legacy/a.ts:1 typescript(array-type)'],

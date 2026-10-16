@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { OurRulesets } from './__tests__/cases/both-engines-corpus.ts'
-import { importXResolverPackageFiles, NO_UNRESOLVED, OWED_BY_THE_TEAMS_RESOLVERS, TEAMS_IMPORT_X_MODULE_TEXT } from './__tests__/cases/team-import-x-resolvers.ts'
+import {
+  importXResolverPackageFiles,
+  NO_UNRESOLVED,
+  OWED_BY_THE_TEAMS_RESOLVERS,
+  OWED_MERGED_BESIDE_OUR_TYPESCRIPT_RESOLVER,
+  TEAMS_IMPORT_X_MODULE_TEXT,
+} from './__tests__/cases/team-import-x-resolvers.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, type MergedAndTeamAloneEslintCliRuns, setUpMergedAndTeamAloneEslintCliRuns } from './__tests__/consumer-cli-runs.ts'
 import { agentsIncLintModuleTextRootedAtItsFolder, mergedEslintConfigText, teamAloneEslintConfigText } from './__tests__/factories/consumer-project-factories.ts'
 import { buildConsumerSettings } from './__tests__/factories/lint-rules-factories.ts'
@@ -63,8 +69,10 @@ PROJECTS.forEach(({ project, files }) => {
       expect(teamsRuleFindingsIn(runs().teamAlone)).toStrictEqual(OWED_BY_THE_TEAMS_RESOLVERS)
     })
 
-    it("is reported by the team's rule, merged, in each package as by the team's config alone", () => {
-      expect(teamsRuleFindingsIn(runs().merged)).toStrictEqual(teamsRuleFindingsIn(runs().teamAlone))
+    // spec-core.md call 13: where the team sets no resolver key our TypeScript resolver is the one
+    // import-x reads (O8), so the team's rule resolves `./b` there, merged, as its config alone does not.
+    it("is reported by the team's rule, merged, in no package: where the team sets a resolver key as by its config alone, and where it sets none resolved by ours", () => {
+      expect(teamsRuleFindingsIn(runs().merged)).toStrictEqual(OWED_MERGED_BESIDE_OUR_TYPESCRIPT_RESOLVER)
     })
   })
 })

@@ -23,12 +23,16 @@ import {
 import {
   maxParamsAndEmptyFunctionSourceFiles,
   maxParamsSourceFiles,
+  maxParamsSourceFilesAtTheRootAndInSrc,
+  maxParamsSourceFilesAtTheRootInSrcAndBelowIt,
   maxParamsSourceFilesInLegacyAndSrc,
   maxParamsSourceFilesUnderEachEntry,
   NO_EMPTY_FUNCTION,
   OURS_STATING_BOTH_MAX_PARAMS_NAMES,
   OURS_STATING_BOTH_MAX_PARAMS_NAMES_BESIDE_AN_ENTRY_TURNING_MAX_PARAMS_OFF,
   OURS_STATING_BOTH_MAX_PARAMS_NAMES_BESIDE_ONE_ALONE,
+  OURS_STATING_BOTH_MAX_PARAMS_NAMES_IN_AN_ENTRY_OVER_THE_ROOT_SRC_FOLDERS_TS_FILES,
+  OURS_STATING_BOTH_MAX_PARAMS_NAMES_IN_AN_ENTRY_OVER_THE_ROOTS_TS_FILES,
   OURS_STATING_BOTH_NAMES_OF_TWO_PAIRS,
   OURS_STATING_BOTH_NO_REDECLARE_NAMES_THE_EXTENSION_WITH_AN_OPTION_OXLINT_REFUSES,
   OURS_STATING_BOTH_NO_UNUSED_VARS_NAMES,
@@ -109,15 +113,15 @@ const TWIN_CASES: readonly TwinCase[] = [
     },
   },
   {
-    how: "the complexity ruleset ships max-params, our rules set typescript-eslint's, and our ignores name legacy/, which each engine reads its own way",
+    how: "the complexity ruleset ships max-params, our rules set typescript-eslint's, and our ignores name legacy/, every folder of that name",
     ourRulesets: COMPLEXITY,
     ours: { rules: { ...OUR_CORPUS_RULES, '@typescript-eslint/max-params': ['error', { max: 2 }] }, ignores: ['legacy/'] },
     files: ['src/legacy/a.ts', 'legacy/a.ts', 'src/a.ts'],
     rules: [MAX_PARAMS],
-    // oxlint leaves out every folder named legacy, ESLint only the one at the root (questions.md
-    // #62): in src/legacy/a.ts our ESLint part runs, and ESLint's copy reports the pair there.
+    // Both engines leave out every folder named legacy, as a .gitignore line does (questions.md #62):
+    // neither engine's copy reports the pair in src/legacy/a.ts.
     agentBuildOwes: {
-      'src/legacy/a.ts': { 'max-params': ['src/legacy/a.ts:10 @typescript-eslint/max-params'] },
+      'src/legacy/a.ts': { 'max-params': [] },
       'legacy/a.ts': { 'max-params': [] },
       'src/a.ts': { 'max-params': ['src/a.ts:10 eslint(max-params)'] },
     },
@@ -328,6 +332,55 @@ describe("max-params and typescript-eslint's in an entry of ours, beside an entr
   })
 
   it('is reported once in each file merged into empty team configs, at the setting the entry gives the file', () => {
+    expect(findingsByFileAndRule(runs().mergedIntoEmptyTeamConfigs, files, [MAX_PARAMS])).toStrictEqual(owed)
+  })
+})
+
+// Both names in an entry over the TS files in the project's root folder alone: the core rule runs at
+// the extension's setting there, and in no TS file of a folder below.
+describe("max-params and typescript-eslint's in an entry over ./*.ts, in a project whose package.json lists oxlint", () => {
+  const runs = setUpBothEnginesRuns({
+    sources: maxParamsSourceFilesAtTheRootAndInSrc,
+    ours: OURS_STATING_BOTH_MAX_PARAMS_NAMES_IN_AN_ENTRY_OVER_THE_ROOTS_TS_FILES,
+    teamEslintRules: {},
+    teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
+  })
+  const files = Object.keys(maxParamsSourceFilesAtTheRootAndInSrc)
+  const owed = {
+    'a.ts': { 'max-params': ['a.ts:4 eslint(max-params)', 'a.ts:7 eslint(max-params)'] },
+    'src/a.ts': { 'max-params': [] },
+  }
+
+  it("is reported once in each file by the agent build, at typescript-eslint's max in the root's TS file alone", () => {
+    expect(findingsByFileAndRule(runs().agent, files, [MAX_PARAMS])).toStrictEqual(owed)
+  })
+
+  it("is reported once in each file merged into empty team configs, at typescript-eslint's max in the root's TS file alone", () => {
+    expect(findingsByFileAndRule(runs().mergedIntoEmptyTeamConfigs, files, [MAX_PARAMS])).toStrictEqual(owed)
+  })
+})
+
+// Both names in an entry over the TS files of the root's src folder alone, written from the root: the
+// core rule runs at the extension's setting there, and in no TS file of the root or below src.
+describe("max-params and typescript-eslint's in an entry over ./src/*.ts, in a project whose package.json lists oxlint", () => {
+  const runs = setUpBothEnginesRuns({
+    sources: maxParamsSourceFilesAtTheRootInSrcAndBelowIt,
+    ours: OURS_STATING_BOTH_MAX_PARAMS_NAMES_IN_AN_ENTRY_OVER_THE_ROOT_SRC_FOLDERS_TS_FILES,
+    teamEslintRules: {},
+    teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
+  })
+  const files = Object.keys(maxParamsSourceFilesAtTheRootInSrcAndBelowIt)
+  const owed = {
+    'a.ts': { 'max-params': [] },
+    'src/a.ts': { 'max-params': ['src/a.ts:4 eslint(max-params)', 'src/a.ts:7 eslint(max-params)'] },
+    'src/deep/a.ts': { 'max-params': [] },
+  }
+
+  it("is reported once in each file by the agent build, at typescript-eslint's max in src's TS file alone", () => {
+    expect(findingsByFileAndRule(runs().agent, files, [MAX_PARAMS])).toStrictEqual(owed)
+  })
+
+  it("is reported once in each file merged into empty team configs, at typescript-eslint's max in src's TS file alone", () => {
     expect(findingsByFileAndRule(runs().mergedIntoEmptyTeamConfigs, files, [MAX_PARAMS])).toStrictEqual(owed)
   })
 })

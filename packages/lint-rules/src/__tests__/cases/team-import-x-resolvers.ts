@@ -14,8 +14,9 @@ import type { ProjectFiles } from '../temp-projects.ts'
 // import-x's alone.
 //
 // Seven publishable packages of a monorepo, each a TS project whose a.ts imports `./b` beside b.ts.
-// Our resolver tries import-x's default extensions, which hold no .ts (lib/node-resolver.js), as
-// does import-x's own fallback where no resolver is set; the team's tries .ts first. The team sets, in
+// Our resolver is eslint-import-resolver-typescript's, which resolves `./b` to b.ts (#33 fix C;
+// spec-core.md C1); import-x's own fallback, where no resolver is set, tries import-x's default
+// extensions, which hold no .ts (lib/node-resolver.js); the team's tries .ts first. The team sets, in
 // each package's files alone: nothing; import-x/resolver; import-x/resolver-next; import-x/core-modules;
 // import-x/core-modules beside import-x/resolver; import-x/resolver-legacy; and import-x/resolve, the
 // options of import-x's node resolver where no resolver key holds one.
@@ -31,8 +32,8 @@ export const TEAMS_NODE_RESOLVER_OPTIONS = { extensions: TEAMS_EXTENSIONS }
 /** The name the team gives its own resolver-next resolver, which ours does not carry. */
 export const TEAMS_RESOLVER_NAME = 'team-resolver'
 
-/** The name of the node resolver ours is (lib/node-resolver.js, createNodeResolver). */
-export const OUR_RESOLVER_NAME = 'eslint-plugin-import-x:node'
+/** The name of the resolver ours is: eslint-import-resolver-typescript 4.4.5's (lib/constants.js, IMPORT_RESOLVER_NAME). */
+export const OUR_RESOLVER_NAME = 'eslint-import-resolver-typescript'
 
 const TEAMS_CORE_MODULES = ['virtual:team-module']
 
@@ -136,6 +137,21 @@ export const TEAMS_IMPORT_X_MODULE_TEXT = teamEslintModuleOfBlockSourcesText(
     `{ name: '${RESOLVER_NEXT_BLOCK_NAME}', files: ${JSON.stringify(filesOf(PACKAGES.teamSetsResolverNext))}, settings: { 'import-x/resolver-next': [{ ...createNodeResolver({ extensions: ${JSON.stringify(TEAMS_EXTENSIONS)} }), name: '${TEAMS_RESOLVER_NAME}' }] } }`,
   ],
 )
+
+/**
+ * What the team's import-x/no-unresolved gives, merged, in each package: as its config alone where
+ * the team sets a resolver key, ours staying out there (O8); and `./b` resolved where it sets none,
+ * which our TypeScript resolver serves too (spec-core.md call 13).
+ */
+export const OWED_MERGED_BESIDE_OUR_TYPESCRIPT_RESOLVER = {
+  [IMPORTER_IN.teamSetsNone]: { 'import-x/no-unresolved': [] },
+  [IMPORTER_IN.teamSetsResolver]: { 'import-x/no-unresolved': [] },
+  [IMPORTER_IN.teamSetsResolverNext]: { 'import-x/no-unresolved': [] },
+  [IMPORTER_IN.teamSetsCoreModules]: { 'import-x/no-unresolved': [] },
+  [IMPORTER_IN.teamSetsResolverAndCoreModules]: { 'import-x/no-unresolved': [] },
+  [IMPORTER_IN.teamSetsResolverLegacy]: { 'import-x/no-unresolved': [] },
+  [IMPORTER_IN.teamSetsResolve]: { 'import-x/no-unresolved': [] },
+}
 
 /** What the team's import-x/no-unresolved gives in each package with its config alone: `./b` unresolved where no resolver of the team's tries .ts. */
 export const OWED_BY_THE_TEAMS_RESOLVERS = {
