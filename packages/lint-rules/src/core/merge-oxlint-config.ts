@@ -5,6 +5,7 @@ import { runtimeEnvsOf } from './catalog-lookups.ts'
 import { configErrorIn } from './config-error.ts'
 import type { OxlintPart } from './editor-parts.ts'
 import { bothOf, eitherOf, type FilesCondition, keyOfCondition } from './file-conditions.ts'
+import { EVERY_FILE_AT_ANY_DEPTH } from './globs.ts'
 import {
   ALWAYS_RUN,
   type CategorySeverities,
@@ -31,7 +32,6 @@ import { filesLess, type OverrideFiles, overrideFilesOf } from './oxlint-overrid
 import { type RuleLayers, runtimeGlobalReadersOnIn } from './resolve-rule-layers.ts'
 import { ourLayersLeavingOut, rulesTheTeamSets, withEveryTwin } from './rules-the-team-sets.ts'
 import {
-  CATCH_ALL_FILES,
   type OurOxlintPart,
   ourOxlintPartOf,
   whereOurOxlintPartRuns,
@@ -302,7 +302,7 @@ function copiesOxlintsDefaultRunsBesideOurEslintPart(theirs: OxlintConfig, part:
 /** An override first in line, turning the rules off in every file before any of the team's applies. */
 function offWhereTheRootRunsThem(oxlintNames: readonly string[]): OxlintOverride[] {
   if (oxlintNames.length === 0) return []
-  return [{ files: [...CATCH_ALL_FILES], rules: offEntriesFor(oxlintNames) }]
+  return [{ files: [EVERY_FILE_AT_ANY_DEPTH], rules: offEntriesFor(oxlintNames) }]
 }
 
 /**
@@ -353,7 +353,7 @@ function switchesBesideOtherListings({ plugins, listings }: ListingsOfOneSet, te
  * `excludeFiles` is not reached, as each list of them is taken alone (a limit).
  */
 function offOutside(listings: readonly Listing[], offs: DummyRuleMap): OxlintOverride[] {
-  const outsideEvery: OxlintOverride = { files: [...CATCH_ALL_FILES], excludeFiles: filesOf(listings), rules: offs }
+  const outsideEvery: OxlintOverride = { files: [EVERY_FILE_AT_ANY_DEPTH], excludeFiles: filesOf(listings), rules: offs }
   return [outsideEvery, ...listingsByExcludeFiles(listings).flatMap((excludingOneList) => offWhereTheyExclude(excludingOneList, listings, offs))]
 }
 

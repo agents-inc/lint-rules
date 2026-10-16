@@ -1,6 +1,6 @@
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import type { FilesEntry } from './file-conditions.ts'
-import { NEGATION, normalizeGlob } from './globs.ts'
+import { isNegated, normalizeGlob } from './globs.ts'
 import { eslintTakesFilesBackFrom } from './ignores-read-by-each-engine.ts'
 import type { RuleLayers } from './resolve-rule-layers.ts'
 
@@ -73,7 +73,7 @@ function keptToJsAndTs(combination: readonly string[]): string[] {
 // Whether a glob's own extension, bare (`**/*.stories.tsx`) or braced (`**/*.{ts,tsx}`), keeps it
 // to JS and TS files. Any glob this cannot read is answered no, which costs only a redundant glob.
 export function matchesOnlyJsAndTs(glob: string): boolean {
-  if (glob.startsWith(NEGATION) || !glob.includes(EXTENSION_DOT)) return false
+  if (isNegated(glob) || !glob.includes(EXTENSION_DOT)) return false
   return extensionsAfterLastDot(glob).every((extension) => JS_AND_TS_EXTENSIONS.has(extension))
 }
 

@@ -1,7 +1,8 @@
-import { type Catalog, type OxlintCategory, type OxlintRule, ruleIdsOxlintRunsTypeAware } from '@workspace/rule-data'
+import { type Catalog, type OxlintCategory, type OxlintRule, routeOf, ruleIdsOxlintRunsTypeAware } from '@workspace/rule-data'
 import type { AllowWarnDeny, DummyRuleMap, ExternalPluginEntry, OxlintConfig, OxlintOverride, RuleCategories } from 'oxlint'
 import { type OxlintPlugin, oxlintPluginNamed, sortedUnique, toOxlintPlugin } from './build-oxlint-config.ts'
-import { routeOf, ruleIdsNamedInEslint } from './catalog-lookups.ts'
+import { ruleIdsNamedInEslint } from './catalog-lookups.ts'
+import { namedGroupsOf } from './named-groups.ts'
 import type { OverrideFiles } from './oxlint-override-files.ts'
 
 // How oxlint 1.87 resolves a config, read from its source (oxc tag oxlint_v1.87.0,
@@ -285,9 +286,7 @@ function builtinPluginOfRulePrefix(prefix: string): OxlintPlugin | undefined {
 function withoutThePackageNaming(name: string): string {
   const match = PLUGIN_PACKAGE_NAME.exec(name)
   if (match === null) return name
-  const { groups } = match
-  if (groups === undefined) throw new Error(`${PLUGIN_PACKAGE_NAME.source} names no groups`)
-  const { scope, scopedName, name: unscopedName } = groups
+  const { scope, scopedName, name: unscopedName } = namedGroupsOf(match)
   if (unscopedName !== undefined) return unscopedName
   if (scope === undefined) throw new Error(`${name}: a plugin package's name matched without its scope`)
   return scopedName === undefined ? scope : `${scope}${SCOPE_SEPARATOR}${scopedName}`

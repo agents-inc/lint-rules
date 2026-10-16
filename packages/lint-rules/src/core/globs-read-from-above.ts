@@ -6,11 +6,11 @@
 // with `dot: true` (@eslint/config-array, MINIMATCH_OPTIONS), so a `*` matches a leading dot too.
 // Limits: a segment holding an extglob matches no folder, and braces are read within one segment.
 
-import { NEGATION } from './globs.ts'
+import { isNegated, negationOf, withoutLeadingDotSlash, withoutNegation } from './globs.ts'
+import { namedGroupOf, namedGroupsOf } from './named-groups.ts'
 
 const SEGMENT_SEPARATOR = '/'
 const GLOBSTAR = '**'
-const LEADING_DOT_SLASH = './'
 // The first braces holding no braces and at least one comma, which minimatch expands.
 const INNERMOST_BRACES = /\{(?<body>[^{}]*,[^{}]*)\}/u
 const BRACE_SEPARATOR = ','
@@ -28,11 +28,11 @@ const ONE_CHARACTER_IN_A_NAME = '[^/]'
  * no file under it.
  */
 export function globsReadFromTheRoot(glob: string, folders: readonly string[]): string[] {
-  const negated = glob.startsWith(NEGATION)
-  const pattern = withoutLeadingDotSlash(negated ? glob.slice(NEGATION.length) : glob)
+  const negated = isNegated(glob)
+  const pattern = withoutLeadingDotSlash(negated ? withoutNegation(glob) : glob)
   const left = segmentsLeftPast(pattern.split(SEGMENT_SEPARATOR), folders)
   const globs = left.filter(reachesBelowTheRoot).map((segments) => segments.join(SEGMENT_SEPARATOR))
-  return [...new Set(globs)].map((each) => (negated ? `${NEGATION}${each}` : each))
+  return [...new Set(globs)].map((each) => (negated ? negationOf(each) : each))
 }
 
 /** What is left of the glob's segments once each of the folders has matched one, a `**` matching any number of them. */
@@ -69,7 +69,7 @@ function bracesExpanded(segment: string): string[] {
   if (braces === null) return [segment]
   const before = segment.slice(0, braces.index)
   const after = segment.slice(braces.index + braces[0].length)
-  return groupOf(braces, 'body').split(BRACE_SEPARATOR).flatMap((alternative) => bracesExpanded(`${before}${alternative}${after}`))
+  return namedGroupOf(braces, 'body').split(BRACE_SEPARATOR).flatMap((alternative) => bracesExpanded(`${before}${alternative}${after}`))
 }
 
 /** A segment without braces as a RegExp source: null where it holds an extglob. */
@@ -79,7 +79,7 @@ function sourceOfSegment(segment: string): string | null {
 }
 
 function sourceOfPart(part: RegExpExecArray): string | null {
-  const { escaped, negated, members, extglob, star, one, other } = groupsOf(part)
+  const { escaped, negated, members, extglob, star, one, other } = namedGroupsOf(part)
   if (extglob !== undefined) return null
   if (members !== undefined) return `[${negated === undefined ? '' : '^'}${members}]`
   if (star !== undefined) return ANY_CHARACTERS_IN_A_NAME
@@ -89,22 +89,6 @@ function sourceOfPart(part: RegExpExecArray): string | null {
   throw new Error(`${SEGMENT_PART.source} matched "${part[0]}" with no group`)
 }
 
-function groupsOf({ groups }: RegExpExecArray): Readonly<Record<string, string | undefined>> {
-  if (groups === undefined) throw new Error('a pattern with named groups matched without them')
-  return groups
-}
-
-function groupOf(match: RegExpExecArray, name: string): string {
-  const group = groupsOf(match)[name]
-  if (group === undefined) throw new Error(`the pattern matched "${match[0]}" without its group ${name}`)
-  return group
-}
-
 function literal(text: string): string {
   return text.replaceAll(REGEXP_SYNTAX, (syntax) => `\\${syntax}`)
-}
-
-/** ESLint drops a glob's leading `./` (@eslint/config-array, normalizePattern). */
-function withoutLeadingDotSlash(glob: string): string {
-  return glob.startsWith(LEADING_DOT_SLASH) ? glob.slice(LEADING_DOT_SLASH.length) : glob
 }

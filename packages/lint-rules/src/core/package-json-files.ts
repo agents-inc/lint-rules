@@ -3,6 +3,7 @@ import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isRecord } from './is-record.ts'
+import { directoriesUpFrom } from './paths-from-a-folder.ts'
 
 export const PACKAGE_JSON = 'package.json'
 export const THIS_PACKAGE = '@agents-inc/lint-rules'
@@ -73,11 +74,6 @@ export function resolvedFrom(dir: string, request: string): string | null {
 
 function isModuleNotFound(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'MODULE_NOT_FOUND'
-}
-
-function directoriesUpFrom(absoluteDir: string): string[] {
-  const parent = dirname(absoluteDir)
-  return parent === absoluteDir ? [absoluteDir] : [absoluteDir, ...directoriesUpFrom(parent)]
 }
 
 function parsedJsonIn(path: string): unknown {

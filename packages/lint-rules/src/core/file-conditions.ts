@@ -1,4 +1,5 @@
-import { extensionsNamedBy, literalGlobOf, NEGATION, pathNamedBy } from './globs.ts'
+import { extensionsNamedBy, isNegated, literalGlobOf, negationOf, pathNamedBy, withoutNegation } from './globs.ts'
+import { readOnce } from './read-once.ts'
 
 // Which files a rule of ours may run in, worked out from glob lists alone, so that a block of ours
 // can be kept to exactly those files without a function in its `files` (spec-owner-answers.md,
@@ -258,15 +259,6 @@ function keyOfNormalizedTerm(term: FilesTerm): string {
   return readOnce(keysOfTerms, term, keyOfTerm)
 }
 
-/** What the term is read as, read the first time it is asked for: nothing a term is read as is undefined. */
-function readOnce<Value>(reads: WeakMap<FilesTerm, Value>, term: FilesTerm, read: (term: FilesTerm) => Value): Value {
-  const known = reads.get(term)
-  if (known !== undefined) return known
-  const value = read(term)
-  reads.set(term, value)
-  return value
-}
-
 function termsByPathOf(condition: FilesCondition): TermsByPath {
   const byPath = new Map<string | typeof NO_PATH, FilesTerm[]>()
   condition.forEach((term) => {
@@ -300,7 +292,7 @@ function inOrderOfKeys([key]: readonly [string, FilesTerm], [otherKey]: readonly
  */
 function isContradictory(term: FilesTerm): boolean {
   const { all, none } = term
-  return all.some((glob) => sortedHolds(none, glob) || sortedHolds(all, `${NEGATION}${glob}`)) || asksOnlyExtensionsItRefuses(term)
+  return all.some((glob) => sortedHolds(none, glob) || sortedHolds(all, negationOf(glob))) || asksOnlyExtensionsItRefuses(term)
 }
 
 /**
@@ -357,12 +349,4 @@ function isWithin(held: GlobsHeld, other: FilesTerm): boolean {
 
 function sortedOnce(globs: readonly string[]): string[] {
   return [...new Set(globs)].toSorted()
-}
-
-function isNegated(glob: string): boolean {
-  return glob.startsWith(NEGATION)
-}
-
-function withoutNegation(glob: string): string {
-  return glob.slice(NEGATION.length)
 }

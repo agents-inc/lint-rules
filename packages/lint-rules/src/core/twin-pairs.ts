@@ -1,15 +1,17 @@
-import type { Catalog, RuleRoute } from '@workspace/rule-data'
+import { type Catalog, isOxlintRoute, routeOf, type RuleRoute } from '@workspace/rule-data'
 import { optionKeysOxlintRefuses } from '@workspace/rule-data/oxlint-refused-options'
-import { currentExtensionsOf, isOxlintRoute, routeOf, twinsOf } from './catalog-lookups.ts'
+import { currentExtensionsOf, twinsOf } from './catalog-lookups.ts'
 import { TS_FILES } from './eslint-file-types.ts'
 import { isRecord } from './is-record.ts'
 import type { LintRulesInput } from './lint-rules-input.ts'
 import {
   type FileOverrideLayer,
+  OFF_SETTING,
   type RuleLayers,
   type RuleSetting,
   type RuleSettings,
   resolveRuleLayers,
+  settingsWithout,
   shippedScopeOf,
   suppressionRulesOf,
   tsFileRulesOf,
@@ -30,7 +32,6 @@ export type TwinPair = { readonly core: RuleRoute; readonly extension: RuleRoute
 /** Which names the deciding part of a layer states. */
 export type DecidingPart = { readonly decidesTheExtension: boolean; readonly decidesTheCore: boolean }
 
-const OFF_SETTING: RuleSetting = { severity: 'off', options: [], files: null, ignores: null }
 // Off in the TS files alone of the layer stating it, which oxlint writes as an override of its own.
 const OFF_ON_TS_FILES: RuleSetting = { ...OFF_SETTING, files: [TS_FILES] }
 
@@ -257,6 +258,6 @@ function oxlintRefusesAnOptionOf({ options }: RuleSetting, core: RuleRoute): boo
 
 /** The settings with the rule at the setting given: an off left out where offs are, as the top level holds only rules turned on. */
 function withSetting(settings: RuleSettings, ruleId: string, setting: RuleSetting, offs: SettingsTaking['offs']): RuleSettings {
-  if (setting.severity === 'off' && offs === 'left out') return Object.fromEntries(Object.entries(settings).filter(([id]) => id !== ruleId))
+  if (setting.severity === 'off' && offs === 'left out') return settingsWithout(settings, new Set([ruleId]))
   return { ...settings, [ruleId]: setting }
 }

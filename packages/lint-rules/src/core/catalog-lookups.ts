@@ -1,29 +1,13 @@
-import { type Catalog, pluginPrefixOf, type RuleRoute, type RulesetDefinition, type ShippedRule } from '@workspace/rule-data'
-
-export type OxlintRoute = RuleRoute & { readonly oxlintName: string; readonly oxlintPlugin: string }
+import { type Catalog, pluginPrefixOf, routeOf, type RuleRoute, type RulesetDefinition, type ShippedRule } from '@workspace/rule-data'
+import { readOnce } from './read-once.ts'
 
 /** A rule `allowSuppressions` turns on or off, with its setting in each suppression mode. */
 export type SuppressionRoute = RuleRoute & { readonly shipped: Extract<ShippedRule, { whenSuppressions: unknown }> }
 
 const ruleIdsByEslintNameRead = new WeakMap<Catalog, ReadonlyMap<string, readonly string[]>>()
 
-export function routeOf(id: string, catalog: Catalog): RuleRoute {
-  const route = catalog.rules.get(id)
-  if (route === undefined) throw new Error(`unknown rule ID "${id}"`)
-  return route
-}
-
 export function rulesetNamed(name: string, catalog: Catalog): RulesetDefinition | undefined {
   return catalog.rulesets.find((ruleset) => ruleset.name === name)
-}
-
-/** Narrows an oxlint-routed rule to one that carries the oxlint name and plugin it needs. */
-export function isOxlintRoute(route: RuleRoute): route is OxlintRoute {
-  if (route.engine !== 'oxlint') return false
-  if (route.oxlintName === null || route.oxlintPlugin === null) {
-    throw new Error(`${route.id}: routed to oxlint without an oxlint name and plugin`)
-  }
-  return true
 }
 
 /** Whether `allowSuppressions` decides the rule: no ruleset turns it on, and `rules` cannot set it. */
@@ -68,11 +52,7 @@ export function ruleIdsNamedInEslint(name: string, catalog: Catalog): readonly s
 
 /** Every ESLint name of every rule, read once per catalog: both merges look up each name a team's config states. */
 function ruleIdsByEslintNameIn(catalog: Catalog): ReadonlyMap<string, readonly string[]> {
-  const read = ruleIdsByEslintNameRead.get(catalog)
-  if (read !== undefined) return read
-  const byName = ruleIdsByEslintName(catalog)
-  ruleIdsByEslintNameRead.set(catalog, byName)
-  return byName
+  return readOnce(ruleIdsByEslintNameRead, catalog, ruleIdsByEslintName)
 }
 
 function ruleIdsByEslintName(catalog: Catalog): ReadonlyMap<string, readonly string[]> {

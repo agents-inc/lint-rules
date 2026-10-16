@@ -1,5 +1,5 @@
 import { relative, resolve, sep } from 'node:path'
-import type { Catalog } from '@workspace/rule-data'
+import { type Catalog, isOxlintRoute, routeOf } from '@workspace/rule-data'
 import type { ESLint, Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
 import {
@@ -20,14 +20,14 @@ import {
   type TypeInformation,
   type TypeInformationSwitch,
 } from './build-eslint-config.ts'
-import { currentExtensionsOf, isOxlintRoute, routeOf } from './catalog-lookups.ts'
+import { currentExtensionsOf } from './catalog-lookups.ts'
 import type { EslintPart } from './editor-parts.ts'
 import { firstGiven, pluginsRegisteredBy, ruleIdsTheTeamsEslintConfigSets, rulesStatedIn } from './eslint-config-reading.ts'
 import { asFilesEntry, eslintDefaultIgnoresHoldUnder } from './eslint-file-types.ts'
 import { eachWithin, groupedByWhere, type Where, type Within, whereOf } from './eslint-off-blocks.ts'
 import { buildEslintSettings, givesTheSetting, type SettingOfOurs, type SettingPath, settingsGiving, settingsOfOurs } from './eslint-settings.ts'
 import { bothOf, eitherOf, type FilesAndIgnores, type FilesCondition, type FilesEntry, filesInScopeOf, globsOf, matchesEveryFile, notOf } from './file-conditions.ts'
-import { literalGlobOf, NEGATION } from './globs.ts'
+import { keepingNegation, literalGlobOf, withoutLeadingDotSlash } from './globs.ts'
 import { globsReadFromTheRoot } from './globs-read-from-above.ts'
 import { isRecord } from './is-record.ts'
 import { liesOutside } from './lies-outside.ts'
@@ -66,7 +66,6 @@ const TYPE_INFORMATION_OPTIONS = ['project', 'projectService'] as const
 // Joined to a plugin's own version as semver build metadata, so its cache key carries ours too.
 const OUR_BUILD_TAG = 'agents-inc-lint-rules'
 const GLOB_SEPARATOR = '/'
-const LEADING_DOT_SLASH = './'
 const EVERY_FILE_UNDER = '/**'
 const CONFINED = 'confined'
 const SETTINGS = 'settings'
@@ -504,10 +503,7 @@ function teamFilesUnder(under: string, { files, ignores }: TeamFiles): TeamFiles
 
 /** ESLint drops a glob's leading `./` itself, which it cannot do once the glob is put under a path. */
 function globUnder(under: string, glob: string): string {
-  const negated = glob.startsWith(NEGATION)
-  const pattern = negated ? glob.slice(NEGATION.length) : glob
-  const relativePattern = pattern.startsWith(LEADING_DOT_SLASH) ? pattern.slice(LEADING_DOT_SLASH.length) : pattern
-  return `${negated ? NEGATION : ''}${under}${GLOB_SEPARATOR}${relativePattern}`
+  return keepingNegation(glob, (pattern) => `${under}${GLOB_SEPARATOR}${withoutLeadingDotSlash(pattern)}`)
 }
 
 /** The team's block as it is, but each plugin object the one shared under its prefix. */

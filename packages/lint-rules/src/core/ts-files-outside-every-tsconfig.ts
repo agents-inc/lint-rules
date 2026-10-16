@@ -1,6 +1,9 @@
 import { type Dirent, readdirSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import ts from 'typescript'
+import { namedGroupOf } from './named-groups.ts'
+import { directoriesUpFrom } from './paths-from-a-folder.ts'
+import { readOnce } from './read-once.ts'
 
 type ReleaseLine = { readonly major: number; readonly minor: number }
 
@@ -78,13 +81,8 @@ function isTakenInByAConfig(file: string, root: string, reads: Reads): boolean {
 
 /** The config files the project service tries for the file, nearest first: before TypeScript 5.7, the nearest alone. */
 function configFilesTriedFor(file: string, root: string, reads: Reads): readonly string[] {
-  const nearestFirst = directoriesFromUpTo(dirname(file), root).flatMap((directory) => configFilesIn(directory, reads))
+  const nearestFirst = directoriesUpFrom(dirname(file), root).flatMap((directory) => configFilesIn(directory, reads))
   return triesEveryAncestorConfig(ts.versionMajorMinor) ? nearestFirst : nearestFirst.slice(0, 1)
-}
-
-/** The directory and each one above it up to the root, which lies at or above it. */
-function directoriesFromUpTo(directory: string, root: string): string[] {
-  return directory === root ? [root] : [directory, ...directoriesFromUpTo(dirname(directory), root)]
 }
 
 function configFilesIn(directory: string, reads: Reads): readonly string[] {
@@ -121,14 +119,6 @@ function configFileReadFrom({ fileNames, options, projectReferences = [] }: ts.P
   }
 }
 
-function readOnce<Value>(cache: Map<string, Value>, key: string, read: () => Value): Value {
-  const known = cache.get(key)
-  if (known !== undefined) return known
-  const value = read()
-  cache.set(key, value)
-  return value
-}
-
 function triesEveryAncestorConfig(versionMajorMinor: string): boolean {
   const { major, minor } = releaseLineOf(versionMajorMinor)
   const since = EVERY_ANCESTOR_CONFIG_SINCE
@@ -136,11 +126,9 @@ function triesEveryAncestorConfig(versionMajorMinor: string): boolean {
 }
 
 function releaseLineOf(versionMajorMinor: string): ReleaseLine {
-  const groups = RELEASE_LINE.exec(versionMajorMinor)?.groups
-  const major = groups?.['major']
-  const minor = groups?.['minor']
-  if (major === undefined || minor === undefined) throw new Error(`TypeScript gives its version as "${versionMajorMinor}", not major.minor`)
-  return { major: Number(major), minor: Number(minor) }
+  const match = RELEASE_LINE.exec(versionMajorMinor)
+  if (match === null) throw new Error(`TypeScript gives its version as "${versionMajorMinor}", not major.minor`)
+  return { major: Number(namedGroupOf(match, 'major')), minor: Number(namedGroupOf(match, 'minor')) }
 }
 
 /** Every file under the directory, relative to the root, `/` between segments. */

@@ -1,9 +1,9 @@
-import type { Catalog, RuleRoute, SuppressionMode } from '@workspace/rule-data'
+import { type Catalog, isOxlintRoute, type OxlintRoute, routeOf, type RuleRoute, type SuppressionMode } from '@workspace/rule-data'
 import { pluginPrefixOf } from '@workspace/rule-data/rule-id-parts'
 import { type ESLint, Linter, type Rule } from 'eslint'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
-import { isEslintRoute, isOxlintRoute, type OxlintRoute, routeOf, twinsOf } from './catalog-lookups.ts'
+import { isEslintRoute, twinsOf } from './catalog-lookups.ts'
 import { withCompatLayerWhereNeeded } from './eslint-compat.ts'
 import { asFilesEntry, CONSUMER_CONFIG_FILES, eslintGlobalIgnoresOf, filesMatchingAll, JS_AND_TS_FILES, matchesOnlyJsAndTs, TS_FILES } from './eslint-file-types.ts'
 import { type NamesOffWhere, offBlocksOf, rulesOff, twinsOffName } from './eslint-off-blocks.ts'
@@ -17,10 +17,14 @@ import {
   type EnvChanges,
   type FileOverrideLayer,
   layersKeepingRules,
+  OFF_SETTING,
   type RuleLayers,
   type RuleSetting,
   type RuleSettings,
+  ruleEntryOf,
   ruleIdsOnIn,
+  settingsOn,
+  settingsWithout,
   tsFileRulesOf,
 } from './resolve-rule-layers.ts'
 import {
@@ -164,6 +168,15 @@ type UntypedStatement = { readonly route: RuleRoute; readonly withTypes: RuleSet
 /** An entry's rules as its blocks state them, the settings it gives its TS files alone, and the untyped rules its typed blocks state. */
 type EntryRules = { readonly rules: LayerRules; readonly onTsFiles: readonly EslintSetting[]; readonly untyped: readonly UntypedStatement[] }
 
+/** An entry's layer, and what its blocks are built from. */
+type EntryBlocksSource = EntryRules & { readonly layer: FileOverrideLayer }
+
+/** A layer's rules as its blocks state them, and the settings it gives its TS files alone. */
+type LayerRulesAndTsFiles = Pick<EntryRules, 'rules' | 'onTsFiles'>
+
+/** The top level, below every entry: what it states, and its rules as its blocks state them. */
+type TopLevelBelow = { readonly stated: LayerStatements; readonly rules: LayerRules }
+
 /** What our blocks but the off-switch are built from. */
 type BlocksSource = Omit<EslintBlocksSource, 'offSwitch'>
 
@@ -198,7 +211,6 @@ const DO_NOTHING_RULE: Rule.RuleModule = { meta: { schema: false }, create: () =
 
 const NO_TEAM_PLUGINS: ReadonlyMap<string, ESLint.Plugin> = new Map()
 const NO_UNTYPED_STATEMENT: readonly UntypedStatement[] = []
-const OFF_SETTING: RuleSetting = { severity: 'off', options: [], files: null, ignores: null }
 const NO_RULE_NAMES: ReadonlyMap<string, readonly string[]> = new Map()
 // A layer's settings for its TS files alone exist only beside oxlint, where no core rule is taken over.
 const NO_LAYER_RULES: LayerRules = { settings: [], takeovers: [] }
@@ -269,14 +281,8 @@ export function eslintBlocksBeforeTheOffSwitch(source: BlocksSource, catalog: Ca
   const topLevel = layerRulesOf(topLevelStated, null, source, catalog)
   const topLevelOnTsFiles = eslintSettingsOf(tsFileRulesOf(layers), catalog)
   const splits = splitsByTypesIn(catalog)
-  const entries = layers.fileOverrides.map((layer) => {
-    const rules = layerRulesOf(entryStatements(layer), topLevelStated, source, catalog)
-    const onTsFiles = eslintSettingsOf(tsFileRulesOf(layer), catalog)
-    return { layer, rules, onTsFiles, untyped: untypedStatementsOfAnEntry(splits, rules, topLevel) }
-  })
-  const runsTypedRule =
-    [topLevel, ...entries.map(({ rules }) => rules)].some(runsATypedRule) ||
-    [topLevelOnTsFiles, ...entries.map(({ onTsFiles }) => onTsFiles)].some(runsATypedSetting)
+  const entries = layers.fileOverrides.map((layer) => entryBlocksSourceOf(layer, { stated: topLevelStated, rules: topLevel }, splits, source, catalog))
+  const runsTypedRule = runsAnyTypedRule([{ rules: topLevel, onTsFiles: topLevelOnTsFiles }, ...entries])
   return {
     globalIgnores: globalIgnoresBlocks(eslintGlobalIgnoresOf(layers)),
     base: baseBlock(layers.env, eslintRuleMap(settingsPlaced('plain', topLevel.settings)), source),
@@ -287,9 +293,20 @@ export function eslintBlocksBeforeTheOffSwitch(source: BlocksSource, catalog: Ca
       ...typedBlocks(typeInformation, settingsPlaced('typed', topLevel.settings), untypedStatementsAtTheTopLevel(splits, topLevel), runsTypedRule),
       ...settingsPlaced('scoped', topLevel.settings).flatMap((scoped) => scopeBlocks(`${BLOCK}/scope`, [], scoped, topLevel, typeInformation)),
       ...blocksOnTsFilesAlone(`${BLOCK}/scope`, [], topLevelOnTsFiles, typeInformation),
-      ...entries.flatMap(({ layer, rules, onTsFiles, untyped }, index) => fileOverrideBlocks(layer, index, { rules, onTsFiles, untyped }, source)),
+      ...entries.flatMap((entry, index) => fileOverrideBlocks(entry, index, source)),
     ],
   }
+}
+
+/** An entry's rules as its blocks state them over the top level's, the settings it gives its TS files alone, and the untyped rules its typed blocks state. */
+function entryBlocksSourceOf(layer: FileOverrideLayer, topLevel: TopLevelBelow, splits: readonly SplitByTypes[], source: BlocksSource, catalog: Catalog): EntryBlocksSource {
+  const rules = layerRulesOf(entryStatements(layer), topLevel.stated, source, catalog)
+  return { layer, rules, onTsFiles: eslintSettingsOf(tsFileRulesOf(layer), catalog), untyped: untypedStatementsOfAnEntry(splits, rules, topLevel.rules) }
+}
+
+/** Whether some layer runs a typed rule, in all its files or on its TS files alone. */
+function runsAnyTypedRule(layers: readonly LayerRulesAndTsFiles[]): boolean {
+  return layers.some(({ rules, onTsFiles }) => runsATypedRule(rules) || runsATypedSetting(onTsFiles))
 }
 
 /** The block that comes last, stating each of its rules off, so no block before it can run one. */
@@ -457,7 +474,7 @@ function typedBlockOf(block: ScopedBlock, untyped: readonly UntypedStatement[]):
 }
 
 function untypedEntries(untyped: readonly UntypedStatement[], where: 'withTypes' | 'withoutTypes'): Linter.RulesRecord {
-  return Object.fromEntries(untyped.map((statement): [string, Linter.RuleEntry] => [statement.route.id, eslintEntryOf(statement[where])]))
+  return Object.fromEntries(untyped.map((statement): [string, Linter.RuleEntry] => [statement.route.id, ruleEntryOf(statement[where])]))
 }
 
 /**
@@ -507,7 +524,7 @@ function scopeBlocks(
     name: `${namePrefix}/${route.id}`,
     files: filesMatchingAll([...layerFiles, ...ruleFilesOf(scoped)]),
     ignores: [...ruleIgnoresOf(scoped, typeInformation)],
-    rules: { [route.id]: eslintEntryOf(setting) },
+    rules: { [route.id]: ruleEntryOf(setting) },
   }
   if (route.typed) return keptToTypedFiles(typedBlockOf(block, NO_UNTYPED_STATEMENT), typeInformation)
   const takeoversOfTheRule = takeovers.filter(({ core }) => core.id === route.id)
@@ -538,7 +555,7 @@ function ruleIgnoresOf({ route, setting }: EslintSetting, typeInformation: TypeI
  * merged before placing (`entryStatements`): a rule the entry sets never also lands in a scope block
  * after it.
  */
-function fileOverrideBlocks(layer: FileOverrideLayer, index: number, { rules, onTsFiles, untyped }: EntryRules, source: BlocksSource): Linter.Config[] {
+function fileOverrideBlocks({ layer, rules, onTsFiles, untyped }: EntryBlocksSource, index: number, source: BlocksSource): Linter.Config[] {
   const entry: BlockScope = { name: `${BLOCK}/file-overrides/${index}`, files: filesMatchingAll([layer.files]), ignores: [] }
   const { settings } = rules
   return [
@@ -714,7 +731,7 @@ function takeoverOf({ core, extension }: TwinPair, layer: LayerStatements, below
   const { decidesTheExtension, decidesTheCore } = whatTheDecidingPartStates({ core, extension }, layer)
   const onTsFiles = decidesTheExtension ? extensionHere : coreHere
   if (onTsFiles === null) throw new Error(`${core.id}: the layer states it or ${extension.id}, so one decides the extension's setting`)
-  if (!decidesTheExtension && !acceptsEntry(extension.id, eslintEntryOf(onTsFiles), source.plugins)) return []
+  if (!decidesTheExtension && !acceptsEntry(extension.id, ruleEntryOf(onTsFiles), source.plugins)) return []
   const elsewhere = decidesTheCore ? coreHere : coreSettingTakenFrom(extensionHere, core, source.plugins) ?? coreHere
   return [{ core, extension, onTsFiles, elsewhere, withoutTypes: elsewhere ?? coreBelow, decidedByTheExtension: decidesTheExtension }]
 }
@@ -725,7 +742,7 @@ function takeoverOf({ core, extension }: TwinPair, layer: LayerStatements, below
  * options.
  */
 function coreSettingTakenFrom(extensionSetting: RuleSetting | null, core: RuleRoute, plugins: ReadonlyMap<string, ESLint.Plugin>): RuleSetting | null {
-  if (extensionSetting === null || !acceptsEntry(core.id, eslintEntryOf(extensionSetting), plugins)) return null
+  if (extensionSetting === null || !acceptsEntry(core.id, ruleEntryOf(extensionSetting), plugins)) return null
   return extensionSetting
 }
 
@@ -785,7 +802,7 @@ function rulesOnTsFiles(takeovers: readonly Takeover[]): Linter.RulesRecord {
   return Object.fromEntries(
     takeovers.flatMap(({ core, extension, onTsFiles }): [string, Linter.RuleEntry][] => [
       [core.id, 'off'],
-      [extension.id, eslintEntryOf(onTsFiles)],
+      [extension.id, ruleEntryOf(onTsFiles)],
     ]),
   )
 }
@@ -797,7 +814,7 @@ function rulesBackToTheCore(takeovers: readonly Takeover[]): Linter.RulesRecord 
 
 /** The core rule's entry at the setting given: none where ours does not run it. */
 function coreEntryWhere(core: RuleRoute, setting: RuleSetting | null): [string, Linter.RuleEntry][] {
-  return setting === null ? [] : [[core.id, eslintEntryOf(setting)]]
+  return setting === null ? [] : [[core.id, ruleEntryOf(setting)]]
 }
 
 /**
@@ -868,21 +885,13 @@ function placementOf({ route, setting }: EslintSetting): Placement {
   return route.typed ? 'typed' : 'plain'
 }
 
-function settingsWithout(settings: RuleSettings, ruleIds: ReadonlySet<string>): RuleSettings {
-  return Object.fromEntries(Object.entries(settings).filter(([id]) => !ruleIds.has(id)))
-}
-
-function settingsOn(settings: RuleSettings): RuleSettings {
-  return Object.fromEntries(Object.entries(settings).filter(([, { severity }]) => severity !== 'off'))
-}
-
 function eslintSettingsOf(settings: RuleSettings, catalog: Catalog): EslintSetting[] {
   return Object.entries(settings).map(([id, setting]) => ({ route: routeOf(id, catalog), setting }))
 }
 
 function eslintRuleMap(settings: readonly EslintSetting[]): Linter.RulesRecord {
   return Object.fromEntries(
-    settings.map(({ route, setting }): [string, Linter.RuleEntry] => [route.id, eslintEntryOf(setting)]),
+    settings.map(({ route, setting }): [string, Linter.RuleEntry] => [route.id, ruleEntryOf(setting)]),
   )
 }
 
@@ -893,10 +902,6 @@ function eslintRuleMap(settings: readonly EslintSetting[]): Linter.RulesRecord {
 function inlineConfigGuardOf({ suppressions }: FileOverrideLayer): InlineConfigGuard {
   if (suppressions === undefined) return {}
   return { linterOptions: { noInlineConfig: readsNoDirectivesIn(suppressions.mode) } }
-}
-
-function eslintEntryOf({ severity, options }: RuleSetting): Linter.RuleEntry {
-  return severity === 'off' ? 'off' : [severity, ...options]
 }
 
 /**

@@ -14,6 +14,7 @@ import {
   THIS_PACKAGE,
   versionOf,
 } from './package-json-files.ts'
+import { readOnce } from './read-once.ts'
 
 /** The installed oxlint the merge checks, and the range this package is tested with, which its refusals name. */
 type InstalledOxlint = { readonly tsconfigRootDir: string; readonly manifestPath: string; readonly version: string; readonly range: string }
@@ -130,11 +131,7 @@ function schemaSpellingOf({ oxlintName, oxlintPlugin }: OxlintRule): string {
 }
 
 function schemaReadAt(schemaPath: string): SchemaRead {
-  const known = schemaReads.get(schemaPath)
-  if (known !== undefined) return known
-  const read = readSchema(schemaPath)
-  schemaReads.set(schemaPath, read)
-  return read
+  return readOnce(schemaReads, schemaPath, readSchema)
 }
 
 function readSchema(schemaPath: string): SchemaRead {

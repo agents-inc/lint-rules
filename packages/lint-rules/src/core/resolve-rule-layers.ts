@@ -1,5 +1,5 @@
-import type { Catalog, RuleRoute, RulesetList, ShippedRule, SuppressionMode } from '@workspace/rule-data'
-import { envOfRulesets, isSuppressionRoute, readsRuntimeGlobals, routeOf, rulesetNamed, type SuppressionRoute } from './catalog-lookups.ts'
+import { type Catalog, routeOf, type RuleRoute, type RulesetList, type ShippedRule, type SuppressionMode } from '@workspace/rule-data'
+import { envOfRulesets, isSuppressionRoute, readsRuntimeGlobals, rulesetNamed, type SuppressionRoute } from './catalog-lookups.ts'
 import { formsOfAnIgnoresValue, normalizeGlob, normalizeGlobs } from './globs.ts'
 import {
   describeSeverity,
@@ -14,6 +14,7 @@ import {
   severityOf,
   suppressionModeSetBy,
 } from './lint-rules-input.ts'
+import { readOnce } from './read-once.ts'
 
 export type RuleSetting = {
   readonly severity: Severity
@@ -23,6 +24,9 @@ export type RuleSetting = {
 }
 
 export type RuleSettings = Readonly<Record<string, RuleSetting>>
+
+/** A rule's entry as both engines' configs write it: off alone, else its severity and its options. */
+export type RuleEntryWritten = 'off' | [Severity, ...unknown[]]
 
 /** One rule a layer states, with its setting there. */
 export type StatedRule = { readonly id: string; readonly setting: RuleSetting }
@@ -95,7 +99,7 @@ type TopLevel = {
 type RulesetDrivenChanges = { readonly ruleIds: readonly string[]; readonly envs: ReadonlySet<string> }
 
 const RUNTIMES_LIST: RulesetList = 'runtimes'
-const OFF: RuleSetting = { severity: 'off', options: [], files: null, ignores: null }
+export const OFF_SETTING: RuleSetting = { severity: 'off', options: [], files: null, ignores: null }
 const UNSCOPED = { files: null, ignores: null } as const
 // Owner, 2026-10-10: suppression comments are banned unless the consumer's config allows them.
 const SUPPRESSION_MODE_BY_DEFAULT: SuppressionMode = 'banned'
@@ -115,7 +119,7 @@ export function resolveRuleLayers(lintRules: LintRulesInput, catalog: Catalog): 
     ignores: ignores.flatMap(formsOfAnIgnoresValue),
     env: topLevel.env,
     suppressionMode,
-    rules: { ...topLevel.rulesOn, ...withoutOff(suppressionRulesIn(suppressionMode, catalog)) },
+    rules: { ...topLevel.rulesOn, ...settingsOn(suppressionRulesIn(suppressionMode, catalog)) },
     statedInRules: Object.keys(rules).toSorted(),
     fileOverrides: resolveFileOverrides(fileOverrides, topLevel, catalog),
   }
@@ -152,7 +156,7 @@ export function tsFileRulesOf({ tsFileRules }: Pick<RuleLayers, 'tsFileRules'>):
 
 /** The layers without the rules they state off. */
 export function layersOfRulesOn(layers: RuleLayers): RuleLayers {
-  return layersKeepingRules(layers, ({ setting }) => setting.severity !== 'off')
+  return layersWithEachRuleMap(layers, settingsOn)
 }
 
 /** Every rule a layer states, at any severity, once each and sorted. */
@@ -235,7 +239,7 @@ function suppressionRulesIn(mode: SuppressionMode, catalog: Catalog): RuleSettin
 
 function settingInSuppressionMode(route: SuppressionRoute, mode: SuppressionMode): RuleSetting {
   const setting = route.shipped.whenSuppressions[mode]
-  if (setting === 'off') return OFF
+  if (setting === 'off') return OFF_SETTING
   return { severity: 'error', options: setting.options, ...shippedScopeOf(route) }
 }
 
@@ -302,7 +306,7 @@ function rulesOnUnder(rulesets: RulesetsInput, rules: RuleSettingsInput, catalog
     id,
     scopedSettingOf(id, entry, shippedRules, catalog),
   ])
-  return withoutCoveredRules(withoutOff({ ...shippedRules, ...Object.fromEntries(settingsGiven) }), rules, catalog)
+  return withoutCoveredRules(settingsOn({ ...shippedRules, ...Object.fromEntries(settingsGiven) }), rules, catalog)
 }
 
 /**
@@ -312,7 +316,7 @@ function rulesOnUnder(rulesets: RulesetsInput, rules: RuleSettingsInput, catalog
  * rule's typescript-eslint twin is not naming it.
  */
 function withoutCoveredRules(rulesOn: RuleSettings, statedInRules: RuleSettingsInput, catalog: Catalog): RuleSettings {
-  return Object.fromEntries(Object.entries(rulesOn).filter(([id]) => !isLeftOutForItsCover(id, rulesOn, statedInRules, catalog)))
+  return settingsKeeping(rulesOn, ({ id }) => !isLeftOutForItsCover(id, rulesOn, statedInRules, catalog))
 }
 
 /** Whether the rule's cover is on, and the top-level `rules` do not state the rule themselves. */
@@ -332,11 +336,11 @@ function coverOf(id: string, catalog: Catalog): string | null {
  * turns it on or not: throws where the data breaks what S needs (spec-core.md 2.6).
  */
 function coversIn(catalog: Catalog): ReadonlyMap<string, string> {
-  const read = coversRead.get(catalog)
-  if (read !== undefined) return read
-  const covers = new Map([...catalog.rules.values()].flatMap((route) => coverEntryOf(route, catalog)))
-  coversRead.set(catalog, covers)
-  return covers
+  return readOnce(coversRead, catalog, coversCheckedIn)
+}
+
+function coversCheckedIn(catalog: Catalog): ReadonlyMap<string, string> {
+  return new Map([...catalog.rules.values()].flatMap((route) => coverEntryOf(route, catalog)))
 }
 
 /** The rule and the rule covering it, where it ships with a `coveredBy`: throws where the data breaks what S needs. */
@@ -441,7 +445,7 @@ function rulesetChanges(
 
 /** A rule's setting for the entry's files: as its rulesets turn it on, and off where they leave it out. */
 function settingUnder(entryRulesOn: RuleSettings, id: string): RuleSetting {
-  return entryRulesOn[id] ?? OFF
+  return entryRulesOn[id] ?? OFF_SETTING
 }
 
 /** The envs the entry switches against the top level's, and each restated env at the entry's setting. */
@@ -473,12 +477,24 @@ function tsFileRulesChanged({ tsFileRules }: Pick<RuleLayers, 'tsFileRules'>, ch
   return tsFileRules === undefined ? {} : { tsFileRules: change(tsFileRules) }
 }
 
+/** The settings of the rules `keeps` answers yes for. */
 function settingsKeeping(settings: RuleSettings, keeps: KeepsRule): RuleSettings {
   return Object.fromEntries(Object.entries(settings).filter(([id, setting]) => keeps({ id, setting })))
 }
 
-function withoutOff(settings: RuleSettings): RuleSettings {
-  return Object.fromEntries(Object.entries(settings).filter(([, setting]) => setting.severity !== 'off'))
+/** The settings turning their rule on. */
+export function settingsOn(settings: RuleSettings): RuleSettings {
+  return settingsKeeping(settings, ({ setting }) => setting.severity !== 'off')
+}
+
+/** The settings of every rule but those given. */
+export function settingsWithout(settings: RuleSettings, ruleIds: ReadonlySet<string>): RuleSettings {
+  return settingsKeeping(settings, ({ id }) => !ruleIds.has(id))
+}
+
+/** A severity alone resets an oxlint rule's options to its defaults, so every rule turned on carries its options. */
+export function ruleEntryOf({ severity, options }: RuleSetting): RuleEntryWritten {
+  return severity === 'off' ? 'off' : [severity, ...options]
 }
 
 function isShippedRoute(route: RuleRoute): route is ShippedRoute {

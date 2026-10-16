@@ -1,6 +1,16 @@
 import type { OxlintOverride } from 'oxlint'
 import type { FilesCondition, FilesTerm } from './file-conditions.ts'
-import { extensionsNamedBy, filesOfExtensions, NEGATION, pathNamedBy } from './globs.ts'
+import {
+  EVERY_FILE_AT_ANY_DEPTH,
+  extensionsNamedBy,
+  filesOfExtensions,
+  isNegated,
+  LEADING_DOT_SLASH,
+  negationOf,
+  pathNamedBy,
+  withoutLeadingDotSlash,
+  withoutNegation,
+} from './globs.ts'
 
 // A files condition as oxlint overrides apply it. An override takes a file where a glob of `files`
 // matches it and no glob of `excludeFiles` does, and reads a negated glob in `excludeFiles` as every
@@ -23,11 +33,9 @@ type Joined = { readonly kind: 'one glob'; readonly glob: string } | { readonly 
 /** A term as one override names it: the glob of its `files`, and its `excludeFiles`. */
 type WrittenTerm = { readonly glob: string; readonly excludeFiles: readonly string[] }
 
-const CATCH_ALL = '**/*'
 const ANY_FOLDERS = '**/'
 const EVERY_FILE_UNDER = '/**'
 const FOLDER_SEPARATOR = '/'
-const LEADING_DOT_SLASH = './'
 const EXTENSION_DOT = '.'
 const NOT_FOUND = -1
 const NOT_ONE_GLOB: Joined = { kind: 'not one glob' }
@@ -60,7 +68,7 @@ function filesOfAlike(alike: readonly WrittenTerm[]): OverrideFiles {
 function writtenTermOf({ all, none }: FilesTerm): WrittenTerm[] {
   const kept = globsJoined(all)
   if (kept === null) return []
-  const [first = CATCH_ALL, ...rest] = withThoseOfTheConfigFolderFirst(kept.filter((glob) => !isNegated(glob)))
+  const [first = EVERY_FILE_AT_ANY_DEPTH, ...rest] = withThoseOfTheConfigFolderFirst(kept.filter((glob) => !isNegated(glob)))
   const missed = kept.filter(isNegated).map(withoutNegation)
   const excluded = [...missed, ...none].map(writtenFromTheConfigFolder)
   return [{ glob: writtenFromTheConfigFolder(first), excludeFiles: [...rest.map(everyFileItDoesNotMatch), ...excluded] }]
@@ -78,7 +86,7 @@ function withThoseOfTheConfigFolderFirst(globs: readonly string[]): string[] {
 
 /** Whether the glob names files in the config's folder alone, as ESLint reads it: it has no slash once a leading `./` is dropped. */
 function namesFilesInTheConfigFolderAlone(glob: string): boolean {
-  return !withoutALeadingDotSlash(glob).includes(FOLDER_SEPARATOR)
+  return !withoutLeadingDotSlash(glob).includes(FOLDER_SEPARATOR)
 }
 
 /** The globs, each joined into the first it joins: null where two of them match no file together. */
@@ -108,8 +116,8 @@ function globOfAJoin(join: Joined | undefined): string {
  * those show none. A negated glob joins only those matching every file.
  */
 function joined(first: string, second: string): Joined {
-  if (first === CATCH_ALL || first === second) return { kind: 'one glob', glob: second }
-  if (second === CATCH_ALL) return { kind: 'one glob', glob: first }
+  if (first === EVERY_FILE_AT_ANY_DEPTH || first === second) return { kind: 'one glob', glob: second }
+  if (second === EVERY_FILE_AT_ANY_DEPTH) return { kind: 'one glob', glob: first }
   if (isNegated(first) || isNegated(second)) return NOT_ONE_GLOB
   if (isUnderTheFolderOf(second, first)) return { kind: 'one glob', glob: second }
   if (isUnderTheFolderOf(first, second)) return { kind: 'one glob', glob: first }
@@ -183,22 +191,10 @@ function filesOfAFolderAtAnyDepth(folderGlob: string, anyDepthGlob: string): str
  * it there where they match it at any depth.
  */
 function everyFileItDoesNotMatch(glob: string): string {
-  const fromTheConfigFolder = withoutALeadingDotSlash(glob)
-  return `${NEGATION}${fromTheConfigFolder.includes(FOLDER_SEPARATOR) ? fromTheConfigFolder : `${ANY_FOLDERS}${fromTheConfigFolder}`}`
-}
-
-function withoutALeadingDotSlash(glob: string): string {
-  return glob.startsWith(LEADING_DOT_SLASH) ? glob.slice(LEADING_DOT_SLASH.length) : glob
+  const fromTheConfigFolder = withoutLeadingDotSlash(glob)
+  return negationOf(fromTheConfigFolder.includes(FOLDER_SEPARATOR) ? fromTheConfigFolder : `${ANY_FOLDERS}${fromTheConfigFolder}`)
 }
 
 function keyOf(globs: readonly string[]): string {
   return JSON.stringify(globs)
-}
-
-function isNegated(glob: string): boolean {
-  return glob.startsWith(NEGATION)
-}
-
-function withoutNegation(glob: string): string {
-  return glob.slice(NEGATION.length)
 }

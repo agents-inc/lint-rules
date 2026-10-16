@@ -1,6 +1,5 @@
-import type { Catalog } from '@workspace/rule-data'
+import { type Catalog, isOxlintRoute, type OxlintRoute, routeOf } from '@workspace/rule-data'
 import type { DummyRule, DummyRuleMap, OxlintConfig, OxlintEnv, OxlintGlobals, OxlintOverride, RuleCategories } from 'oxlint'
-import { isOxlintRoute, type OxlintRoute, routeOf } from './catalog-lookups.ts'
 import { TS_FILES } from './eslint-file-types.ts'
 import { bothOf, EVERY_FILE, type FilesCondition, filesInScopeOf } from './file-conditions.ts'
 import { type FrameworkEnv, OTHER_FRAMEWORK_ENVS, SVELTE_COMPONENT_GLOBALS, SVELTE_RUNES, TEST_RUNNER_GLOBALS } from './framework-globals.ts'
@@ -12,6 +11,7 @@ import {
   type RuleLayers,
   type RuleSetting,
   type RuleSettings,
+  ruleEntryOf,
   ruleSettingsOfEveryLayer,
   suppressionRulesOf,
   tsFileRulesOf,
@@ -160,7 +160,7 @@ function fileOverrideOverrides(layer: FileOverrideLayer, catalog: Catalog): Oxli
 function tsFileOverridesOf(layerFiles: FilesCondition, tsFileRules: RuleSettings, catalog: Catalog): OxlintOverride[] {
   return oxlintSettingsOf(tsFileRules, catalog).flatMap(({ route, setting }) => {
     const where = bothOf(layerFiles, filesInScopeOf([TS_FILES], ignoresOf(setting)))
-    return overrideFilesOf(where).map((overrideFiles): OxlintOverride => ({ ...overrideFiles, rules: { [route.oxlintName]: oxlintEntryOf(setting) } }))
+    return overrideFilesOf(where).map((overrideFiles): OxlintOverride => ({ ...overrideFiles, rules: { [route.oxlintName]: ruleEntryOf(setting) } }))
   })
 }
 
@@ -192,7 +192,7 @@ function offUnderItsIgnores({ route, setting }: IgnoringSetting): OxlintOverride
 }
 
 function onExcludingItsIgnores(files: string[], { route, setting }: IgnoringSetting): OxlintOverride {
-  return { files, excludeFiles: [...setting.ignores], rules: { [route.oxlintName]: oxlintEntryOf(setting) } }
+  return { files, excludeFiles: [...setting.ignores], rules: { [route.oxlintName]: ruleEntryOf(setting) } }
 }
 
 function overrideIfNotEmpty(files: string[], env: OxlintEnv, rules: DummyRuleMap): OxlintOverride[] {
@@ -233,13 +233,8 @@ function oxlintSettingsOf(settings: RuleSettings, catalog: Catalog): OxlintSetti
 
 function oxlintRuleMap(settings: readonly OxlintSetting[]): DummyRuleMap {
   return Object.fromEntries(
-    settings.map(({ route, setting }): [string, DummyRule] => [route.oxlintName, oxlintEntryOf(setting)]),
+    settings.map(({ route, setting }): [string, DummyRule] => [route.oxlintName, ruleEntryOf(setting)]),
   )
-}
-
-// A severity alone resets an oxlint rule's options to its defaults, so every rule carries its options.
-function oxlintEntryOf({ severity, options }: RuleSetting): DummyRule {
-  return severity === 'off' ? 'off' : [severity, ...options]
 }
 
 function ignoresOf({ ignores }: RuleSetting): readonly string[] {

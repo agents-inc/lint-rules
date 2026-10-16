@@ -1,5 +1,16 @@
 import { eitherOf, type FilesCondition, filesIgnoredBy } from './file-conditions.ts'
-import { everyFileUnderFoldersMatching, NEGATION, namesFoldersOnly, pathNamedBy, withoutTheLastSlash } from './globs.ts'
+import {
+  everyFileUnderFoldersMatching,
+  isNegated,
+  keepingNegation,
+  LEADING_DOT_SLASH,
+  namesFoldersOnly,
+  negationOf,
+  pathNamedBy,
+  withoutLeadingDotSlash,
+  withoutNegation,
+  withoutTheLastSlash,
+} from './globs.ts'
 
 // Which files our ignores keep our part for each engine out of, each engine reading the same values
 // its own way (decisions.md, fix round 1 review): ESLint as global ignores, oxlint as
@@ -41,7 +52,6 @@ type TakeBack = { readonly taken: string; readonly leftOutAgain: readonly string
 /** A line of our ignores as oxlint reads it: its place, whether it takes files back, its glob from the config's folder, and whether it matches folders only. */
 type IgnoreLine = { readonly index: number; readonly takesBack: boolean; readonly glob: string; readonly matchesFoldersOnly: boolean }
 
-const LEADING_DOT_SLASH = './'
 const FOLDER_SEPARATOR = '/'
 const ANY_DEPTH = '**/'
 const EVERY_FOLDER_IN = '/**'
@@ -50,8 +60,7 @@ const NO_TAKE_BACK: TakeBack[] = []
 
 /** The files ESLint's global ignores leave out, our ignores written as them. */
 export function filesEslintLeavesOutOf(ignores: readonly string[]): FilesCondition {
-  // ESLint drops a value's leading ./ (normalizePattern), negated or not.
-  const values = ignores.map(withoutALeadingDotSlash)
+  const values = ignores.map(asEslintNormalizesIt)
   const fileValues = values.filter((value) => !namesFoldersOnly(value))
   return eitherOf(filesIgnoredBy(fileValues), ...filesUnderEachFolderValueEslintLeavesOut(values))
 }
@@ -69,7 +78,7 @@ export function filesOxlintLeavesOutOf(ignores: readonly string[]): FilesConditi
 
 /** Whether a negated value among the global ignores given, which ESLint reads after the value given (one with no leading ./), takes back a file under a folder that value leaves out. */
 export function eslintTakesFilesBackFrom(value: string, later: readonly string[]): boolean {
-  return takeBacksEslintMakesAfter(value, later.map(withoutALeadingDotSlash)).length > 0
+  return takeBacksEslintMakesAfter(value, later.map(asEslintNormalizesIt)).length > 0
 }
 
 /** For each value but a negated one, the files under the folders it matches that ESLint leaves out. */
@@ -257,7 +266,7 @@ function ignoreLineOf(value: string, index: number): IgnoreLine[] {
 }
 
 function asIgnoresGlob({ takesBack, glob }: IgnoreLine): string {
-  return takesBack ? `${NEGATION}${glob}` : glob
+  return takesBack ? negationOf(glob) : glob
 }
 
 /** What a glob, read without its last slash, matches as a folder, where the globs alone can tell. */
@@ -314,17 +323,7 @@ function segmentsOf(path: string): string[] {
   return path.split(FOLDER_SEPARATOR)
 }
 
-function withoutALeadingDotSlash(value: string): string {
-  const takesBack = isNegated(value)
-  const pattern = takesBack ? withoutNegation(value) : value
-  const relative = pattern.startsWith(LEADING_DOT_SLASH) ? pattern.slice(LEADING_DOT_SLASH.length) : pattern
-  return takesBack ? `${NEGATION}${relative}` : relative
-}
-
-function isNegated(glob: string): boolean {
-  return glob.startsWith(NEGATION)
-}
-
-function withoutNegation(glob: string): string {
-  return glob.slice(NEGATION.length)
+/** ESLint drops a value's leading ./ (normalizePattern), negated or not. */
+function asEslintNormalizesIt(value: string): string {
+  return keepingNegation(value, withoutLeadingDotSlash)
 }

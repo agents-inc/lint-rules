@@ -1,7 +1,9 @@
+import { namedGroupsOf } from './named-groups.ts'
+
 const ANY_DEPTH = '**/'
-export const NEGATION = '!'
+const NEGATION = '!'
 const ESCAPE = '\\'
-const LEADING_DOT_SLASH = './'
+export const LEADING_DOT_SLASH = './'
 const FOLDER_SEPARATOR = '/'
 const ROOT_ANCHORS = [LEADING_DOT_SLASH, FOLDER_SEPARATOR]
 const EVERY_FILE_UNDER = '**'
@@ -12,12 +14,38 @@ const GLOB_SYNTAX = new RegExp(`[${GLOB_SYNTAX_CHARACTERS}]`, 'gu')
 // A glob every syntax character of which is escaped: it matches one path.
 const LITERAL_GLOB = new RegExp(String.raw`^(?:[^${GLOB_SYNTAX_CHARACTERS}]|\\.)*$`, 'su')
 const ESCAPED_CHARACTER = /\\(?<character>.)/gsu
-const EVERY_FILE_AT_ANY_DEPTH = '**/*'
+// Every file, at any depth, whatever its extension (measured: root, nested, dot folders, .js, .ts, .tsx).
+export const EVERY_FILE_AT_ANY_DEPTH = '**/*'
 const EXTENSION_DOT = '.'
 const BRACE_SEPARATOR = ','
 const EXTGLOB_SEPARATOR = '|'
 // What filesOfExtensions writes: one extension, or several braced.
 const FILES_OF_EXTENSIONS = /^\*\*\/\*\.(?:\{(?<braced>[\w,]+)\}|(?<bare>\w+))$/u
+
+/** Whether a glob takes back what it matches: in ignores, a file an earlier glob left out. */
+export function isNegated(glob: string): boolean {
+  return glob.startsWith(NEGATION)
+}
+
+/** A negated glob's pattern, without its `!`. */
+export function withoutNegation(negatedGlob: string): string {
+  return negatedGlob.slice(NEGATION.length)
+}
+
+/** The glob negated. */
+export function negationOf(glob: string): string {
+  return `${NEGATION}${glob}`
+}
+
+/** The glob with the change made to its pattern: a negated glob stays negated. */
+export function keepingNegation(glob: string, change: (pattern: string) => string): string {
+  return isNegated(glob) ? negationOf(change(withoutNegation(glob))) : change(glob)
+}
+
+/** ESLint drops a glob's leading `./` (@eslint/config-array, normalizePattern). */
+export function withoutLeadingDotSlash(glob: string): string {
+  return glob.startsWith(LEADING_DOT_SLASH) ? glob.slice(LEADING_DOT_SLASH.length) : glob
+}
 
 /** A glob matching the path given and nothing else, however its directories are named. */
 export function literalGlobOf(path: string): string {
@@ -30,8 +58,7 @@ export function literalGlobOf(path: string): string {
  */
 export function pathNamedBy(glob: string): string | null {
   if (!LITERAL_GLOB.test(glob)) return null
-  const path = glob.replaceAll(ESCAPED_CHARACTER, '$<character>')
-  return path.startsWith(LEADING_DOT_SLASH) ? path.slice(LEADING_DOT_SLASH.length) : path
+  return withoutLeadingDotSlash(glob.replaceAll(ESCAPED_CHARACTER, '$<character>'))
 }
 
 /**
@@ -40,7 +67,7 @@ export function pathNamedBy(glob: string): string | null {
  * them.
  */
 export function everyFileUnderFoldersMatching(glob: string): string {
-  if (glob.startsWith(NEGATION)) return `${NEGATION}${everyFileUnderFoldersMatching(glob.slice(NEGATION.length))}`
+  if (isNegated(glob)) return negationOf(everyFileUnderFoldersMatching(withoutNegation(glob)))
   if (glob.endsWith(`${FOLDER_SEPARATOR}${EVERY_FILE_UNDER}`)) return glob
   return glob.endsWith(FOLDER_SEPARATOR) ? `${glob}${EVERY_FILE_UNDER}` : `${glob}${FOLDER_SEPARATOR}${EVERY_FILE_UNDER}`
 }
@@ -58,7 +85,7 @@ export function withoutTheLastSlash(glob: string): string {
 // oxlint matches a slash-free glob at any depth and ESLint only at the root, so a slash-free glob
 // gets ANY_DEPTH, the form both engines read the same way. A negated glob keeps its `!` in front.
 export function normalizeGlob(glob: string): string {
-  if (glob.startsWith(NEGATION)) return `${NEGATION}${normalizeGlob(glob.slice(NEGATION.length))}`
+  if (isNegated(glob)) return negationOf(normalizeGlob(withoutNegation(glob)))
   return glob.includes('/') ? glob : `${ANY_DEPTH}${glob}`
 }
 
@@ -73,14 +100,10 @@ export function normalizeGlobs(globs: readonly string[] | null): readonly string
  * value keeps its `!` in front of each form.
  */
 export function formsOfAnIgnoresValue(value: string): string[] {
-  if (value.startsWith(NEGATION)) return formsOfAnIgnoresValue(value.slice(NEGATION.length)).map(negated)
+  if (isNegated(value)) return formsOfAnIgnoresValue(withoutNegation(value)).map(negationOf)
   const anchored = pathAnchoredAtTheRoot(value)
   if (anchored !== null) return rootFormsOfBothEngines(anchored)
   return [isReadAtAnyDepth(value) ? `${ANY_DEPTH}${value}` : value]
-}
-
-function negated(glob: string): string {
-  return `${NEGATION}${glob}`
 }
 
 /** The path after a leading `./` or `/`: null where the value starts with neither. */
@@ -118,11 +141,6 @@ export function extensionsNamedBy(glob: string): string[] | null {
   if (braced !== undefined) return braced.split(BRACE_SEPARATOR)
   if (bare === undefined) throw new Error(`${FILES_OF_EXTENSIONS.source} matched ${glob} without an extension`)
   return [bare]
-}
-
-function namedGroupsOf({ groups }: RegExpExecArray): Readonly<Record<string, string | undefined>> {
-  if (groups === undefined) throw new Error('a pattern with named groups matched without them')
-  return groups
 }
 
 /** Every file but those with one of the extensions, at any depth, as minimatch reads an extglob (ESLint; oxlint's globs take none). */

@@ -1,10 +1,11 @@
-import type { Catalog, RuleRoute } from '@workspace/rule-data'
-import type { DummyRuleMap, OxlintOverride } from 'oxlint'
+import { type Catalog, isOxlintRoute, routeOf, type RuleRoute } from '@workspace/rule-data'
+import type { OxlintOverride } from 'oxlint'
 import { oxlintEnvOf, oxlintIgnorePatternsOf, oxlintOverridesOf, topLevelRuleMap } from './build-oxlint-config.ts'
-import { isOxlintRoute, routeOf } from './catalog-lookups.ts'
 import { eslintGlobalIgnoresOf, ignoresEslintAppliesToOurEditorPart, JS_AND_TS_FILES } from './eslint-file-types.ts'
 import { bothOf, EVERY_FILE, eitherOf, type FilesCondition, filesInScopeOf, NO_FILE, notOf } from './file-conditions.ts'
+import { EVERY_FILE_AT_ANY_DEPTH } from './globs.ts'
 import { filesEslintLeavesOutOf, filesOxlintLeavesOutOf } from './ignores-read-by-each-engine.ts'
+import { isOn, type RuleEntry, rulesOf } from './oxlint-config-reading.ts'
 import { filesOxlintRunsTheRuleIn } from './oxlint-file-types.ts'
 import type { FileOverrideLayer, RuleLayers, RuleSetting } from './resolve-rule-layers.ts'
 import { entryStatements } from './twin-pairs.ts'
@@ -31,11 +32,6 @@ export type OurEslintPart = {
   readonly leftOutByOurIgnores: FilesCondition
 }
 
-// Every file, at any depth, whatever its extension (measured: root, nested, dot folders, .js, .ts, .tsx).
-export const CATCH_ALL_FILES: readonly string[] = ['**/*']
-
-const OFF_SEVERITIES: ReadonlySet<unknown> = new Set(['off', 'allow', 0])
-
 /** Our oxlint part's layers as oxlint reads them, under the ignore patterns the agent build gives it. */
 export function ourOxlintPartOf(layers: RuleLayers, catalog: Catalog): OurOxlintPart {
   return { inLine: ourOxlintPartInLine(layers, catalog), leftOut: filesOxlintLeavesOutOf(oxlintIgnorePatternsOf(layers)) }
@@ -54,7 +50,7 @@ export function ourEslintPartOf(layers: RuleLayers): OurEslintPart {
  * for every file, then its own (`oxlintOverridesOf`), as the agent build lays them out.
  */
 export function ourOxlintPartInLine(layers: RuleLayers, catalog: Catalog): OxlintOverride[] {
-  return [{ files: [...CATCH_ALL_FILES], env: oxlintEnvOf(layers), rules: topLevelRuleMap(layers, catalog) }, ...oxlintOverridesOf(layers, catalog)]
+  return [{ files: [EVERY_FILE_AT_ANY_DEPTH], env: oxlintEnvOf(layers), rules: topLevelRuleMap(layers, catalog) }, ...oxlintOverridesOf(layers, catalog)]
 }
 
 /** Where our oxlint part runs the rule: where an override of it turns the rule on and none after it turns it off, outside our ignores, in a file of a type the rule runs in. */
@@ -122,11 +118,7 @@ function filesAnyOf(globs: readonly string[]): FilesCondition {
 }
 
 function isEveryFile(files: readonly string[]): boolean {
-  return files.some((glob) => CATCH_ALL_FILES.includes(glob))
-}
-
-function rulesOf({ rules = {} }: OxlintOverride): DummyRuleMap {
-  return rules
+  return files.includes(EVERY_FILE_AT_ANY_DEPTH)
 }
 
 function oxlintRouteOf(route: RuleRoute): RuleRoute & { readonly oxlintName: string } {
@@ -134,10 +126,6 @@ function oxlintRouteOf(route: RuleRoute): RuleRoute & { readonly oxlintName: str
   return route
 }
 
-function isOn(entry: unknown): boolean {
-  return entry !== undefined && !OFF_SEVERITIES.has(Array.isArray(entry) ? entry[0] : entry)
-}
-
-function isStatedOff(entry: unknown): boolean {
+function isStatedOff(entry: RuleEntry | undefined): boolean {
   return entry !== undefined && !isOn(entry)
 }

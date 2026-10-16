@@ -1,5 +1,6 @@
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import { configErrorIn } from './config-error.ts'
+import { namedGroupOf } from './named-groups.ts'
 import { PACKAGE_JSON, readPackageJsonFile, resolvedFrom, THIS_PACKAGE, versionOf } from './package-json-files.ts'
 
 const ESLINT = 'eslint'
@@ -28,7 +29,7 @@ export function refuseUnsupportedInstalledEslint(tsconfigRootDir: string): void 
 
 /** Parse boundary: the major of the version an installed manifest gives. */
 function majorOf(version: string, manifestPath: string): number {
-  const major = MAJOR_VERSION.exec(version)?.groups?.['major']
-  if (major === undefined) throw new Error(`${manifestPath}: version "${version}" does not start with digits and a dot, as every ESLint release's does`)
-  return Number(major)
+  const match = MAJOR_VERSION.exec(version)
+  if (match === null) throw new Error(`${manifestPath}: version "${version}" does not start with digits and a dot, as every ESLint release's does`)
+  return Number(namedGroupOf(match, 'major'))
 }

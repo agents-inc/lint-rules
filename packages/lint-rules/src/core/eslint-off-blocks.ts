@@ -2,7 +2,7 @@ import type { Linter } from 'eslint'
 import { sortedUnique } from './build-oxlint-config.ts'
 import { asFilesEntry, JS_AND_TS_FILES, matchesOnlyJsAndTs } from './eslint-file-types.ts'
 import { type FilesAndIgnores, type FilesCondition, filesAndIgnoresOf, keyOfCondition } from './file-conditions.ts'
-import { extensionsNamedBy, filesOfOtherExtensionsThan, NEGATION } from './globs.ts'
+import { extensionsNamedBy, filesOfOtherExtensionsThan, isNegated, negationOf, withoutNegation } from './globs.ts'
 
 // ESLint blocks stating rule names off in some files only, as the merge writes them after the
 // team's blocks and the agent build after its own: one block where the names share their files,
@@ -114,7 +114,7 @@ function ignoresAlone(files: readonly (readonly string[])[]): string[] | null {
   if (first === undefined) throw new Error('a block naming files names at least one entry')
   if (!entries.every(asksOneGlobAtMost) || !entries.every((entry) => keyOfExtensions(entry.extensions) === keyOfExtensions(first.extensions))) return null
   const eachEntrysGlobTakenBack = entries.every(({ others }) => others.length === 1)
-    ? [EVERY_FILE_IGNORED, ...entries.flatMap(({ others }) => others).map((glob) => `${NEGATION}${glob}`)]
+    ? [EVERY_FILE_IGNORED, ...entries.flatMap(({ others }) => others).map(negationOf)]
     : []
   return [...eachEntrysGlobTakenBack, ...first.extensions.map(filesOfOtherExtensionsThan)]
 }
@@ -125,16 +125,16 @@ function ignoresAlone(files: readonly (readonly string[])[]): string[] | null {
  * extension, left out again. Null where it asks two globs or more, which ignores cannot AND.
  */
 function ignoresOfOneEntry({ extensions, others }: EntryByExtensions): string[] | null {
-  const asked = others.filter((glob) => !glob.startsWith(NEGATION))
+  const asked = others.filter((glob) => !isNegated(glob))
   const [onlyAsked, ...moreAsked] = asked
   if (moreAsked.length > 0) return null
-  const leftOutByItsNegations = others.filter((glob) => glob.startsWith(NEGATION)).map((glob) => glob.slice(NEGATION.length))
-  return [...(onlyAsked === undefined ? [] : [EVERY_FILE_IGNORED, `${NEGATION}${onlyAsked}`]), ...leftOutByItsNegations, ...extensions.map(filesOfOtherExtensionsThan)]
+  const leftOutByItsNegations = others.filter(isNegated).map(withoutNegation)
+  return [...(onlyAsked === undefined ? [] : [EVERY_FILE_IGNORED, negationOf(onlyAsked)]), ...leftOutByItsNegations, ...extensions.map(filesOfOtherExtensionsThan)]
 }
 
 /** An entry asking a file one glob at most besides its extensions, and none negated: an ignore can take back only that one. */
 function asksOneGlobAtMost({ others }: EntryByExtensions): boolean {
-  return others.length <= 1 && others.every((glob) => !glob.startsWith(NEGATION))
+  return others.length <= 1 && others.every((glob) => !isNegated(glob))
 }
 
 /** An entry's globs naming files by their extensions, and its others. */
