@@ -7,7 +7,8 @@ that a test fails for each break. The standards are in `CLAUDE.md` → "Tests".
 that no test caught (`questions.md` #50, `status.md` rounds 4 to 6).
 
 **State.** The break scripts lived only in the session scratchpad and were lost when the session
-restarted on 2026-10-11. Nothing is committed.
+restarted on 2026-10-11. Nothing is committed. (Out of date, 2026-10-15: StrykerJS now runs this
+check in this repo; see [mutation testing](mutation-testing.md).)
 
 **Open.** The owner (2026-10-11) wants a committed check, but it is not specific to this repo. Find
 out how agents-inc (the `~/dev/cli` monorepo) should ship it to other projects: as a skill, a shared
