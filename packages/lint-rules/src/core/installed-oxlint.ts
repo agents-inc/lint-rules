@@ -15,9 +15,7 @@ import {
   versionOf,
 } from './package-json-files.ts'
 
-type Release = { readonly major: number; readonly minor: number; readonly patch: number }
-
-/** The installed oxlint the merge checks, and the range it must be within. */
+/** The installed oxlint the merge checks, and the range this package is tested with, which its refusals name. */
 type InstalledOxlint = { readonly tsconfigRootDir: string; readonly manifestPath: string; readonly version: string; readonly range: string }
 
 /** The rule and plugin names an installed oxlint's schema lists, rules spelled as the schema spells them, and the keys a config of it holds. */
@@ -39,10 +37,6 @@ const CONFIG_KEY_MAP_KEYS = ['properties']
 const RULE_NAME_SEPARATOR = '/'
 const NOT_FOUND = -1
 const NAMES_SEPARATOR = ', '
-// The one range form this package's manifest gives oxlint: `^1.86.0` holds each 1.x release from 1.86.0 up.
-const CARET_RANGE = /^\^(?<major>[1-9]\d*)\.(?<minor>\d+)\.(?<patch>\d+)$/u
-// A prerelease or build suffix makes a version no release, so it is in no caret range.
-const RELEASE_VERSION = /^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$/u
 
 // Each installed oxlint's schema, by its path, read at most once per process.
 const schemaReads = new Map<string, SchemaRead>()
@@ -51,13 +45,12 @@ const requireFromHere = createRequire(import.meta.url)
 
 /**
  * oxlint refuses a rule or plugin name it does not know even when it is off (measured, 1.87), and
- * the merge may write any name the catalog's oxlint list holds (spec D-c). So the oxlint the
- * project installs, resolved from `tsconfigRootDir`, must be in this package's oxlint peer range,
- * and its schema must hold each of those names.
+ * the merge may write any name the catalog's oxlint list holds (spec D-c). So the schema of the
+ * oxlint the project installs, resolved from `tsconfigRootDir`, must hold each of those names,
+ * whatever its version (#56).
  */
 export function refuseUnsupportedInstalledOxlint(tsconfigRootDir: string, catalog: Catalog): void {
   const oxlint = installedOxlint(tsconfigRootDir)
-  if (!isInCaretRange(oxlint.version, oxlint.range)) throw outsideTheRange(oxlint)
   const schemaPath = join(dirname(oxlint.manifestPath), OXLINT_SCHEMA)
   const read = schemaReadAt(schemaPath)
   if ('unreadable' in read) throw unreadableSchema(oxlint, schemaPath, read.unreadable)
@@ -97,13 +90,6 @@ function installedOxlintManifest(tsconfigRootDir: string): string {
 function ourOxlintPeerRange(): string {
   const manifest = ourPackageJsonFile()
   return rangeListedIn(manifest, manifest.peerDependencies, OXLINT)
-}
-
-function outsideTheRange({ tsconfigRootDir, version, range }: InstalledOxlint): Error {
-  return configErrorIn(
-    consumerConfigFiles.oxlintConfig,
-    `the oxlint installed for ${tsconfigRootDir} is ${version}, outside the range ${THIS_PACKAGE} supports (${range})`,
-  )
 }
 
 function unreadableSchema({ tsconfigRootDir, version, range }: InstalledOxlint, schemaPath: string, cause: Error): Error {
@@ -184,30 +170,4 @@ function valueAt(value: unknown, keys: readonly string[]): unknown {
 
 function isStringList(value: unknown): value is readonly string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string')
-}
-
-function isInCaretRange(version: string, range: string): boolean {
-  const lowest = releaseMatching(CARET_RANGE, range)
-  if (lowest === null) throw new Error(`${THIS_PACKAGE}: the oxlint peer range "${range}" is not of the form ^x.y.z, x at least 1`)
-  const installed = releaseMatching(RELEASE_VERSION, version)
-  if (installed === null) return false
-  return installed.major === lowest.major && isAtOrAfter(installed, lowest)
-}
-
-/** Within one major. */
-function isAtOrAfter(release: Release, lowest: Release): boolean {
-  return release.minor === lowest.minor ? release.patch >= lowest.patch : release.minor > lowest.minor
-}
-
-/** The release the pattern's major, minor and patch groups capture, or null when the text does not match. */
-function releaseMatching(pattern: RegExp, text: string): Release | null {
-  const groups = pattern.exec(text)?.groups
-  if (groups === undefined) return null
-  return { major: capturedNumber(groups, 'major'), minor: capturedNumber(groups, 'minor'), patch: capturedNumber(groups, 'patch') }
-}
-
-function capturedNumber(groups: Readonly<Record<string, string | undefined>>, name: keyof Release): number {
-  const captured = groups[name]
-  if (captured === undefined) throw new Error(`the version pattern captures no ${name}`)
-  return Number(captured)
 }

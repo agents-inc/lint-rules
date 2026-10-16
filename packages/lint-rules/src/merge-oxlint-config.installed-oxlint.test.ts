@@ -22,22 +22,22 @@ import { defineLintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
 // The merged config names rules and plugins from the catalog, and oxlint refuses a name it does not
-// know even when it is off. So the oxlint a project installs must be within our caret peer range,
-// and its own schema must hold every name the merge may write (questions.md #32 Q7, spec C2).
+// know even when it is off. So the oxlint a project installs, whatever its version, must have a
+// schema the merge can read, holding every name the merge may write (questions.md #32 Q7, spec C2;
+// #56: the owner's answer, no version check).
 
 const THIS_PACKAGE = '@agents-inc/lint-rules'
 const NESTED_PACKAGE = 'packages/app'
 const INSTALLED_OXLINT_DIR = 'node_modules/oxlint'
 const NOT_JSON = '{ "definitions": '
 
-// The floor is 1.86.0 (spec D-d): the oxlint differentials pass against oxlint 1.86.0 as they do
-// against 1.87. 1.85.x is the minor below it, and 2.x the next major, refused at a minor above the
-// floor's too.
+// The floor of our peer range is 1.86.0 (spec D-d): the oxlint differentials pass against oxlint
+// 1.86.0 as they do against 1.87. Outside the range: 1.85.x, the minor below it; 2.x, the next
+// major, at a minor above the floor's too; and a prerelease, which npm's caret range never holds.
 const OXLINT_FLOOR = '1.86.0'
 const OXLINT_VERSION_BELOW_THE_RANGE = '1.85.9'
 const OXLINT_VERSION_OF_THE_NEXT_MAJOR = '2.0.0'
 const OXLINT_VERSION_OF_THE_NEXT_MAJOR_ABOVE_THE_FLOORS_MINOR = '2.99.0'
-// npm's caret range holds no prerelease of a later release either.
 const OXLINT_PRERELEASE_INSIDE_THE_RANGE = '1.87.0-beta.1'
 const OXLINT_VERSION_A_LATER_PATCH = '1.86.9'
 const OXLINT_VERSION_INSIDE_THE_RANGE = '1.87.9'
@@ -70,12 +70,6 @@ function schemaPathIn(projectDir: string): string {
   return join(realpathSync(join(projectDir, INSTALLED_OXLINT_DIR)), OXLINT_SCHEMA_FILE)
 }
 
-function outsideTheRangeError(projectDir: string, version: string): Error {
-  return new Error(
-    `oxlint.config.mts: the oxlint installed for ${projectDir} is ${version}, outside the range ${THIS_PACKAGE} supports (${oxlintPeerRange()})`,
-  )
-}
-
 function lackingNamesError(projectDir: string, version: string, sortedNames: readonly string[]): Error {
   return new Error(
     `oxlint.config.mts: the oxlint installed for ${projectDir} is ${version}, which has no rule or plugin named ${sortedNames.join(', ')}; ${THIS_PACKAGE} writes these names, so oxlint would refuse the merged config: install another oxlint within ${oxlintPeerRange()}`,
@@ -88,16 +82,17 @@ function unreadableSchemaError(projectDir: string, version: string): Error {
   )
 }
 
-describe("mergeOxlintConfig, given a project's installed oxlint", () => {
-  it.each([
-    { where: 'below the range', version: OXLINT_VERSION_BELOW_THE_RANGE },
-    { where: 'in the next major', version: OXLINT_VERSION_OF_THE_NEXT_MAJOR },
-    { where: "in the next major, at a minor above the floor's", version: OXLINT_VERSION_OF_THE_NEXT_MAJOR_ABOVE_THE_FLOORS_MINOR },
-    { where: 'that is a prerelease of a version inside the range', version: OXLINT_PRERELEASE_INSIDE_THE_RANGE },
-  ])('refuses one $where, $version, naming the installed version and the range', ({ version }) => {
-    const projectDir = projectWithInstalledOxlint(version)
+const OUTSIDE_THE_RANGE = [
+  { where: 'below the range', version: OXLINT_VERSION_BELOW_THE_RANGE },
+  { where: 'in the next major', version: OXLINT_VERSION_OF_THE_NEXT_MAJOR },
+  { where: "in the next major, at a minor above the floor's", version: OXLINT_VERSION_OF_THE_NEXT_MAJOR_ABOVE_THE_FLOORS_MINOR },
+  { where: 'that is a prerelease of a version inside the range', version: OXLINT_PRERELEASE_INSIDE_THE_RANGE },
+]
 
-    expect(mergedInto(projectDir)).toThrowError(outsideTheRangeError(projectDir, version))
+describe("mergeOxlintConfig, given a project's installed oxlint", () => {
+  // #56 (owner): an oxlint outside the range is checked by its own rule list, as one inside it is.
+  it.each(OUTSIDE_THE_RANGE)('accepts one $where, $version, whose schema holds every name the merge writes', ({ version }) => {
+    expect(mergedInto(projectWithInstalledOxlint(version))).not.toThrow()
   })
 
   it.each([
@@ -120,10 +115,16 @@ describe("mergeOxlintConfig, given a project's installed oxlint", () => {
     expect(mergedInto(projectDir)).not.toThrow()
   })
 
-  it('refuses one outside the range by its version alone, reading no schema', () => {
-    const projectDir = projectWithInstalledOxlint(OXLINT_VERSION_BELOW_THE_RANGE, null)
+  it.each(OUTSIDE_THE_RANGE)('refuses one $where, $version, whose schema lacks a rule the merge writes, naming the rule and the version', ({ version }) => {
+    const projectDir = projectWithInstalledOxlint(version, installedOxlintSchemaTextLacking({ ruleNames: [A_RULE_THE_MERGE_WRITES], pluginNames: [] }))
 
-    expect(mergedInto(projectDir)).toThrowError(outsideTheRangeError(projectDir, OXLINT_VERSION_BELOW_THE_RANGE))
+    expect(mergedInto(projectDir)).toThrowError(lackingNamesError(projectDir, version, [A_RULE_THE_MERGE_WRITES]))
+  })
+
+  it.each(OUTSIDE_THE_RANGE)('refuses one $where, $version, that ships no schema, naming where it looked', ({ version }) => {
+    const projectDir = projectWithInstalledOxlint(version, null)
+
+    expect(mergedInto(projectDir)).toThrowError(unreadableSchemaError(projectDir, version))
   })
 })
 
