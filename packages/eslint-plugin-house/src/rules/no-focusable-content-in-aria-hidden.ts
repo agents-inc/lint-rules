@@ -2,6 +2,7 @@ import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/u
 
 import { childNodesOf } from '../shared/child-nodes.ts'
 import { findJsxAttribute, hasLiteralHiddenType } from '../shared/jsx-attributes.ts'
+import { unqualifiedTagOf } from '../shared/jsx-elements.ts'
 
 type RenderedJsx = TSESTree.JSXElement | TSESTree.JSXFragment
 
@@ -61,12 +62,8 @@ function tabIndexOf(element: TSESTree.JSXOpeningElement): TabIndex {
   return 'unknown'
 }
 
-function tagOf(element: TSESTree.JSXOpeningElement): string | null {
-  return element.name.type === AST_NODE_TYPES.JSXIdentifier ? element.name.name : null
-}
-
 function displayedTagOf(element: TSESTree.JSXOpeningElement): string {
-  return tagOf(element) ?? UNNAMED_TAG
+  return unqualifiedTagOf(element) ?? UNNAMED_TAG
 }
 
 function isFocusableElement(element: TSESTree.JSXOpeningElement): boolean {
@@ -76,7 +73,7 @@ function isFocusableElement(element: TSESTree.JSXOpeningElement): boolean {
   const tabIndex = tabIndexOf(element)
   if (tabIndex === 'unknown') return false
   if (tabIndex !== 'absent') return tabIndex >= 0
-  const tag = tagOf(element)
+  const tag = unqualifiedTagOf(element)
   if (tag === null) return false
   if (FOCUSABLE_TAGS.has(tag)) return true
   if (FOCUSABLE_WITH_HREF_TAGS.has(tag)) return findJsxAttribute(element, 'href') !== null

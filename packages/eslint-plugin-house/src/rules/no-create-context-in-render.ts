@@ -1,13 +1,15 @@
 import { ASTUtils, AST_NODE_TYPES, ESLintUtils, TSESLint, type TSESTree } from '@typescript-eslint/utils'
 
+import { callReceiving } from '../shared/call-arguments.ts'
 import { calleeNameOf } from '../shared/callee-name.ts'
+import { componentNameOf, type FunctionFrame, functionFrameVisitors } from '../shared/function-frames.ts'
 import { type FunctionNode, functionNameOf } from '../shared/function-name.ts'
 import { isHookName } from '../shared/hook-name.ts'
 
 // Reports wait for the frame's exit: the call is usually seen before the JSX that makes it a component.
-type Frame = { node: FunctionNode; rendersJsx: boolean; calls: TSESTree.CallExpression[] }
+type Frame = FunctionFrame & { calls: TSESTree.CallExpression[] }
 
-const COMPONENT_NAME = /^[A-Z]/
+const RULE_NAME = 'no-create-context-in-render'
 const CREATE_CONTEXT = 'createContext'
 // Only these modules' `createContext` is React's. `node:vm` exports one too, and a Solid component
 // body runs once, so "on every render" would be false about it.
@@ -17,9 +19,9 @@ const REACT_MODULE = /^(preact(\/compat)?|react|use-context-selector)$/
 const STABLE_HOOKS: ReadonlySet<string> = new Set(['useMemo', 'useState', 'useRef'])
 
 function isRetainedByStableHook(node: FunctionNode | TSESTree.CallExpression): boolean {
-  const { parent } = node
-  if (parent.type !== AST_NODE_TYPES.CallExpression || parent.arguments[0] !== node) return false
-  const name = calleeNameOf(parent.callee)
+  const call = callReceiving(node, node.parent)
+  if (call === null || call.arguments[0] !== node) return false
+  const name = calleeNameOf(call.callee)
   return name !== null && STABLE_HOOKS.has(name)
 }
 
@@ -56,8 +58,8 @@ function isReactCreateContextIn(scope: TSESLint.Scope.Scope): boolean {
 // name alone also fits a factory, whose context genuinely cannot move.
 function rendererNameOf(frame: Frame): string | null {
   const name = functionNameOf(frame.node)
-  if (name === null) return null
-  return isHookName(name) || (COMPONENT_NAME.test(name) && frame.rendersJsx) ? name : null
+  if (name !== null && isHookName(name)) return name
+  return componentNameOf(frame)
 }
 
 // Not fixable: hoisting is safe only when the default value closes over nothing in the component.
@@ -83,12 +85,7 @@ export const noCreateContextInRender = ESLintUtils.RuleCreator.withoutDocs<[], '
       return form === 'namespaced' || isReactCreateContextIn(sourceCode.getScope(call))
     }
 
-    const enter = (node: FunctionNode): void => {
-      stack.push({ node, rendersJsx: false, calls: [] })
-    }
-    const leave = (): void => {
-      const frame = stack.pop()
-      if (frame === undefined) throw new Error('no-create-context-in-render left a function it never entered')
+    const reportOrPassToEnclosing = (frame: Frame): void => {
       if (frame.calls.length === 0) return
       const renderer = rendererNameOf(frame)
       if (renderer !== null) {
@@ -103,20 +100,13 @@ export const noCreateContextInRender = ESLintUtils.RuleCreator.withoutDocs<[], '
       if (enclosing === undefined || isRetainedByStableHook(frame.node)) return
       enclosing.calls.push(...frame.calls)
     }
-    const markJsx = (): void => {
-      const frame = stack.at(-1)
-      if (frame !== undefined) frame.rendersJsx = true
-    }
 
     return {
-      FunctionDeclaration: enter,
-      'FunctionDeclaration:exit': leave,
-      FunctionExpression: enter,
-      'FunctionExpression:exit': leave,
-      ArrowFunctionExpression: enter,
-      'ArrowFunctionExpression:exit': leave,
-      JSXElement: markJsx,
-      JSXFragment: markJsx,
+      ...functionFrameVisitors(stack, {
+        ruleName: RULE_NAME,
+        frameFor: (node) => ({ node, rendersJsx: false, calls: [] }),
+        onLeave: reportOrPassToEnclosing,
+      }),
       CallExpression(node) {
         if (!callsReactCreateContext(node) || isRetainedByStableHook(node)) return
         const frame = stack.at(-1)

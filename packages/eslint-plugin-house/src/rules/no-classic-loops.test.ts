@@ -17,49 +17,42 @@ import {
   whileLoop,
   whileTrueWithBreak,
 } from '../__tests__/cases/no-classic-loops.ts'
-import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
+import { caseBuildersFor } from '../__tests__/factories/rule-case-factories.ts'
 import { lintWithHouseRule } from '../__tests__/house-linter.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
+
+const { invalidCase, validCase } = caseBuildersFor('no-classic-loops.ts')
 
 // No invalid case declares an `output` or `suggestions`: the tester then fails any fix or
 // suggestion the rule offers, which is how "no autofix" is pinned.
 houseRuleTester.run('no-classic-loops', housePlugin.rules['no-classic-loops'], {
   valid: [
-    buildValidCase('stays silent on a for…of loop', forOfLoop, { filename: 'no-classic-loops.ts' }),
-    buildValidCase('stays silent on a for await…of loop', forAwaitOfLoop, { filename: 'no-classic-loops.ts' }),
-    buildValidCase("stays silent on a for…of over Object.entries, for…in's replacement", forOfOverEntries, {
-      filename: 'no-classic-loops.ts',
-    }),
-    buildValidCase('stays silent on forEach, map and reduce', arrayMethods, { filename: 'no-classic-loops.ts' }),
+    validCase('stays silent on a for…of loop', forOfLoop),
+    validCase('stays silent on a for await…of loop', forAwaitOfLoop),
+    validCase("stays silent on a for…of over Object.entries, for…in's replacement", forOfOverEntries),
+    validCase('stays silent on forEach, map and reduce', arrayMethods),
   ],
   invalid: [
-    buildInvalidCase('reports a classic indexed for loop', classicIndexedFor, {
-      filename: 'no-classic-loops.ts',
+    invalidCase('reports a classic indexed for loop', classicIndexedFor, {
       errors: [{ messageId: 'classicLoop', line: 3 }],
     }),
-    buildInvalidCase('reports a for…in loop', forInOverRecord, {
-      filename: 'no-classic-loops.ts',
+    invalidCase('reports a for…in loop', forInOverRecord, {
       errors: [{ messageId: 'classicLoop', line: 3 }],
     }),
-    buildInvalidCase('reports a while loop', whileLoop, {
-      filename: 'no-classic-loops.ts',
+    invalidCase('reports a while loop', whileLoop, {
       errors: [{ messageId: 'classicLoop', line: 3 }],
     }),
-    buildInvalidCase('reports a do…while loop', doWhileLoop, {
-      filename: 'no-classic-loops.ts',
+    invalidCase('reports a do…while loop', doWhileLoop, {
       errors: [{ messageId: 'classicLoop', line: 3 }],
     }),
-    buildInvalidCase('reports a while (true) loop left by break', whileTrueWithBreak, {
-      filename: 'no-classic-loops.ts',
+    invalidCase('reports a while (true) loop left by break', whileTrueWithBreak, {
       errors: [{ messageId: 'classicLoop', line: 2 }],
     }),
-    buildInvalidCase('reports a labelled classic for loop, and not the for…of inside it', labelledClassicFor, {
-      filename: 'no-classic-loops.ts',
+    invalidCase('reports a labelled classic for loop, and not the for…of inside it', labelledClassicFor, {
       errors: [{ messageId: 'classicLoop', line: 3 }],
     }),
-    buildInvalidCase('reports a classic for loop nested in a for…of, and not the for…of', classicForInsideForOf, {
-      filename: 'no-classic-loops.ts',
+    invalidCase('reports a classic for loop nested in a for…of, and not the for…of', classicForInsideForOf, {
       errors: [{ messageId: 'classicLoop', line: 4 }],
     }),
   ],

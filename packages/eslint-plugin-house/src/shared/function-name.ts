@@ -2,6 +2,14 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils'
 
 export type FunctionNode = TSESTree.ArrowFunctionExpression | TSESTree.FunctionDeclaration | TSESTree.FunctionExpression
 
+export function isFunctionNode(node: TSESTree.Node): node is FunctionNode {
+  return (
+    node.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+    node.type === AST_NODE_TYPES.FunctionDeclaration ||
+    node.type === AST_NODE_TYPES.FunctionExpression
+  )
+}
+
 /**
  * The name a function is known by: its own, the variable or property it is assigned to, or the
  * variable a wrapping call is assigned to, as in `const Panel = memo(() => …)`.

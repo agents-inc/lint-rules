@@ -11,17 +11,32 @@ export function jsxAttributeName(attribute: TSESTree.JSXAttribute): string | nul
   return attribute.name.type === AST_NODE_TYPES.JSXIdentifier ? attribute.name.name : null
 }
 
+export function isJsxAttributeNamedIn(attribute: TSESTree.JSXAttribute, names: ReadonlySet<string>): boolean {
+  const name = jsxAttributeName(attribute)
+  return name !== null && names.has(name)
+}
+
+/** Every attribute the element is written with, or null when one is a spread, which may carry anything. */
+export function plainAttributesOf(element: TSESTree.JSXOpeningElement): TSESTree.JSXAttribute[] | null {
+  const { attributes } = element
+  return attributes.every(isJsxAttribute) ? attributes : null
+}
+
 /** The first attribute carrying one of these names. A spread never matches: nothing here can see inside it. */
 export function findJsxAttribute(
   element: TSESTree.JSXOpeningElement,
   ...names: readonly string[]
 ): TSESTree.JSXAttribute | null {
-  return (
-    element.attributes.filter(isJsxAttribute).find((attribute) => {
-      const name = jsxAttributeName(attribute)
-      return name !== null && names.includes(name)
-    }) ?? null
-  )
+  const wanted: ReadonlySet<string> = new Set(names)
+  return element.attributes.filter(isJsxAttribute).find((attribute) => isJsxAttributeNamedIn(attribute, wanted)) ?? null
+}
+
+/** The last attribute with this name, which wins when a name is written twice. */
+export function findLastJsxAttribute(
+  attributes: readonly TSESTree.JSXAttribute[],
+  name: string,
+): TSESTree.JSXAttribute | null {
+  return attributes.findLast((attribute) => jsxAttributeName(attribute) === name) ?? null
 }
 
 /** `type="hidden"` exactly as written: `type={'hidden'}` and a dynamic type are not read. */

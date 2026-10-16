@@ -6,6 +6,10 @@ type HouseRuleName = keyof typeof housePlugin.rules
 
 const HOUSE_PREFIX = 'house'
 
+function houseRuleConfig(ruleName: HouseRuleName, entry: TSESLint.Linter.RuleEntry): TSESLint.FlatConfig.Config {
+  return { plugins: { [HOUSE_PREFIX]: housePlugin }, rules: { [`${HOUSE_PREFIX}/${ruleName}`]: entry } }
+}
+
 /**
  * Lints `code` as `filename` through ESLint itself with one house rule on. Unlike the rule tester,
  * ESLint checks the options against the rule's schema the way a consumer's config is checked, and
@@ -18,11 +22,7 @@ export function lintWithHouseRule(
   filename: string,
 ): TSESLint.Linter.LintMessage[] {
   const linter = new TSESLint.Linter({ configType: 'flat' })
-  return linter.verify(
-    code,
-    [{ plugins: { [HOUSE_PREFIX]: housePlugin }, rules: { [`${HOUSE_PREFIX}/${ruleName}`]: ['error', ...options] } }],
-    filename,
-  )
+  return linter.verify(code, [houseRuleConfig(ruleName, ['error', ...options])], filename)
 }
 
 /**
@@ -40,13 +40,7 @@ export function lintWithInlineConfigIgnored(
   const linter = new TSESLint.Linter({ configType: 'flat' })
   return linter.verify(
     code,
-    [
-      {
-        languageOptions: { parserOptions: { ecmaFeatures: { jsx: true } } },
-        plugins: { [HOUSE_PREFIX]: housePlugin },
-        rules: { [`${HOUSE_PREFIX}/${ruleName}`]: 'error' },
-      },
-    ],
+    [{ languageOptions: { parserOptions: { ecmaFeatures: { jsx: true } } }, ...houseRuleConfig(ruleName, 'error') }],
     { filename, allowInlineConfig: false },
   )
 }

@@ -1,16 +1,14 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
-import { isJsxAttribute, jsxAttributeName } from '../shared/jsx-attributes.ts'
+import { findLastJsxAttribute, isJsxAttributeNamedIn, plainAttributesOf } from '../shared/jsx-attributes.ts'
+import { formFieldTagOf } from '../shared/jsx-elements.ts'
 
-// Native tags only: `<Input placeholder>` may render its own <label>, and untyped lint cannot follow it.
-const NAMEABLE_TAGS: ReadonlySet<string> = new Set(['input', 'textarea', 'select'])
 // An id counts as a label: it is almost always there for a `<label htmlFor>` this rule cannot see.
 const FIELD_NAME_ATTRIBUTES: ReadonlySet<string> = new Set(['aria-label', 'aria-labelledby', 'title', 'id'])
 const LABEL_TAG = /label$/i
 
 function isNamingAttribute(attribute: TSESTree.JSXAttribute): boolean {
-  const name = jsxAttributeName(attribute)
-  return name !== null && FIELD_NAME_ATTRIBUTES.has(name)
+  return isJsxAttributeNamedIn(attribute, FIELD_NAME_ATTRIBUTES)
 }
 
 // `placeholder=""` supplies no name at all: an unnamed field, which this message would misdescribe.
@@ -47,15 +45,16 @@ export const noPlaceholderOnlyField = ESLintUtils.RuleCreator.withoutDocs<[], 'p
   create(context) {
     return {
       JSXOpeningElement(node) {
-        if (node.name.type !== AST_NODE_TYPES.JSXIdentifier || !NAMEABLE_TAGS.has(node.name.name)) return
-        const { attributes } = node
+        // Native tags only: `<Input placeholder>` may render its own <label>, and untyped lint cannot follow it.
+        const tag = formFieldTagOf(node)
+        if (tag === null) return
         // A spread may carry the aria-label, and nothing here can see inside it.
-        if (!attributes.every(isJsxAttribute)) return
-        if (attributes.some(isNamingAttribute)) return
-        const placeholder = attributes.findLast((attribute) => jsxAttributeName(attribute) === 'placeholder')
-        if (placeholder === undefined || isEmptyLiteral(placeholder)) return
+        const attributes = plainAttributesOf(node)
+        if (attributes === null || attributes.some(isNamingAttribute)) return
+        const placeholder = findLastJsxAttribute(attributes, 'placeholder')
+        if (placeholder === null || isEmptyLiteral(placeholder)) return
         if (context.sourceCode.getAncestors(node).some(isLabelElement)) return
-        context.report({ node: placeholder, messageId: 'placeholderOnly', data: { tag: node.name.name } })
+        context.report({ node: placeholder, messageId: 'placeholderOnly', data: { tag } })
       },
     }
   },

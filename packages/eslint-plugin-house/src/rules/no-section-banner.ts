@@ -1,8 +1,7 @@
 import { ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
-import { restOfLine } from '../shared/rest-of-line.ts'
-
-type Replacement = { range: TSESTree.Range; text: string }
+import { lineStartOf, restOfLine } from '../shared/line-bounds.ts'
+import type { Replacement } from '../shared/replacement.ts'
 
 const BANNER = /^\s*[-=*_#~]{4,}\s*$/
 // A title between two runs of one banner character each: `--- Setup ---`, `=== Section ===`.
@@ -56,7 +55,7 @@ function spansLines(comment: TSESTree.Comment): boolean {
  */
 function replacementOf(text: string, comment: TSESTree.Comment): Replacement {
   const [commentStart, commentEnd] = comment.range
-  const lineStart = text.lastIndexOf('\n', commentStart - 1) + 1
+  const lineStart = lineStartOf(text, commentStart)
   const lineBefore = text.slice(lineStart, commentStart)
   const codeBefore = lineBefore.replace(TRAILING_BLANKS, '')
   const start = lineStart + codeBefore.length

@@ -1,9 +1,14 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
-import { isJsxAttribute, jsxAttributeName } from '../shared/jsx-attributes.ts'
+import {
+  findLastJsxAttribute,
+  isJsxAttribute,
+  isJsxAttributeNamedIn,
+  jsxAttributeName,
+  plainAttributesOf,
+} from '../shared/jsx-attributes.ts'
+import { formFieldTagOf } from '../shared/jsx-elements.ts'
 
-// Intrinsic elements only: `<Input value={x} />` may wire its own handler.
-const CONTROLLABLE_FIELDS: ReadonlySet<string> = new Set(['input', 'textarea', 'select'])
 // onInput fires on the same interactions; the Capture pair are the same events one phase earlier.
 const CHANGE_HANDLERS: ReadonlySet<string> = new Set(['onChange', 'onInput', 'onChangeCapture', 'onInputCapture'])
 // Input types whose `value` is not text the user edits: a button's caption, a hidden payload, or what
@@ -31,17 +36,13 @@ function staticStringOf(attribute: TSESTree.JSXAttribute): string | null {
 }
 
 function isChangeHandler(attribute: TSESTree.JSXAttribute | TSESTree.JSXSpreadAttribute): boolean {
-  if (!isJsxAttribute(attribute)) return false
-  const name = jsxAttributeName(attribute)
-  return name !== null && CHANGE_HANDLERS.has(name)
+  return isJsxAttribute(attribute) && isJsxAttributeNamedIn(attribute, CHANGE_HANDLERS)
 }
 
 // The handler, an opt-out, or a `type` whose value is not the field's content.
 function exemptsTheField(attribute: TSESTree.JSXAttribute): boolean {
-  const name = jsxAttributeName(attribute)
-  if (name === null) return false
-  if (CHANGE_HANDLERS.has(name) || OPTS_OUT.has(name)) return true
-  if (name !== 'type') return false
+  if (isJsxAttributeNamedIn(attribute, CHANGE_HANDLERS) || isJsxAttributeNamedIn(attribute, OPTS_OUT)) return true
+  if (jsxAttributeName(attribute) !== 'type') return false
   const type = staticStringOf(attribute)
   return type !== null && VALUE_IS_NOT_THE_CONTENT.has(type)
 }
@@ -80,15 +81,16 @@ export const noControlledFieldWithoutChangeHandler = ESLintUtils.RuleCreator.wit
   create(context) {
     return {
       JSXOpeningElement(node) {
-        if (node.name.type !== AST_NODE_TYPES.JSXIdentifier || !CONTROLLABLE_FIELDS.has(node.name.name)) return
-        const { attributes } = node
+        // Intrinsic elements only: `<Input value={x} />` may wire its own handler.
+        const element = formFieldTagOf(node)
+        if (element === null) return
         // A spread may carry the handler.
-        if (!attributes.every(isJsxAttribute)) return
-        if (attributes.some(exemptsTheField)) return
-        const value = attributes.findLast((attribute) => jsxAttributeName(attribute) === 'value')
-        if (value === undefined || isUncontrolledValue(value)) return
+        const attributes = plainAttributesOf(node)
+        if (attributes === null || attributes.some(exemptsTheField)) return
+        const value = findLastJsxAttribute(attributes, 'value')
+        if (value === null || isUncontrolledValue(value)) return
         if (hasHandlerOnAncestor(context.sourceCode.getAncestors(node.parent))) return
-        context.report({ node: value, messageId: 'frozen', data: { element: node.name.name } })
+        context.report({ node: value, messageId: 'frozen', data: { element } })
       },
     }
   },

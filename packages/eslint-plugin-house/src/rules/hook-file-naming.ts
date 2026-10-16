@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
 import { isHookName } from '../shared/hook-name.ts'
+import { defaultedOption } from '../shared/rule-options.ts'
 
 const FILENAME_CASES = ['camelCase', 'kebab-case'] as const
 
@@ -18,6 +19,7 @@ type FilenameConvention = {
   hookFileStemOf: (hookName: string) => string
 }
 
+const RULE_NAME = 'hook-file-naming'
 const DEFAULT_FILENAME_CASE: FilenameCase = 'kebab-case'
 // PascalCase means [A-Z][a-z]: SCREAMING_CASE constants are not components.
 const COMPONENT_NAME = /^[A-Z][a-z]/
@@ -39,13 +41,6 @@ function kebabCaseOf(camelCaseName: string): string {
     .replaceAll(WORD_START_AFTER_LOWERCASE, WORD_SEPARATOR)
     .replaceAll(WORD_START_AFTER_ACRONYM, WORD_SEPARATOR)
     .toLowerCase()
-}
-
-function filledFileNamingOf({ filenameCase }: FileNaming): Required<FileNaming> {
-  if (filenameCase === undefined) {
-    throw new Error('hook-file-naming ran without meta.defaultOptions applied to its options')
-  }
-  return { filenameCase }
 }
 
 // ESLint names code it was handed without a path `<input>` or `<text>`.
@@ -135,7 +130,7 @@ export const hookFileNaming = ESLintUtils.RuleCreator.withoutDocs<Options, 'rena
   },
   create(context, [options]) {
     if (isVirtualFile(context.filename)) return {}
-    const convention = FILENAME_CONVENTIONS[filledFileNamingOf(options).filenameCase]
+    const convention = FILENAME_CONVENTIONS[defaultedOption(RULE_NAME, options.filenameCase)]
     const { base, stem, extension } = fileNameOf(context.filename)
     // A barrel names nothing; unicorn/no-barrel-files owns that case.
     if (stem === BARREL_STEM || convention.isHookFileStem(stem)) return {}

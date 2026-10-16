@@ -1,6 +1,7 @@
-import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
+import { ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
 import { findJsxAttribute, hasLiteralHiddenType } from '../shared/jsx-attributes.ts'
+import { unqualifiedTagOf } from '../shared/jsx-elements.ts'
 
 type BoundaryTag = 'a' | 'button' | 'form'
 
@@ -17,8 +18,8 @@ const INTRINSIC_TAG = /^[a-z]/
 
 // Intrinsic elements only: `<Button>` may render anything, and untyped lint cannot tell what.
 function intrinsicTagOf(element: TSESTree.JSXElement): string | null {
-  const { name } = element.openingElement
-  return name.type === AST_NODE_TYPES.JSXIdentifier && INTRINSIC_TAG.test(name.name) ? name.name : null
+  const tag = unqualifiedTagOf(element.openingElement)
+  return tag !== null && INTRINSIC_TAG.test(tag) ? tag : null
 }
 
 // `type="hidden"` can take neither click nor focus, so it is legal inside a button.

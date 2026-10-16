@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
-import { findJsxAttribute, isJsxAttribute, jsxAttributeName } from '../shared/jsx-attributes.ts'
+import { findJsxAttribute, isJsxAttributeNamedIn, plainAttributesOf } from '../shared/jsx-attributes.ts'
+import { unqualifiedTagOf } from '../shared/jsx-elements.ts'
 
 const DIALOG_ROLES: ReadonlySet<string> = new Set(['dialog', 'alertdialog'])
 // `title` is a real accessible-name source: the accname algorithm falls through to it.
@@ -29,8 +30,7 @@ function literalValueOf(attribute: TSESTree.JSXAttribute): string | null {
 function dialogOf(element: TSESTree.JSXOpeningElement): Dialog | null {
   const roleAttribute = findJsxAttribute(element, 'role')
   if (roleAttribute === null) {
-    const isIntrinsicDialog = element.name.type === AST_NODE_TYPES.JSXIdentifier && element.name.name === 'dialog'
-    return isIntrinsicDialog ? { node: element.name, what: '<dialog>' } : null
+    return unqualifiedTagOf(element) === 'dialog' ? { node: element.name, what: '<dialog>' } : null
   }
   const role = literalValueOf(roleAttribute)
   return role !== null && DIALOG_ROLES.has(role) ? { node: roleAttribute, what: `role="${role}"` } : null
@@ -38,8 +38,7 @@ function dialogOf(element: TSESTree.JSXOpeningElement): Dialog | null {
 
 // `aria-label=""` names nothing. Any other value, dynamic ones included, is taken at its word.
 function isAccessibleName(attribute: TSESTree.JSXAttribute): boolean {
-  const name = jsxAttributeName(attribute)
-  if (name === null || !DIALOG_NAME_ATTRIBUTES.has(name)) return false
+  if (!isJsxAttributeNamedIn(attribute, DIALOG_NAME_ATTRIBUTES)) return false
   const value = literalValueOf(attribute)
   return value === null || value.trim() !== ''
 }
@@ -60,8 +59,8 @@ export const dialogHasAccessibleName = ESLintUtils.RuleCreator.withoutDocs<[], '
     return {
       JSXOpeningElement(node) {
         // A spread may forward the name from props, as wrapper components do: the deliberate blind spot.
-        const { attributes } = node
-        if (!attributes.every(isJsxAttribute)) return
+        const attributes = plainAttributesOf(node)
+        if (attributes === null) return
         const dialog = dialogOf(node)
         if (dialog === null || attributes.some(isAccessibleName)) return
         context.report({ node: dialog.node, messageId: 'unnamed', data: { what: dialog.what } })

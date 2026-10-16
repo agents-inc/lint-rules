@@ -1,6 +1,9 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
+import { callReceiving } from '../shared/call-arguments.ts'
+import { methodNameOf } from '../shared/callee-name.ts'
 import { childNodesOf } from '../shared/child-nodes.ts'
+import { isFunctionNode } from '../shared/function-name.ts'
 
 type MessageId = 'effect' | 'nestedUpdate' | 'outerMutation' | 'refMutation' | 'refWrite'
 
@@ -10,6 +13,8 @@ type Updater = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression
 type Link = { node: TSESTree.Node; up: Link | null }
 
 type Finding = { node: TSESTree.Node; messageId: MessageId }
+
+type DottedPath = [root: string, ...properties: string[]]
 
 const SETTER_NAME = /^set[A-Z]/
 // Named like setters and take a function first, but schedule it rather than update state.
@@ -159,23 +164,27 @@ function namesBoundIn(node: TSESTree.Node): string[] {
 // The identifier a member chain starts from: `ref.current` → `ref`. Null for a value made on the
 // spot, such as `[...prev].sort()`, which nothing else holds.
 function rootNameOf(node: TSESTree.Node): string | null {
-  let current = node
-  while (current.type === AST_NODE_TYPES.MemberExpression) current = current.object
-  return current.type === AST_NODE_TYPES.Identifier ? current.name : null
+  if (node.type === AST_NODE_TYPES.MemberExpression) return rootNameOf(node.object)
+  return node.type === AST_NODE_TYPES.Identifier ? node.name : null
+}
+
+// The path as written, `window.localStorage.setItem`, or null when a hop is computed or the chain
+// does not start from a name.
+function dottedPathOf(node: TSESTree.Node): DottedPath | null {
+  if (node.type === AST_NODE_TYPES.Identifier) return [node.name]
+  if (node.type !== AST_NODE_TYPES.MemberExpression || node.computed || node.property.type !== AST_NODE_TYPES.Identifier) {
+    return null
+  }
+  const objectPath = dottedPathOf(node.object)
+  return objectPath === null ? null : [...objectPath, node.property.name]
 }
 
 // The dotted path without a leading `window.`, or null when a hop is computed.
 function memberPathOf(node: TSESTree.Node): string[] | null {
-  const properties: string[] = []
-  let current = node
-  while (current.type === AST_NODE_TYPES.MemberExpression) {
-    if (current.computed || current.property.type !== AST_NODE_TYPES.Identifier) return null
-    properties.unshift(current.property.name)
-    current = current.object
-  }
-  if (current.type !== AST_NODE_TYPES.Identifier) return null
-  const path = [current.name, ...properties]
-  return path.length > 1 && GLOBAL_ALIASES.has(current.name) ? path.slice(1) : path
+  const path = dottedPathOf(node)
+  if (path === null) return null
+  const [root, ...properties] = path
+  return properties.length > 0 && GLOBAL_ALIASES.has(root) ? properties : path
 }
 
 function isKnownEffect(path: readonly string[]): boolean {
@@ -193,13 +202,10 @@ function isMutatorCall(path: readonly string[]): boolean {
 }
 
 function isSyncIterationCallback(fn: TSESTree.Node, parent: TSESTree.Node): boolean {
-  return (
-    parent.type === AST_NODE_TYPES.CallExpression &&
-    parent.arguments.some((argument) => argument === fn) &&
-    parent.callee.type === AST_NODE_TYPES.MemberExpression &&
-    parent.callee.property.type === AST_NODE_TYPES.Identifier &&
-    SYNC_CALLBACK_METHODS.has(parent.callee.property.name)
-  )
+  const call = callReceiving(fn, parent)
+  if (call === null) return false
+  const method = methodNameOf(call.callee)
+  return method !== null && SYNC_CALLBACK_METHODS.has(method)
 }
 
 const DISCARD_TRANSPARENT: ReadonlySet<string> = new Set([
@@ -211,17 +217,9 @@ const DISCARD_TRANSPARENT: ReadonlySet<string> = new Set([
 // Whether the call's result is thrown away. A setter is called for its effect; `setPreference(prev,
 // patch)` in return position is a pure helper whose name starts with `set`.
 function isDiscarded(link: Link | null): boolean {
-  let current = link
-  while (current !== null && DISCARD_TRANSPARENT.has(current.node.type)) current = current.up
-  return current?.node.type === AST_NODE_TYPES.ExpressionStatement
-}
-
-function isFunction(node: TSESTree.Node): boolean {
-  return (
-    node.type === AST_NODE_TYPES.FunctionExpression ||
-    node.type === AST_NODE_TYPES.ArrowFunctionExpression ||
-    node.type === AST_NODE_TYPES.FunctionDeclaration
-  )
+  if (link === null) return false
+  if (DISCARD_TRANSPARENT.has(link.node.type)) return isDiscarded(link.up)
+  return link.node.type === AST_NODE_TYPES.ExpressionStatement
 }
 
 function isRefValue(member: TSESTree.MemberExpression): boolean {
@@ -270,7 +268,7 @@ function findingAt(node: TSESTree.Node, link: Link, local: ReadonlySet<string>):
 }
 
 function findingsUnder(node: TSESTree.Node, link: Link, local: ReadonlySet<string>): Finding[] {
-  if (isFunction(node) && !isSyncIterationCallback(node, link.node)) return []
+  if (isFunctionNode(node) && !isSyncIterationCallback(node, link.node)) return []
   const here: Link = { node, up: link }
   const finding = findingAt(node, link, local)
   const below = childNodesOf(node).flatMap((child) => findingsUnder(child, here, local))

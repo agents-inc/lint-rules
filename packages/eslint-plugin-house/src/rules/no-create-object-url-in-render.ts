@@ -1,14 +1,13 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
-import { type FunctionNode, functionNameOf } from '../shared/function-name.ts'
+import { callReceiving } from '../shared/call-arguments.ts'
+import { componentNameOf, type FunctionFrame, functionFrameVisitors } from '../shared/function-frames.ts'
+import type { FunctionNode } from '../shared/function-name.ts'
 import { isHookName } from '../shared/hook-name.ts'
 
-// `rendersJsx` records only the JSX this function renders itself, not a nested callback's.
-type Frame = { node: FunctionNode; rendersJsx: boolean }
+type PendingCall = { node: TSESTree.CallExpression; enclosingFunctions: readonly FunctionFrame[] }
 
-type PendingCall = { node: TSESTree.CallExpression; enclosingFunctions: readonly Frame[] }
-
-const COMPONENT_NAME = /^[A-Z]/
+const RULE_NAME = 'no-create-object-url-in-render'
 const EVENT_PROP = /^on[A-Z]/
 // Calls whose function argument runs later. Hooks (`use[A-Z]`) are deferred too, which covers the
 // lazy `useState(() => URL.createObjectURL(b))`: the fix for the eager form this rule reports.
@@ -58,11 +57,9 @@ function isEventHandler(fn: FunctionNode): boolean {
 }
 
 function isDeferredCallArgument(fn: FunctionNode): boolean {
-  const { parent } = fn
-  if (parent.type !== AST_NODE_TYPES.CallExpression || !parent.arguments.some((argument) => argument === fn)) {
-    return false
-  }
-  const name = staticCalleeNameOf(parent)
+  const call = callReceiving(fn, fn.parent)
+  if (call === null) return false
+  const name = staticCalleeNameOf(call)
   return name !== null && (isHookName(name) || DEFERRED_CALLS.has(name))
 }
 
@@ -71,18 +68,13 @@ function isDeferred(fn: FunctionNode): boolean {
   return isEventHandler(fn) || isDeferredCallArgument(fn)
 }
 
-function isComponent(frame: Frame): boolean {
-  const name = functionNameOf(frame.node)
-  return name !== null && COMPONENT_NAME.test(name) && frame.rendersJsx
-}
-
 // Walks outward from the innermost enclosing function. A callback that renders JSX is render
 // position too (`items.map(f => <img src={URL.createObjectURL(f)} />)`), so the walk continues to the
 // component it renders into; any other function runs on demand and ends it.
-function runsOnEveryRender(enclosingFunctions: readonly Frame[]): boolean {
+function runsOnEveryRender(enclosingFunctions: readonly FunctionFrame[]): boolean {
   for (const frame of enclosingFunctions.toReversed()) {
     if (isDeferred(frame.node)) return false
-    if (isComponent(frame)) return true
+    if (componentNameOf(frame) !== null) return true
     if (!frame.rendersJsx) return false
   }
   return false
@@ -102,30 +94,12 @@ export const noCreateObjectUrlInRender = ESLintUtils.RuleCreator.withoutDocs<[],
     defaultOptions: [],
   },
   create(context) {
-    const stack: Frame[] = []
+    const stack: FunctionFrame[] = []
     // Decided at Program:exit: whether a function is a component depends on JSX not yet visited.
     const pending: PendingCall[] = []
 
-    const enter = (node: FunctionNode): void => {
-      stack.push({ node, rendersJsx: false })
-    }
-    const leave = (): void => {
-      stack.pop()
-    }
-    const markJsx = (): void => {
-      const frame = stack.at(-1)
-      if (frame !== undefined) frame.rendersJsx = true
-    }
-
     return {
-      FunctionDeclaration: enter,
-      'FunctionDeclaration:exit': leave,
-      FunctionExpression: enter,
-      'FunctionExpression:exit': leave,
-      ArrowFunctionExpression: enter,
-      'ArrowFunctionExpression:exit': leave,
-      JSXElement: markJsx,
-      JSXFragment: markJsx,
+      ...functionFrameVisitors(stack, { ruleName: RULE_NAME, frameFor: (node) => ({ node, rendersJsx: false }) }),
       CallExpression(node) {
         // At module scope it is a one-time setup, not a render.
         if (!isCreateObjectUrl(node.callee) || stack.length === 0) return

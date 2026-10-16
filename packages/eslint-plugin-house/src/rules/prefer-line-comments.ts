@@ -1,14 +1,15 @@
 import { AST_TOKEN_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
-import { restOfLine } from '../shared/rest-of-line.ts'
+import { lineStartOf, restOfLine } from '../shared/line-bounds.ts'
+import type { Replacement } from '../shared/replacement.ts'
+import { defaultedOption, stringListOptionSchema } from '../shared/rule-options.ts'
 
 // The schema does not require the key: ESLint fills it from meta.defaultOptions when a config omits it.
 type AllowedBlocks = { allowPatterns?: readonly string[] }
 
 type Options = [AllowedBlocks]
 
-type Replacement = { range: TSESTree.Range; text: string }
-
+const RULE_NAME = 'prefer-line-comments'
 // Directives that tooling reads from block comments, which must stay blocks.
 const TOOLING_DIRECTIVES: readonly string[] = [
   '^\\s*(eslint|oxlint|ts-|@ts-|prettier|istanbul|c8|v8|webpack|vite|global|globals)',
@@ -16,20 +17,9 @@ const TOOLING_DIRECTIVES: readonly string[] = [
 ]
 const BLOCK_LINE_PREFIX = /^\s*\*?\s?/
 
-function filledAllowedBlocksOf({ allowPatterns }: AllowedBlocks): Required<AllowedBlocks> {
-  if (allowPatterns === undefined) {
-    throw new Error('prefer-line-comments ran without meta.defaultOptions applied to its options')
-  }
-  return { allowPatterns }
-}
-
 // `/** */` is JSDoc: the format editors read, and what prose explaining why is written in.
 function isJsDoc(comment: TSESTree.Comment): boolean {
   return comment.value.startsWith('*')
-}
-
-function lineStartOf(text: string, index: number): number {
-  return text.lastIndexOf('\n', index) + 1
 }
 
 // A block comment after code cannot become a line comment without swallowing the rest of the line.
@@ -60,19 +50,12 @@ export const preferLineComments = ESLintUtils.RuleCreator.withoutDocs<Options, '
     fixable: 'code',
     docs: { description: 'Prefer // line comments over /* */ and /** */ block comments' },
     messages: { block: 'Use // line comments, not a /* */ block.' },
-    schema: [
-      {
-        type: 'object',
-        properties: { allowPatterns: { type: 'array', items: { type: 'string' } } },
-        additionalProperties: false,
-      },
-    ],
+    schema: [stringListOptionSchema('allowPatterns')],
     defaultOptions: [{ allowPatterns: TOOLING_DIRECTIVES }],
   },
   create(context, [options]) {
-    const { allowPatterns } = filledAllowedBlocksOf(options)
+    const allowed = defaultedOption(RULE_NAME, options.allowPatterns).map((pattern) => new RegExp(pattern))
     const { sourceCode } = context
-    const allowed = allowPatterns.map((pattern) => new RegExp(pattern))
     const isAllowed = (comment: TSESTree.Comment): boolean => allowed.some((pattern) => pattern.test(comment.value))
     const isConvertible = (comment: TSESTree.Comment): boolean =>
       comment.type === AST_TOKEN_TYPES.Block &&

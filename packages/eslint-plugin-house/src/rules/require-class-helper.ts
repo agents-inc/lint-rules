@@ -2,25 +2,20 @@ import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/u
 
 import { calleeNameOf } from '../shared/callee-name.ts'
 import { jsxAttributeName } from '../shared/jsx-attributes.ts'
+import { defaultedOption, stringListOptionSchema } from '../shared/rule-options.ts'
 
 // The schema does not require the key: ESLint fills it from meta.defaultOptions when a config omits it.
 type ClassHelpers = { helpers?: readonly string[] }
 
 type Options = [ClassHelpers]
 
+const RULE_NAME = 'require-class-helper'
 // `class` as well: Preact and Solid take it where React takes className.
 const CLASS_ATTRIBUTES: ReadonlySet<string> = new Set(['className', 'class'])
 const DEFAULT_CLASS_HELPERS: readonly string[] = ['cn', 'clsx', 'cx', 'cva', 'twMerge', 'classNames', 'classnames']
 // cva returns a function, named by convention for what it styles: `buttonVariants`.
 const CVA_FUNCTION_SUFFIX = 'Variants'
 const HELPER_LIST_SEPARATOR = ', '
-
-function filledClassHelpersOf({ helpers }: ClassHelpers): Required<ClassHelpers> {
-  if (helpers === undefined) {
-    throw new Error('require-class-helper ran without meta.defaultOptions applied to its options')
-  }
-  return { helpers }
-}
 
 // What a value is beneath the wrappers that change nothing it renders: `styles.card!`, `className as
 // string` and `styles?.footer` are the lookups they wrap, and `cn?.(…)` is a call to cn.
@@ -81,17 +76,11 @@ export const requireClassHelper = ESLintUtils.RuleCreator.withoutDocs<Options, '
       useClassHelper:
         'Give {{attribute}} a string, a name, or a call to a class helper ({{helpers}}), and compose classes inside that call. A helper drops empty, false and undefined parts; composed by hand they render as stray spaces or the class "undefined".',
     },
-    schema: [
-      {
-        type: 'object',
-        properties: { helpers: { type: 'array', items: { type: 'string' } } },
-        additionalProperties: false,
-      },
-    ],
+    schema: [stringListOptionSchema('helpers')],
     defaultOptions: [{ helpers: DEFAULT_CLASS_HELPERS }],
   },
   create(context, [options]) {
-    const { helpers } = filledClassHelpersOf(options)
+    const helpers = defaultedOption(RULE_NAME, options.helpers)
     const helperNames: ReadonlySet<string> = new Set(helpers)
 
     return {

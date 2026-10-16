@@ -2,18 +2,14 @@ import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/u
 
 import { calleeNameOf } from '../shared/callee-name.ts'
 import { NAMED_CALLBACK_HOOKS } from '../shared/named-callback-hooks.ts'
+import { defaultedOption, stringListOptionSchema } from '../shared/rule-options.ts'
 
 // The schema does not require the key: ESLint fills it from meta.defaultOptions when a config omits it.
 type CallbackHooks = { hooks?: readonly string[] }
 
 type Options = [CallbackHooks]
 
-function filledCallbackHooksOf({ hooks }: CallbackHooks): Required<CallbackHooks> {
-  if (hooks === undefined) {
-    throw new Error('named-hook-callback ran without meta.defaultOptions applied to its options')
-  }
-  return { hooks }
-}
+const RULE_NAME = 'named-hook-callback'
 
 function isAnonymousFunction(argument: TSESTree.CallExpressionArgument): boolean {
   return (
@@ -31,18 +27,11 @@ export const namedHookCallback = ESLintUtils.RuleCreator.withoutDocs<Options, 'a
       anonymous:
         "Give this {{hook}} callback a name: {{hook}}(function describesWhatItDoes() {…}). An anonymous callback shows as 'anonymous' in stack traces and React DevTools.",
     },
-    schema: [
-      {
-        type: 'object',
-        properties: { hooks: { type: 'array', items: { type: 'string' } } },
-        additionalProperties: false,
-      },
-    ],
+    schema: [stringListOptionSchema('hooks')],
     defaultOptions: [{ hooks: NAMED_CALLBACK_HOOKS }],
   },
   create(context, [options]) {
-    const { hooks } = filledCallbackHooksOf(options)
-    const namedCallbackHooks = new Set(hooks)
+    const namedCallbackHooks = new Set(defaultedOption(RULE_NAME, options.hooks))
     return {
       CallExpression(node) {
         const hook = calleeNameOf(node.callee)
