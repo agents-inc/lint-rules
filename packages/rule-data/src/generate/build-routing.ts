@@ -1,4 +1,4 @@
-import type { Engine, RuleRoute, ShippedRule } from '../catalog.ts'
+import type { Engine, RuleRoute, ShippedScope } from '../catalog.ts'
 import { oxlintSpellingsOf } from '../rule-id-parts.ts'
 import {
   type SuppressionMode,
@@ -19,6 +19,23 @@ export type RulesetAssignment = {
 
 /** A suppression-mode setting as `data/rules.json` writes it: `on` runs the rule with its own `options`. */
 export type CanonicalSuppressionModeSetting = 'on' | SuppressionModeSetting
+
+/** Another shipped rule this one is related to, and why: the card it was decided on, then one line. */
+export type RuleRelation = { readonly rule: string; readonly because: string }
+
+/**
+ * A route's `shipped` as the generated routing writes it: each relation is the other rule's ID, and
+ * present only where `data/rules.json` records it. The catalog gives every shipped rule both.
+ */
+export type RoutedShippedRule = TurnedOnBy &
+  ShippedScope & {
+    readonly coveredBy?: string
+    readonly splitByTypesWith?: string
+    readonly readsRuntimeGlobals?: true
+  }
+
+/** A route as the generated routing writes it. */
+export type RoutingEntry = Omit<RuleRoute, 'shipped'> & { shipped: RoutedShippedRule | null }
 
 /** One entry of `data/rules.json`: a rule we ship on, in its ruleset or always, on its engine. */
 export type CanonicalRule = {
@@ -46,13 +63,22 @@ export type CanonicalRule = {
   files?: readonly string[]
   /** Never these files. */
   ignores?: readonly string[]
+  /**
+   * The shipped rule in another ruleset whose findings include this one's: this rule is left out
+   * wherever that one is on.
+   */
+  coveredBy?: RuleRelation
+  /** The typed rule this untyped one is off beside, where that one runs with type information. */
+  splitByTypesWith?: RuleRelation
+  /** `true`: our runtimes' globals serve the rule, so the editor merges give them where it runs. */
+  readsRuntimeGlobals?: boolean
   assignment: RulesetAssignment
 }
 
 type RoutingSources = { inventory: Inventory; canonicalRules: readonly CanonicalRule[] }
 
 /** The engine and shipped settings of every `RuleId`, sorted by ID. */
-export function buildRouting(sources: RoutingSources): readonly RuleRoute[] {
+export function buildRouting(sources: RoutingSources): readonly RoutingEntry[] {
   const ruleIds = ruleIdsOf(sources)
   assertOneRuleIdPerOxlintName(sources.inventory.rules, ruleIds)
   const installedById = new Map(sources.inventory.rules.map((rule) => [rule.id, rule]))
@@ -92,7 +118,7 @@ function installedRuleOf(id: string, installedById: ReadonlyMap<string, Inventor
   return installed
 }
 
-function routeOf(installed: InventoryRule, canonical: CanonicalRule | undefined, ruleIds: ReadonlySet<string>): RuleRoute {
+function routeOf(installed: InventoryRule, canonical: CanonicalRule | undefined, ruleIds: ReadonlySet<string>): RoutingEntry {
   const shipped = canonical === undefined ? null : shippedRuleOf(canonical)
   const engine = canonical === undefined ? defaultEngineOf(installed) : canonical.engine
   return engine === 'oxlint'
@@ -100,9 +126,24 @@ function routeOf(installed: InventoryRule, canonical: CanonicalRule | undefined,
     : eslintRouteOf(installed, canonical, shipped)
 }
 
-function shippedRuleOf(canonical: CanonicalRule): ShippedRule {
+function shippedRuleOf(canonical: CanonicalRule): RoutedShippedRule {
   const { options, files, ignores } = canonical
-  return { ...turnedOnByOf(canonical), options, files: files ?? null, ignores: ignores ?? null }
+  return {
+    ...turnedOnByOf(canonical),
+    options,
+    files: files ?? null,
+    ignores: ignores ?? null,
+    ...relatedRuleIdsOf(canonical),
+    ...(canonical.readsRuntimeGlobals === true ? { readsRuntimeGlobals: true } : {}),
+  }
+}
+
+/** Each relation the canonical list records, as the other rule's ID: none where it records none. */
+function relatedRuleIdsOf({ coveredBy, splitByTypesWith }: CanonicalRule): Pick<RoutedShippedRule, 'coveredBy' | 'splitByTypesWith'> {
+  return {
+    ...(coveredBy === undefined ? {} : { coveredBy: coveredBy.rule }),
+    ...(splitByTypesWith === undefined ? {} : { splitByTypesWith: splitByTypesWith.rule }),
+  }
 }
 
 function turnedOnByOf({ id, ruleset, alwaysOn, whenSuppressions, options }: CanonicalRule): TurnedOnBy {
@@ -127,7 +168,7 @@ function defaultEngineOf({ oxlint }: InventoryRule): Engine {
   return oxlint !== null && !oxlint.typeAware ? 'oxlint' : 'eslint'
 }
 
-function oxlintRouteOf(installed: InventoryRule, shipped: ShippedRule | null, ruleIds: ReadonlySet<string>): RuleRoute {
+function oxlintRouteOf(installed: InventoryRule, shipped: RoutedShippedRule | null, ruleIds: ReadonlySet<string>): RoutingEntry {
   const { id, oxlint } = installed
   if (oxlint === null) throw new Error(`${id} is routed to oxlint, which does not have it`)
   return {
@@ -144,7 +185,7 @@ function oxlintRouteOf(installed: InventoryRule, shipped: ShippedRule | null, ru
 }
 
 /** The canonical list's `typed` wins: some typed plugin rules do not declare it in their meta. */
-function eslintRouteOf(installed: InventoryRule, canonical: CanonicalRule | undefined, shipped: ShippedRule | null): RuleRoute {
+function eslintRouteOf(installed: InventoryRule, canonical: CanonicalRule | undefined, shipped: RoutedShippedRule | null): RoutingEntry {
   const { id, oxlint, eslint } = installed
   if (eslint === null) throw new Error(`${id} is routed to ESLint, which does not have it`)
   return {

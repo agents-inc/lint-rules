@@ -1,4 +1,5 @@
 import eslintFallbackSkips from '../data/eslint-fallback-skips.json' with { type: 'json' }
+import eslintStandIns from '../data/eslint-stand-ins.json' with { type: 'json' }
 
 import { groupBy } from './generate/collections.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
@@ -19,14 +20,38 @@ export type RulesetDefinition = {
   list: RulesetList
   domain: string | null
   env: string | null
+  /** `true`: `init` names the ruleset only in a comment, for a team to list (owner, 2026-10-10). */
+  readonly optIn: boolean
+  /** `true`: its rules reorder code, so `init` warns it conflicts with a formatter that sorts (owner, 2026-10-15). */
+  readonly sortsCode: boolean
 }
 
-export type ShippedRule = TurnedOnBy & {
+/** What a shipped rule runs with, and on which files. */
+export type ShippedScope = {
   /** What the rule runs with when on. A rule `allowSuppressions` decides runs with its `whenSuppressions` instead. */
   options: readonly unknown[]
   files: readonly string[] | null
   ignores: readonly string[] | null
 }
+
+export type ShippedRule = TurnedOnBy &
+  ShippedScope & {
+    /**
+     * The shipped rule, in another ruleset, whose findings include this one's: this rule is left out
+     * wherever that one is on. `null` where none.
+     */
+    readonly coveredBy: string | null
+    /**
+     * The typed rule this untyped one splits by types with: this rule is off where that one runs with
+     * type information. `null` where none.
+     */
+    readonly splitByTypesWith: string | null
+    /**
+     * Whether our runtimes' globals serve the rule: the editor merges give them only where such a
+     * rule of ours runs (#68).
+     */
+    readonly readsRuntimeGlobals: boolean
+  }
 
 export type RuleRoute = {
   id: string
@@ -58,6 +83,11 @@ export type Catalog = {
    * ID → why. Each one's fixture does not fire in ESLint, or the owner decided against it.
    */
   eslintFallbackSkips: ReadonlyMap<string, string>
+  /**
+   * Without oxlint, ESLint states each stand-in in place of a shipped oxlint rule it has no version
+   * of: oxlint rule ID → the ID of the ESLint rule that reports the same code.
+   */
+  readonly eslintStandIns: ReadonlyMap<string, string>
   /** Every rule the oxlint we install has, in RuleId order. */
   oxlintRules: readonly OxlintRule[]
   /**
@@ -96,17 +126,19 @@ type InventoryRule = (typeof inventory.rules)[number]
  * A route's `shipped` as the generated routing writes it. Declared rather than inferred: JSON infers a
  * field only while some rule in today's data uses it.
  */
-type GeneratedShippedRule = TurnedOnByFields & {
-  readonly options: readonly unknown[]
-  readonly files: readonly string[] | null
-  readonly ignores: readonly string[] | null
-}
+type GeneratedShippedRule = TurnedOnByFields &
+  Readonly<ShippedScope> & {
+    readonly coveredBy?: string | undefined
+    readonly splitByTypesWith?: string | undefined
+    readonly readsRuntimeGlobals?: boolean | undefined
+  }
 
 /** Every `RuleId` with its engine and, for the rules we ship, its ruleset and settings. */
 export const catalog: Catalog = {
   rules: new Map(routing.map(parseRuleRoute).map((route) => [route.id, route])),
   rulesets: rulesetDefinitions,
   eslintFallbackSkips: new Map(Object.entries(eslintFallbackSkips)),
+  eslintStandIns: new Map(Object.entries(eslintStandIns).map(([oxlintRule, { standIn }]) => [oxlintRule, standIn])),
   oxlintRules: inventory.rules.flatMap(oxlintRuleOf),
   coreRuleExtensions: extensionsByCoreRule(inventory.rules.flatMap(coreRuleExtensionOf)),
   ruleIdsWithAnEslintVersion: new Set(inventory.rules.filter(({ eslint }) => eslint !== null).map(({ id }) => id)),
@@ -142,8 +174,15 @@ function parseRuleRoute(route: GeneratedRoute): RuleRoute {
   return { ...route, engine: parseEngine(route.engine), shipped: parseShippedRule(route.id, route.shipped) }
 }
 
+/** Routing writes a relation, or the runtime-globals mark, only where the canonical list records one; absent, it is none. */
 function parseShippedRule(id: string, shipped: GeneratedShippedRule | null): ShippedRule | null {
   if (shipped === null) return null
-  const { ruleset, alwaysOn, whenSuppressions, ...scope } = shipped
-  return { ...parseTurnedOnBy(id, { ruleset, alwaysOn, whenSuppressions }), ...scope }
+  const { ruleset, alwaysOn, whenSuppressions, coveredBy, splitByTypesWith, readsRuntimeGlobals, ...scope } = shipped
+  return {
+    ...parseTurnedOnBy(id, { ruleset, alwaysOn, whenSuppressions }),
+    ...scope,
+    coveredBy: coveredBy === undefined ? null : coveredBy,
+    splitByTypesWith: splitByTypesWith === undefined ? null : splitByTypesWith,
+    readsRuntimeGlobals: readsRuntimeGlobals === true,
+  }
 }

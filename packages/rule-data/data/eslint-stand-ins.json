@@ -1,0 +1,22 @@
+{
+  "oxc/bad-char-at-comparison": {
+    "standIn": "unicorn/no-invalid-character-comparison",
+    "because": "r2-d49-51: oxc with oxlint, unicorn without. Both report String(value).charAt(0) === 'ab'; unicorn's reports only a receiver it can prove a string, oxc's any receiver (measured, oxlint 1.87, eslint-plugin-unicorn 77.0.0)"
+  },
+  "oxc/bad-comparison-sequence": {
+    "standIn": "unicorn/no-chained-comparison",
+    "because": "#55: run both. Both report a < b < c (measured, oxlint 1.87, eslint-plugin-unicorn 77.0.0)"
+  },
+  "oxc/double-comparisons": {
+    "standIn": "unicorn/no-double-comparison",
+    "because": "#55: run both. Both report x === y || x < y; unicorn's is silent on x == y || x < y (measured, oxlint 1.87, eslint-plugin-unicorn 77.0.0)"
+  },
+  "oxc/erasing-op": {
+    "standIn": "unicorn/no-constant-zero-expression",
+    "because": "r2-d49-51: oxc with oxlint, unicorn without. Both report x * 0 (measured, oxlint 1.87, eslint-plugin-unicorn 77.0.0)"
+  },
+  "oxc/misrefactored-assign-op": {
+    "standIn": "unicorn/no-misrefactored-assignment",
+    "because": "r2-d49-51: oxc with oxlint, unicorn without. Both report total += total + step (measured, oxlint 1.87, eslint-plugin-unicorn 77.0.0)"
+  }
+}

@@ -11,17 +11,6 @@
     }
   },
   {
-    "id": "@eslint-react/dom-no-dangerously-set-innerhtml-with-children",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
     "id": "@eslint-react/dom-no-flush-sync",
     "ruleset": "react",
     "engine": "eslint",
@@ -140,39 +129,6 @@
     "assignment": {
       "confidence": "high",
       "by": "plugin"
-    }
-  },
-  {
-    "id": "@eslint-react/dom-no-void-elements-with-children",
-    "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "critique-r1"
-    }
-  },
-  {
-    "id": "@eslint-react/jsx-no-children-prop-with-children",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "@eslint-react/jsx-no-comment-textnodes",
-    "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "critique-r1"
     }
   },
   {
@@ -390,6 +346,10 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "functional/no-classes",
+      "because": "r2-d18: functional/no-classes reports every class, a class component included"
+    },
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -397,39 +357,6 @@
   },
   {
     "id": "@eslint-react/x-no-clone-element",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "@eslint-react/x-no-component-will-mount",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "@eslint-react/x-no-component-will-receive-props",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "@eslint-react/x-no-component-will-update",
     "ruleset": "react",
     "engine": "eslint",
     "options": [],
@@ -638,61 +565,6 @@
     }
   },
   {
-    "id": "@eslint-react/x-no-unsafe-component-will-mount",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "@eslint-react/x-no-unsafe-component-will-receive-props",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "@eslint-react/x-no-unsafe-component-will-update",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "@eslint-react/x-no-unstable-context-value",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "@eslint-react/x-no-unstable-default-props",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
     "id": "@eslint-react/x-no-unused-class-component-members",
     "ruleset": "react",
     "engine": "eslint",
@@ -716,17 +588,6 @@
   },
   {
     "id": "@eslint-react/x-no-use-context",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "@eslint-react/x-static-components",
     "ruleset": "react",
     "engine": "eslint",
     "options": [],
@@ -835,7 +696,8 @@
     "options": [
       {
         "assertionStyle": "as",
-        "objectLiteralTypeAssertions": "never"
+        "objectLiteralTypeAssertions": "never",
+        "arrayLiteralTypeAssertions": "never"
       }
     ],
     "typed": false,
@@ -911,6 +773,10 @@
     "oxlintName": "typescript/no-confusing-non-null-assertion",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "@typescript-eslint/no-non-null-assertion",
+      "because": "r2-d36: no-non-null-assertion reports every non-null assertion, outside test files"
+    },
     "assignment": {
       "confidence": "low",
       "alternative": "type-safety",
@@ -922,7 +788,103 @@
     "id": "@typescript-eslint/no-deprecated",
     "ruleset": "modern-js",
     "engine": "eslint",
-    "options": [],
+    "options": [
+      {
+        "allow": [
+          {
+            "from": "lib",
+            "name": [
+              "substr",
+              "trimLeft",
+              "trimRight",
+              "keyCode",
+              "charCode",
+              "which",
+              "$1",
+              "$2",
+              "$3",
+              "$4",
+              "$5",
+              "$6",
+              "$7",
+              "$8",
+              "$9",
+              "input",
+              "$_",
+              "lastMatch",
+              "$&",
+              "lastParen",
+              "$+",
+              "leftContext",
+              "$`",
+              "rightContext",
+              "$'",
+              "RegExpConstructor"
+            ]
+          },
+          {
+            "from": "package",
+            "package": "buffer",
+            "name": [
+              "Buffer",
+              "SlowBuffer"
+            ]
+          },
+          {
+            "from": "package",
+            "package": "events",
+            "name": [
+              "listenerCount"
+            ]
+          },
+          {
+            "from": "package",
+            "package": "fs",
+            "name": [
+              "exists",
+              "lchmod",
+              "lchmodSync"
+            ]
+          },
+          {
+            "from": "package",
+            "package": "tls",
+            "name": [
+              "createSecurePair"
+            ]
+          },
+          {
+            "from": "package",
+            "package": "url",
+            "name": [
+              "parse"
+            ]
+          },
+          {
+            "from": "package",
+            "package": "util",
+            "name": [
+              "isArray",
+              "isBoolean",
+              "isBuffer",
+              "isDate",
+              "isError",
+              "isFunction",
+              "isNull",
+              "isNullOrUndefined",
+              "isNumber",
+              "isObject",
+              "isPrimitive",
+              "isRegExp",
+              "isString",
+              "isSymbol",
+              "isUndefined",
+              "log"
+            ]
+          }
+        ]
+      }
+    ],
     "typed": true,
     "assignment": {
       "confidence": "high",
@@ -999,6 +961,10 @@
     "oxlintName": "typescript/no-extra-non-null-assertion",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "@typescript-eslint/no-non-null-assertion",
+      "because": "r2-d36: no-non-null-assertion reports every non-null assertion, outside test files"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-D"
@@ -1011,6 +977,10 @@
     "oxlintName": "typescript/no-extraneous-class",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "functional/no-classes",
+      "because": "r2-d73: functional/no-classes reports every class"
+    },
     "assignment": {
       "confidence": "low",
       "alternative": "declarative",
@@ -1022,7 +992,68 @@
     "id": "@typescript-eslint/no-floating-promises",
     "ruleset": "correctness",
     "engine": "eslint",
-    "options": [],
+    "options": [
+      {
+        "allowForKnownSafeCalls": [
+          {
+            "from": "package",
+            "package": "@testing-library/dom",
+            "name": [
+              "waitFor",
+              "waitForElementToBeRemoved",
+              "findByRole",
+              "findAllByRole",
+              "findByLabelText",
+              "findAllByLabelText",
+              "findByPlaceholderText",
+              "findAllByPlaceholderText",
+              "findByText",
+              "findAllByText",
+              "findByDisplayValue",
+              "findAllByDisplayValue",
+              "findByAltText",
+              "findAllByAltText",
+              "findByTitle",
+              "findAllByTitle",
+              "findByTestId",
+              "findAllByTestId"
+            ]
+          },
+          {
+            "from": "package",
+            "package": "@testing-library/user-event",
+            "name": [
+              "clear",
+              "click",
+              "copy",
+              "cut",
+              "dblClick",
+              "deselectOptions",
+              "hover",
+              "keyboard",
+              "paste",
+              "pointer",
+              "selectOptions",
+              "tab",
+              "tripleClick",
+              "type",
+              "unhover",
+              "upload"
+            ]
+          },
+          {
+            "from": "package",
+            "package": "@testing-library/user-event",
+            "name": "__type"
+          },
+          {
+            "from": "package",
+            "package": "vitest",
+            "name": "__type"
+          }
+        ]
+      }
+    ],
     "typed": true,
     "assignment": {
       "confidence": "high",
@@ -1035,6 +1066,10 @@
     "engine": "eslint",
     "options": [],
     "typed": true,
+    "coveredBy": {
+      "rule": "house/no-classic-loops",
+      "because": "r2-d35: house/no-classic-loops reports every for-in loop"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-D"
@@ -1083,6 +1118,10 @@
       }
     ],
     "typed": false,
+    "coveredBy": {
+      "rule": "functional/no-this-expressions",
+      "because": "r2-d77: functional/no-this-expressions reports every this, outside error-boundary files"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-D"
@@ -1145,25 +1184,16 @@
     }
   },
   {
-    "id": "@typescript-eslint/no-non-null-asserted-nullish-coalescing",
-    "ruleset": "type-safety",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "low",
-      "alternative": "redundancy",
-      "note": "`x! ?? y` asserts away the null the fallback exists for; misleading assertion vs dead fallback",
-      "by": "agent-D"
-    }
-  },
-  {
     "id": "@typescript-eslint/no-non-null-asserted-optional-chain",
     "ruleset": "correctness",
     "engine": "oxlint",
     "oxlintName": "typescript/no-non-null-asserted-optional-chain",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "@typescript-eslint/no-non-null-assertion",
+      "because": "r2-d36: no-non-null-assertion reports every non-null assertion, outside test files"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-D"
@@ -1424,17 +1454,6 @@
     }
   },
   {
-    "id": "@typescript-eslint/no-unsafe-unary-minus",
-    "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": true,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-D"
-    }
-  },
-  {
     "id": "@typescript-eslint/no-useless-default-assignment",
     "ruleset": "redundancy",
     "engine": "eslint",
@@ -1504,17 +1523,6 @@
       "confidence": "low",
       "alternative": "type-safety",
       "note": "explicit values stop enum values shifting when members are reordered/inserted",
-      "by": "agent-D"
-    }
-  },
-  {
-    "id": "@typescript-eslint/prefer-for-of",
-    "ruleset": "modern-js",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
       "by": "agent-D"
     }
   },
@@ -1717,13 +1725,29 @@
     "engine": "eslint",
     "options": [
       {
-        "**/": "!(*[ ()!#$&;<>?|]*)"
+        "**/": "!(*[ !#$&;<>?|]*)"
       }
     ],
     "typed": false,
     "assignment": {
       "confidence": "high",
       "by": "agent-C"
+    }
+  },
+  {
+    "id": "consistent-return",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "splitByTypesWith": {
+      "rule": "@typescript-eslint/consistent-return",
+      "because": "q-r6-core-consistent-return-implied-eval: the typed rule reports mixed returns where types are known; the core rule in JS files and TS files outside every tsconfig"
+    },
+    "assignment": {
+      "confidence": "high",
+      "note": "q-r6-core-consistent-return-implied-eval: beside the typed rule in its ruleset",
+      "by": "owner-2026-10-14"
     }
   },
   {
@@ -1747,19 +1771,6 @@
     "assignment": {
       "confidence": "high",
       "by": "plugin"
-    }
-  },
-  {
-    "id": "default-case-last",
-    "ruleset": "ordering",
-    "engine": "oxlint",
-    "oxlintName": "default-case-last",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "low",
-      "note": "pure style; needs a \"consistency\" ruleset",
-      "by": "critique-r1"
     }
   },
   {
@@ -1824,21 +1835,17 @@
     }
   },
   {
-    "id": "functional/no-class-inheritance",
-    "ruleset": "declarative",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-D"
-    }
-  },
-  {
     "id": "functional/no-classes",
     "ruleset": "declarative",
     "engine": "eslint",
-    "options": [],
+    "options": [
+      {
+        "ignoreCodePattern": [
+          "componentDidCatch",
+          "getDerivedStateFromError"
+        ]
+      }
+    ],
     "typed": false,
     "assignment": {
       "confidence": "high",
@@ -1898,6 +1905,9 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "ignores": [
+      "**/*{ErrorBoundary,error-boundary}*.{ts,tsx,js,jsx}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "agent-D"
@@ -1966,6 +1976,10 @@
     "oxlintName": "guard-for-in",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "house/no-classic-loops",
+      "because": "r2-d35: house/no-classic-loops reports every for-in loop"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-C"
@@ -2158,6 +2172,18 @@
     }
   },
   {
+    "id": "house/require-class-helper",
+    "ruleset": "class-names",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "q-r2-class-helper-ruleset: a libs ruleset of its own in the styling domain, for teams composing classes through a helper (lib-structure)",
+      "by": "owner-2026-10-14"
+    }
+  },
+  {
     "id": "import-x/default",
     "ruleset": "modules",
     "engine": "oxlint",
@@ -2171,16 +2197,15 @@
   },
   {
     "id": "import-x/first",
-    "ruleset": "import-order",
+    "ruleset": "modules",
     "engine": "oxlint",
     "oxlintName": "import/first",
     "options": [],
     "typed": false,
     "assignment": {
-      "confidence": "low",
-      "alternative": "ordering",
-      "note": "placement of import statements; could equally be ordering",
-      "by": "critique-r1"
+      "confidence": "high",
+      "note": "places imports above other code and sorts nothing, so it stays on when the opt-in import-order is not listed",
+      "by": "orchestrator-2026-10-15"
     }
   },
   {
@@ -2318,24 +2343,6 @@
     }
   },
   {
-    "id": "import-x/no-rename-default",
-    "ruleset": "naming",
-    "engine": "eslint",
-    "options": [
-      {
-        "commonjs": false,
-        "preventRenamingBindings": true
-      }
-    ],
-    "typed": false,
-    "assignment": {
-      "confidence": "low",
-      "alternative": "modules",
-      "note": "enforces default-import local name matches the export name",
-      "by": "agent-C"
-    }
-  },
-  {
     "id": "import-x/no-self-import",
     "ruleset": "modules",
     "engine": "oxlint",
@@ -2419,18 +2426,6 @@
     }
   },
   {
-    "id": "jsx-a11y/anchor-has-content",
-    "ruleset": "accessibility",
-    "engine": "oxlint",
-    "oxlintName": "jsx_a11y/anchor-has-content",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
     "id": "jsx-a11y/anchor-is-valid",
     "ruleset": "accessibility",
     "engine": "oxlint",
@@ -2461,6 +2456,10 @@
     "oxlintName": "jsx_a11y/aria-props",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "@eslint-react/dom-no-unknown-property",
+      "because": "r2-d16: the react rule reports a misspelt aria-* attribute such as aria-labeledby too"
+    },
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -2662,18 +2661,6 @@
     "ruleset": "accessibility",
     "engine": "oxlint",
     "oxlintName": "jsx_a11y/no-access-key",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "jsx-a11y/no-aria-hidden-on-focusable",
-    "ruleset": "accessibility",
-    "engine": "oxlint",
-    "oxlintName": "jsx_a11y/no-aria-hidden-on-focusable",
     "options": [],
     "typed": false,
     "assignment": {
@@ -2929,28 +2916,6 @@
     }
   },
   {
-    "id": "n/no-extraneous-import",
-    "ruleset": "modules",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "critique-r1"
-    }
-  },
-  {
-    "id": "n/no-extraneous-require",
-    "ruleset": "modules",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "critique-r1"
-    }
-  },
-  {
     "id": "n/no-unpublished-bin",
     "ruleset": "node",
     "engine": "eslint",
@@ -3004,6 +2969,11 @@
       }
     ],
     "typed": false,
+    "ignores": [
+      "**/agents-inc.lint.mts",
+      "**/oxlint.config.mts",
+      "**/eslint.config.mjs"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "critique-r1"
@@ -3309,10 +3279,14 @@
   {
     "id": "no-constant-condition",
     "ruleset": "correctness",
-    "engine": "oxlint",
-    "oxlintName": "no-constant-condition",
+    "engine": "eslint",
+    "eslintBecause": "oxlint cannot tell which files have type information, so beside @typescript-eslint/no-unnecessary-condition its copy would report twice there (r2-d41)",
     "options": [],
     "typed": false,
+    "splitByTypesWith": {
+      "rule": "@typescript-eslint/no-unnecessary-condition",
+      "because": "r2-d41: the typed rule reports a condition always true where types are known; the core rule where they are not"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-C"
@@ -3560,16 +3534,32 @@
   },
   {
     "id": "no-implicit-globals",
-    "ruleset": "correctness",
+    "ruleset": "browser",
     "engine": "oxlint",
     "oxlintName": "no-implicit-globals",
     "options": [],
     "typed": false,
     "assignment": {
-      "confidence": "low",
-      "alternative": "modules",
-      "note": "global-scope leakage in script files; inert in ES modules",
-      "by": "agent-C"
+      "confidence": "high",
+      "note": "q70: off for Node code, read as the browser runtime",
+      "by": "owner-2026-10-14"
+    }
+  },
+  {
+    "id": "no-implied-eval",
+    "ruleset": "security",
+    "engine": "eslint",
+    "eslintBecause": "oxlint cannot tell which files have type information, so beside @typescript-eslint/no-implied-eval its copy would report twice there (q-r6-core-consistent-return-implied-eval)",
+    "options": [],
+    "typed": false,
+    "splitByTypesWith": {
+      "rule": "@typescript-eslint/no-implied-eval",
+      "because": "q-r6-core-consistent-return-implied-eval: the typed rule reports code passed as a string where types are known; the core rule in JS files and TS files outside every tsconfig"
+    },
+    "assignment": {
+      "confidence": "high",
+      "note": "q-r6-core-consistent-return-implied-eval: beside the typed rule in its ruleset",
+      "by": "owner-2026-10-14"
     }
   },
   {
@@ -3615,7 +3605,11 @@
     "ruleset": "correctness",
     "engine": "oxlint",
     "oxlintName": "no-irregular-whitespace",
-    "options": [],
+    "options": [
+      {
+        "skipRegExps": true
+      }
+    ],
     "typed": false,
     "assignment": {
       "confidence": "high",
@@ -3688,6 +3682,10 @@
     "oxlintName": "no-new",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "functional/no-expression-statements",
+      "because": "r2-d72: functional/no-expression-statements reports a new expression used as a statement too, where types are known"
+    },
     "assignment": {
       "confidence": "low",
       "alternative": "correctness",
@@ -3801,6 +3799,10 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "sonarjs/no-nested-assignment",
+      "because": "r2-d57: sonarjs's rule reports an assignment inside a return too (no-cond-assign keeps reporting beside it: the general card's example pair)"
+    },
     "assignment": {
       "confidence": "low",
       "alternative": "declarative",
@@ -3918,6 +3920,10 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "splitByTypesWith": {
+      "rule": "@typescript-eslint/only-throw-error",
+      "because": "q-r5-only-throw-error: the typed rule reports throwing a non-Error where types are known; the core rule where they are not"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-C"
@@ -3943,8 +3949,10 @@
     "options": [],
     "typed": false,
     "ignores": [
-      "**/*.{ts,tsx,mts,cts}"
+      "**/*.{ts,tsx,mts,cts}",
+      "**/*.svelte"
     ],
+    "readsRuntimeGlobals": true,
     "assignment": {
       "confidence": "high",
       "by": "agent-C"
@@ -4056,6 +4064,10 @@
     "oxlintName": "no-unused-expressions",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "functional/no-expression-statements",
+      "because": "r2-d72: functional/no-expression-statements reports every expression statement, where types are known"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-C"
@@ -4090,7 +4102,11 @@
     "ruleset": "redundancy",
     "engine": "oxlint",
     "oxlintName": "no-unused-vars",
-    "options": [],
+    "options": [
+      {
+        "caughtErrors": "none"
+      }
+    ],
     "typed": false,
     "ignores": [
       "**/*.stories.{ts,tsx}",
@@ -4226,7 +4242,11 @@
     "ruleset": "correctness",
     "engine": "oxlint",
     "oxlintName": "no-void",
-    "options": [],
+    "options": [
+      {
+        "allowAsStatement": true
+      }
+    ],
     "typed": false,
     "assignment": {
       "confidence": "low",
@@ -4312,46 +4332,10 @@
     }
   },
   {
-    "id": "oxc/bad-match-all-arg",
-    "ruleset": "correctness",
-    "engine": "oxlint",
-    "oxlintName": "oxc/bad-match-all-arg",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-C"
-    }
-  },
-  {
     "id": "oxc/bad-min-max-func",
     "ruleset": "correctness",
     "engine": "oxlint",
     "oxlintName": "oxc/bad-min-max-func",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-C"
-    }
-  },
-  {
-    "id": "oxc/bad-object-literal-comparison",
-    "ruleset": "correctness",
-    "engine": "oxlint",
-    "oxlintName": "oxc/bad-object-literal-comparison",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-C"
-    }
-  },
-  {
-    "id": "oxc/bad-replace-all-arg",
-    "ruleset": "correctness",
-    "engine": "oxlint",
-    "oxlintName": "oxc/bad-replace-all-arg",
     "options": [],
     "typed": false,
     "assignment": {
@@ -4902,6 +4886,10 @@
     "oxlintName": "prefer-const",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "functional/no-let",
+      "because": "r2-d75: functional/no-let reports every let, without prefer-const's autofix"
+    },
     "assignment": {
       "confidence": "high",
       "by": "critique-r1"
@@ -5037,18 +5025,6 @@
     }
   },
   {
-    "id": "promise/no-multiple-resolved",
-    "ruleset": "correctness",
-    "engine": "oxlint",
-    "oxlintName": "promise/no-multiple-resolved",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-C"
-    }
-  },
-  {
     "id": "promise/no-new-statics",
     "ruleset": "correctness",
     "engine": "oxlint",
@@ -5077,17 +5053,6 @@
   {
     "id": "promise/param-names",
     "ruleset": "naming",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-C"
-    }
-  },
-  {
-    "id": "promise/prefer-await-to-then",
-    "ruleset": "modern-js",
     "engine": "eslint",
     "options": [],
     "typed": false,
@@ -5184,6 +5149,10 @@
     "oxlintName": "react/globals",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "unicorn/no-top-level-assignment-in-function",
+      "because": "r2-d24: unicorn's rule reports a component or hook assigning a module-level variable too"
+    },
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -5208,6 +5177,10 @@
     "oxlintName": "react/immutability",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "functional/immutable-data",
+      "because": "r2-d25: functional/immutable-data reports the mutation too, where types are known"
+    },
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -5271,10 +5244,15 @@
     "engine": "oxlint",
     "oxlintName": "react/rule-suppression",
     "options": [],
+    "whenSuppressions": {
+      "banned": "off",
+      "allowed": "on"
+    },
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "plugin"
+      "note": "r2-d22: allowSuppressions decides it, whatever rulesets are listed: off while suppressions are banned (house/no-suppressions reports the comment), on while allowed",
+      "by": "owner-2026-10-14"
     }
   },
   {
@@ -5292,18 +5270,6 @@
       "**/*.{test,spec}.{ts,tsx,js,jsx}",
       "**/__tests__/**"
     ],
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "react-hooks/set-state-in-effect",
-    "ruleset": "react",
-    "engine": "oxlint",
-    "oxlintName": "react/set-state-in-effect",
-    "options": [],
-    "typed": false,
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -5517,18 +5483,6 @@
     }
   },
   {
-    "id": "react/iframe-missing-sandbox",
-    "ruleset": "security",
-    "engine": "oxlint",
-    "oxlintName": "react/iframe-missing-sandbox",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "critique-r1"
-    }
-  },
-  {
     "id": "react/jsx-curly-brace-presence",
     "ruleset": "redundancy",
     "engine": "eslint",
@@ -5545,25 +5499,14 @@
     }
   },
   {
-    "id": "react/jsx-key",
-    "ruleset": "react",
-    "engine": "oxlint",
-    "oxlintName": "react/jsx-key",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
     "id": "react/jsx-no-bind",
     "ruleset": "react",
     "engine": "eslint",
     "options": [
       {
         "allowArrowFunctions": true,
-        "allowFunctions": false
+        "allowFunctions": false,
+        "allowBind": true
       }
     ],
     "typed": false,
@@ -5604,36 +5547,6 @@
     "ruleset": "correctness",
     "engine": "eslint",
     "eslintBecause": "oxlint refuses every option ESLint's version takes ({ ignoreCase }), and then loads no part of the config (measured, oxlint 1.87)",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "critique-r1"
-    }
-  },
-  {
-    "id": "react/jsx-no-leaked-render",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [
-      {
-        "validStrategies": [
-          "ternary",
-          "coerce"
-        ]
-      }
-    ],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "react/jsx-no-script-url",
-    "ruleset": "security",
-    "engine": "oxlint",
-    "oxlintName": "react/jsx-no-script-url",
     "options": [],
     "typed": false,
     "assignment": {
@@ -5715,30 +5628,6 @@
     "ruleset": "react",
     "engine": "oxlint",
     "oxlintName": "react/no-danger-with-children",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "react/no-did-mount-set-state",
-    "ruleset": "react",
-    "engine": "oxlint",
-    "oxlintName": "react/no-did-mount-set-state",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "react/no-did-update-set-state",
-    "ruleset": "react",
-    "engine": "oxlint",
-    "oxlintName": "react/no-did-update-set-state",
     "options": [],
     "typed": false,
     "assignment": {
@@ -5858,30 +5747,11 @@
     "ruleset": "react",
     "engine": "oxlint",
     "oxlintName": "react/no-unsafe",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "react/no-unstable-nested-components",
-    "ruleset": "react",
-    "engine": "oxlint",
-    "oxlintName": "react/no-unstable-nested-components",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "react/no-unused-class-component-methods",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
+    "options": [
+      {
+        "checkAliases": true
+      }
+    ],
     "typed": false,
     "assignment": {
       "confidence": "high",
@@ -5900,45 +5770,15 @@
     }
   },
   {
-    "id": "react/no-will-update-set-state",
-    "ruleset": "react",
-    "engine": "oxlint",
-    "oxlintName": "react/no-will-update-set-state",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "react/prefer-es6-class",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
     "id": "react/prefer-read-only-props",
     "ruleset": "react",
     "engine": "eslint",
     "options": [],
     "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "react/prefer-stateless-function",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
+    "coveredBy": {
+      "rule": "functional/prefer-immutable-types",
+      "because": "r2-d78: functional/prefer-immutable-types reports mutable props too, where types are known"
+    },
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -5948,18 +5788,6 @@
     "id": "react/static-property-placement",
     "ruleset": "react",
     "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
-    "id": "react/style-prop-object",
-    "ruleset": "react",
-    "engine": "oxlint",
-    "oxlintName": "react/style-prop-object",
     "options": [],
     "typed": false,
     "assignment": {
@@ -6175,17 +6003,6 @@
     }
   },
   {
-    "id": "regexp/no-legacy-features",
-    "ruleset": "modern-js",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-D"
-    }
-  },
-  {
     "id": "regexp/no-misleading-capturing-group",
     "ruleset": "correctness",
     "engine": "eslint",
@@ -6198,17 +6015,6 @@
   },
   {
     "id": "regexp/no-missing-g-flag",
-    "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-D"
-    }
-  },
-  {
-    "id": "regexp/no-non-standard-flag",
     "ruleset": "correctness",
     "engine": "eslint",
     "options": [],
@@ -6750,29 +6556,6 @@
     }
   },
   {
-    "id": "sonarjs/array-callback-without-return",
-    "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": true,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-B"
-    }
-  },
-  {
-    "id": "sonarjs/async-test-assertions",
-    "ruleset": "tests",
-    "engine": "eslint",
-    "options": [],
-    "typed": true,
-    "assignment": {
-      "confidence": "low",
-      "note": "generic test rule",
-      "by": "critique-r1"
-    }
-  },
-  {
     "id": "sonarjs/aws-apigateway-public-api",
     "ruleset": "security",
     "engine": "eslint",
@@ -7013,18 +6796,6 @@
     }
   },
   {
-    "id": "sonarjs/call-argument-line",
-    "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "note": "ASI hazard",
-      "by": "agent-B"
-    }
-  },
-  {
     "id": "sonarjs/chai-determinate-assertion",
     "ruleset": "tests",
     "engine": "eslint",
@@ -7034,17 +6805,6 @@
       "confidence": "low",
       "note": "generic test rule (chai)",
       "by": "critique-r1"
-    }
-  },
-  {
-    "id": "sonarjs/class-name",
-    "ruleset": "naming",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-B"
     }
   },
   {
@@ -7321,7 +7081,7 @@
     "engine": "eslint",
     "options": [
       {
-        "format": "^[_a-zA-Z][a-zA-Z0-9]*$"
+        "format": "^(UNSAFE_)?[_a-zA-Z][a-zA-Z0-9]*$"
       }
     ],
     "typed": false,
@@ -8063,17 +7823,6 @@
     }
   },
   {
-    "id": "sonarjs/no-return-type-any",
-    "ruleset": "type-safety",
-    "engine": "eslint",
-    "options": [],
-    "typed": true,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-B"
-    }
-  },
-  {
     "id": "sonarjs/no-same-argument-assert",
     "ruleset": "tests",
     "engine": "eslint",
@@ -8331,17 +8080,6 @@
     }
   },
   {
-    "id": "sonarjs/object-alt-content",
-    "ruleset": "accessibility",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-B"
-    }
-  },
-  {
     "id": "sonarjs/operation-returning-nan",
     "ruleset": "correctness",
     "engine": "eslint",
@@ -8440,6 +8178,10 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "house/no-classic-loops",
+      "because": "r2-n1: house/no-classic-loops reports the for loop, and the while loop the autofix would write"
+    },
     "assignment": {
       "confidence": "low",
       "alternative": "UNPLACED",
@@ -8546,17 +8288,6 @@
     "assignment": {
       "confidence": "high",
       "note": "passport/express-session",
-      "by": "agent-B"
-    }
-  },
-  {
-    "id": "sonarjs/shorthand-property-grouping",
-    "ruleset": "ordering",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
       "by": "agent-B"
     }
   },
@@ -8949,6 +8680,10 @@
       }
     ],
     "typed": false,
+    "ignores": [
+      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/.storybook/**"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -9010,6 +8745,10 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "sonarjs/no-debug-commands-in-ui-tests",
+      "because": "r2-d60: sonarjs's rule reports a debug call left in a test too"
+    },
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -9021,6 +8760,10 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "ignores": [
+      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/.storybook/**"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -9335,7 +9078,11 @@
     "id": "unicorn/class-reference-in-static-methods",
     "ruleset": "declarative",
     "engine": "eslint",
-    "options": [],
+    "options": [
+      {
+        "preferThis": false
+      }
+    ],
     "typed": false,
     "assignment": {
       "confidence": "low",
@@ -9502,7 +9249,8 @@
   {
     "id": "unicorn/dom-node-dataset",
     "ruleset": "browser",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-dom-node-dataset",
     "options": [],
     "typed": false,
     "assignment": {
@@ -9623,7 +9371,8 @@
   {
     "id": "unicorn/no-abusive-eslint-disable",
     "ruleset": "comments",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/no-abusive-eslint-disable",
     "options": [],
     "whenSuppressions": {
       "banned": "off",
@@ -9703,6 +9452,10 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "functional/immutable-data",
+      "because": "r2-d74: functional/immutable-data reports the shift or unshift too, where types are known"
+    },
     "assignment": {
       "confidence": "low",
       "alternative": "UNPLACED",
@@ -9717,6 +9470,10 @@
     "oxlintName": "unicorn/no-array-reverse",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "functional/immutable-data",
+      "because": "r2-d74: functional/immutable-data reports the in-place reverse too, where types are known"
+    },
     "assignment": {
       "confidence": "high",
       "by": "critique-r1"
@@ -9729,6 +9486,10 @@
     "oxlintName": "unicorn/no-array-sort",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "functional/immutable-data",
+      "because": "r2-d74: functional/immutable-data reports the in-place sort too, where types are known"
+    },
     "assignment": {
       "confidence": "high",
       "by": "critique-r1"
@@ -9772,10 +9533,14 @@
   {
     "id": "unicorn/no-await-in-promise-methods",
     "ruleset": "correctness",
-    "engine": "oxlint",
-    "oxlintName": "unicorn/no-await-in-promise-methods",
+    "engine": "eslint",
+    "eslintBecause": "oxlint cannot tell which files have type information, so beside @typescript-eslint/await-thenable its copy would report twice there (r2-d40)",
     "options": [],
     "typed": false,
+    "splitByTypesWith": {
+      "rule": "@typescript-eslint/await-thenable",
+      "because": "r2-d40: the typed rule reports Promise.all([await p]) where types are known; unicorn's where they are not"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
@@ -9873,17 +9638,6 @@
     }
   },
   {
-    "id": "unicorn/no-constant-zero-expression",
-    "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
     "id": "unicorn/no-declarations-before-early-exit",
     "ruleset": "complexity",
     "engine": "eslint",
@@ -9957,7 +9711,8 @@
   {
     "id": "unicorn/no-for-each",
     "ruleset": "modern-js",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/no-array-for-each",
     "options": [],
     "typed": false,
     "assignment": {
@@ -9972,6 +9727,10 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "house/no-classic-loops",
+      "because": "r2-d35: house/no-classic-loops reports every index for loop"
+    },
     "assignment": {
       "confidence": "low",
       "alternative": "declarative",
@@ -10053,17 +9812,6 @@
   },
   {
     "id": "unicorn/no-invalid-argument-count",
-    "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
-    "id": "unicorn/no-invalid-character-comparison",
     "ruleset": "correctness",
     "engine": "eslint",
     "options": [],
@@ -10193,17 +9941,6 @@
     }
   },
   {
-    "id": "unicorn/no-misrefactored-assignment",
-    "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
     "id": "unicorn/no-multiple-promise-resolver-calls",
     "ruleset": "correctness",
     "engine": "eslint",
@@ -10237,17 +9974,6 @@
       "confidence": "low",
       "note": "!(a === b) -> a !== b; readability",
       "by": "critique-r1"
-    }
-  },
-  {
-    "id": "unicorn/no-nested-ternary",
-    "ruleset": "complexity",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
     }
   },
   {
@@ -10394,19 +10120,6 @@
     }
   },
   {
-    "id": "unicorn/no-this-outside-of-class",
-    "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "low",
-      "alternative": "UNPLACED",
-      "note": "`this` in plain functions is global/undefined",
-      "by": "agent-A"
-    }
-  },
-  {
     "id": "unicorn/no-top-level-assignment-in-function",
     "ruleset": "immutability",
     "engine": "eslint",
@@ -10426,7 +10139,8 @@
     "ignores": [
       "**/agents-inc.lint.mts",
       "**/oxlint.config.mts",
-      "**/eslint.config.mjs"
+      "**/eslint.config.mjs",
+      "**/*.config.{js,mjs,cjs,ts,mts,cts}"
     ],
     "assignment": {
       "confidence": "high",
@@ -10483,6 +10197,10 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "splitByTypesWith": {
+      "rule": "@typescript-eslint/no-unnecessary-boolean-literal-compare",
+      "because": "r2-d33: the typed rule reports flag === true where types are known; unicorn's where they are not"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
@@ -10529,19 +10247,6 @@
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
-    "id": "unicorn/no-unnecessary-splice",
-    "ruleset": "redundancy",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "low",
-      "alternative": "modern-js",
-      "note": "splice where push/pop/shift is simpler",
       "by": "agent-A"
     }
   },
@@ -10683,6 +10388,10 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "splitByTypesWith": {
+      "rule": "@typescript-eslint/no-unnecessary-type-conversion",
+      "because": "r2-d34: the typed rule reports a needless conversion where types are known; unicorn's where they are not"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
@@ -10802,19 +10511,6 @@
     }
   },
   {
-    "id": "unicorn/no-useless-recursion",
-    "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "low",
-      "alternative": "complexity",
-      "note": "tail-style recursion replaceable by a loop; stack-depth risk",
-      "by": "agent-A"
-    }
-  },
-  {
     "id": "unicorn/no-useless-spread",
     "ruleset": "redundancy",
     "engine": "oxlint",
@@ -10832,6 +10528,10 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "splitByTypesWith": {
+      "rule": "@typescript-eslint/no-unnecessary-template-expression",
+      "because": "r2-d32: the typed rule reports a pointless template expression where types are known; unicorn's where they are not"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
@@ -11129,17 +10829,6 @@
     }
   },
   {
-    "id": "unicorn/prefer-dispose",
-    "ruleset": "modern-js",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
     "id": "unicorn/prefer-dom-node-append",
     "ruleset": "browser",
     "engine": "eslint",
@@ -11219,17 +10908,6 @@
     }
   },
   {
-    "id": "unicorn/prefer-error-is-error",
-    "ruleset": "modern-js",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
     "id": "unicorn/prefer-export-from",
     "ruleset": "modules",
     "engine": "eslint",
@@ -11243,17 +10921,6 @@
   {
     "id": "unicorn/prefer-flat-math-min-max",
     "ruleset": "redundancy",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
-    "id": "unicorn/prefer-get-or-insert-computed",
-    "ruleset": "modern-js",
     "engine": "eslint",
     "options": [],
     "typed": false,
@@ -11364,17 +11031,6 @@
     "assignment": {
       "confidence": "high",
       "by": "critique-r1"
-    }
-  },
-  {
-    "id": "unicorn/prefer-iterator-concat",
-    "ruleset": "modern-js",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
     }
   },
   {
@@ -11654,17 +11310,6 @@
     }
   },
   {
-    "id": "unicorn/prefer-promise-try",
-    "ruleset": "modern-js",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
     "id": "unicorn/prefer-promise-with-resolvers",
     "ruleset": "modern-js",
     "engine": "eslint",
@@ -11688,28 +11333,6 @@
   },
   {
     "id": "unicorn/prefer-queue-microtask",
-    "ruleset": "modern-js",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
-    "id": "unicorn/prefer-reflect-apply",
-    "ruleset": "modern-js",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
-    "id": "unicorn/prefer-regexp-escape",
     "ruleset": "modern-js",
     "engine": "eslint",
     "options": [],
@@ -11854,19 +11477,6 @@
     }
   },
   {
-    "id": "unicorn/prefer-single-replace",
-    "ruleset": "redundancy",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "low",
-      "alternative": "modern-js",
-      "note": "chained single-char replaces -> one replaceAll",
-      "by": "agent-A"
-    }
-  },
-  {
     "id": "unicorn/prefer-smaller-scope",
     "ruleset": "immutability",
     "engine": "eslint",
@@ -11972,17 +11582,6 @@
     }
   },
   {
-    "id": "unicorn/prefer-temporal",
-    "ruleset": "modern-js",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
     "id": "unicorn/prefer-toggle-attribute",
     "ruleset": "browser",
     "engine": "eslint",
@@ -12003,17 +11602,6 @@
       "confidence": "low",
       "alternative": "UNPLACED",
       "note": "error-type semantics for type checks",
-      "by": "agent-A"
-    }
-  },
-  {
-    "id": "unicorn/prefer-uint8array-base64",
-    "ruleset": "modern-js",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
       "by": "agent-A"
     }
   },
@@ -12082,6 +11670,10 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "house/no-classic-loops",
+      "because": "r2-n1: house/no-classic-loops reports the loop, and the while loop the autofix would write"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
@@ -12091,18 +11683,6 @@
     "id": "unicorn/require-css-escape",
     "ruleset": "browser",
     "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
-    "id": "unicorn/require-module-specifiers",
-    "ruleset": "modules",
-    "engine": "oxlint",
-    "oxlintName": "unicorn/require-module-specifiers",
     "options": [],
     "typed": false,
     "assignment": {

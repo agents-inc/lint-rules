@@ -1,14 +1,10 @@
 {
-  "import-x/default": "its fixture does not fire in ESLint: import-x does not resolve an extensionless TS import under our ESLint settings (measured; questions.md #33)",
-  "import-x/namespace": "its fixture does not fire in ESLint: import-x does not resolve an extensionless TS import under our ESLint settings (measured; questions.md #33)",
-  "import-x/no-cycle": "its fixture does not fire in ESLint: import-x does not resolve an extensionless TS import under our ESLint settings (measured; questions.md #33)",
-  "import-x/no-named-as-default": "its fixture does not fire in ESLint: import-x does not resolve an extensionless TS import under our ESLint settings (measured; questions.md #33)",
-  "import-x/no-named-as-default-member": "its fixture does not fire in ESLint: import-x does not resolve an extensionless TS import under our ESLint settings (measured; questions.md #33)",
-  "import-x/no-self-import": "its fixture does not fire in ESLint: import-x does not resolve an extensionless TS import under our ESLint settings (measured; questions.md #33)",
+  "import-x/default": "the owner left it skipped (q-r3): with our TypeScript resolver, ESLint's version reports a default import of a CommonJS module TypeScript gives a default to (`import ts from 'typescript'`), where oxlint's reports nothing: 6 findings against 0 on this repo's sources (measured 2026-10-15; 27 against 0 on cv-launch)",
+  "import-x/no-named-as-default-member": "the owner left it skipped (q-r3): with our TypeScript resolver, ESLint's version reports each member read from a default import that is also a named export (`ts.sys`, `tseslint.parser`), where oxlint's reports nothing: 28 findings against 0 on this repo's sources (measured 2026-10-15; 37 against 2 on cv-launch)",
   "no-implicit-globals": "its fixture does not fire in ESLint: the rule checks scripts only, and our parser reads every file as a module (measured)",
   "no-inner-declarations": "its fixture does not fire in ESLint: with the shipped options, and modules in strict mode, it has nothing to report (measured)",
   "no-nonoctal-decimal-escape": "its fixture cannot run in ESLint: \"\\8\" is a syntax error in a module, so the file fails to parse (measured)",
   "react-hooks/preserve-manual-memoization": "it has no fixture that fires: the gate proved it on its corpus only, and seven shapes of a manual memo the compiler cannot preserve are silent in both ESLint and oxlint (measured)",
   "react-hooks/rule-suppression": "its fixture does not fire in ESLint with the shipped options: eslint-plugin-react-hooks reports the suppressed exhaustive-deps only under environment.validateExhaustiveMemoizationDependencies false, and oxlint refuses any options for this rule (measured)",
-  "unicorn/no-hex-escape": "its fixture does not fire in ESLint: deprecated in eslint-plugin-unicorn 77 and silent there (measured)"
+  "unicorn/no-hex-escape": "its fixture does not fire in ESLint: deprecated in eslint-plugin-unicorn 77 and 78, and silent in both (measured)"
 }

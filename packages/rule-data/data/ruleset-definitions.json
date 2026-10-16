@@ -3,150 +3,208 @@
     "name": "correctness",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "type-safety",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "security",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "accessibility",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "performance",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "complexity",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "declarative",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "immutability",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "modern-js",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "redundancy",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "modules",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "import-order",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": true,
+    "sortsCode": true
   },
   {
     "name": "naming",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "comments",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "ordering",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": true,
+    "sortsCode": true
   },
   {
     "name": "conventions",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "tests",
     "list": "quality",
     "domain": null,
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "react",
     "list": "libs",
     "domain": "ui",
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "vitest",
     "list": "libs",
     "domain": "testing",
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "testing-library",
     "list": "libs",
     "domain": "testing",
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "storybook",
     "list": "libs",
     "domain": "testing",
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "react-hook-form",
     "list": "libs",
     "domain": "forms",
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "css-modules",
     "list": "libs",
     "domain": "styling",
-    "env": null
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
+  },
+  {
+    "name": "class-names",
+    "list": "libs",
+    "domain": "styling",
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "node",
     "list": "runtimes",
     "domain": null,
-    "env": "node"
+    "env": "node",
+    "optIn": false,
+    "sortsCode": false
   },
   {
     "name": "browser",
     "list": "runtimes",
     "domain": null,
-    "env": "browser"
+    "env": "browser",
+    "optIn": false,
+    "sortsCode": false
   }
 ]

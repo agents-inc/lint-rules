@@ -7,7 +7,7 @@ import checkFile from 'eslint-plugin-check-file'
 import cssModules from 'eslint-plugin-css-modules'
 import functional from 'eslint-plugin-functional'
 import importX from 'eslint-plugin-import-x'
-import jsxA11y from 'eslint-plugin-jsx-a11y'
+import jsxA11y from 'eslint-plugin-jsx-a11y-x'
 import n from 'eslint-plugin-n'
 import noSecrets from 'eslint-plugin-no-secrets'
 import perfectionist from 'eslint-plugin-perfectionist'
@@ -57,8 +57,9 @@ export const eslintPlugins: Readonly<Record<string, ESLint.Plugin>> = {
 }
 
 /**
- * A plugin whose types do not fit `ESLint.Plugin`, checked at load to be a plugin of rules instead.
- * Some publish no types; storybook's break under `exactOptionalPropertyTypes`; rules built with
+ * A plugin whose types do not show an `ESLint.Plugin` with rules, checked at load to be a plugin of
+ * rules instead. Some publish no types; the jsx-a11y fork's declarations give its default export its
+ * configs alone; storybook's break under `exactOptionalPropertyTypes`; rules built with
  * `@typescript-eslint/utils` (house) have a readonly `defaultOptions`, which ESLint's type rejects;
  * react-hooks nests its flat configs under `configs.flat`, which ESLint's type rejects too.
  */

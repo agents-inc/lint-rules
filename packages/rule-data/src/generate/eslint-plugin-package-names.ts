@@ -10,7 +10,7 @@ export const eslintPluginPackageNames: Readonly<Record<string, string>> = {
   functional: 'eslint-plugin-functional',
   house: '@workspace/eslint-plugin-house',
   'import-x': 'eslint-plugin-import-x',
-  'jsx-a11y': 'eslint-plugin-jsx-a11y',
+  'jsx-a11y': 'eslint-plugin-jsx-a11y-x',
   n: 'eslint-plugin-n',
   'no-secrets': 'eslint-plugin-no-secrets',
   perfectionist: 'eslint-plugin-perfectionist',

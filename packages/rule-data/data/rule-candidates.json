@@ -238,13 +238,6 @@
     "recorded": "2026-10-10"
   },
   {
-    "id": "house/require-class-helper",
-    "status": "needs-owner",
-    "why": "Measured before shipping (owner 2026-10-10): className/class must be a literal, a template with nothing interpolated, a name, a lookup or a call to a helper (default cn, clsx, cx, cva, twMerge). The owner decides after the numbers. Clear FP 21% at defaults, 7% with classNames/classnames added to helpers; 91 choose-one-of-two-class ternaries (8%) are the owner's call.",
-    "evidence": "Tester 2026-10-10, 4,779 unique JSX/TSX files from the owner's local repos (not the cli monorepo), 0 fatal: 1,133 reports in 620 files (111 in the owner's own projects); 239 clear FP (172 classNames-style helpers); with classNames/classnames in helpers 961 reports, 67 clear FP; 58 true hits interpolate a possibly-undefined className",
-    "recorded": "2026-10-10"
-  },
-  {
     "id": "json/*",
     "status": "considering",
     "why": "Not measured yet: @eslint/json; the languages list is empty and has no parsers, so the engines cannot reach JSON files yet.",
@@ -637,11 +630,39 @@
     "recorded": "2026-10-10"
   },
   {
+    "id": "unicorn/prefer-dispose",
+    "status": "parked",
+    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
+    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
+    "recorded": "2026-10-15"
+  },
+  {
+    "id": "unicorn/prefer-error-is-error",
+    "status": "parked",
+    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
+    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
+    "recorded": "2026-10-15"
+  },
+  {
     "id": "unicorn/prefer-escaped-irregular-whitespace",
     "status": "recommended",
     "why": "Adopt (r1): an invisible NBSP or zero-width character in a string. correctness, ESLint.",
     "evidence": "docs/work/rule-candidates-r1.md §1: 6 hits, 0 FP of 6",
     "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/prefer-get-or-insert-computed",
+    "status": "parked",
+    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
+    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
+    "recorded": "2026-10-15"
+  },
+  {
+    "id": "unicorn/prefer-iterator-concat",
+    "status": "parked",
+    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
+    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
+    "recorded": "2026-10-15"
   },
   {
     "id": "unicorn/prefer-iterator-zip",
@@ -665,6 +686,20 @@
     "recorded": "2026-10-10"
   },
   {
+    "id": "unicorn/prefer-promise-try",
+    "status": "parked",
+    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
+    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
+    "recorded": "2026-10-15"
+  },
+  {
+    "id": "unicorn/prefer-regexp-escape",
+    "status": "parked",
+    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
+    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
+    "recorded": "2026-10-15"
+  },
+  {
     "id": "unicorn/prefer-single-call",
     "status": "recommended",
     "why": "Adopt (r1): consecutive `arr.push()` calls. redundancy, oxlint.",
@@ -672,11 +707,25 @@
     "recorded": "2026-10-10"
   },
   {
+    "id": "unicorn/prefer-temporal",
+    "status": "parked",
+    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
+    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
+    "recorded": "2026-10-15"
+  },
+  {
     "id": "unicorn/prefer-temporal-conversion",
     "status": "recommended",
     "why": "Adopt (r1): `Temporal.Instant.from(zoned)` instead of `zoned.toInstant()`. modern-js, ESLint.",
     "evidence": "docs/work/rule-candidates-r1.md §1: 0 hits",
     "recorded": "2026-10-10"
+  },
+  {
+    "id": "unicorn/prefer-uint8array-base64",
+    "status": "parked",
+    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
+    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
+    "recorded": "2026-10-15"
   },
   {
     "id": "unicorn/prefer-uint8array-hex",

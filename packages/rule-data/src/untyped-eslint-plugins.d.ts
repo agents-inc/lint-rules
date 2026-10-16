@@ -6,11 +6,6 @@ declare module 'eslint-plugin-css-modules' {
   export default plugin
 }
 
-declare module 'eslint-plugin-jsx-a11y' {
-  const plugin: unknown
-  export default plugin
-}
-
 declare module 'eslint-plugin-promise' {
   const plugin: unknown
   export default plugin
