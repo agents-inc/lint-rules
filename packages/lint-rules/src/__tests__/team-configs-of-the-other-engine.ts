@@ -1,8 +1,8 @@
 import { writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join, relative } from 'node:path'
+import { join } from 'node:path'
 import type { OxlintConfig } from 'oxlint'
 import type { EslintPart } from '../core/editor-parts.ts'
+import { isATempProject } from './temp-projects.ts'
 
 // Each merge takes the path of the team's other engine config, so it can see the rules set only
 // there (spec-merge-model.md, 1.3): mergeEslintConfig(theirs, eslint, { oxlintConfig }) and
@@ -23,8 +23,6 @@ export const EMPTY_TEAM_OXLINT_CONFIG: OxlintConfig = { categories: { correctnes
  * loads, under a name oxlint never finds by itself.
  */
 export const TEAM_OXLINT_CONFIG_SETTING_NO_RULE_FILE = 'team.oxlintrc.json'
-
-const PARENT_DIRECTORY = '..'
 
 /** That file, for a project written whole whose oxlint config is not under test. */
 export const teamOxlintConfigSettingNoRuleFiles: Readonly<Record<string, string>> = {
@@ -67,7 +65,7 @@ export const NO_TEAM_OXLINT_CONFIG: TeamOxlintConfigPath = { oxlintConfig: null 
  */
 export function writeTeamOxlintConfigSettingNoRule({ tsconfigRootDir, usesOxlint }: EslintPart): TeamOxlintConfigPath {
   if (!usesOxlint) return NO_TEAM_OXLINT_CONFIG
-  if (relative(tmpdir(), tsconfigRootDir).startsWith(PARENT_DIRECTORY)) {
+  if (!isATempProject(tsconfigRootDir)) {
     throw new Error(`${tsconfigRootDir} is no temp project, so no team oxlint config is written into it`)
   }
   Object.entries(teamOxlintConfigSettingNoRuleFiles).forEach(([file, text]) => writeFileSync(join(tsconfigRootDir, file), text))

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FRAMEWORK_GLOBALS_OXLINT_OVERRIDES } from '../__tests__/cases/svelte-components.ts'
+import { GLOBALS_OXLINT_OVERRIDES } from '../__tests__/cases/svelte-components.ts'
 import {
   buildCatalog,
   buildEslintRoute,
@@ -123,7 +123,7 @@ describe('buildOxlintConfig', () => {
         'no-debugger': ['error'],
         'node/no-exports-assign': ['error'],
       },
-      overrides: [...FRAMEWORK_GLOBALS_OXLINT_OVERRIDES],
+      overrides: [...GLOBALS_OXLINT_OVERRIDES],
     })
   })
 
@@ -189,7 +189,7 @@ describe('buildOxlintConfig', () => {
 
       expect(config.rules).toStrictEqual({ 'react/rules-of-hooks': ['error'] })
       expect(config.overrides).toStrictEqual([
-        ...FRAMEWORK_GLOBALS_OXLINT_OVERRIDES,
+        ...GLOBALS_OXLINT_OVERRIDES,
         { files: ['**/*.stories.tsx'], rules: { 'react/rules-of-hooks': 'off' } },
       ])
     })
@@ -209,7 +209,7 @@ describe('buildOxlintConfig', () => {
 
       expect(config.plugins).toStrictEqual(['eslint', 'jsx-a11y', 'vitest'])
       expect(config.overrides).toStrictEqual([
-        ...FRAMEWORK_GLOBALS_OXLINT_OVERRIDES,
+        ...GLOBALS_OXLINT_OVERRIDES,
         { files: ['**/*.test.ts'], rules: { 'vitest/no-focused-tests': ['error'] } },
       ])
     })
@@ -225,7 +225,7 @@ describe('buildOxlintConfig', () => {
       )
 
       expect(buildOxlintConfig(lintRules, catalog).overrides).toStrictEqual([
-        ...FRAMEWORK_GLOBALS_OXLINT_OVERRIDES,
+        ...GLOBALS_OXLINT_OVERRIDES,
         {
           files: ['src/**'],
           excludeFiles: ['**/*.test.ts'],
@@ -280,7 +280,7 @@ describe('buildOxlintConfig', () => {
       )
 
       expect(buildOxlintConfig(lintRules, catalog).overrides).toStrictEqual([
-        ...FRAMEWORK_GLOBALS_OXLINT_OVERRIDES,
+        ...GLOBALS_OXLINT_OVERRIDES,
         { files: ['**/*.test.ts'], rules: { eqeqeq: ['warn', 'always'], 'no-debugger': 'off' } },
       ])
     })
@@ -292,7 +292,7 @@ describe('buildOxlintConfig', () => {
       )
 
       expect(buildOxlintConfig(lintRules, catalog).overrides).toStrictEqual([
-        ...FRAMEWORK_GLOBALS_OXLINT_OVERRIDES,
+        ...GLOBALS_OXLINT_OVERRIDES,
         {
           files: ['apps/api/**'],
           env: { browser: false },
@@ -314,7 +314,7 @@ describe('buildOxlintConfig', () => {
 
       expect(config.plugins).toStrictEqual(['node', 'unicorn'])
       expect(config.overrides).toStrictEqual([
-        ...FRAMEWORK_GLOBALS_OXLINT_OVERRIDES,
+        ...GLOBALS_OXLINT_OVERRIDES,
         {
           files: ['apps/api/**'],
           env: { node: true },
@@ -337,7 +337,7 @@ describe('buildOxlintConfig', () => {
       )
 
       expect(buildOxlintConfig(lintRules, catalog).overrides).toStrictEqual([
-        ...FRAMEWORK_GLOBALS_OXLINT_OVERRIDES,
+        ...GLOBALS_OXLINT_OVERRIDES,
         { files: ['**/*.stories.tsx'], rules: { 'react/rules-of-hooks': 'off' } },
         {
           files: ['apps/api/**'],

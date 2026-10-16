@@ -1,0 +1,8 @@
+{
+  "name": "import-x-ts-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "types-only": "1.0.0"
+  }
+}

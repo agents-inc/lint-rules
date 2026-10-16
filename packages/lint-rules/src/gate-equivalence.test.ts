@@ -1,4 +1,4 @@
-import { catalog } from '@workspace/rule-data'
+import { catalog, type RuleRoute } from '@workspace/rule-data'
 import { describe, expect, it } from 'vitest'
 import { agentConfigsOf } from './__tests__/agent-configs.ts'
 import {
@@ -21,11 +21,13 @@ import { defineLintRules } from './index.ts'
 // together must run the canonical list: each rule once, on its routed engine, with its shipped
 // options. The agent build runs oxlint whatever the project's package.json lists.
 //
-// Owner, 2026-10-10: allowSuppressions decides three rules whatever rulesets are listed, so they are
-// stated here per setting rather than read from the canonical list.
+// Owner, 2026-10-10: allowSuppressions decides three rules whatever rulesets are listed, and a
+// fourth since 2026-10-14 (r2-d22), so they are stated here per setting rather than read from the
+// canonical list.
 const SUPPRESSION_RULE_IDS: ReadonlySet<string> = new Set([
   '@typescript-eslint/ban-ts-comment',
   'house/no-suppressions',
+  'react-hooks/rule-suppression',
   'unicorn/no-abusive-eslint-disable',
 ])
 const BAN_TS_COMMENTS_OUTRIGHT = { 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true }
@@ -35,7 +37,7 @@ const BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR = {
   'ts-nocheck': true,
 }
 
-// Two of the rules with banned suppressions, and two with suppressions allowed: ban-ts-comment runs
+// Two of the rules with banned suppressions, and three with suppressions allowed: ban-ts-comment runs
 // either way, with different options.
 const SUPPRESSION_RULES_BANNED = [
   onItsEngine('@typescript-eslint/ban-ts-comment', [BAN_TS_COMMENTS_OUTRIGHT]),
@@ -43,16 +45,29 @@ const SUPPRESSION_RULES_BANNED = [
 ]
 const SUPPRESSION_RULES_ALLOWED = [
   onItsEngine('@typescript-eslint/ban-ts-comment', [BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR]),
+  onItsEngine('react-hooks/rule-suppression', []),
   onItsEngine('unicorn/no-abusive-eslint-disable', []),
 ]
 
-/** Every shipped rule allowSuppressions does not decide, on its routed engine with its shipped options. */
+/**
+ * Every shipped rule allowSuppressions does not decide, on its routed engine with its shipped
+ * options, as every ruleset listed runs them: but each rule covered by another, which every ruleset
+ * listed turns on (S; spec-core.md C2).
+ */
 function shippedRulesBesidesTheSuppressionRules(): RuleOnEngine[] {
   return [...catalog.rules.values()].flatMap((rule) =>
-    rule.shipped === null || SUPPRESSION_RULE_IDS.has(rule.id)
+    rule.shipped === null || SUPPRESSION_RULE_IDS.has(rule.id) || isCoveredByAShippedRule(rule)
       ? []
       : [{ id: rule.id, engine: rule.engine, options: rule.shipped.options }],
   )
+}
+
+/** Whether the catalog records a shipped rule covering the rule: none before this round's data lands. */
+function isCoveredByAShippedRule({ shipped }: RuleRoute): boolean {
+  if (shipped === null || typeof shipped.coveredBy !== 'string') return false
+  const cover = catalog.rules.get(shipped.coveredBy)
+  if (cover === undefined) throw new Error(`${shipped.coveredBy}: a cover the catalog does not hold`)
+  return cover.shipped !== null
 }
 
 describe.each([

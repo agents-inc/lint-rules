@@ -6,6 +6,7 @@ import { buildCatalog, buildEslintRoute, buildOxlintRoute, buildQualityRuleset, 
 import { buildFileOverride, buildLintRules, buildTwoSetFileOverride, buildTwoSetLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { lintRulesPackageVersion } from '../__tests__/factories/package-json-factories.ts'
 import { setUpEslintConfigOracle } from '../__tests__/eslint-config-oracle.ts'
+import { buildProjectFacts } from '../__tests__/factories/project-facts-factories.ts'
 import { oxlintEntryOfRuleFor, severityOfOxlintEntry } from '../__tests__/oxlint-config-oracle.ts'
 import { NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG } from '../__tests__/team-configs-of-the-other-engine.ts'
 import { buildEslintConfig } from './build-eslint-config.ts'
@@ -31,7 +32,6 @@ const JS_FILE = 'src/a.js'
 const LEGACY_TS_FILE = 'legacy/a.ts'
 const LEGACY_JS_FILE = 'legacy/a.js'
 const NOT_RUN = 'not run'
-const NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG: readonly string[] = []
 const RULESET_OPTIONS = [{ builtinGlobals: true }]
 // An option of no-redeclare that oxlint's copy takes, and typescript-eslint's version too.
 const TAKEN_OPTION = 'builtinGlobals'
@@ -108,7 +108,7 @@ describe('a twin pair whose extension alone our top level states, with an option
   })
 
   it("is run by ESLint on TS files alone, as typescript-eslint's version with our setting, in the agent build's ESLint config", async () => {
-    const config = buildEslintConfig(lintRules, twinCatalog, plugins, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+    const config = buildEslintConfig(lintRules, twinCatalog, plugins, buildProjectFacts())
 
     expect({
       [TS_FILE]: { core: await runningEntryFor(config, TS_FILE, CORE_RULE), extension: await runningEntryFor(config, TS_FILE, EXTENSION) },
@@ -203,7 +203,7 @@ function setUpEslintRunningEntries(): (given: LintRulesInput, files: readonly st
   }
 
   return async (given, files) => {
-    const config = buildEslintConfig(given, twinCatalog, plugins, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+    const config = buildEslintConfig(given, twinCatalog, plugins, buildProjectFacts())
     const entries = await Promise.all(
       files.map(async (file) => [file, { core: await runningEntryFor(config, file, CORE_RULE), extension: await runningEntryFor(config, file, EXTENSION) }] as const),
     )

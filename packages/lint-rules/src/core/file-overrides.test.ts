@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FRAMEWORK_GLOBALS_OXLINT_OVERRIDES } from '../__tests__/cases/svelte-components.ts'
+import { GLOBALS_OXLINT_OVERRIDES } from '../__tests__/cases/svelte-components.ts'
 import {
   buildCatalog,
   buildEslintRoute,
@@ -12,6 +12,7 @@ import {
 } from '../__tests__/factories/catalog-factories.ts'
 import { buildFileOverride, buildLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { setUpEslintConfigOracle } from '../__tests__/eslint-config-oracle.ts'
+import { buildProjectFacts } from '../__tests__/factories/project-facts-factories.ts'
 import { oxlintConfigForFile, oxlintSeverityFor } from '../__tests__/oxlint-config-oracle.ts'
 import { buildEslintConfig } from './build-eslint-config.ts'
 import { buildOxlintConfig } from './build-oxlint-config.ts'
@@ -19,8 +20,6 @@ import { resolveRuleLayers } from './resolve-rule-layers.ts'
 
 const WARN = 1
 const OFF_OR_ABSENT_SEVERITY = ['off', undefined]
-// The tests build no typed block, so no TS file is left out of one.
-const NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG: readonly string[] = []
 
 const catalog = buildCatalog({
   rulesets: [
@@ -174,7 +173,7 @@ describe('file overrides', () => {
     })
 
     it('leaves console defined in ESLint, since node defines it too, and removes window', async () => {
-      const globals = await globalsFor(buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG), 'apps/api/a.ts')
+      const globals = await globalsFor(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'apps/api/a.ts')
 
       expect(['off', undefined]).not.toContain(globals['console'])
       expect(globals['window']).toBe('off')
@@ -182,7 +181,7 @@ describe('file overrides', () => {
 
     it('switches only the browser env off in oxlint', () => {
       expect(buildOxlintConfig(lintRules, catalog).overrides).toStrictEqual([
-        ...FRAMEWORK_GLOBALS_OXLINT_OVERRIDES,
+        ...GLOBALS_OXLINT_OVERRIDES,
         {
           files: ['apps/api/**'],
           env: { browser: false },
@@ -220,14 +219,14 @@ describe('file overrides', () => {
     })
 
     it('win over the ruleset changes in ESLint', async () => {
-      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
       expect(await ruleEntryFor(config, 'apps/api/a.ts', 'unicorn/prefer-dom-node-append')).toStrictEqual([WARN])
     })
 
     it('come after the ruleset changes in oxlint, with severity and options in full', () => {
       expect(buildOxlintConfig(lintRules, catalog).overrides).toStrictEqual([
-        ...FRAMEWORK_GLOBALS_OXLINT_OVERRIDES,
+        ...GLOBALS_OXLINT_OVERRIDES,
         {
           files: ['apps/api/**'],
           env: { browser: false },
@@ -258,14 +257,14 @@ describe('file overrides', () => {
 
     it('keep their order in oxlint, so the later one wins', () => {
       expect(buildOxlintConfig(lintRules, catalog).overrides).toStrictEqual([
-        ...FRAMEWORK_GLOBALS_OXLINT_OVERRIDES,
+        ...GLOBALS_OXLINT_OVERRIDES,
         { files: ['apps/**'], rules: { eqeqeq: ['warn', 'always'] } },
         { files: ['apps/api/**'], rules: { eqeqeq: 'off' } },
       ])
     })
 
     it('let the later one win in ESLint where both match, and the earlier one apply alone', async () => {
-      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
       expect(OFF_OR_ABSENT_SEVERITY).toContain(await ruleSeverityFor(config, 'apps/api/a.ts', 'n/prefer-global/buffer'))
       expect(await ruleSeverityFor(config, 'apps/web/a.ts', 'n/prefer-global/buffer')).toBe('warn')
@@ -274,12 +273,13 @@ describe('file overrides', () => {
 
   // An entry re-states only the lists it gives. One that gives rules alone says nothing about
   // runtimes, so where it overlaps an entry that dropped browser, browser stays dropped, as the
-  // engines layer blocks natively.
+  // engines layer blocks natively. The later entry's files are no test files, which get the test
+  // runners' env besides (q76).
   describe('an entry that sets runtimes, then an overlapping one that sets rules only', () => {
     const lintRules = buildLintRules(everyTopLevelRuleset, {
       fileOverrides: [
         buildFileOverride(['apps/api/**'], { rulesets: { runtimes: ['node'] } }),
-        buildFileOverride(['**/*.test.ts'], { rules: { eqeqeq: 'warn', 'n/prefer-global/buffer': 'warn' } }),
+        buildFileOverride(['**/handlers/**'], { rules: { eqeqeq: 'warn', 'n/prefer-global/buffer': 'warn' } }),
       ],
     })
     const RUNTIME_GLOBALS = ['process', 'window']
@@ -287,7 +287,7 @@ describe('file overrides', () => {
     const filesByEntriesMatching = [
       {
         matching: 'both entries, so the runtimes of the earlier one and the rules of the later one',
-        file: 'apps/api/x.test.ts',
+        file: 'apps/api/handlers/x.ts',
         eslintRules: { 'n/prefer-global/buffer': 'warn', 'unicorn/prefer-dom-node-append': 'off' },
         oxlintRules: { eqeqeq: 'warn', 'unicorn/prefer-add-event-listener': 'off' },
         env: { node: true, browser: false },
@@ -295,7 +295,7 @@ describe('file overrides', () => {
       },
       {
         matching: 'the later entry alone',
-        file: 'apps/web/x.test.ts',
+        file: 'apps/web/handlers/x.ts',
         eslintRules: { 'n/prefer-global/buffer': 'warn', 'unicorn/prefer-dom-node-append': 'error' },
         oxlintRules: { eqeqeq: 'warn', 'unicorn/prefer-add-event-listener': 'error' },
         env: { node: true, browser: true },
@@ -312,7 +312,7 @@ describe('file overrides', () => {
     ]
 
     it.each(filesByEntriesMatching)('apply the rules of $matching in ESLint, to $file', async ({ file, eslintRules }) => {
-      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
       const severities = Object.fromEntries(
         await Promise.all(Object.keys(eslintRules).map(async (id) => [id, await ruleSeverityFor(config, file, id)])),
       )
@@ -321,7 +321,7 @@ describe('file overrides', () => {
     })
 
     it.each(filesByEntriesMatching)('define the globals of $matching in ESLint, in $file', async ({ file, definedGlobals }) => {
-      const globals = await globalsFor(buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG), file)
+      const globals = await globalsFor(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), file)
 
       expect(RUNTIME_GLOBALS.filter((name) => isDefinedGlobal(globals[name]))).toStrictEqual(definedGlobals)
     })
@@ -430,7 +430,7 @@ describe('file overrides', () => {
       it.each(filesByEntriesMatching)(
         'apply the runtime rules of $matching in ESLint, to $file',
         async ({ file, eslintRules }) => {
-          const config = buildEslintConfig(lintRules, rulesetCatalog, rulesetPluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+          const config = buildEslintConfig(lintRules, rulesetCatalog, rulesetPluginRegistry, buildProjectFacts())
           const severities = Object.fromEntries(
             await Promise.all(
               Object.keys(eslintRules).map(async (id) => [id, await ruleSeverityFor(config, file, id)]),
@@ -444,7 +444,7 @@ describe('file overrides', () => {
       it.each(filesByEntriesMatching)(
         'define the runtime globals of $matching in ESLint, in $file',
         async ({ file, definedGlobals }) => {
-          const config = buildEslintConfig(lintRules, rulesetCatalog, rulesetPluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+          const config = buildEslintConfig(lintRules, rulesetCatalog, rulesetPluginRegistry, buildProjectFacts())
           const globals = await globalsFor(config, file)
 
           expect(RUNTIME_GLOBALS.filter((name) => isDefinedGlobal(globals[name]))).toStrictEqual(definedGlobals)
@@ -506,7 +506,7 @@ describe('file overrides', () => {
       it.each(filesByEntriesMatching)(
         'apply the libs rules of $matching in ESLint, to $file',
         async ({ file, eslintRules }) => {
-          const config = buildEslintConfig(lintRules, rulesetCatalog, rulesetPluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+          const config = buildEslintConfig(lintRules, rulesetCatalog, rulesetPluginRegistry, buildProjectFacts())
           const severities = Object.fromEntries(
             await Promise.all(
               Object.keys(eslintRules).map(async (id) => [id, await ruleSeverityFor(config, file, id)]),

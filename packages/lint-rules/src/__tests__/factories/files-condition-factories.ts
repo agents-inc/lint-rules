@@ -37,3 +37,8 @@ function buildDrawnTerm(draw: Draw, globs: readonly string[]): FilesTerm {
     none: Array.from({ length: draw(MAX_GLOBS_IN_A_LIST) }, pick),
   }
 }
+
+/** A term of the globs given: a file meets it where it matches each of `all` and none of `none`. */
+export function buildFilesTerm(all: readonly string[], none: readonly string[] = []): FilesTerm {
+  return { all: [...all], none: [...none] }
+}

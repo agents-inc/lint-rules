@@ -153,7 +153,8 @@ describe('each rule fires on its routed engine only, under its exact ID', () => 
   })
 })
 
-// Measured on ~/dev and not shipped until the owner decides; a consumer can turn it on by ID.
+// Shipped in the class-names ruleset (owner, 2026-10-14); a consumer can also turn it on by ID. The
+// fixture's classNames(…) and buttonVariants(…) calls, which its defaults accept, stay silent.
 describe('house/require-class-helper, turned on through rules', () => {
   const classHelper = setUpEngineRun(FIXTURES_DIR, (projectDir) =>
     defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { 'house/require-class-helper': 'error' } })),
@@ -165,6 +166,33 @@ describe('house/require-class-helper, turned on through rules', () => {
 
   it('fires in ESLint, once, on a template literal composing classes in a TSX file', () => {
     expect(classHelper.errorsOn('class-helper.tsx')).toStrictEqual([buildEslintError('house/require-class-helper', 2)])
+  })
+})
+
+// eslint-plugin-unicorn 78 adds both rules, opt-in upstream and shipped in no ruleset here
+// (q-r2-plugin-upgrades); oxlint has neither. Each fixture holds a call each rule reports and,
+// below it, one it leaves alone: a default passed a value of its own, and a wrapper one call skips.
+describe('the rules eslint-plugin-unicorn 78 adds, turned on through rules', () => {
+  const unicorn78Rules = setUpEngineRun(FIXTURES_DIR, (projectDir) =>
+    defineLintRules(
+      buildConsumerLintRules(projectDir, {}, {
+        rules: { 'unicorn/no-repeated-call-wrappers': 'error', 'unicorn/no-unnecessary-default-arguments': 'error' },
+      }),
+    ),
+  )
+
+  it('are loaded by ESLint with no fatal message on any file', () => {
+    expect(unicorn78Rules.eslintFatalMessages()).toStrictEqual([])
+  })
+
+  it('fire no-unnecessary-default-arguments once, on the argument that matches its default', () => {
+    expect(unicorn78Rules.errorsOn('unnecessary-default-arguments.ts')).toStrictEqual([
+      buildEslintError('unicorn/no-unnecessary-default-arguments', 5),
+    ])
+  })
+
+  it('fire no-repeated-call-wrappers once, on the function every call wraps alike', () => {
+    expect(unicorn78Rules.errorsOn('repeated-call-wrappers.ts')).toStrictEqual([buildEslintError('unicorn/no-repeated-call-wrappers', 1)])
   })
 })
 

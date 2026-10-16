@@ -171,6 +171,12 @@ export function eslintLintedFilesOf({ projectDir, eslint }: ConsumerEslintCliRun
     .toSorted()
 }
 
+/** What ESLint printed on stderr, a plugin's own warnings among it: throws where ESLint could not run. */
+export function eslintStderrOf({ projectDir, eslint }: ConsumerEslintCliRun): string {
+  if (eslint.outcome === 'refused') throw new Error(`ESLint could not run on ${projectDir}: ${eslint.output}`)
+  return eslint.stderr
+}
+
 function eslintResultsOf({ projectDir, eslint }: ConsumerEslintCliRun): readonly EslintCliResult[] {
   if (eslint.outcome === 'refused') throw new Error(`ESLint could not run on ${projectDir}: ${eslint.output}`)
   return eslint.results

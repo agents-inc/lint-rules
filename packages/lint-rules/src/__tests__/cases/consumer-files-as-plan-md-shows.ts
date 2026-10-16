@@ -49,7 +49,7 @@ export function owns(record: object, key: string): boolean {
 `
 
 // plan.md's eslint.config.mjs, with the team's existing config an empty one.
-const ESLINT_CONFIG_TEXT = `// eslint.config.mjs
+export const ESLINT_CONFIG_TEXT = `// eslint.config.mjs
 import { mergeEslintConfig } from '@agents-inc/lint-rules/eslint'
 import { eslint } from './agents-inc.lint.mts'
 
@@ -59,7 +59,7 @@ export default mergeEslintConfig(theirExistingConfig, eslint, { oxlintConfig: 'o
 `
 
 // plan.md's oxlint config, with the team's existing config an empty one.
-const OXLINT_CONFIG_TEXT = `// oxlint.config.mts
+export const OXLINT_CONFIG_TEXT = `// oxlint.config.mts
 import { mergeOxlintConfig } from '@agents-inc/lint-rules/oxlint'
 import { defineConfig } from 'oxlint'
 import { oxlint } from './agents-inc.lint.mts'

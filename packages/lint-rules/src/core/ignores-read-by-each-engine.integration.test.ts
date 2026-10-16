@@ -15,6 +15,7 @@ import { filesOxlintLintsUnderIgnorePatterns, projectFilesOxlintReportsIn } from
 import { allowEveryTestForParallelLoad } from '../__tests__/parallel-load.ts'
 import { setUpTempProjects } from '../__tests__/temp-projects.ts'
 import { oxlintIgnorePatternsOf } from './build-oxlint-config.ts'
+import { eslintGlobalIgnoresOf } from './eslint-file-types.ts'
 import { type RuleLayers, resolveRuleLayers } from './resolve-rule-layers.ts'
 import { ourEslintPartOf, ourOxlintPartOf } from './where-our-parts-run.ts'
 
@@ -25,8 +26,8 @@ import { ourEslintPartOf, ourOxlintPartOf } from './where-our-parts-run.ts'
 // additions included (decisions.md, 2026-10-12 "fix round 2, after its review").
 // - ESLint (10.12): in the editor our ignores keep only our blocks out, and are not global (D-a), so
 //   ESLint's default ignores hold whatever our negated lines say ("after its second review"): the
-//   reading leaves out the files `eslint .` leaves out under our ignores as global ignores, and those
-//   it leaves out under no ignores at all.
+//   reading leaves out the files `eslint .` leaves out under the global ignores the agent build gives
+//   it, and those it leaves out under no ignores at all.
 // - oxlint (1.87): the reading leaves out the files oxlint leaves out under the ignorePatterns the
 //   agent build gives it, `**/node_modules/**` first, given each file by its path as an editor does.
 
@@ -55,9 +56,10 @@ beforeAll(async () => {
   const eslintProjectDir = tempProjects.create({ files: Object.fromEntries(ESLINT_READING_FILES.map((file) => [file, ESLINT_FILE_TEXT])) })
   const leftOutByEslintDefaults = await filesEslintLeavesOutGiven(eslintProjectDir, NO_IGNORES)
   for (const ignores of EVERY_ESLINT_LIST) {
-    const leftOutByEslint = await filesEslintLeavesOutGiven(eslintProjectDir, ignores)
+    const layers = layersIgnoring(ignores)
+    const leftOutByEslint = await filesEslintLeavesOutGiven(eslintProjectDir, eslintGlobalIgnoresOf(layers))
     eslintLeftOutByList.set(JSON.stringify(ignores), {
-      byTheReading: filesTheConditionMatches(ourEslintPartOf(layersIgnoring(ignores)).leftOut, ESLINT_READING_FILES).toSorted(),
+      byTheReading: filesTheConditionMatches(ourEslintPartOf(layers).leftOut, ESLINT_READING_FILES).toSorted(),
       byTheEngine: [...new Set([...leftOutByEslint, ...leftOutByEslintDefaults])].toSorted(),
     })
   }
@@ -85,16 +87,16 @@ function leftOutGiven(byList: ReadonlyMap<string, FilesLeftOut>, ignores: readon
 }
 
 describe("the ESLint reading of our ignores, against the files the real ESLint leaves out in the editor under the same ignores", () => {
-  // A list ESLint leaves files out of, one it leaves only its own defaults' out of, and no list at
-  // all, so the comparison below is seen to tell them apart, and ESLint's defaults are seen to be
-  // node_modules folders at any depth and the root .git folder.
+  // A list ESLint leaves files out of, every legacy folder (q62), one it leaves only its own
+  // defaults' out of, and no list at all, so the comparison below is seen to tell them apart, and
+  // ESLint's defaults are seen to be node_modules folders at any depth and the root .git folder.
   it('is checked over files ESLint leaves out and files it lints', () => {
     expect({
       legacyFolder: leftOutGiven(eslintLeftOutByList, ['legacy/']).byTheEngine,
       vueFiles: leftOutGiven(eslintLeftOutByList, ['**/*.vue']).byTheEngine,
       noIgnores: leftOutGiven(eslintLeftOutByList, NO_IGNORES).byTheEngine,
     }).toStrictEqual({
-      legacyFolder: [...new Set([...ESLINT_READING_FILES.filter((file) => file.startsWith('legacy/')), ...FILES_ESLINT_DEFAULTS_LEAVE_OUT])].toSorted(),
+      legacyFolder: [...new Set([...ESLINT_READING_FILES.filter((file) => file.split('/').includes('legacy')), ...FILES_ESLINT_DEFAULTS_LEAVE_OUT])].toSorted(),
       vueFiles: [...FILES_ESLINT_DEFAULTS_LEAVE_OUT].toSorted(),
       noIgnores: [...FILES_ESLINT_DEFAULTS_LEAVE_OUT].toSorted(),
     })

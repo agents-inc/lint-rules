@@ -9,7 +9,7 @@ describe('hasEslintVersion', () => {
     { id: '@typescript-eslint/array-type', kind: 'a rule of a plugin we install, under a scoped prefix' },
     { id: 'unicorn/no-null', kind: 'a rule of a plugin we install' },
     { id: 'import-x/no-cycle', kind: 'a rule whose oxlint name has another prefix' },
-    { id: 'jsx-a11y/alt-text', kind: 'a rule of eslint-plugin-jsx-a11y, which we install' },
+    { id: 'jsx-a11y/alt-text', kind: 'a rule of eslint-plugin-jsx-a11y-x, which we install under jsx-a11y' },
     { id: 'vitest/expect-expect', kind: 'a rule of @vitest/eslint-plugin, which we install under vitest' },
     { id: 'react-hooks/rules-of-hooks', kind: 'a rule of eslint-plugin-react-hooks, which we install' },
     { id: 'react-perf/jsx-no-new-object-as-prop', kind: 'a rule of eslint-plugin-react-perf, which we install' },

@@ -37,7 +37,7 @@ type SharedFields = Partial<Omit<LintRules, 'tsconfigRootDir' | 'agentRulesets' 
 /** The settings a piece of a consumer's file adds: rules, and entries. */
 export type LintRulesPiece = Pick<SharedFields, 'rules' | 'fileOverrides'>
 
-// One folder for every run, so a run leaves nothing behind it in the temp dir.
+// One folder for every spec of a test file, in the file's own temp dir.
 const EMPTY_TSCONFIG_ROOT_DIR_NAME = 'lint-rules-empty-tsconfig-root'
 
 /**
@@ -50,8 +50,9 @@ export const EMPTY_TSCONFIG_ROOT_DIR = existingEmptyFolder(join(tmpdir(), EMPTY_
 const NO_RULESETS = { quality: [], libs: {}, runtimes: [] } as const satisfies Rulesets
 
 /**
- * Every ruleset of the real catalog listed, as `init` writes the file. A ruleset added to the
- * data and missing here turns gate-equivalence red; a name removed from it is a type error.
+ * Every ruleset of the real catalog listed, the opt-in ones too, as a team that lists them writes
+ * the file. A ruleset added to the data and missing here turns gate-equivalence red; a name removed
+ * from it is a type error.
  */
 export const EVERY_RULESET = {
   quality: [
@@ -77,7 +78,7 @@ export const EVERY_RULESET = {
     ui: ['react'],
     testing: ['vitest', 'testing-library', 'storybook'],
     forms: ['react-hook-form'],
-    styling: ['css-modules'],
+    styling: ['css-modules', 'class-names'],
   },
   runtimes: ['node', 'browser'],
   languages: [],

@@ -1,8 +1,9 @@
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
+import type { RuleRoute } from '@workspace/rule-data'
 import type { ESLint, Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
-import { SVELTE_RUNES_ESLINT_BLOCK_NAME } from '../__tests__/cases/svelte-components.ts'
+import { SVELTE_RUNES_ESLINT_BLOCK_NAME, TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME } from '../__tests__/cases/svelte-components.ts'
 import {
   buildCatalog,
   buildEslintRoute,
@@ -16,7 +17,10 @@ import {
 } from '../__tests__/factories/catalog-factories.ts'
 import { buildFileOverride, buildLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { setUpEslintConfigOracle } from '../__tests__/eslint-config-oracle.ts'
+import { buildProjectFacts } from '../__tests__/factories/project-facts-factories.ts'
 import { buildEslintConfig, eslintBlocksBeforeTheOffSwitch, type TypeInformation } from './build-eslint-config.ts'
+import type { RuleSettingsInput } from './lint-rules-input.ts'
+import { buildEslintSettings } from './eslint-settings.ts'
 import { resolveRuleLayers } from './resolve-rule-layers.ts'
 
 const OFF = 0
@@ -40,7 +44,10 @@ const CONSUMER_CONFIG_FILES = [
   'apps/web/oxlint.config.mts',
 ]
 const ORDINARY_MTS_FILE = 'src/a.mts'
-const NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG: readonly string[] = []
+// The two a consumer writes at tsconfigRootDir.
+const ROOT_CONSUMER_CONFIG_FILES = ['agents-inc.lint.mts', 'oxlint.config.mts']
+// As the computation lists them where no tsconfig takes in any consumer config file, beside a stray TS file.
+const CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG = [...CONSUMER_CONFIG_FILES, 'scripts/stray.mts']
 // As the computation lists them for buildEslintConfig: relative to tsconfigRootDir, as written on
 // disk. A directory may be named with glob syntax, as Next.js's `[id]` and `(group)` are.
 const TS_FILES_OUTSIDE_EVERY_TSCONFIG = ['scripts/stray.mts', 'app/[id]/(group)/page.ts']
@@ -53,6 +60,13 @@ const SUPPRESSES_AN_OXLINT_ONLY_NAME_UNDER_A_REGISTERED_PREFIX =
   '// eslint-disable-next-line react/no-clone-element\nexport const element = null\n'
 const SUPPRESSES_A_NAME_NEITHER_ENGINE_HAS_UNDER_A_REGISTERED_PREFIX =
   '// eslint-disable-next-line react/not-a-rule\nexport const element = null\n'
+
+// The name eslint-import-resolver-typescript 4.4.5 gives its resolver (lib/constants.js, IMPORT_RESOLVER_NAME).
+const TYPESCRIPT_RESOLVER_NAME = 'eslint-import-resolver-typescript'
+// TS first, then JS (spec-core.md C1).
+const IMPORT_X_EXTENSIONS = ['.ts', '.tsx', '.cts', '.mts', '.js', '.jsx', '.cjs', '.mjs']
+// eslint-plugin-react 7.37.5's ULTIMATE_LATEST_SEMVER (lib/util/version.js): what it assumes where detection finds no React.
+const REACT_VERSION_ASSUMED_WITHOUT_REACT = '999.999.999'
 
 // Copied from the gate: functional/prefer-immutable-types matches these as RegExps, which a JSON
 // config could only hold as strings that never match.
@@ -237,7 +251,7 @@ function ruleProvenanceOf(plugin: ESLint.Plugin, original: ESLint.Plugin): Recor
 }
 
 describe('buildEslintConfig', () => {
-  it('emits named blocks in order: ignores, base, Svelte runes, typed, built-in scopes, file overrides, off-switch', () => {
+  it('emits named blocks in order: ignores, base, Svelte runes, test runner globals, typed, built-in scopes, file overrides, off-switch', () => {
     const lintRules = buildLintRules(
       { quality: ['correctness', 'type-safety', 'complexity'] },
       {
@@ -246,10 +260,11 @@ describe('buildEslintConfig', () => {
       },
     )
 
-    expect(buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG).map((block) => block.name)).toStrictEqual([
+    expect(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()).map((block) => block.name)).toStrictEqual([
       'agents-inc/ignores',
       'agents-inc/base',
       SVELTE_RUNES_ESLINT_BLOCK_NAME,
+      TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME,
       'agents-inc/typed',
       'agents-inc/scope/max-lines',
       'agents-inc/file-overrides/0',
@@ -261,7 +276,7 @@ describe('buildEslintConfig', () => {
     const lintRules = buildLintRules({ quality: ['correctness'] }, { ignores: ['dist/**', '*.gen.ts'] })
 
     it('holds only the config\'s ignores, slash-free ones made to match at any depth, so it is global', () => {
-      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
       expect(blockNamed(config, 'agents-inc/ignores')).toStrictEqual({
         name: 'agents-inc/ignores',
@@ -270,7 +285,7 @@ describe('buildEslintConfig', () => {
     })
 
     it('makes ESLint skip the ignored files and lint the rest', async () => {
-      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
       expect(await isPathIgnored(config, 'dist/a.ts')).toBe(true)
       expect(await isPathIgnored(config, 'src/deep/a.gen.ts')).toBe(true)
@@ -282,7 +297,7 @@ describe('buildEslintConfig', () => {
     const lintRules = buildLintRules({ quality: ['correctness', 'type-safety'] })
 
     it('registers every plugin in the registry, unchanged, and a stub plugin per prefix nobody registers', () => {
-      const plugins = pluginsOf(blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG), 'agents-inc/base'))
+      const plugins = pluginsOf(blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'agents-inc/base'))
 
       expect(Object.keys(plugins).sort()).toStrictEqual([
         '@typescript-eslint',
@@ -299,7 +314,7 @@ describe('buildEslintConfig', () => {
     })
 
     it('gives each stub plugin one rule per oxlint-routed ID under its prefix, listed or not', () => {
-      const plugins = pluginsOf(blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG), 'agents-inc/base'))
+      const plugins = pluginsOf(blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'agents-inc/base'))
 
       expect({
         'import-x': ruleNamesOf(plugins['import-x']),
@@ -316,7 +331,7 @@ describe('buildEslintConfig', () => {
 
     it('parses with the typescript-eslint parser, JSX on, latest syntax, as modules', () => {
       const languageOptions = languageOptionsOf(
-        blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG), 'agents-inc/base'),
+        blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'agents-inc/base'),
       )
 
       expect(languageOptions['parser']).toBe(tseslint.parser)
@@ -327,30 +342,32 @@ describe('buildEslintConfig', () => {
       })
     })
 
-    it('carries the import-x node resolver, the immutability type overrides, the extensions eslint-plugin-n tries, ours first, and React version detection', () => {
-      const { settings } = blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG), 'agents-inc/base')
+    // #33 fix C (spec-core.md C1) and E3 (C13): the project here installs no React.
+    it('carries the import-x TypeScript resolver and the extensions import-x reads, the immutability type overrides, the extensions eslint-plugin-n tries, ours first, and the React version eslint-plugin-react assumes without React', () => {
+      const { settings } = blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'agents-inc/base')
 
       expect(settings).toStrictEqual({
         'import-x/resolver-next': [
-          expect.objectContaining({ interfaceVersion: 3, name: 'eslint-plugin-import-x:node' }),
+          expect.objectContaining({ interfaceVersion: 3, name: TYPESCRIPT_RESOLVER_NAME }),
         ],
+        'import-x/extensions': IMPORT_X_EXTENSIONS,
         immutability: { overrides: IMMUTABILITY_TYPE_OVERRIDES },
         n: { tryExtensions: ['.js', '.mjs', '.cjs', '.jsx', '.ts', '.mts', '.cts', '.tsx', '.json', '.node'] },
-        react: { version: 'detect' },
+        react: { version: REACT_VERSION_ASSUMED_WITHOUT_REACT },
       })
     })
 
     // Suppressions are banned unless allowSuppressions says otherwise, and ESLint applies a directive
     // before any rule runs, so by default it reads none.
     it('stops ESLint reporting unused disable directives, which the runner checks itself, and reading any by default', () => {
-      const block = blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG), 'agents-inc/base')
+      const block = blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'agents-inc/base')
 
       expect(block.linterOptions).toStrictEqual({ reportUnusedDisableDirectives: 'off', noInlineConfig: true })
     })
 
     it('lets ESLint read directives when allowSuppressions is true, still reporting no unused one', async () => {
       const allowing = buildLintRules({ quality: ['correctness', 'type-safety'] }, { allowSuppressions: true })
-      const linterOptions = await linterOptionsFor(buildEslintConfig(allowing, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG), 'src/a.ts')
+      const linterOptions = await linterOptionsFor(buildEslintConfig(allowing, catalog, pluginRegistry, buildProjectFacts()), 'src/a.ts')
 
       expect({
         readsDirectives: linterOptions.noInlineConfig !== true,
@@ -359,20 +376,20 @@ describe('buildEslintConfig', () => {
     })
 
     it('holds the untyped ESLint-routed rules, with severity and options', () => {
-      const block = blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG), 'agents-inc/base')
+      const block = blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'agents-inc/base')
 
       expect(block.rules).toStrictEqual({ 'demo/strict': ['error', { level: 2 }] })
     })
 
     it.each(JS_AND_TS_EXTENSIONS)('applies to .%s files', async (extension) => {
-      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
       expect(await ruleEntryFor(config, `src/a.${extension}`, 'demo/strict')).toStrictEqual([ERROR, { level: 2 }])
     })
 
     it('defines the globals of a listed runtime and not those of an unlisted one', async () => {
-      const nodeOnly = buildEslintConfig(buildLintRules({ runtimes: ['node'] }), catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
-      const browserOnly = buildEslintConfig(buildLintRules({ runtimes: ['browser'] }), catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const nodeOnly = buildEslintConfig(buildLintRules({ runtimes: ['node'] }), catalog, pluginRegistry, buildProjectFacts())
+      const browserOnly = buildEslintConfig(buildLintRules({ runtimes: ['browser'] }), catalog, pluginRegistry, buildProjectFacts())
       const nodeGlobals = await globalsFor(nodeOnly, 'src/a.ts')
       const browserGlobals = await globalsFor(browserOnly, 'src/a.ts')
 
@@ -390,7 +407,7 @@ describe('buildEslintConfig', () => {
     )
 
     it('parses through the project service rooted at tsconfigRootDir and holds the typed rules', () => {
-      const block = blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG), 'agents-inc/typed')
+      const block = blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'agents-inc/typed')
 
       expect(block.languageOptions).toStrictEqual({
         parserOptions: { projectService: true, tsconfigRootDir: TSCONFIG_ROOT_DIR },
@@ -399,7 +416,7 @@ describe('buildEslintConfig', () => {
     })
 
     it.each(TS_EXTENSIONS)('runs typed rules on .%s files', async (extension) => {
-      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
       expect(await ruleEntryFor(config, `src/a.${extension}`, '@typescript-eslint/no-floating-promises')).toStrictEqual([
         ERROR,
@@ -407,17 +424,22 @@ describe('buildEslintConfig', () => {
     })
 
     it('runs no typed rule on JavaScript files', async () => {
-      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
       expect(OFF_OR_ABSENT).toContainEqual(
         await ruleEntryFor(config, 'src/a.js', '@typescript-eslint/no-floating-promises'),
       )
     })
 
-    // A typed rule on a file without the project service stops the whole ESLint run, and a tsconfig
-    // that includes them makes allowDefaultProject a fatal parse error, so the consumer's config
-    // files get neither, at the root or in a nested package, however a typed rule is turned on.
-    describe('leaves out the config files a consumer writes for us', () => {
+    // typed-config-files (spec-core.md C9): where the type information is ours, the consumer's
+    // config files are TS files like any other. A file a tsconfig takes in gets the typed rules
+    // through the project service; any TS file outside every tsconfig, the two at tsconfigRootDir
+    // and a nested package's config files included, gets neither, as a typed rule on a file the
+    // project service finds no project for is a fatal parse error. No default project is named:
+    // typescript-eslint sets it up once per process, from the first config it parses, so one naming
+    // these two failed every later project in that process whose files a tsconfig takes in, or
+    // leaves out, differently (review option (a), Must Fix 1).
+    describe('gives the config files a consumer writes for us the typed rules', () => {
       const waysATypedRuleIsTurnedOn = [
         {
           how: 'a listed ruleset ships it',
@@ -464,9 +486,9 @@ describe('buildEslintConfig', () => {
       ]
 
       it.each(waysATypedRuleIsTurnedOn)(
-        'giving them no project service and no typed rule when $how, while an ordinary .mts file gets both',
+        'through the project service where a tsconfig takes them in, as an ordinary .mts file, when $how',
         async ({ lintRules, ruleId, severity }) => {
-          const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+          const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
           const typedLinting = await Promise.all(
             [...CONSUMER_CONFIG_FILES, ORDINARY_MTS_FILE].map(async (file) => ({
               file,
@@ -475,15 +497,47 @@ describe('buildEslintConfig', () => {
             })),
           )
 
-          expect(typedLinting).toStrictEqual([
-            ...CONSUMER_CONFIG_FILES.map((file) => ({ file, projectService: undefined, severity: 'off' })),
-            { file: ORDINARY_MTS_FILE, projectService: true, severity },
-          ])
+          expect(typedLinting).toStrictEqual([...CONSUMER_CONFIG_FILES, ORDINARY_MTS_FILE].map((file) => ({ file, projectService: true, severity })))
         },
       )
 
+      it('names no default project where no tsconfig takes in the two at tsconfigRootDir', () => {
+        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ tsFilesOutsideEveryTsconfig: CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG }))
+
+        expect(blockNamed(config, 'agents-inc/typed').languageOptions).toStrictEqual({
+          parserOptions: { projectService: true, tsconfigRootDir: TSCONFIG_ROOT_DIR },
+        })
+      })
+
+      it.each(waysATypedRuleIsTurnedOn)(
+        'gives each one no tsconfig takes in, the two at tsconfigRootDir included, neither the project service nor the typed rule, as any other TS file outside every tsconfig, when $how',
+        async ({ lintRules, ruleId }) => {
+          const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ tsFilesOutsideEveryTsconfig: CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG }))
+          const typedLinting = await Promise.all(
+            CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG.map(async (file) => ({
+              file,
+              projectService: (await parserOptionsFor(config, file))['projectService'],
+              severity: (await ruleSeverityFor(config, file, ruleId)) ?? 'off',
+            })),
+          )
+
+          expect(typedLinting).toStrictEqual(CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG.map((file) => ({ file, projectService: undefined, severity: 'off' })))
+        },
+      )
+
+      // KNOWN GAP: typed-config-files owes the two at tsconfigRootDir the typed rules where no
+      // tsconfig takes them in too; only typescript-eslint's default project could give them, and it
+      // is named nowhere (see above). Pinned until the owner decides. The test above builds the same
+      // config, so a build that throws fails there rather than passing here.
+      it.fails.each(waysATypedRuleIsTurnedOn)('gives the two at tsconfigRootDir the typed rule where no tsconfig takes them in, when $how', async ({ lintRules, ruleId, severity }) => {
+        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ tsFilesOutsideEveryTsconfig: CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG }))
+        const severities = await Promise.all(ROOT_CONSUMER_CONFIG_FILES.map(async (file) => ({ file, severity: (await ruleSeverityFor(config, file, ruleId)) ?? 'off' })))
+
+        expect(severities).toStrictEqual(ROOT_CONSUMER_CONFIG_FILES.map((file) => ({ file, severity })))
+      })
+
       it('and still runs the untyped rules on them', async () => {
-        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
         const severities = await Promise.all(
           CONSUMER_CONFIG_FILES.map(async (file) => ({ file, severity: await ruleSeverityFor(config, file, 'demo/strict') })),
         )
@@ -496,7 +550,7 @@ describe('buildEslintConfig', () => {
       it.each(waysATypedRuleIsTurnedOn)(
         'and gives each TS file outside every tsconfig neither when $how, while a file its path read as a glob would match gets both',
         async ({ lintRules, ruleId, severity, severityInATsFile }) => {
-          const config = buildEslintConfig(lintRules, catalog, pluginRegistry, TS_FILES_OUTSIDE_EVERY_TSCONFIG)
+          const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ tsFilesOutsideEveryTsconfig: TS_FILES_OUTSIDE_EVERY_TSCONFIG }))
           const typedLinting = await Promise.all(
             [...TS_FILES_OUTSIDE_EVERY_TSCONFIG, FILE_THE_PATH_READ_AS_A_GLOB_MATCHES, ORDINARY_MTS_FILE].map(async (file) => ({
               file,
@@ -514,7 +568,7 @@ describe('buildEslintConfig', () => {
       )
 
       it('and still runs the untyped rules on each TS file outside every tsconfig', async () => {
-        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, TS_FILES_OUTSIDE_EVERY_TSCONFIG)
+        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ tsFilesOutsideEveryTsconfig: TS_FILES_OUTSIDE_EVERY_TSCONFIG }))
         const severities = await Promise.all(
           TS_FILES_OUTSIDE_EVERY_TSCONFIG.map(async (file) => ({ file, severity: await ruleSeverityFor(config, file, 'demo/strict') })),
         )
@@ -526,7 +580,7 @@ describe('buildEslintConfig', () => {
 
   describe('built-in scopes', () => {
     it('run a rule shipped with files only on those files, minus its ignores', async () => {
-      const config = buildEslintConfig(buildLintRules({ quality: ['complexity'] }), catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(buildLintRules({ quality: ['complexity'] }), catalog, pluginRegistry, buildProjectFacts())
 
       expect(await ruleEntryFor(config, 'src/a.tsx', 'max-lines')).toStrictEqual([ERROR, { max: 200 }])
       expect(OFF_OR_ABSENT).toContainEqual(await ruleEntryFor(config, 'src/use-thing.tsx', 'max-lines'))
@@ -534,7 +588,7 @@ describe('buildEslintConfig', () => {
     })
 
     it('turn a rule shipped with ignores off under them and leave it on elsewhere', async () => {
-      const config = buildEslintConfig(buildLintRules({ quality: ['conventions'] }), catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(buildLintRules({ quality: ['conventions'] }), catalog, pluginRegistry, buildProjectFacts())
 
       expect(await ruleEntryFor(config, 'src/a.ts', 'demo/not-in-tests')).toStrictEqual([ERROR])
       expect(OFF_OR_ABSENT).toContainEqual(await ruleEntryFor(config, 'src/a.test.ts', 'demo/not-in-tests'))
@@ -542,7 +596,7 @@ describe('buildEslintConfig', () => {
 
     it('keep the shipped files of a rule enabled through rules while its ruleset is unlisted', async () => {
       const lintRules = buildLintRules({}, { rules: { 'storybook/default-exports': 'error' } })
-      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
       expect(await ruleEntryFor(config, 'src/a.stories.tsx', 'storybook/default-exports')).toStrictEqual([ERROR])
       expect(OFF_OR_ABSENT).toContainEqual(await ruleEntryFor(config, 'src/a.tsx', 'storybook/default-exports'))
@@ -557,7 +611,7 @@ describe('buildEslintConfig', () => {
       )
 
       it('scope the rule to the override glob AND the rule glob, minus the rule\'s ignores', () => {
-        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
         const blocksSettingTheRule = config.filter(
           (block) => block.rules !== undefined && 'storybook/default-exports' in block.rules,
         )
@@ -568,7 +622,7 @@ describe('buildEslintConfig', () => {
       })
 
       it('run the rule only where both globs match and its ignores do not', async () => {
-        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
         expect(await ruleEntryFor(config, 'src/a.stories.tsx', 'storybook/default-exports')).toStrictEqual([ERROR])
         expect(OFF_OR_ABSENT).toContainEqual(await ruleEntryFor(config, 'src/a.tsx', 'storybook/default-exports'))
@@ -615,7 +669,7 @@ describe('buildEslintConfig', () => {
       it.each(entriesSettingMaxLines)(
         'run it only inside its own scope when the entry $entryDoes',
         async ({ lintRules, severities }) => {
-          const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+          const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
           const calculated = Object.fromEntries(
             await Promise.all(
               FILES_INSIDE_AND_OUTSIDE_THE_SCOPES.map(async (file) => [
@@ -634,7 +688,7 @@ describe('buildEslintConfig', () => {
           { quality: ['conventions'] },
           { fileOverrides: [buildFileOverride(['src/**'], { rules: { 'demo/not-in-tests': 'warn' } })] },
         )
-        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
         const calculated = Object.fromEntries(
           await Promise.all(
             ['src/a.ts', 'src/a.test.ts', 'lib/a.ts'].map(async (file) => [
@@ -653,7 +707,7 @@ describe('buildEslintConfig', () => {
         { quality: ['correctness'] },
         { fileOverrides: [buildFileOverride(['**/*.test.ts'], { rules: { 'demo/strict': 'warn' } })] },
       )
-      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
       expect(await ruleEntryFor(config, 'src/a.test.ts', 'demo/strict')).toStrictEqual([WARN, { level: 2 }])
       expect(await ruleEntryFor(config, 'src/a.ts', 'demo/strict')).toStrictEqual([ERROR, { level: 2 }])
@@ -708,7 +762,7 @@ describe('buildEslintConfig', () => {
       ]
 
       it.each(entriesByBlockTheyEmit)('make ESLint lint no such file when the entry $entryDoes', async ({ lintRules }) => {
-        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
         const lintedByEslint = await Promise.all(
           NON_JS_FILES_UNDER_THE_GLOB.map(async (file) => ({
             file,
@@ -722,7 +776,7 @@ describe('buildEslintConfig', () => {
       it.each(entriesByBlockTheyEmit)(
         'still apply to a JS or TS file under the glob when the entry $entryDoes',
         async ({ lintRules, lintedFile, ruleId, severity }) => {
-          const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+          const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
           expect(await ruleSeverityFor(config, lintedFile, ruleId)).toBe(severity)
         },
@@ -742,7 +796,7 @@ describe('buildEslintConfig', () => {
       )
 
       it('make ESLint lint no such file in that directory', async () => {
-        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
         const lintedByEslint = await Promise.all(
           NON_JS_FILES_IN_THE_STORYBOOK_DIRECTORY.map(async (file) => ({
             file,
@@ -754,7 +808,7 @@ describe('buildEslintConfig', () => {
       })
 
       it('still run the rule on a TS file in that directory', async () => {
-        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
         expect(await ruleSeverityFor(config, '.storybook/x.test.ts', 'storybook/context-in-play-function')).toBe('error')
       })
@@ -763,7 +817,7 @@ describe('buildEslintConfig', () => {
 
   describe('the oxlint off-switch', () => {
     it('turns off every oxlint-routed rule, listed or not, under its ID and each alias, and nothing else', () => {
-      const config = buildEslintConfig(buildLintRules({ quality: ['correctness'] }), catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(buildLintRules({ quality: ['correctness'] }), catalog, pluginRegistry, buildProjectFacts())
 
       expect(blockNamed(config, 'agents-inc/oxlint-rules-off')).toStrictEqual({
         name: 'agents-inc/oxlint-rules-off',
@@ -784,7 +838,7 @@ describe('buildEslintConfig', () => {
         { quality: ['correctness'] },
         { rules: { '@typescript-eslint/no-unused-vars': 'error' } },
       )
-      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
       expect(await ruleSeverityFor(config, 'src/a.ts', '@typescript-eslint/no-unused-vars')).toBe('error')
       expect(await ruleSeverityFor(config, 'src/a.ts', 'no-unused-vars')).toBe('off')
@@ -796,7 +850,7 @@ describe('buildEslintConfig', () => {
         buildLintRules({ quality: ['correctness'] }, { allowSuppressions: true }),
         catalog,
         pluginRegistry,
-        NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG,
+        buildProjectFacts(),
       )
 
       expect(await ruleIdsReportedOn(config, SUPPRESSES_AN_OXLINT_ONLY_RULE, 'src/suppressed.js')).toStrictEqual([])
@@ -807,7 +861,7 @@ describe('buildEslintConfig', () => {
         buildLintRules({ quality: ['correctness'] }, { allowSuppressions: true }),
         catalog,
         pluginRegistry,
-        NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG,
+        buildProjectFacts(),
       )
 
       expect(await ruleIdsReportedOn(config, SUPPRESSES_A_RULE_NOBODY_DEFINES, 'src/suppressed.js')).toStrictEqual([
@@ -841,7 +895,7 @@ describe('buildEslintConfig', () => {
     const lintRules = buildLintRules({ quality: ['correctness'] }, { allowSuppressions: true })
 
     function basePlugins(): Record<string, ESLint.Plugin> {
-      return pluginsOf(blockNamed(buildEslintConfig(lintRules, catalogWithOxlintOnlyNames, registry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG), 'agents-inc/base'))
+      return pluginsOf(blockNamed(buildEslintConfig(lintRules, catalogWithOxlintOnlyNames, registry, buildProjectFacts()), 'agents-inc/base'))
     }
 
     it('is registered as a copy holding each of its own rules and a stub per oxlint-only name it lacks', () => {
@@ -866,7 +920,7 @@ describe('buildEslintConfig', () => {
     })
 
     it('lets a suppression of the oxlint-only name load in ESLint', async () => {
-      const config = buildEslintConfig(lintRules, catalogWithOxlintOnlyNames, registry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(lintRules, catalogWithOxlintOnlyNames, registry, buildProjectFacts())
 
       expect(
         await ruleIdsReportedOn(config, SUPPRESSES_AN_OXLINT_ONLY_NAME_UNDER_A_REGISTERED_PREFIX, 'src/suppressed.tsx'),
@@ -874,11 +928,64 @@ describe('buildEslintConfig', () => {
     })
 
     it('still lets ESLint report a suppression of a name neither the plugin nor oxlint has', async () => {
-      const config = buildEslintConfig(lintRules, catalogWithOxlintOnlyNames, registry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG)
+      const config = buildEslintConfig(lintRules, catalogWithOxlintOnlyNames, registry, buildProjectFacts())
 
       expect(
         await ruleIdsReportedOn(config, SUPPRESSES_A_NAME_NEITHER_ENGINE_HAS_UNDER_A_REGISTERED_PREFIX, 'src/suppressed.tsx'),
       ).toStrictEqual(['react/not-a-rule'])
+    })
+  })
+
+  // spec-core.md C5 (my-renamed-in-eslint): oxlint honours a suppression of a renamed rule only
+  // under its own name (measured, oxlint 1.87), so where the oxlint name of an oxlint-routed rule
+  // differs from its ID's name, ESLint needs a definition of that name too, under the ID's prefix.
+  describe("an oxlint-routed rule whose oxlint name differs from its ID's", () => {
+    const catalogWithRenamedRules = buildCatalog({
+      rulesets: [buildQualityRuleset('correctness')],
+      rules: [
+        buildOxlintRoute('unicorn/no-for-each', { oxlintName: 'unicorn/no-array-for-each', oxlintPlugin: 'unicorn', shipped: buildShippedRule('correctness') }),
+        buildOxlintRoute('unicorn/dom-node-dataset', { oxlintName: 'unicorn/prefer-dom-node-dataset', oxlintPlugin: 'unicorn', shipped: buildShippedRule('correctness') }),
+        buildOxlintRoute('@typescript-eslint/no-explicit-any', { oxlintName: 'typescript/no-explicit-any', oxlintPlugin: 'typescript', shipped: buildShippedRule('correctness') }),
+      ],
+    })
+    // As unicorn 77 is: no-for-each, and dom-node-dataset beside its deprecated old name, but no no-array-for-each.
+    const unicornPlugin = buildFakePlugin(['dom-node-dataset', 'no-for-each', 'prefer-dom-node-dataset'], { meta: { name: 'eslint-plugin-unicorn', version: '77.0.0' } })
+    const typescriptEslintPlugin = buildFakePlugin(['no-explicit-any'])
+    const registry = { '@typescript-eslint': typescriptEslintPlugin, unicorn: unicornPlugin }
+    // Suppressions allowed, so ESLint reads the directives the stubs are for.
+    const lintRules = buildLintRules({ quality: ['correctness'] }, { allowSuppressions: true })
+    const SUPPRESSES_IN_OXLINTS_SPELLING = '// eslint-disable-next-line unicorn/no-array-for-each\nexport const each = [1].forEach((n) => n)\n'
+    const SUPPRESSES_UNDER_THE_ID = '// eslint-disable-next-line unicorn/no-for-each\nexport const each = [1].forEach((n) => n)\n'
+
+    function basePlugins(): Record<string, ESLint.Plugin> {
+      return pluginsOf(blockNamed(buildEslintConfig(lintRules, catalogWithRenamedRules, registry, buildProjectFacts()), 'agents-inc/base'))
+    }
+
+    it("gets a stub for its oxlint name under its ID's prefix where the plugin lacks that name, and none where the plugin has it", () => {
+      expect(ruleProvenanceOf(pluginUnder(basePlugins(), 'unicorn'), unicornPlugin)).toStrictEqual({
+        'dom-node-dataset': 'own',
+        'no-array-for-each': 'stub',
+        'no-for-each': 'own',
+        'prefer-dom-node-dataset': 'own',
+      })
+    })
+
+    it("gets none where its oxlint name differs from its ID's in the prefix alone", () => {
+      const plugins = basePlugins()
+
+      expect({ prefixes: Object.keys(plugins).toSorted(), typescriptEslint: ruleProvenanceOf(pluginUnder(plugins, '@typescript-eslint'), typescriptEslintPlugin) }).toStrictEqual({
+        prefixes: ['@typescript-eslint', 'unicorn'],
+        typescriptEslint: { 'no-explicit-any': 'own' },
+      })
+    })
+
+    it("lets a suppression in oxlint's spelling load in ESLint, as one under the ID does", async () => {
+      const config = buildEslintConfig(lintRules, catalogWithRenamedRules, registry, buildProjectFacts())
+
+      expect({
+        oxlintsSpelling: await ruleIdsReportedOn(config, SUPPRESSES_IN_OXLINTS_SPELLING, 'src/suppressed.js'),
+        underTheId: await ruleIdsReportedOn(config, SUPPRESSES_UNDER_THE_ID, 'src/suppressed.js'),
+      }).toStrictEqual({ oxlintsSpelling: [], underTheId: [] })
     })
   })
 
@@ -978,6 +1085,7 @@ describe('buildEslintConfig', () => {
           layers: resolveRuleLayers(lintRules, twinsCatalog),
           plugins,
           linterOptions: null,
+          settings: buildEslintSettings(buildProjectFacts()),
           typeInformation,
           twinsOnTsFiles: !besideOxlint,
         },
@@ -1231,9 +1339,108 @@ describe('buildEslintConfig', () => {
     it('build when they are valid', () => {
       const lintRules = buildLintRules({}, { rules: { 'demo/strict': 'error' } })
 
-      expect(blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, NO_TS_FILE_OUTSIDE_EVERY_TSCONFIG), 'agents-inc/base').rules).toStrictEqual({
+      expect(blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'agents-inc/base').rules).toStrictEqual({
         'demo/strict': ['error', { level: 2 }],
       })
     })
+  })
+})
+
+// spec-core.md 2.6, T: both rules of a pair run in ESLint, each on every file it lints, one with
+// type information and the other without. The data's tests guarantee it; the core still throws on a
+// breach, naming the untyped rule and its typed partner. A pair one of whose rules oxlint runs, or
+// that runs on some files alone, would report twice where the typed rule runs and the untyped one
+// is not turned off.
+describe('a rule split by types with another, as the data gives it', () => {
+  const UNTYPED = 'unicorn/no-unnecessary-boolean-comparison'
+  const TYPED = '@typescript-eslint/no-unnecessary-boolean-literal-compare'
+  const SRC_FILES = ['src/**']
+  const TEST_FILES = ['**/*.test.ts']
+  const untypedInEslint = buildEslintRoute(UNTYPED, { typed: false, shipped: buildShippedRule('redundancy', { splitByTypesWith: TYPED }) })
+  const typedInEslint = buildEslintRoute(TYPED, { typed: true, shipped: buildShippedRule('redundancy') })
+  const splitRegistry = buildPluginRegistry({ '@typescript-eslint': ['no-unnecessary-boolean-literal-compare'], unicorn: ['no-unnecessary-boolean-comparison'] })
+
+  function configWith(untyped: RuleRoute, typed: RuleRoute): Linter.Config[] {
+    const splitCatalog = buildCatalog({ rulesets: [buildQualityRuleset('redundancy')], rules: [untyped, typed] })
+    return buildEslintConfig(buildLintRules({ quality: ['redundancy'] }), splitCatalog, splitRegistry, buildProjectFacts())
+  }
+
+  it('is built where both run in ESLint on every file: the untyped rule off in a TS file with types, and on in a JS file', async () => {
+    const config = configWith(untypedInEslint, typedInEslint)
+
+    expect({ typedFile: await ruleEntryFor(config, 'src/a.ts', UNTYPED), jsFile: await ruleEntryFor(config, 'src/a.js', UNTYPED) }).toStrictEqual({
+      typedFile: [OFF],
+      jsFile: [ERROR],
+    })
+  })
+
+  it.each([
+    {
+      breach: 'the untyped rule runs in oxlint',
+      untyped: buildOxlintRoute(UNTYPED, { oxlintName: 'no-unnecessary-boolean-comparison', oxlintPlugin: 'unicorn', shipped: buildShippedRule('redundancy', { splitByTypesWith: TYPED }) }),
+      typed: typedInEslint,
+    },
+    {
+      breach: 'the typed rule runs in oxlint',
+      untyped: untypedInEslint,
+      typed: { ...buildOxlintRoute(TYPED, { oxlintName: 'no-unnecessary-boolean-literal-compare', oxlintPlugin: 'typescript', shipped: buildShippedRule('redundancy') }), typed: true },
+    },
+    {
+      breach: 'the untyped rule ships with files',
+      untyped: buildEslintRoute(UNTYPED, { typed: false, shipped: buildShippedRule('redundancy', { splitByTypesWith: TYPED, files: SRC_FILES }) }),
+      typed: typedInEslint,
+    },
+    {
+      breach: 'the untyped rule ships with ignores',
+      untyped: buildEslintRoute(UNTYPED, { typed: false, shipped: buildShippedRule('redundancy', { splitByTypesWith: TYPED, ignores: TEST_FILES }) }),
+      typed: typedInEslint,
+    },
+    { breach: 'the typed rule ships with files', untyped: untypedInEslint, typed: buildEslintRoute(TYPED, { typed: true, shipped: buildShippedRule('redundancy', { files: SRC_FILES }) }) },
+    { breach: 'the typed rule ships with ignores', untyped: untypedInEslint, typed: buildEslintRoute(TYPED, { typed: true, shipped: buildShippedRule('redundancy', { ignores: TEST_FILES }) }) },
+    { breach: 'the typed rule runs without type information', untyped: untypedInEslint, typed: buildEslintRoute(TYPED, { typed: false, shipped: buildShippedRule('redundancy') }) },
+    {
+      breach: 'the untyped rule needs type information',
+      untyped: buildEslintRoute(UNTYPED, { typed: true, shipped: buildShippedRule('redundancy', { splitByTypesWith: TYPED }) }),
+      typed: typedInEslint,
+    },
+  ])('is refused where $breach', ({ untyped, typed }) => {
+    expect(() => configWith(untyped, typed)).toThrowError(`${UNTYPED}: split by types with ${TYPED}`)
+  })
+
+  // An entry stating either rule of the pair states the untyped one in a typed block of its own; one
+  // stating neither leaves the top level's typed block to state it (untypedStatementsOfAnEntry).
+  function blockNamesWithAnEntryStating(rules: RuleSettingsInput): (string | undefined)[] {
+    const splitCatalog = buildCatalog({ rulesets: [buildQualityRuleset('redundancy')], rules: [untypedInEslint, typedInEslint] })
+    const lintRules = buildLintRules({ quality: ['redundancy'] }, { fileOverrides: [buildFileOverride(['legacy/**'], { rules })] })
+    return buildEslintConfig(lintRules, splitCatalog, splitRegistry, buildProjectFacts()).map((block) => block.name)
+  }
+
+  const BLOCKS_BEFORE_THE_ENTRIES = ['agents-inc/base', SVELTE_RUNES_ESLINT_BLOCK_NAME, TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, 'agents-inc/typed']
+
+  it.each([
+    { states: 'the untyped rule', rules: { [UNTYPED]: 'warn' } },
+    { states: 'the typed rule', rules: { [TYPED]: 'off' } },
+  ] satisfies { states: string; rules: RuleSettingsInput }[])('gives an entry stating $states a typed block of its own, named for the entry', ({ rules }) => {
+    expect(blockNamesWithAnEntryStating(rules)).toStrictEqual([
+      ...BLOCKS_BEFORE_THE_ENTRIES,
+      'agents-inc/file-overrides/0',
+      'agents-inc/file-overrides/0/typed',
+      'agents-inc/oxlint-rules-off',
+    ])
+  })
+
+  it('gives an entry stating neither rule of the pair no block', () => {
+    expect(blockNamesWithAnEntryStating({})).toStrictEqual([...BLOCKS_BEFORE_THE_ENTRIES, 'agents-inc/oxlint-rules-off'])
+  })
+})
+
+// spec-core.md C13 (spec-next-batch E3): the settings read whether React resolves from
+// tsconfigRootDir from the project facts, and stay pure.
+describe('buildEslintSettings', () => {
+  it('gives eslint-plugin-react detect where React is installed, and the version it assumes without React where it is not', () => {
+    expect({
+      reactInstalled: buildEslintSettings(buildProjectFacts({ reactIsInstalled: true }))['react'],
+      noReact: buildEslintSettings(buildProjectFacts())['react'],
+    }).toStrictEqual({ reactInstalled: { version: 'detect' }, noReact: { version: REACT_VERSION_ASSUMED_WITHOUT_REACT } })
   })
 })

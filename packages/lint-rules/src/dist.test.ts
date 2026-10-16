@@ -13,7 +13,7 @@ const ENTRY_FILES = ['eslint.d.mts', 'eslint.mjs', 'index.d.mts', 'index.mjs', '
 const BUILT_MODULE = /\.(?:mjs|d\.mts)$/u
 const DECLARATION_FILE = /\.d\.mts$/u
 const PRIVATE_WORKSPACE_SCOPE = '@workspace/'
-// The internal lookup `check` will use: no consumer may reach it (spec §6).
+// The internal lookup `check` uses: no consumer may reach it (spec §6).
 const INTERNAL_HOOK = 'agentSettingsOf'
 // Owner, 2026-10-11: the merge functions, one per engine subpath, beside defineLintRules.
 const PUBLIC_ENTRIES = [

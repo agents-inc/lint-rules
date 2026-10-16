@@ -16,6 +16,14 @@ const CONSUMER_COMPILER_OPTIONS = {
   allowImportingTsExtensions: true,
 }
 
+/**
+ * A consumer's tsconfig.json listing Node's type definitions, which TypeScript 6 loads only where a
+ * tsconfig lists them (`types` defaults to none): `import.meta.dirname` is otherwise an error type.
+ */
+export function buildTsconfigListingNodeTypes(fields: Partial<Omit<Tsconfig, 'compilerOptions'>> = {}): Tsconfig {
+  return { compilerOptions: { ...CONSUMER_COMPILER_OPTIONS, types: ['node'] }, ...fields }
+}
+
 /** A tsconfig.json extending shared configs, by one path or several (TypeScript 5.0+). */
 type TsconfigExtending = Partial<Tsconfig> & { readonly extends: string | readonly string[] }
 
@@ -31,4 +39,9 @@ export function buildTsconfigExtending(extended: TsconfigExtending['extends'], f
 /** A consumer's tsconfig.json that also compiles JSX, as a React project's does. */
 export function buildReactTsconfig(fields: Partial<Omit<Tsconfig, 'compilerOptions'>> = {}): Tsconfig {
   return { compilerOptions: { ...CONSUMER_COMPILER_OPTIONS, jsx: 'react-jsx' }, ...fields }
+}
+
+/** A consumer's tsconfig.json mapping the import aliases given (`compilerOptions.paths`), each target relative to the tsconfig. */
+export function buildTsconfigWithPaths(paths: Readonly<Record<string, readonly string[]>>, fields: Partial<Omit<Tsconfig, 'compilerOptions'>> = {}): Tsconfig {
+  return { compilerOptions: { ...CONSUMER_COMPILER_OPTIONS, paths }, ...fields }
 }

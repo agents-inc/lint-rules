@@ -5,11 +5,11 @@ import {
   IGNORES_TAKING_FILES_BACK_FROM_ESLINT_DEFAULTS,
 } from './eslint-ignores-values.ts'
 
-// Lists of our ignores, as our layers hold them, over which the shared oxlint reading of our ignores
-// is checked against the real oxlint, given the ignorePatterns the agent build gives it
-// (core/ignores-read-by-each-engine.integration.test.ts): every list the ESLint reading is checked
-// over, and lines taking a file in node_modules back, which the agent build's own `**/node_modules/**`
-// leaves out.
+// Lists of our ignores, as a consumer writes them, over which the shared oxlint reading of the forms
+// our layers hold them in is checked against the real oxlint, given the ignorePatterns the agent
+// build gives it (core/ignores-read-by-each-engine.integration.test.ts): every list the ESLint
+// reading is checked over, and lines taking a file in node_modules back, which the agent build's
+// own `**/node_modules/**` leaves out.
 
 /** A list of our ignores the reading reads differently from oxlint, and the files it takes back that oxlint leaves out: it leaves out none oxlint lints. */
 export type OxlintReadingLimit = { readonly ignores: readonly string[]; readonly takenBackByTheReadingOnly: readonly string[] }

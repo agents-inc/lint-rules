@@ -1,12 +1,30 @@
+import type { Catalog, RuleRoute } from '@workspace/rule-data'
 import { describe, expect, it } from 'vitest'
-import { buildEveryRulesetLintRules } from './__tests__/factories/lint-rules-factories.ts'
+import {
+  buildCatalog,
+  buildEslintRoute,
+  buildOxlintRoute,
+  buildPluginRegistry,
+  buildQualityRuleset,
+  buildShippedRule,
+} from './__tests__/factories/catalog-factories.ts'
+import {
+  buildEveryRulesetLintRules,
+  buildLintRules,
+  buildTwoSetFileOverride,
+  buildTwoSetLintRules,
+} from './__tests__/factories/lint-rules-factories.ts'
 import {
   buildPackageJsonListingOthers,
   buildPackageJsonListingOxlint,
   packageJsonText,
 } from './__tests__/factories/package-json-factories.ts'
+import { buildProjectFacts } from './__tests__/factories/project-facts-factories.ts'
 import { pathsOfFunctionsIn } from './__tests__/functions-in.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
+import { buildEslintConfig } from './core/build-eslint-config.ts'
+import { editorPartsOf } from './core/editor-parts.ts'
+import type { RuleSetting, RuleSettings } from './core/resolve-rule-layers.ts'
 import { defineLintRules } from './index.ts'
 
 // Owner, 2026-10-11: agents-inc.lint.mts ends with `export const { eslint, oxlint } = config.editorRulesets`.
@@ -68,6 +86,148 @@ describe('the parts of a project whose package.json lists oxlint', () => {
     expect({ eslint: Object.keys(eslint).toSorted(), oxlint: oxlint === undefined ? undefined : Object.keys(oxlint).toSorted() }).toStrictEqual({
       eslint: ['engine', 'layers', 'oxlintLayers', 'tsconfigRootDir', 'usesOxlint'],
       oxlint: ['engine', 'layers', 'tsconfigRootDir', 'turnedOnInEslint'],
+    })
+  })
+})
+
+// ESLint stands in for oxlint-only rules without oxlint (spec-core.md C4; spec-next-batch S-3, S-4,
+// S-6): wherever the layers state the oxc rule, the ESLint part states its stand-in, with the oxc
+// rule's severity, files and ignores and none of its options, and the oxc rule not at all.
+describe('the stand-ins for oxlint-only rules', () => {
+  const CHAINED_OXC = 'oxc/bad-comparison-sequence'
+  const CHAINED_STAND_IN = 'unicorn/no-chained-comparison'
+  const DOUBLE_OXC = 'oxc/double-comparisons'
+  const DOUBLE_STAND_IN = 'unicorn/no-double-comparison'
+  const ESLINT_RULE = 'unicorn/no-array-for-each'
+  const LEGACY_FILES = 'legacy/**'
+  const TEST_FILES = ['**/*.test.js']
+  // An option no oxc rule takes: a factory's oxc rule ships it, so a spec sees it is not carried over.
+  const OXC_OPTIONS = [{ strict: true }]
+
+  const standInCatalog = buildCatalog({
+    rulesets: [buildQualityRuleset('correctness')],
+    rules: [
+      buildOxlintRoute(CHAINED_OXC, { oxlintName: CHAINED_OXC, oxlintPlugin: 'oxc', shipped: buildShippedRule('correctness', { options: OXC_OPTIONS, ignores: TEST_FILES }) }),
+      buildOxlintRoute(DOUBLE_OXC, { oxlintName: DOUBLE_OXC, oxlintPlugin: 'oxc', shipped: buildShippedRule('correctness') }),
+      buildEslintRoute(CHAINED_STAND_IN, { typed: false, shipped: null }),
+      buildEslintRoute(DOUBLE_STAND_IN, { typed: false, shipped: null }),
+      buildEslintRoute(ESLINT_RULE, { typed: false, shipped: buildShippedRule('correctness') }),
+    ],
+    eslintStandIns: new Map([
+      [CHAINED_OXC, CHAINED_STAND_IN],
+      [DOUBLE_OXC, DOUBLE_STAND_IN],
+    ]),
+  })
+
+  const ON: RuleSetting = { severity: 'error', options: [], files: null, ignores: null }
+  const WARN: RuleSetting = { severity: 'warn', options: [], files: null, ignores: null }
+  const OFF: RuleSetting = { severity: 'off', options: [], files: null, ignores: null }
+  const CHAINED_STAND_IN_ON: RuleSetting = { ...ON, ignores: TEST_FILES }
+
+  function editorPartsWith(fields: Parameters<typeof buildTwoSetLintRules>[1], usesOxlint: boolean): ReturnType<typeof editorPartsOf> {
+    return editorPartsOf(buildTwoSetLintRules({ editorRulesets: { quality: ['correctness'] } }, fields), standInCatalog, usesOxlint)
+  }
+
+  describe('in a project without oxlint', () => {
+    it("state each stand-in at its oxc rule's severity, files and ignores, with no options, and neither oxc rule", () => {
+      const { eslint, oxlint } = editorPartsWith({}, false)
+
+      expect({ eslint: eslint.layers.rules, oxlint }).toStrictEqual({
+        eslint: { [CHAINED_STAND_IN]: CHAINED_STAND_IN_ON, [DOUBLE_STAND_IN]: ON, [ESLINT_RULE]: ON },
+        oxlint: undefined,
+      })
+    })
+
+    it('turn a stand-in off where the rules turn its oxc rule off, and keep the other on', () => {
+      const { eslint } = editorPartsWith({ rules: { [CHAINED_OXC]: 'off' } }, false)
+
+      expect(eslint.layers.rules).toStrictEqual({ [DOUBLE_STAND_IN]: ON, [ESLINT_RULE]: ON })
+    })
+
+    it("give a stand-in an entry's setting of its oxc rule, in the entry's files", () => {
+      const { eslint } = editorPartsWith({ fileOverrides: [buildTwoSetFileOverride([LEGACY_FILES], { rules: { [CHAINED_OXC]: 'warn', [DOUBLE_OXC]: 'off' } })] }, false)
+      const [entry] = eslint.layers.fileOverrides
+
+      expect(entry === undefined ? undefined : entry.rules).toStrictEqual({ [CHAINED_STAND_IN]: { ...WARN, ignores: TEST_FILES }, [DOUBLE_STAND_IN]: OFF })
+    })
+
+    it("state the stand-in once, at the consumer's own setting of it, where the rules name it too", () => {
+      const { eslint } = editorPartsWith({ rules: { [CHAINED_STAND_IN]: 'warn' } }, false)
+
+      expect(eslint.layers.rules).toStrictEqual({ [CHAINED_STAND_IN]: WARN, [DOUBLE_STAND_IN]: ON, [ESLINT_RULE]: ON })
+    })
+  })
+
+  describe('in a project with oxlint', () => {
+    it('are stated by neither part, the oxlint part stating the oxc rules', () => {
+      const { eslint, oxlint } = editorPartsWith({}, true)
+
+      expect({ eslint: eslint.layers.rules, oxlint: oxlint === undefined ? undefined : Object.keys(oxlint.layers.rules).toSorted() }).toStrictEqual({
+        eslint: { [ESLINT_RULE]: ON },
+        oxlint: [CHAINED_OXC, DOUBLE_OXC],
+      })
+    })
+  })
+
+  it('are stated by no block of the agent build', () => {
+    const config = buildEslintConfig(
+      buildLintRules({ quality: ['correctness'] }),
+      standInCatalog,
+      buildPluginRegistry({ unicorn: ['no-chained-comparison', 'no-double-comparison', 'no-array-for-each'] }),
+      buildProjectFacts(),
+    )
+
+    expect(config.filter(({ rules = {} }) => [CHAINED_STAND_IN, DOUBLE_STAND_IN].some((standIn) => Object.hasOwn(rules, standIn))).map(({ name }) => name)).toStrictEqual([])
+  })
+
+  // spec-core.md 2.6, stand-ins: each oxlint-only rule is one oxlint runs and ESLint has no version
+  // of, and each stand-in a rule ESLint runs, untyped, not shipped, standing in for one rule. The
+  // data's tests guarantee it; the core still throws on a breach, where the ESLint part reads the
+  // stand-ins, naming the oxlint-only rule and its stand-in. Each breach would run a rule twice, or
+  // run the stand-in nowhere or where it cannot run.
+  describe('a breach of the data, in a project without oxlint', () => {
+    const chainedOxc = buildOxlintRoute(CHAINED_OXC, { oxlintName: CHAINED_OXC, oxlintPlugin: 'oxc', shipped: buildShippedRule('correctness') })
+    const doubleOxc = buildOxlintRoute(DOUBLE_OXC, { oxlintName: DOUBLE_OXC, oxlintPlugin: 'oxc', shipped: buildShippedRule('correctness') })
+    const standIn = buildEslintRoute(CHAINED_STAND_IN, { typed: false, shipped: null })
+    const ONE_STAND_IN = new Map([[CHAINED_OXC, CHAINED_STAND_IN]])
+    const ONE_STAND_IN_FOR_TWO = new Map([
+      [CHAINED_OXC, CHAINED_STAND_IN],
+      [DOUBLE_OXC, CHAINED_STAND_IN],
+    ])
+    const lintRules = buildTwoSetLintRules({ editorRulesets: { quality: ['correctness'] } })
+
+    function catalogOf(rules: readonly RuleRoute[], eslintStandIns: ReadonlyMap<string, string>): Catalog {
+      return buildCatalog({ rulesets: [buildQualityRuleset('correctness')], rules, eslintStandIns })
+    }
+
+    function eslintRulesWith(catalog: Catalog): RuleSettings {
+      return editorPartsOf(lintRules, catalog, false).eslint.layers.rules
+    }
+
+    it('is none where the oxlint-only rule is one oxlint runs alone and its stand-in an untyped ESLint rule, not shipped, standing in for it alone', () => {
+      expect(eslintRulesWith(catalogOf([chainedOxc, standIn], ONE_STAND_IN))).toStrictEqual({ [CHAINED_STAND_IN]: ON })
+    })
+
+    it.each([
+      {
+        breach: 'the stand-in is a rule oxlint runs',
+        catalog: catalogOf([chainedOxc, buildOxlintRoute(CHAINED_STAND_IN, { oxlintName: 'no-chained-comparison', oxlintPlugin: 'unicorn', shipped: null })], ONE_STAND_IN),
+      },
+      { breach: 'the stand-in needs type information', catalog: catalogOf([chainedOxc, buildEslintRoute(CHAINED_STAND_IN, { typed: true, shipped: null })], ONE_STAND_IN) },
+      { breach: 'the stand-in is shipped', catalog: catalogOf([chainedOxc, buildEslintRoute(CHAINED_STAND_IN, { typed: false, shipped: buildShippedRule('correctness') })], ONE_STAND_IN) },
+      { breach: 'the oxlint-only rule is one ESLint runs', catalog: catalogOf([buildEslintRoute(CHAINED_OXC, { typed: false, shipped: buildShippedRule('correctness') }), standIn], ONE_STAND_IN) },
+      {
+        breach: 'ESLint has a version of the oxlint-only rule',
+        catalog: { ...catalogOf([chainedOxc, standIn], ONE_STAND_IN), ruleIdsWithAnEslintVersion: new Set([CHAINED_OXC, CHAINED_STAND_IN]) },
+      },
+    ])('is refused where $breach', ({ catalog }) => {
+      expect(() => eslintRulesWith(catalog)).toThrowError(`${CHAINED_OXC}: stood in for by ${CHAINED_STAND_IN}`)
+    })
+
+    it('is refused where the stand-in stands in for two oxlint-only rules', () => {
+      expect(() => eslintRulesWith(catalogOf([chainedOxc, doubleOxc, standIn], ONE_STAND_IN_FOR_TWO))).toThrowError(
+        new RegExp(`^(${CHAINED_OXC}|${DOUBLE_OXC}): stood in for by ${CHAINED_STAND_IN}`, 'u'),
+      )
     })
   })
 })

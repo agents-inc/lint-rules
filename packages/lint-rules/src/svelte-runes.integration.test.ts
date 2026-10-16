@@ -25,7 +25,8 @@ import { EMPTY_TEAM_OXLINT_CONFIG, TEAM_OXLINT_CONFIG_SETTING_NO_RULE, teamOxlin
 // Svelte 5 component, 30 of its 31 findings in .svelte files. Beside oxlint, oxlint runs no-undef and
 // no-global-assign, in the agent build and the editor merges through the built package; without it,
 // ESLint runs both in the JS and TS files it lints, which a .svelte file is not. The name nobody
-// declares in each Svelte file, and the rune in the JS file that is no Svelte file, stay reported.
+// declares in each rune module, and the rune in the JS file that is no Svelte file, stay reported;
+// no-undef is off in .svelte files, where Svelte's own checker reports an undeclared name (owner, q79).
 
 allowEveryTestForParallelLoad()
 

@@ -11,6 +11,8 @@ export type TsconfigLayout = {
   readonly files: ProjectFiles
   readonly tsconfigRootDir: string
   readonly outside: readonly string[]
+  /** Whether a tsconfig takes in a TS file written at tsconfigRootDir itself, as a consumer's config files are. */
+  readonly takesInTsFilesAtTsconfigRootDir: boolean
 }
 
 const PROJECT_ROOT = '.'
@@ -26,18 +28,21 @@ export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
     },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['k.ts', 'scripts/f.ts', 'scripts/g.tsx', 'scripts/h.mts', 'scripts/i.cts', 'scripts/j.d.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: 'no config file anywhere',
     files: standaloneSources(['a.ts', 'src/b.ts']),
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['a.ts', 'src/b.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: 'a jsconfig.json alone, including one directory',
     files: { 'jsconfig.json': configFileText({ include: ['src'] }), ...standaloneSources(['src/a.ts', 'scripts/b.ts']) },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['scripts/b.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: 'a tsconfig.json beside a jsconfig.json, each including another directory: both count',
@@ -48,6 +53,7 @@ export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
     },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['other/c.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: 'a solution-style tsconfig.json referencing the config that includes the file',
@@ -58,6 +64,7 @@ export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
     },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['scripts/b.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: 'references followed transitively, through a config that includes nothing itself',
@@ -69,6 +76,7 @@ export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
     },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['scripts/b.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: 'references left unloaded by disableReferencedProjectLoad',
@@ -83,6 +91,7 @@ export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
     },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['scripts/b.ts', 'src/a.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: "a nested tsconfig.json leaving out a file its ancestor's includes",
@@ -93,6 +102,7 @@ export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
     },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['generated/c.ts'],
+    takesInTsFilesAtTsconfigRootDir: true,
   },
   {
     shape: 'a nested tsconfig.json leaving out a file no ancestor includes either',
@@ -103,12 +113,14 @@ export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
     },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['packages/app/scripts/b.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: 'a tsconfig.json above tsconfigRootDir, which the search never reaches',
     files: { 'tsconfig.json': configFileText(), ...standaloneSources(['packages/app/a.ts', 'packages/app/src/b.ts']) },
     tsconfigRootDir: 'packages/app',
     outside: ['a.ts', 'src/b.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: 'a tsconfig.json extending a config whose include, read from its own directory, decides',
@@ -119,12 +131,14 @@ export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
     },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['scripts/b.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: 'a tsconfig.json listing its files one by one',
     files: { 'tsconfig.json': configFileText({ files: ['scripts/one.ts'] }), ...standaloneSources(['scripts/one.ts', 'scripts/two.ts']) },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['scripts/two.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: 'a tsconfig.json excluding a directory inside the one it includes',
@@ -134,6 +148,7 @@ export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
     },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['src/generated/b.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: 'a tsconfig.json in a sibling directory including the file, which the search never visits',
@@ -143,6 +158,7 @@ export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
     },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['packages/b/y.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: 'directories named with glob syntax, inside and outside the tsconfig',
@@ -152,6 +168,7 @@ export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
     },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['app/+(x)/b.ts', 'app/[id]/(group)/page.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
   {
     shape: 'TS files under node_modules and .git, which are never listed',
@@ -161,6 +178,7 @@ export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
     },
     tsconfigRootDir: PROJECT_ROOT,
     outside: ['scripts/b.ts'],
+    takesInTsFilesAtTsconfigRootDir: false,
   },
 ]
 

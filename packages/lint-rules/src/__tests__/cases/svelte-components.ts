@@ -6,7 +6,8 @@ import type { ProjectFiles } from '../temp-projects.ts'
 // ui/*/svelte: StarRating.svelte, useElapsedTime.svelte.ts), where oxlint's no-undef reported every
 // rune in every component. A rune is a global Svelte's compiler gives .svelte files and .svelte.js
 // and .svelte.ts modules, and no other file. Each file below also uses one name nobody declares,
-// which no-undef must still report: a missing import.
+// which no-undef must still report outside .svelte files, where it is off and Svelte's own checker
+// reports it (owner, q79): a missing import.
 
 /**
  * The globals Svelte 5's runes are named by: every name in svelte 5.57.2's `RUNES` (src/utils.js)
@@ -136,12 +137,13 @@ export const svelteSourceFiles: ProjectFiles = {
 
 /**
  * What oxlint owes in each file, where it runs no-undef and no-global-assign: the name nobody
- * declares in each Svelte file that is not TypeScript by its extension, a rune in the file that is
- * no Svelte file, and the write to a rune in the TS rune module alone.
+ * declares in each rune module that is not TypeScript by its extension, and none in a component,
+ * where no-undef is off (owner, q79), a rune in the file that is no Svelte file, and the write to a
+ * rune in the TS rune module alone.
  */
 export const OWED_BY_OXLINT = {
-  [SVELTE_SOURCE_FILES.component]: { 'no-undef': ['src/lib/StarRating.svelte:14 eslint(no-undef)'], 'no-global-assign': [] },
-  [SVELTE_SOURCE_FILES.plainScriptComponent]: { 'no-undef': ['src/lib/Counter.svelte:8 eslint(no-undef)'], 'no-global-assign': [] },
+  [SVELTE_SOURCE_FILES.component]: { 'no-undef': [], 'no-global-assign': [] },
+  [SVELTE_SOURCE_FILES.plainScriptComponent]: { 'no-undef': [], 'no-global-assign': [] },
   [SVELTE_SOURCE_FILES.jsModule]: { 'no-undef': ['src/lib/elapsed.svelte.js:8 eslint(no-undef)'], 'no-global-assign': [] },
   [SVELTE_SOURCE_FILES.tsModule]: { 'no-undef': [], 'no-global-assign': [] },
   [SVELTE_SOURCE_FILES.tsModuleWritingToARune]: { 'no-undef': [], 'no-global-assign': ['src/lib/reset.svelte.ts:2 eslint(no-global-assign)'] },
@@ -177,6 +179,23 @@ export const FRAMEWORK_GLOBALS_OXLINT_OVERRIDES: readonly OxlintOverride[] = [
 
 /** The block every ESLint config of ours holds right after its base block, giving the rune modules the runes. */
 export const SVELTE_RUNES_ESLINT_BLOCK_NAME = 'agents-inc/svelte-runes'
+
+/**
+ * The override every oxlint config of ours holds after the framework globals' (q76; spec-core.md
+ * C10): Vitest's and Jest's globals, through oxlint's envs, read-only, in test files, whatever
+ * rulesets are listed. The test files are the shapes the shipped test-file ignores use, of every JS
+ * and TS extension.
+ */
+export const TEST_RUNNER_GLOBALS_OXLINT_OVERRIDE: OxlintOverride = {
+  files: ['**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}', '**/__tests__/**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}'],
+  env: { vitest: true, jest: true },
+}
+
+/** The overrides every oxlint config of ours opens with, whatever it lints: each framework's globals, then the test runners'. */
+export const GLOBALS_OXLINT_OVERRIDES: readonly OxlintOverride[] = [...FRAMEWORK_GLOBALS_OXLINT_OVERRIDES, TEST_RUNNER_GLOBALS_OXLINT_OVERRIDE]
+
+/** The block every ESLint config of ours holds right after the Svelte runes' block, giving test files the test runners' globals (q76). */
+export const TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME = 'agents-inc/test-runner-globals'
 
 // Svelte's tests of runes are rune modules too (decisions.md, 2026-10-14 "fix round 4 closed"):
 // vite-plugin-svelte 7.3.1 compiles as a module each file whose name holds `.svelte.` and then ends

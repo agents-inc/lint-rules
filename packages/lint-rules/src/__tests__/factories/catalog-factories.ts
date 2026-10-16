@@ -38,28 +38,56 @@ const reportEveryFileRule: Rule.RuleModule = {
   }),
 }
 
+// The builds read neither flag (init does), so a small catalog's rulesets are neither opt-in nor sort code.
+const NOT_OPT_IN = false
+const SORTS_NO_CODE = false
+
 export function buildQualityRuleset(name: string): RulesetDefinition {
-  return { name, list: 'quality', domain: null, env: null }
+  return { name, list: 'quality', domain: null, env: null, optIn: NOT_OPT_IN, sortsCode: SORTS_NO_CODE }
 }
 
 export function buildLibsRuleset(name: string, domain: string): RulesetDefinition {
-  return { name, list: 'libs', domain, env: null }
+  return { name, list: 'libs', domain, env: null, optIn: NOT_OPT_IN, sortsCode: SORTS_NO_CODE }
 }
 
 export function buildRuntimeRuleset(name: string, env: string): RulesetDefinition {
-  return { name, list: 'runtimes', domain: null, env }
+  return { name, list: 'runtimes', domain: null, env, optIn: NOT_OPT_IN, sortsCode: SORTS_NO_CODE }
 }
 
 export function buildLanguageRuleset(name: string): RulesetDefinition {
-  return { name, list: 'languages', domain: null, env: null }
+  return { name, list: 'languages', domain: null, env: null, optIn: NOT_OPT_IN, sortsCode: SORTS_NO_CODE }
 }
 
-/** A rule in the canonical list. `options`, `files` and `ignores` default to none. */
-export function buildShippedRule(
-  ruleset: string,
-  fields: Partial<Omit<ShippedRule, 'ruleset'>> = {},
-): ShippedRule {
-  return { ruleset, options: [], files: null, ignores: null, ...fields }
+type ShippedRuleFields = Partial<Omit<ShippedRule, 'ruleset'>>
+
+const SHIPPED_RULE_DEFAULTS: Required<ShippedRuleFields> = {
+  options: [],
+  files: null,
+  ignores: null,
+  coveredBy: null,
+  splitByTypesWith: null,
+  readsRuntimeGlobals: false,
+}
+
+/**
+ * A rule in the canonical list. `options`, `files` and `ignores` default to none; it is covered by
+ * no rule, split by types with none, and reads no runtime globals unless given (spec-core.md 2.5).
+ */
+export function buildShippedRule(ruleset: string, fields: ShippedRuleFields = {}): ShippedRule {
+  return { ruleset, ...SHIPPED_RULE_DEFAULTS, ...fields }
+}
+
+/** A rule on whatever rulesets are listed, otherwise as `buildShippedRule` gives it. */
+export function buildAlwaysOnShippedRule(fields: ShippedRuleFields = {}): ShippedRule {
+  return { alwaysOn: true, ...SHIPPED_RULE_DEFAULTS, ...fields }
+}
+
+/**
+ * A rule `allowSuppressions` decides: on where suppressions are banned, the default, and off where
+ * they are allowed, as `house/no-suppressions` ships; otherwise as `buildShippedRule` gives it.
+ */
+export function buildSuppressionModeShippedRule(fields: ShippedRuleFields = {}): ShippedRule {
+  return { whenSuppressions: { banned: { options: [] }, allowed: 'off' }, ...SHIPPED_RULE_DEFAULTS, ...fields }
 }
 
 /** `shipped: null` is a rule that is available but in no ruleset: off until `rules` turns it on. */
@@ -72,21 +100,23 @@ export function buildEslintRoute(id: string, fields: EslintRouteFields): RuleRou
 }
 
 /**
- * `eslintFallbackSkips`, rule ID to reason, and `coreRuleExtensions`, core rule ID to the rules
- * extending it, are empty unless given. The rules oxlint has are the oxlint routes given, so one
- * list feeds both. ESLint has a version of each ESLint route given, since it runs it, and of no
- * oxlint route.
+ * `eslintFallbackSkips`, rule ID to reason, `coreRuleExtensions`, core rule ID to the rules
+ * extending it, and `eslintStandIns`, oxlint-only rule ID to the ESLint rule standing in for it, are
+ * empty unless given. The rules oxlint has are the oxlint routes given, so one list feeds both.
+ * ESLint has a version of each ESLint route given, since it runs it, and of no oxlint route.
  */
 export function buildCatalog({
   rulesets,
   rules,
   eslintFallbackSkips = new Map(),
   coreRuleExtensions = new Map(),
+  eslintStandIns = new Map(),
 }: {
   rulesets: readonly RulesetDefinition[]
   rules: readonly RuleRoute[]
   eslintFallbackSkips?: ReadonlyMap<string, string>
   coreRuleExtensions?: ReadonlyMap<string, readonly string[]>
+  eslintStandIns?: ReadonlyMap<string, string>
 }): Catalog {
   return {
     rulesets,
@@ -95,6 +125,7 @@ export function buildCatalog({
     oxlintRules: rules.flatMap(oxlintRuleOf),
     coreRuleExtensions,
     ruleIdsWithAnEslintVersion: new Set(rules.filter(({ engine }) => engine === 'eslint').map(({ id }) => id)),
+    eslintStandIns,
   }
 }
 

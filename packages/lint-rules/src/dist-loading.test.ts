@@ -21,11 +21,18 @@ const DIST_DIR = fileURLToPath(new URL('../dist', import.meta.url))
 const RECORDER = fileURLToPath(new URL('./__tests__/record-resolved-modules.ts', import.meta.url))
 const RECORD_FILE = 'resolved-modules.json'
 const ESLINT_SIDE_PACKAGE =
-  /\/node_modules\/(?:eslint|typescript-eslint|typescript|@typescript-eslint|eslint-plugin-[^/]+|@eslint-react|@eslint|@vitest|globals)\//u
+  /\/node_modules\/(?:eslint|typescript-eslint|typescript|@typescript-eslint|eslint-plugin-[^/]+|eslint-import-resolver-[^/]+|unrs-resolver|@eslint-react|@eslint|@vitest|globals)\//u
 const AN_ESLINT_PLUGIN = '/node_modules/eslint-plugin-unicorn/'
 // @vitest/eslint-plugin is one of our ESLint plugins, and typescript is what typescript-eslint parses
-// and type-checks with: both are ESLint-side, so the guard names them.
-const PACKAGES_THE_GUARD_NAMES_TOO = ['/node_modules/@vitest/eslint-plugin/', '/node_modules/typescript/']
+// and type-checks with; eslint-import-resolver-typescript is import-x's resolver of ours, and
+// unrs-resolver the resolver under it and under import-x's own (spec-core.md C1, E-3): all are
+// ESLint-side, so the guard names them.
+const PACKAGES_THE_GUARD_NAMES_TOO = [
+  '/node_modules/@vitest/eslint-plugin/',
+  '/node_modules/typescript/',
+  '/node_modules/eslint-import-resolver-typescript/',
+  '/node_modules/unrs-resolver/',
+]
 const OXLINT_SIDE_ENTRIES = ['/dist/index.mjs', '/dist/oxlint.mjs']
 
 const tempProjects = setUpTempProjects()
@@ -61,7 +68,7 @@ describe('loading the built package', () => {
     expect(modulesResolvedBy('eslint-entry').some((url) => url.includes(AN_ESLINT_PLUGIN))).toBe(true)
   })
 
-  it('through the ESLint merge entry resolves @vitest/eslint-plugin and typescript, each a package the guard counts as ESLint-side', () => {
+  it('through the ESLint merge entry resolves @vitest/eslint-plugin, typescript, eslint-import-resolver-typescript and unrs-resolver, each a package the guard counts as ESLint-side', () => {
     const eslintSide = modulesResolvedBy('eslint-entry').filter((url) => ESLINT_SIDE_PACKAGE.test(url))
 
     expect(PACKAGES_THE_GUARD_NAMES_TOO.filter((path) => eslintSide.some((url) => url.includes(path)))).toStrictEqual(

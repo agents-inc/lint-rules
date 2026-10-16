@@ -8,7 +8,7 @@ import { INSTALLED_OXLINT } from './temp-projects.ts'
 /** One ESLint message as `eslint -f json` prints it: `ruleId` null for a parse error or ESLint's own. */
 export type EslintCliMessage = {
   readonly ruleId: string | null
-  readonly fatal?: boolean
+  readonly fatal?: boolean | undefined
   readonly message: string
   readonly line: number
 }
@@ -56,7 +56,7 @@ export function runEslintCli(projectDir: string, configFile?: string): readonly 
 
 /** What the real ESLint CLI made of the project: its results, or, where it could not run at all, what it printed. */
 export type EslintCliOutcome =
-  | { readonly outcome: 'linted'; readonly results: readonly EslintCliResult[] }
+  | { readonly outcome: 'linted'; readonly results: readonly EslintCliResult[]; readonly stderr: string }
   | { readonly outcome: 'refused'; readonly output: string }
 
 /** As `runEslintCli`, keeping a run ESLint could not make, a config that fails to load included, as its refusal. */
@@ -69,7 +69,7 @@ export function eslintCliOutcomeOf(projectDir: string, configFile?: string): Esl
   })
   if (status === null || status === ESLINT_COULD_NOT_RUN) return { outcome: 'refused', output: `(exit ${String(status)}) ${stderr}` }
   // Parse boundary: ESLint's JSON report.
-  return { outcome: 'linted', results: JSON.parse(stdout) as EslintCliResult[] }
+  return { outcome: 'linted', results: JSON.parse(stdout) as EslintCliResult[], stderr }
 }
 
 /** `file: message` for every fatal message, a parse error included. */

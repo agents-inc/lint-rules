@@ -11,7 +11,7 @@ import { agentConfigsOf, type DefinedLintRules } from './agent-configs.ts'
 import { writeOxlintConfigFile } from './engine-clis.ts'
 import { rulesNotFoundAmong } from './rules-not-found.ts'
 import { NO_TEAM_ESLINT_CONFIG, type TeamEslintConfigPath } from './team-configs-of-the-other-engine.ts'
-import { INSTALLED_OXLINT, type ProjectFiles, setUpTempProjects } from './temp-projects.ts'
+import { INSTALLED_OXLINT, type LinkedPackage, type ProjectFiles, setUpTempProjects } from './temp-projects.ts'
 
 export type ProcessOutput = { readonly exitCode: number | null; readonly stdout: string }
 
@@ -109,20 +109,21 @@ export type WrittenFiles = ProjectFiles
  * Copies the fixtures into a temp project, writes `writtenFiles` beside them, builds the configs
  * `build` names from what `configFor` defines there, writes the oxlint one, and runs the real oxlint
  * CLI and the real ESLint Node API over the whole project. The installed oxlint resolves from the
- * project, as the oxlint merge needs. Call it at the top of a test file or a describe block: it
- * registers that scope's hooks.
+ * project, as the oxlint merge needs, and so does each package given in `linkedPackages`. Call it
+ * at the top of a test file or a describe block: it registers that scope's hooks.
  */
 export function setUpEngineRun(
   fixturesDir: string,
   configFor: (projectDir: string) => DefinedLintRules,
   writtenFiles: WrittenFiles = {},
   build: EngineBuild = AGENT_BUILD,
+  linkedPackages: readonly LinkedPackage[] = [],
 ): EngineRun {
   const tempProjects = setUpTempProjects()
   let run: CompletedRun | undefined
 
   beforeAll(async () => {
-    const projectDir = tempProjects.create({ fixturesDir, files: writtenFiles, linkedPackages: [INSTALLED_OXLINT] })
+    const projectDir = tempProjects.create({ fixturesDir, files: writtenFiles, linkedPackages: [INSTALLED_OXLINT, ...linkedPackages] })
     run = await runBothEngines(projectDir, emittedConfigsOf(projectDir, configFor(projectDir), build))
   }, ENGINE_RUNS_TIMEOUT_MS)
 

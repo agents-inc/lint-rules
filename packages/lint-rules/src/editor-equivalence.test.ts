@@ -71,9 +71,24 @@ function routeOf(id: string): RuleRoute {
   return route
 }
 
-/** Every shipped rule allowSuppressions does not decide, as the catalog ships it. */
+/**
+ * Every shipped rule allowSuppressions does not decide, as the catalog ships it, as every ruleset
+ * listed runs them: but each rule covered by another, which every ruleset listed turns on (S;
+ * spec-core.md C2).
+ */
 function shippedRoutesBesidesTheSuppressionRules(): RuleRoute[] {
-  return [...catalog.rules.values()].filter((route) => route.shipped !== null && !SUPPRESSION_RULE_IDS.has(route.id))
+  return [...catalog.rules.values()].filter((route) => route.shipped !== null && !SUPPRESSION_RULE_IDS.has(route.id) && !isCoveredByAShippedRule(route))
+}
+
+/** Whether the catalog records a shipped rule covering the rule: none before this round's data lands. */
+function isCoveredByAShippedRule({ shipped }: RuleRoute): boolean {
+  if (shipped === null || typeof shipped.coveredBy !== 'string') return false
+  return routeOf(shipped.coveredBy).shipped !== null
+}
+
+/** The rule standing in, without oxlint, for each shipped oxlint-only rule, which every ruleset listed turns on (spec-core.md C4). */
+function standInsOfShippedRules(): string[] {
+  return [...catalog.eslintStandIns].flatMap(([oxlintRule, standIn]) => (routeOf(oxlintRule).shipped === null ? [] : [standIn]))
 }
 
 function shippedOptionsOf(route: RuleRoute): readonly unknown[] {
@@ -123,10 +138,11 @@ describe('the editor ESLint part of a project whose package.json lists no oxlint
 
   // Each moved core rule a current typescript-eslint rule extends is no longer skipped: it runs on JS
   // files, and its twin on TS files in its place, with the core rule's options (questions.md #39).
-  // Twins are read from the installed typescript-eslint.
-  it("runs every ESLint-routed rule and every moved rule not skipped, with its options, suppressions allowed, and typescript-eslint's twin of each moved core rule with the core rule's options", () => {
+  // Twins are read from the installed typescript-eslint. A core rule another rule covers, which every
+  // ruleset listed turns on, is left out, and so is its twin (S; spec-core.md C2).
+  it("runs every ESLint-routed rule and every moved rule not skipped, with its options, suppressions allowed, typescript-eslint's twin of each moved core rule with the core rule's options, and the stand-in of each oxlint-only rule with none", () => {
     const provenMovedIds = new Set(provenMovedRules().map((route) => route.id))
-    const twinned = twinnedMovedRules()
+    const twinned = twinnedMovedRules().filter(({ core }) => !isCoveredByAShippedRule(routeOf(core)))
     const twinnedCoreRules = new Set(twinned.map(({ core }) => core))
     const ranInEslint = (route: RuleRoute): boolean =>
       route.engine === 'eslint' || provenMovedIds.has(route.id) || twinnedCoreRules.has(route.id)
@@ -135,6 +151,8 @@ describe('the editor ESLint part of a project whose package.json lists no oxlint
         .filter(ranInEslint)
         .map((route) => onEslint(route.id, shippedOptionsOf(route))),
       ...twinned.map(({ core, twin }) => onEslint(twin, shippedOptionsOf(routeOf(core)))),
+      // Each stand-in, with none of its oxc rule's options.
+      ...standInsOfShippedRules().map((standIn) => onEslint(standIn, [])),
       // A moved rule, which ESLint runs here.
       onEslint('@typescript-eslint/ban-ts-comment', [BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR]),
       onEslint('unicorn/no-abusive-eslint-disable', []),

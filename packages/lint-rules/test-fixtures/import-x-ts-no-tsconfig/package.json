@@ -1,0 +1,5 @@
+{
+  "name": "import-x-ts-no-tsconfig-fixture",
+  "private": true,
+  "type": "module"
+}

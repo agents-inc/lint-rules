@@ -38,6 +38,9 @@ const CARET = '^'
 /** Where every oxlint release ships its schema: in its package's `files`, beside its package.json, not in `exports`. */
 export const OXLINT_SCHEMA_FILE = 'configuration_schema.json'
 const INSTALLED_OXLINT_DIR = 'node_modules/oxlint'
+const ESLINT = 'eslint'
+/** Where a project installs ESLint, from its root. */
+export const INSTALLED_ESLINT_MANIFEST = 'node_modules/eslint/package.json'
 
 /** The oxlint versions this package supports, as its package.json gives them to npm. */
 export function oxlintPeerRange(): string {
@@ -141,4 +144,29 @@ export function oxlintSchemaTextWithout(part: 'rule map' | 'plugin list'): strin
 function installedOxlintSchema(): OxlintSchema {
   // Parse boundary: the schema this repo's oxlint ships.
   return JSON.parse(installedOxlintSchemaText()) as OxlintSchema
+}
+
+/**
+ * A fake install of ESLint in a project: a manifest giving the version given, exported as ESLint 10
+ * exports its own (`./package.json`), and a module that exports nothing.
+ */
+export function buildInstalledEslintFiles(version: string): Readonly<Record<string, string>> {
+  return {
+    [INSTALLED_ESLINT_MANIFEST]: `${JSON.stringify({
+      name: ESLINT,
+      version,
+      type: 'commonjs',
+      main: './lib/api.js',
+      exports: { '.': './lib/api.js', './package.json': './package.json' },
+    })}\n`,
+    'node_modules/eslint/lib/api.js': 'module.exports = {}\n',
+  }
+}
+
+/** A fake install of the package named: a manifest exporting its entry alone, `./index.js`, and that module, exporting nothing. */
+export function buildInstalledPackageExportingItsEntryAlone(name: string): Readonly<Record<string, string>> {
+  return {
+    [`node_modules/${name}/package.json`]: `${JSON.stringify({ name, version: '1.0.0', exports: { '.': './index.js' } })}\n`,
+    [`node_modules/${name}/index.js`]: 'module.exports = {}\n',
+  }
 }

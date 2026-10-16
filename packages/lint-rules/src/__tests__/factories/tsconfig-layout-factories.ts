@@ -28,3 +28,13 @@ export function standaloneSources(paths: readonly string[]): ProjectFiles {
 export function sourceImporting(imported: string): string {
   return `import { value } from '${imported}'\nexport const doubled = value * 2\n`
 }
+
+/** An ES module requiring the module at `required` through createRequire: TypeScript reads no import there. */
+export function esModuleRequiring(required: string): string {
+  return `import { createRequire } from 'node:module'\nconst require = createRequire(import.meta.url)\nexport const loaded: unknown = require('${required}')\n`
+}
+
+/** A JavaScript module requiring the module at `required`: TypeScript reads an import there, in a JavaScript file. */
+export function javaScriptRequiring(required: string): string {
+  return `const loaded = require('${required}')\nexport default [loaded]\n`
+}

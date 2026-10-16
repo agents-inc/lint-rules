@@ -10,9 +10,9 @@ import type { ProjectFiles } from '../temp-projects.ts'
 // - Astro 7.3.8's `Astro`: `declare const Astro` in astro/env.d.ts, its one global.
 // - Svelte 5.57.2's `$$props`, `$$restProps` and `$$slots`: `RESERVED` in
 //   src/compiler/phases/2-analyze/index.js.
-// Each component reading them also uses one name nobody declares, which no-undef must still report,
-// and beside each a JS file uses a global of that framework, which it does not have. One more Svelte
-// component writes to its legacy globals.
+// Each component reading them also uses one name nobody declares, which no-undef must still report
+// outside .svelte files, where it is off (owner, q79), and beside each a JS file uses a global of that
+// framework, which it does not have. One more Svelte component writes to its legacy globals.
 
 /** Every `<script setup>` compiler macro of Vue 3.5.44, a global in a .vue file alone. */
 export const VUE_SCRIPT_SETUP_MACROS = ['defineProps', 'defineEmits', 'defineExpose', 'defineOptions', 'defineSlots', 'defineModel', 'withDefaults'] as const
@@ -143,21 +143,22 @@ export const JS_FILES_USING_A_FRAMEWORK_GLOBAL = [
 ]
 
 /**
- * What oxlint owes where it runs no-undef: in each component the name nobody declares alone, and in
- * each JS file beside one the framework global it uses. The store subscription is a known gap,
- * owed apart (OWED_IN_THE_STORE_COMPONENT).
+ * What oxlint owes where it runs no-undef: in each Vue and Astro component the name nobody declares
+ * alone, nothing in a Svelte component, where no-undef is off (owner, q79), and in each JS file
+ * beside one the framework global it uses. The store subscription is owed apart
+ * (OWED_IN_THE_STORE_COMPONENT).
  */
 export const OWED_BY_OXLINT_IN_FRAMEWORK_FILES = {
   [FRAMEWORK_FILES.vueComponent]: { 'no-undef': ['src/components/Greeting.vue:13 eslint(no-undef)'] },
   [FRAMEWORK_FILES.vueMacroInAJsFile]: { 'no-undef': ['src/components/use-greeting.js:2 eslint(no-undef)'] },
   [FRAMEWORK_FILES.astroPage]: { 'no-undef': ['src/pages/index.astro:3 eslint(no-undef)'] },
   [FRAMEWORK_FILES.astroGlobalInAJsFile]: { 'no-undef': ['src/pages/page-title.js:1 eslint(no-undef)'] },
-  [FRAMEWORK_FILES.svelteLegacyComponent]: { 'no-undef': ['src/lib/Legacy.svelte:6 eslint(no-undef)'] },
+  [FRAMEWORK_FILES.svelteLegacyComponent]: { 'no-undef': [] },
   [FRAMEWORK_FILES.svelteLegacyGlobalInARuneModule]: { 'no-undef': ['src/lib/legacy.svelte.js:1 eslint(no-undef)'] },
   [FRAMEWORK_FILES.svelteStore]: { 'no-undef': [] },
 }
 
-/** What oxlint owes in the component subscribing to a store: nothing, as Svelte declares `$count` from the import. */
+/** What oxlint owes in the component subscribing to a store: nothing, as Svelte declares `$count` from the import, and no-undef is off in .svelte files (owner, q79). */
 export const OWED_IN_THE_STORE_COMPONENT = { [FRAMEWORK_FILES.svelteStoreComponent]: { 'no-undef': [] } }
 
 /**
@@ -179,13 +180,16 @@ export const OWED_FOR_WRITES_TO_SVELTE_LEGACY_GLOBALS = {
 export const TEAM_OXLINT_CONFIG_TURNING_SVELTE_PROPS_OFF: OxlintConfig = { categories: { correctness: 'off' }, globals: { $$props: 'off' } }
 
 /**
- * What oxlint owes in the component reading the legacy globals, beside the team's root turning
- * `$$props` off: `$$props` (4), where the team's root setting stands in every file, as its root env
- * does (Q-E), and the name nobody declares (6); not `$$restProps` (3) or `$$slots` (5), which the
- * team leaves to ours.
+ * What oxlint owes in the component writing to the legacy globals, beside the team's root turning
+ * `$$props` off: the writes to `$$restProps` (4) and `$$slots` (5), which the team leaves to ours as
+ * read-only globals; not the write to `$$props` (3), which the team's root setting makes no global in
+ * every file, as its root env does (Q-E). Read through no-global-assign: no-undef, which read it
+ * before, is off in .svelte files (owner, q79).
  */
-export const OWED_IN_THE_LEGACY_COMPONENT_BESIDE_A_TEAM_TURNING_PROPS_OFF = {
-  [FRAMEWORK_FILES.svelteLegacyComponent]: { 'no-undef': ['src/lib/Legacy.svelte:4 eslint(no-undef)', 'src/lib/Legacy.svelte:6 eslint(no-undef)'] },
+export const OWED_IN_THE_WRITING_COMPONENT_BESIDE_A_TEAM_TURNING_PROPS_OFF = {
+  [FRAMEWORK_FILES.svelteLegacyComponentWritingToItsGlobals]: {
+    'no-global-assign': ['src/lib/LegacyWrites.svelte:4 eslint(no-global-assign)', 'src/lib/LegacyWrites.svelte:5 eslint(no-global-assign)'],
+  },
 }
 
 /**

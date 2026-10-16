@@ -11,7 +11,7 @@ import {
   EMPTY_TSCONFIG_ROOT_DIR,
 } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
-import { oxlintConfigForFile } from './__tests__/oxlint-config-oracle.ts'
+import { oxlintConfigForFile, oxlintSeverityFor } from './__tests__/oxlint-config-oracle.ts'
 import { buildTeamEslintBlock } from './__tests__/factories/team-config-factories.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG, NO_TEAM_ESLINT_CONFIG, writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
@@ -25,7 +25,10 @@ import { mergeOxlintConfig } from './oxlint.ts'
 //   banning all three @ts- comments, and unicorn/no-abusive-eslint-disable off, so a bare
 //   /* eslint-disable */ is not reported twice.
 // - true: the ban off and directives read, @ts-expect-error allowed with a description
-//   (@ts-ignore and @ts-nocheck still banned), and unicorn/no-abusive-eslint-disable on.
+//   (@ts-ignore and @ts-nocheck still banned), and unicorn/no-abusive-eslint-disable on: in oxlint
+//   wherever an oxlint config is built (owner, q-r1), in ESLint where none is.
+// Owner, 2026-10-14 (r2-d22): react-hooks/rule-suppression follows unicorn's rule, but in an editor
+// part without oxlint, where ESLint does not run it (eslint-fallback-skips.json).
 // The editor parts are always as with true, whatever allowSuppressions says: people may keep their
 // suppressions, and only sub-agents may not. The ESLint part never sets noInlineConfig, so a team's
 // own setting of it stands.
@@ -41,8 +44,16 @@ type SuppressionSettings = {
    * it to, ESLint where no oxlint config is built, its severity by name.
    */
   readonly tsCommentBan: unknown
-  /** unicorn/no-abusive-eslint-disable, as ESLint runs it. */
+  /**
+   * unicorn/no-abusive-eslint-disable: its severity in the file, by the engine the catalog routes it
+   * to, ESLint where no oxlint config is built.
+   */
   readonly blanketDisableRule: Linter.StringSeverity
+  /**
+   * react-hooks/rule-suppression: its severity in the file, by the engine the catalog routes it to,
+   * ESLint where no oxlint config is built.
+   */
+  readonly hooksSuppressionRule: Linter.StringSeverity
 }
 
 type BuiltConfigs = { readonly eslint: Linter.Config[]; readonly oxlint: OxlintConfig | null }
@@ -56,6 +67,8 @@ type SharedSettingsCase = {
 }
 
 const TS_COMMENT_BAN = '@typescript-eslint/ban-ts-comment'
+const BLANKET_DISABLE_RULE = 'unicorn/no-abusive-eslint-disable'
+const HOOKS_SUPPRESSION_RULE = 'react-hooks/rule-suppression'
 const BAN_TS_COMMENTS_OUTRIGHT = { 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true }
 const BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR = {
   'ts-expect-error': 'allow-with-description',
@@ -68,6 +81,7 @@ const BANNED: SuppressionSettings = {
   eslintReadsDirectives: false,
   tsCommentBan: ['error', BAN_TS_COMMENTS_OUTRIGHT],
   blanketDisableRule: 'off',
+  hooksSuppressionRule: 'off',
 }
 
 const ALLOWED: SuppressionSettings = {
@@ -75,7 +89,11 @@ const ALLOWED: SuppressionSettings = {
   eslintReadsDirectives: true,
   tsCommentBan: ['error', BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR],
   blanketDisableRule: 'error',
+  hooksSuppressionRule: 'error',
 }
+
+/** As allowed, in an editor part without oxlint: ESLint does not run the hooks rule (eslint-fallback-skips.json). */
+const ALLOWED_WITHOUT_OXLINT: SuppressionSettings = { ...ALLOWED, hooksSuppressionRule: 'off' }
 
 const NO_RULESETS = { quality: [], libs: {}, runtimes: [] }
 
@@ -107,7 +125,8 @@ async function suppressionSettingsFor(configs: BuiltConfigs, file: string): Prom
     suppressionBan: calculatedSeverityOf(calculated, 'house/no-suppressions'),
     eslintReadsDirectives: readsDirectives(calculated),
     tsCommentBan: tsCommentBanIn(configs, calculated, file),
-    blanketDisableRule: calculatedSeverityOf(calculated, 'unicorn/no-abusive-eslint-disable'),
+    blanketDisableRule: routedSeverityIn(configs, calculated, file, BLANKET_DISABLE_RULE),
+    hooksSuppressionRule: routedSeverityIn(configs, calculated, file, HOOKS_SUPPRESSION_RULE),
   }
 }
 
@@ -125,8 +144,20 @@ function tsCommentBanIn({ oxlint }: BuiltConfigs, calculated: Linter.Config, fil
 }
 
 function routeOfTheTsCommentBan(): RuleRoute {
-  const route = catalog.rules.get(TS_COMMENT_BAN)
-  if (route === undefined) throw new Error(`${TS_COMMENT_BAN} is not in the catalog`)
+  return routeOf(TS_COMMENT_BAN)
+}
+
+/** The rule's severity in the file, from the engine the catalog routes it to: oxlint's as it applies it, or ESLint's calculated one. */
+function routedSeverityIn({ oxlint }: BuiltConfigs, calculated: Linter.Config, file: string, ruleId: string): Linter.StringSeverity {
+  const { engine, oxlintName } = routeOf(ruleId)
+  if (oxlint === null || engine !== 'oxlint' || oxlintName === null) return calculatedSeverityOf(calculated, ruleId)
+  const severity = oxlintSeverityFor(oxlint, file, oxlintName)
+  return severity === undefined ? 'off' : severity
+}
+
+function routeOf(ruleId: string): RuleRoute {
+  const route = catalog.rules.get(ruleId)
+  if (route === undefined) throw new Error(`${ruleId} is not in the catalog`)
   return route
 }
 
@@ -267,7 +298,7 @@ describe('allowSuppressions in file overrides, in the agent build', () => {
 describe('the editor parts, merged into a team config, beside the agent build of the same config', () => {
   const projects = [
     { project: 'whose package.json lists oxlint', projectDir: PROJECT_WITH_OXLINT, editorExpected: ALLOWED },
-    { project: 'whose package.json lists no oxlint', projectDir: EMPTY_TSCONFIG_ROOT_DIR, editorExpected: ALLOWED },
+    { project: 'whose package.json lists no oxlint', projectDir: EMPTY_TSCONFIG_ROOT_DIR, editorExpected: ALLOWED_WITHOUT_OXLINT },
   ]
   const configs: readonly SharedSettingsCase[] = [
     { config: 'allowSuppressions left out', fields: {}, agentExpected: BANNED, file: 'src/a.ts' },

@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { catalog, pluginPrefixOf } from '@workspace/rule-data'
+import { catalog, pluginPrefixOf, type RuleRoute } from '@workspace/rule-data'
 import type { OxlintConfig } from 'oxlint'
 import { describe, expect, it } from 'vitest'
 import { ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON } from '../../rule-data/src/__tests__/cases/routed-to-eslint-for-a-reason.ts'
 import { agentConfigsOf } from './__tests__/agent-configs.ts'
-import { setUpEngineRun } from './__tests__/engine-run.ts'
+import { type EngineRun, setUpEngineRun } from './__tests__/engine-run.ts'
 import {
   movedRules,
   oxlintOnlyRules,
@@ -19,6 +19,7 @@ import { buildEditorBuild } from './__tests__/factories/engine-build-factories.t
 import { buildEveryRulesetLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
+import { routeOf } from './core/catalog-lookups.ts'
 import { defineLintRules } from './index.ts'
 
 // Without oxlint, the ESLint part takes over each shipped oxlint-run rule ESLint has a version
@@ -32,6 +33,10 @@ import { defineLintRules } from './index.ts'
 // JS files only, its twin on TS files (questions.md #39): fixtures.json gives it a JS fixture, and
 // twin-fixtures.json the TS fixture its twin fires on. The rules are read from the catalog and the
 // plugins, never from a list kept here.
+//
+// A moved rule another rule covers is left out wherever its cover is on, and so is its twin (S;
+// spec-core.md C2). Every ruleset listed turns each cover on, so such a rule is proven in a second
+// run whose top-level rules turn each cover off, which brings it back.
 
 const FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/eslint-fallback', import.meta.url))
 const FIXTURE_INDEX = 'fixtures.json'
@@ -50,6 +55,28 @@ const fallback = setUpEngineRun(
   buildEditorBuild(),
 )
 
+const fallbackWithEveryCoverOff = setUpEngineRun(
+  FIXTURES_DIR,
+  (projectDir) => defineLintRules(buildEveryRulesetLintRules(projectDir, { rules: everyCoverOfAMovedRuleOff() })),
+  {},
+  buildEditorBuild(),
+)
+
+/** Whether the catalog records a rule covering the rule. */
+function isCovered({ shipped }: RuleRoute): boolean {
+  return shipped !== null && shipped.coveredBy !== null
+}
+
+/** Each rule covering a moved rule, turned off. */
+function everyCoverOfAMovedRuleOff(): Readonly<Record<string, 'off'>> {
+  return Object.fromEntries(movedRules().flatMap(({ shipped }) => (shipped === null || shipped.coveredBy === null ? [] : [[shipped.coveredBy, 'off']])))
+}
+
+/** The run that proves the moved rule: the one with every cover off where another rule covers it, the one with every ruleset listed otherwise. */
+function runProving(id: string): { readonly run: EngineRun; readonly where: string } {
+  return isCovered(routeOf(id, catalog)) ? { run: fallbackWithEveryCoverOff, where: ', where the rule covering it is off' } : { run: fallback, where: '' }
+}
+
 function fixtureFileOf(id: string): string {
   return fileIndexedIn(fixtureFileById, FIXTURE_INDEX, id)
 }
@@ -64,16 +91,16 @@ function fileIndexedIn(index: Readonly<Record<string, string>>, indexFile: strin
   return file
 }
 
-function fatalMessagesOn(file: string): string[] {
-  return fallback.eslintFatalMessages().filter((message) => message.startsWith(`${file}: `))
+function fatalMessagesOn(run: EngineRun, file: string): string[] {
+  return run.eslintFatalMessages().filter((message) => message.startsWith(`${file}: `))
 }
 
 /** Which of the pair ESLint ran on the file, and which it reported under, each once. */
-function pairOn(file: string, { core, twin }: TwinPair): { run: string[]; fired: (string | null)[] } {
+function pairOn(run: EngineRun, file: string, { core, twin }: TwinPair): { run: string[]; fired: (string | null)[] } {
   const isOfThePair = (id: string | null): boolean => id === core || id === twin
   return {
-    run: fallback.eslintRulesRunOn(file).filter(isOfThePair),
-    fired: [...new Set(fallback.eslintRuleIdsOn(file).filter(isOfThePair))],
+    run: run.eslintRulesRunOn(file).filter(isOfThePair),
+    fired: [...new Set(run.eslintRuleIdsOn(file).filter(isOfThePair))],
   }
 }
 
@@ -119,8 +146,17 @@ describe('the editor ESLint part of a project whose package.json lists no oxlint
     ).toStrictEqual([])
   })
 
-  it.each(provenMovedRules().map(({ id }) => ({ id })))('fires $id on its fixture', ({ id }) => {
-    expect(fallback.eslintRuleIdsOn(fixtureFileOf(id))).toContain(id)
+  it.each(provenMovedRules().map(({ id }) => ({ id, ...runProving(id) })))('fires $id on its fixture$where', ({ id, run }) => {
+    expect(run.eslintRuleIdsOn(fixtureFileOf(id))).toContain(id)
+  })
+
+  it('runs no moved rule another rule covers, nor its twin, on their fixtures: every ruleset listed turns each cover on', () => {
+    const covered = provenMovedRules().filter(isCovered)
+    const coveredTwins = twinnedMovedRules().filter(({ core }) => covered.some(({ id }) => id === core))
+    const leftOut = new Set([...covered.map(({ id }) => id), ...coveredTwins.map(({ twin }) => twin)])
+    const files = [...covered.map(({ id }) => fixtureFileOf(id)), ...coveredTwins.map(({ core }) => twinFixtureFileOf(core))]
+
+    expect(files.flatMap((file) => fallback.eslintRulesRunOn(file).filter((id) => leftOut.has(id)).map((id) => `${file}: ${id}`))).toStrictEqual([])
   })
 
   it('runs no skipped rule on any fixture', () => {
@@ -134,12 +170,12 @@ describe('the editor ESLint part of a project whose package.json lists no oxlint
 })
 
 describe('each moved core rule a current typescript-eslint rule extends, in a project whose package.json lists no oxlint', () => {
-  it.each(twinnedMovedRules())(
-    'runs $twin, and not $core, on its TS fixture, firing there with no fatal message',
-    (pair) => {
+  it.each(twinnedMovedRules().map((pair) => ({ ...pair, ...runProving(pair.core) })))(
+    'runs $twin, and not $core, on its TS fixture$where, firing there with no fatal message',
+    ({ run, ...pair }) => {
       const file = twinFixtureFileOf(pair.core)
 
-      expect({ fatal: fatalMessagesOn(file), ...pairOn(file, pair) }).toStrictEqual({
+      expect({ fatal: fatalMessagesOn(run, file), ...pairOn(run, file, pair) }).toStrictEqual({
         fatal: [],
         run: [pair.twin],
         fired: [pair.twin],
@@ -147,12 +183,12 @@ describe('each moved core rule a current typescript-eslint rule extends, in a pr
     },
   )
 
-  it.each(twinnedMovedRules())(
-    'runs $core, and not $twin, on its JS fixture, firing there with no fatal message',
-    (pair) => {
+  it.each(twinnedMovedRules().map((pair) => ({ ...pair, ...runProving(pair.core) })))(
+    'runs $core, and not $twin, on its JS fixture$where, firing there with no fatal message',
+    ({ run, ...pair }) => {
       const file = fixtureFileOf(pair.core)
 
-      expect({ fatal: fatalMessagesOn(file), ...pairOn(file, pair) }).toStrictEqual({
+      expect({ fatal: fatalMessagesOn(run, file), ...pairOn(run, file, pair) }).toStrictEqual({
         fatal: [],
         run: [pair.core],
         fired: [pair.core],

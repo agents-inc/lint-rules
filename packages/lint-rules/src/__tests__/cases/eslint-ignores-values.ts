@@ -1,5 +1,5 @@
-// Lists of our ignores, as our layers hold them (a slash-free glob read at any depth), over which
-// the shared ESLint reading of our ignores is checked against the real ESLint
+// Lists of our ignores, as a consumer writes them, over which the shared ESLint reading of the forms
+// our layers hold them in is checked against the real ESLint
 // (core/ignores-read-by-each-engine.integration.test.ts). They are the fix developer's parity
 // corpus (fix round 2): the grid's values, every shape of a folder value with negated values after
 // it, and the values each break of the reading was measured to change; and lists taking files back
@@ -105,7 +105,6 @@ export const IGNORES_READ_AS_ESLINT_READS_THEM: readonly (readonly string[])[] =
   ['**/legacy/**', '!**/legacy/'],
   ['legacy/**', '!legacy/', '!legacy/a.js'],
   ['legacy/**', '!legacy/x/', '!legacy/x/a.js'],
-  ['legacy/**', '!legacy/', '!**/a.js'],
   ['**/legacy', '!legacy/', '!**/a.js'],
   ['**/legacy/', '!**/legacy', '!**/a.js'],
   ['legacy/**', '!**/keep', '!**/a.js'],
@@ -151,6 +150,11 @@ export const ESLINT_READING_LIMITS: readonly EslintReadingLimit[] = [
   { ignores: ['**/legacy/', '!src/*/legacy/'], takenInByTheReadingOnly: ['src/legacy/legacy/a.js'] },
   {
     ignores: ['legacy/**', '!**/legacy', '!**/a.js'],
+    takenInByTheReadingOnly: ['legacy/keep/legacy/a.js', 'legacy/src/legacy/a.js', 'legacy/x/legacy/a.js'],
+  },
+  // !legacy/ names every legacy folder (q62), as !**/legacy/ does above.
+  {
+    ignores: ['legacy/**', '!legacy/', '!**/a.js'],
     takenInByTheReadingOnly: ['legacy/keep/legacy/a.js', 'legacy/src/legacy/a.js', 'legacy/x/legacy/a.js'],
   },
 ]
