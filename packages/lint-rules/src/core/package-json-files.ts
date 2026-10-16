@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isRecord } from './is-record.ts'
@@ -58,6 +59,20 @@ export function rangeListedIn(file: PackageJsonFile, field: unknown, packageName
 export function versionOf(file: PackageJsonFile): string {
   if (typeof file.version !== 'string') throw new Error(`${file.path}: gives no version`)
   return file.version
+}
+
+/** The file a request resolves to from `dir`, as a module there requires it: null where nothing does. */
+export function resolvedFrom(dir: string, request: string): string | null {
+  try {
+    return createRequire(resolve(dir, PACKAGE_JSON)).resolve(request)
+  } catch (error) {
+    if (isModuleNotFound(error)) return null
+    throw error
+  }
+}
+
+function isModuleNotFound(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'MODULE_NOT_FOUND'
 }
 
 function directoriesUpFrom(absoluteDir: string): string[] {

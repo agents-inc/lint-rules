@@ -7,7 +7,12 @@ import { extensionsNamedBy, filesOfExtensions, NEGATION, pathNamedBy } from './g
 // file that glob does not match (measured, oxlint 1.87): so a term's globs ANDed are its first in
 // `files` and each other negated in `excludeFiles`. Where one glob can say two, as a folder's every
 // file and every TS file say the folder's TS files, they are joined into it, which every reader of
-// the config reads alike.
+// the config reads alike. A glob with no slash names a file in the config's folder alone, as ESLint
+// reads it, where oxlint reads it in any folder: so it is written from the config's folder, `./a.js`,
+// which oxlint reads as that file alone in `files` and `excludeFiles` (measured, 1.87). Negated, a
+// glob of the config's folder alone, `a.js` or `./*.ts`, has no form, as `!./a.js` and `!/a.js`
+// exclude every file (measured, 1.87): so a term holding one has it in `files`, and a file there
+// matches each other glob with no slash where it matches it at any depth.
 
 /** The files an override applies to, as it names them. */
 export type OverrideFiles = Pick<OxlintOverride, 'files' | 'excludeFiles'>
@@ -48,15 +53,32 @@ function filesOfAlike(alike: readonly WrittenTerm[]): OverrideFiles {
 }
 
 /**
- * A term as one override: its globs joined, the first it asks a file to match in `files`, each other
- * negated and each it asks a file to miss in `excludeFiles`. None where its globs match no file together.
+ * A term as one override: its globs joined, the first it asks a file to match in `files`, one naming
+ * files in the config's folder alone first, each other negated and each it asks a file to miss in
+ * `excludeFiles`. None where its globs match no file together.
  */
 function writtenTermOf({ all, none }: FilesTerm): WrittenTerm[] {
   const kept = globsJoined(all)
   if (kept === null) return []
-  const [first = CATCH_ALL, ...rest] = kept.filter((glob) => !isNegated(glob))
+  const [first = CATCH_ALL, ...rest] = withThoseOfTheConfigFolderFirst(kept.filter((glob) => !isNegated(glob)))
   const missed = kept.filter(isNegated).map(withoutNegation)
-  return [{ glob: first, excludeFiles: [...rest.map(everyFileItDoesNotMatch), ...missed, ...none] }]
+  const excluded = [...missed, ...none].map(writtenFromTheConfigFolder)
+  return [{ glob: writtenFromTheConfigFolder(first), excludeFiles: [...rest.map(everyFileItDoesNotMatch), ...excluded] }]
+}
+
+/** The glob as oxlint reads it in `files` and `excludeFiles`: one with no slash, from the config's folder. */
+function writtenFromTheConfigFolder(glob: string): string {
+  return glob.includes(FOLDER_SEPARATOR) ? glob : `${LEADING_DOT_SLASH}${glob}`
+}
+
+/** The globs, those naming files in the config's folder alone first. */
+function withThoseOfTheConfigFolderFirst(globs: readonly string[]): string[] {
+  return [...globs.filter(namesFilesInTheConfigFolderAlone), ...globs.filter((glob) => !namesFilesInTheConfigFolderAlone(glob))]
+}
+
+/** Whether the glob names files in the config's folder alone, as ESLint reads it: it has no slash once a leading `./` is dropped. */
+function namesFilesInTheConfigFolderAlone(glob: string): boolean {
+  return !withoutALeadingDotSlash(glob).includes(FOLDER_SEPARATOR)
 }
 
 /** The globs, each joined into the first it joins: null where two of them match no file together. */
@@ -156,12 +178,17 @@ function filesOfAFolderAtAnyDepth(folderGlob: string, anyDepthGlob: string): str
 
 /**
  * The glob negated, as `excludeFiles` reads it: every file it does not match. oxlint puts `**` and a
- * slash in front of a glob with no slash, which would put them before the `!` too, so the glob is
- * written from the config's folder first.
+ * slash in front of a glob with no slash, which would put them before the `!` too, so such a glob is
+ * written at any depth: only beside `files` naming files in the config's folder alone, which match
+ * it there where they match it at any depth.
  */
 function everyFileItDoesNotMatch(glob: string): string {
-  const fromTheConfigFolder = glob.startsWith(LEADING_DOT_SLASH) ? glob.slice(LEADING_DOT_SLASH.length) : glob
+  const fromTheConfigFolder = withoutALeadingDotSlash(glob)
   return `${NEGATION}${fromTheConfigFolder.includes(FOLDER_SEPARATOR) ? fromTheConfigFolder : `${ANY_FOLDERS}${fromTheConfigFolder}`}`
+}
+
+function withoutALeadingDotSlash(glob: string): string {
+  return glob.startsWith(LEADING_DOT_SLASH) ? glob.slice(LEADING_DOT_SLASH.length) : glob
 }
 
 function keyOf(globs: readonly string[]): string {

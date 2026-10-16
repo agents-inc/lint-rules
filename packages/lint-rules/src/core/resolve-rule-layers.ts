@@ -1,6 +1,6 @@
 import type { Catalog, RuleRoute, RulesetList, ShippedRule, SuppressionMode } from '@workspace/rule-data'
-import { envOfRulesets, isSuppressionRoute, routeOf, rulesetNamed, type SuppressionRoute } from './catalog-lookups.ts'
-import { normalizeGlob, normalizeGlobs } from './globs.ts'
+import { envOfRulesets, isSuppressionRoute, readsRuntimeGlobals, routeOf, rulesetNamed, type SuppressionRoute } from './catalog-lookups.ts'
+import { formsOfAnIgnoresValue, normalizeGlob, normalizeGlobs } from './globs.ts'
 import {
   describeSeverity,
   type FileOverrideInput,
@@ -54,6 +54,7 @@ export type FileOverrideLayer = {
 
 /** The consumer's config resolved against the catalog, still engine-neutral. Every glob is normalised. */
 export type RuleLayers = {
+  /** Each value of our ignores in the forms both engines read as the .gitignore line (`formsOfAnIgnoresValue`). */
   readonly ignores: readonly string[]
   readonly env: readonly string[]
   readonly suppressionMode: SuppressionMode
@@ -79,6 +80,8 @@ type SettingEntry = [id: string, setting: RuleSetting]
 
 type KeepsRule = (rule: StatedRule) => boolean
 
+type ChangesRuleMap = (settings: RuleSettings) => RuleSettings
+
 type ShippedRoute = RuleRoute & { readonly shipped: ShippedRule }
 
 type TopLevel = {
@@ -97,6 +100,8 @@ const UNSCOPED = { files: null, ignores: null } as const
 // Owner, 2026-10-10: suppression comments are banned unless the consumer's config allows them.
 const SUPPRESSION_MODE_BY_DEFAULT: SuppressionMode = 'banned'
 
+const coversRead = new WeakMap<Catalog, ReadonlyMap<string, string>>()
+
 export function resolveRuleLayers(lintRules: LintRulesInput, catalog: Catalog): RuleLayers {
   const { rulesets, ignores = [], allowSuppressions, rules = {}, fileOverrides = [] } = lintRules
   const suppressionMode = topLevelSuppressionMode(allowSuppressions)
@@ -107,7 +112,7 @@ export function resolveRuleLayers(lintRules: LintRulesInput, catalog: Catalog): 
     env: envOfRulesets(listedRulesetNames(rulesets), catalog),
   }
   return {
-    ignores: ignores.map(normalizeGlob),
+    ignores: ignores.flatMap(formsOfAnIgnoresValue),
     env: topLevel.env,
     suppressionMode,
     rules: { ...topLevel.rulesOn, ...withoutOff(suppressionRulesIn(suppressionMode, catalog)) },
@@ -127,11 +132,16 @@ export function ruleSettingsOfEveryLayer(layers: RuleLayers): RuleSettings[] {
 
 /** The layers with only the rules `keeps` answers yes for, in every rule map. */
 export function layersKeepingRules(layers: RuleLayers, keeps: KeepsRule): RuleLayers {
+  return layersWithEachRuleMap(layers, (settings) => settingsKeeping(settings, keeps))
+}
+
+/** The layers with every rule map changed as given: the top level's and its TS files', and each entry's. */
+export function layersWithEachRuleMap(layers: RuleLayers, change: ChangesRuleMap): RuleLayers {
   return {
     ...layers,
-    rules: settingsKeeping(layers.rules, keeps),
-    ...tsFileRulesKeeping(layers, keeps),
-    fileOverrides: layers.fileOverrides.map((layer) => fileOverrideLayerKeeping(layer, keeps)),
+    rules: change(layers.rules),
+    ...tsFileRulesChanged(layers, change),
+    fileOverrides: layers.fileOverrides.map((layer) => fileOverrideLayerChanged(layer, change)),
   }
 }
 
@@ -153,6 +163,11 @@ export function ruleIdsStatedIn(layers: RuleLayers): string[] {
 /** Every rule a layer turns on, once each and sorted. */
 export function ruleIdsOnIn(layers: RuleLayers): string[] {
   return ruleIdsStatedIn(layersOfRulesOn(layers))
+}
+
+/** Every rule a layer turns on that reads our runtimes' globals (`readsRuntimeGlobals`), once each and sorted. */
+export function runtimeGlobalReadersOnIn(layers: RuleLayers, catalog: Catalog): string[] {
+  return ruleIdsOnIn(layers).filter((ruleId) => readsRuntimeGlobals(routeOf(ruleId, catalog)))
 }
 
 /** The rules an entry's `allowSuppressions` sets: none where the entry leaves it out. */
@@ -242,7 +257,7 @@ function restatedBy(
   catalog: Catalog,
 ): RulesetDrivenChanges {
   return {
-    ruleIds: earlierChanges.ruleIds.filter((id) => listsGiven.has(listOfRulesetRule(id, catalog))),
+    ruleIds: earlierChanges.ruleIds.filter((id) => listsChanging(id, catalog).some((list) => listsGiven.has(list))),
     envs: listsGiven.has(RUNTIMES_LIST) ? earlierChanges.envs : new Set(),
   }
 }
@@ -253,6 +268,15 @@ function listsGivenBy(rulesets: Partial<RulesetsInput>): ReadonlySet<string> {
       .filter(([, names]) => names !== undefined)
       .map(([list]) => list),
   )
+}
+
+/**
+ * The lists whose rulesets change a rule: its own ruleset's, and a covered rule's cover's, since
+ * listing that ruleset leaves the covered rule out (C2).
+ */
+function listsChanging(id: string, catalog: Catalog): RulesetList[] {
+  const cover = coverOf(id, catalog)
+  return [listOfRulesetRule(id, catalog), ...(cover === null ? [] : [listOfRulesetRule(cover, catalog)])]
 }
 
 /**
@@ -269,7 +293,8 @@ function listOfRulesetRule(id: string, catalog: Catalog): RulesetList {
 
 /**
  * Every always-on rule and every rule of a listed ruleset at error, then the top-level `rules` on
- * top. The rules `allowSuppressions` decides are left to it (`suppressionRulesIn`).
+ * top, less each rule covered by one of those (C2). The rules `allowSuppressions` decides are left
+ * to it (`suppressionRulesIn`).
  */
 function rulesOnUnder(rulesets: RulesetsInput, rules: RuleSettingsInput, catalog: Catalog): RuleSettings {
   const shippedRules = shippedRulesOnUnder(listedRulesetNames(rulesets), catalog)
@@ -277,7 +302,68 @@ function rulesOnUnder(rulesets: RulesetsInput, rules: RuleSettingsInput, catalog
     id,
     scopedSettingOf(id, entry, shippedRules, catalog),
   ])
-  return withoutOff({ ...shippedRules, ...Object.fromEntries(settingsGiven) })
+  return withoutCoveredRules(withoutOff({ ...shippedRules, ...Object.fromEntries(settingsGiven) }), rules, catalog)
+}
+
+/**
+ * "Covered by" (S; spec-core.md C2): a rule is left out where the broader rule covering it is on,
+ * at any severity, unless the top-level `rules` state it themselves. Where the cover runs in some
+ * files alone, the rule is still left out of the whole layer (a limit), and naming the covered
+ * rule's typescript-eslint twin is not naming it.
+ */
+function withoutCoveredRules(rulesOn: RuleSettings, statedInRules: RuleSettingsInput, catalog: Catalog): RuleSettings {
+  return Object.fromEntries(Object.entries(rulesOn).filter(([id]) => !isLeftOutForItsCover(id, rulesOn, statedInRules, catalog)))
+}
+
+/** Whether the rule's cover is on, and the top-level `rules` do not state the rule themselves. */
+function isLeftOutForItsCover(id: string, rulesOn: RuleSettings, statedInRules: RuleSettingsInput, catalog: Catalog): boolean {
+  const cover = coverOf(id, catalog)
+  return cover !== null && Object.hasOwn(rulesOn, cover) && !Object.hasOwn(statedInRules, id)
+}
+
+/** The rule covering the one given: none where it ships with no `coveredBy`. */
+function coverOf(id: string, catalog: Catalog): string | null {
+  const cover = coversIn(catalog).get(id)
+  return cover === undefined ? null : cover
+}
+
+/**
+ * Each covered rule's cover, read once per catalog. Every covered rule is checked, whether a layer
+ * turns it on or not: throws where the data breaks what S needs (spec-core.md 2.6).
+ */
+function coversIn(catalog: Catalog): ReadonlyMap<string, string> {
+  const read = coversRead.get(catalog)
+  if (read !== undefined) return read
+  const covers = new Map([...catalog.rules.values()].flatMap((route) => coverEntryOf(route, catalog)))
+  coversRead.set(catalog, covers)
+  return covers
+}
+
+/** The rule and the rule covering it, where it ships with a `coveredBy`: throws where the data breaks what S needs. */
+function coverEntryOf(covered: RuleRoute, catalog: Catalog): [string, string][] {
+  if (covered.shipped === null || covered.shipped.coveredBy === null) return []
+  const cover = routeOf(covered.shipped.coveredBy, catalog)
+  if (!isCoverAsTheDataGuarantees(covered, cover)) {
+    throw new Error(`${covered.id}: covered by ${cover.id}, so both ship in a ruleset and ${cover.id} is another rule, covered by none`)
+  }
+  return [[covered.id, cover.id]]
+}
+
+/**
+ * Only then does listing rulesets move S: an always-on rule, or one `allowSuppressions` decides, is on
+ * whatever rulesets are listed, and a chain would leave a rule out for a cover that is left out itself.
+ * A rule covering itself is covered, so the last check refuses it too.
+ */
+function isCoverAsTheDataGuarantees(covered: RuleRoute, cover: RuleRoute): boolean {
+  return shipsInARuleset(covered) && shipsInARuleset(cover) && isCoveredByNone(cover)
+}
+
+function shipsInARuleset({ shipped }: RuleRoute): boolean {
+  return shipped !== null && shipped.ruleset !== undefined
+}
+
+function isCoveredByNone({ shipped }: RuleRoute): boolean {
+  return shipped === null || shipped.coveredBy === null
 }
 
 function shippedRulesOnUnder(listed: ReadonlySet<string>, catalog: Catalog): RuleSettings {
@@ -300,7 +386,11 @@ function scopedSettingOf(id: string, entry: RuleEntryInput, inForce: RuleSetting
   return { ...severityAndOptions(id, entry, inForce, catalog), ...shippedScopeOf(routeOf(id, catalog)) }
 }
 
-/** A shipped rule keeps its files and ignores wherever it is set: softening a rule never widens where it runs. */
+/**
+ * A shipped rule keeps its files and ignores wherever it is set: softening a rule never widens where
+ * it runs, but for a core rule ESLint runs at its typescript-eslint version's setting
+ * (`coreSettingTakenFrom` in `build-eslint-config.ts`).
+ */
 export function shippedScopeOf({ shipped }: RuleRoute): Pick<RuleSetting, 'files' | 'ignores'> {
   if (shipped === null) return UNSCOPED
   return { files: normalizeGlobs(shipped.files), ignores: normalizeGlobs(shipped.ignores) }
@@ -367,20 +457,20 @@ function envChanges(
   }
 }
 
-/** An entry's layer with only the rules `keeps` answers yes for, in its ruleset changes, own rules, suppression rules and TS files' rules. */
-function fileOverrideLayerKeeping({ suppressions, ...layer }: FileOverrideLayer, keeps: KeepsRule): FileOverrideLayer {
+/** An entry's layer with its ruleset changes, own rules, suppression rules and TS files' rules changed as given. */
+function fileOverrideLayerChanged({ suppressions, ...layer }: FileOverrideLayer, change: ChangesRuleMap): FileOverrideLayer {
   return {
     ...layer,
-    rulesetChanges: settingsKeeping(layer.rulesetChanges, keeps),
-    rules: settingsKeeping(layer.rules, keeps),
-    ...(suppressions === undefined ? {} : { suppressions: { ...suppressions, rules: settingsKeeping(suppressions.rules, keeps) } }),
-    ...tsFileRulesKeeping(layer, keeps),
+    rulesetChanges: change(layer.rulesetChanges),
+    rules: change(layer.rules),
+    ...(suppressions === undefined ? {} : { suppressions: { ...suppressions, rules: change(suppressions.rules) } }),
+    ...tsFileRulesChanged(layer, change),
   }
 }
 
-/** A layer's TS files' rules with only those `keeps` answers yes for, left out where it gives its TS files none. */
-function tsFileRulesKeeping({ tsFileRules }: Pick<RuleLayers, 'tsFileRules'>, keeps: KeepsRule): Pick<RuleLayers, 'tsFileRules'> {
-  return tsFileRules === undefined ? {} : { tsFileRules: settingsKeeping(tsFileRules, keeps) }
+/** A layer's TS files' rules changed as given, left out where it gives its TS files none. */
+function tsFileRulesChanged({ tsFileRules }: Pick<RuleLayers, 'tsFileRules'>, change: ChangesRuleMap): Pick<RuleLayers, 'tsFileRules'> {
+  return tsFileRules === undefined ? {} : { tsFileRules: change(tsFileRules) }
 }
 
 function settingsKeeping(settings: RuleSettings, keeps: KeepsRule): RuleSettings {

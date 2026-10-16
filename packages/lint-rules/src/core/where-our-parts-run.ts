@@ -2,11 +2,12 @@ import type { Catalog, RuleRoute } from '@workspace/rule-data'
 import type { DummyRuleMap, OxlintOverride } from 'oxlint'
 import { oxlintEnvOf, oxlintIgnorePatternsOf, oxlintOverridesOf, topLevelRuleMap } from './build-oxlint-config.ts'
 import { isOxlintRoute, routeOf } from './catalog-lookups.ts'
-import { eslintGlobalIgnoresOf, ignoresEslintAppliesToOurEditorPart } from './eslint-file-types.ts'
-import { bothOf, EVERY_FILE, eitherOf, type FilesCondition, notOf } from './file-conditions.ts'
+import { eslintGlobalIgnoresOf, ignoresEslintAppliesToOurEditorPart, JS_AND_TS_FILES } from './eslint-file-types.ts'
+import { bothOf, EVERY_FILE, eitherOf, type FilesCondition, filesInScopeOf, NO_FILE, notOf } from './file-conditions.ts'
 import { filesEslintLeavesOutOf, filesOxlintLeavesOutOf } from './ignores-read-by-each-engine.ts'
 import { filesOxlintRunsTheRuleIn } from './oxlint-file-types.ts'
-import type { RuleLayers } from './resolve-rule-layers.ts'
+import type { FileOverrideLayer, RuleLayers, RuleSetting } from './resolve-rule-layers.ts'
+import { entryStatements } from './twin-pairs.ts'
 
 // Our part for each engine read the way that engine applies the config our part alone would be,
 // with that engine's reading of our ignores and its own file types (decisions.md, fix round 1
@@ -20,7 +21,7 @@ import type { RuleLayers } from './resolve-rule-layers.ts'
 // second review"). Neither reading loads ESLint's side, so a team's oxlint config can merge.
 
 /** Our oxlint part as oxlint applies it: its overrides in the order oxlint applies them, and the files its ignore patterns leave out. */
-type OurOxlintPart = { readonly inLine: readonly OxlintOverride[]; readonly leftOut: FilesCondition }
+export type OurOxlintPart = { readonly inLine: readonly OxlintOverride[]; readonly leftOut: FilesCondition }
 
 /** The files our ESLint part does not lint in an editor merge. */
 export type OurEslintPart = {
@@ -60,6 +61,33 @@ export function ourOxlintPartInLine(layers: RuleLayers, catalog: Catalog): Oxlin
 export function whereOurOxlintPartRuns(ruleId: string, ourPart: OurOxlintPart, catalog: Catalog): FilesCondition {
   const { oxlintName } = oxlintRouteOf(routeOf(ruleId, catalog))
   return bothOf(eitherOf(...whereEachOverrideTurningItOnLeavesItOn(oxlintName, ourPart)), filesOxlintRunsTheRuleIn(oxlintName))
+}
+
+/**
+ * Where our ESLint part's layers run the rule, as their blocks state it: the top level's setting
+ * within the rule's own files and ignores, then each entry in turn, turning it on in its files within
+ * those, or off in all of them; and only in JS and TS files, the ones our blocks lint. Our ignores
+ * are not read here: the ESLint merge keeps our blocks out of their files (`ourEslintPartOf`).
+ */
+export function whereOurEslintPartRuns(ruleId: string, layers: RuleLayers): FilesCondition {
+  const topLevel = layers.rules[ruleId]
+  const fromTheTopLevel = topLevel === undefined ? NO_FILE : filesOfTheSetting(topLevel)
+  const where = layers.fileOverrides.reduce((before, layer) => whereAfterTheEntry(before, layer, ruleId), fromTheTopLevel)
+  return bothOf(where, filesInScopeOf([JS_AND_TS_FILES], []))
+}
+
+/** Where the rule runs once the entry's blocks apply: as before outside its files, and inside them as it states the rule, where it does. */
+function whereAfterTheEntry(before: FilesCondition, layer: FileOverrideLayer, ruleId: string): FilesCondition {
+  const stated = entryStatements(layer).settings[ruleId]
+  if (stated === undefined) return before
+  const entryFiles = filesInScopeOf(layer.files, [])
+  if (stated.severity === 'off') return bothOf(before, notOf(entryFiles))
+  return eitherOf(before, bothOf(entryFiles, filesOfTheSetting(stated)))
+}
+
+/** The files a rule's setting keeps it to: its own files, less its ignores. */
+function filesOfTheSetting({ files, ignores }: RuleSetting): FilesCondition {
+  return filesInScopeOf(files, ignores === null ? [] : ignores)
 }
 
 /** For each override of ours turning the rule on, where it leaves the rule on. */

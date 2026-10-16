@@ -1,9 +1,10 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
 import type { AllowWarnDeny, DummyRuleMap, OxlintConfig, OxlintEnv, OxlintGlobals, OxlintOverride } from 'oxlint'
 import { type OxlintPlugin, sortedUnique } from './build-oxlint-config.ts'
+import { runtimeEnvsOf } from './catalog-lookups.ts'
 import { configErrorIn } from './config-error.ts'
 import type { OxlintPart } from './editor-parts.ts'
-import { type FilesCondition, keyOfCondition } from './file-conditions.ts'
+import { bothOf, eitherOf, type FilesCondition, keyOfCondition } from './file-conditions.ts'
 import {
   ALWAYS_RUN,
   type CategorySeverities,
@@ -27,9 +28,16 @@ import {
   whereItApplies,
 } from './oxlint-config-reading.ts'
 import { filesLess, type OverrideFiles, overrideFilesOf } from './oxlint-override-files.ts'
-import type { RuleLayers } from './resolve-rule-layers.ts'
+import { type RuleLayers, runtimeGlobalReadersOnIn } from './resolve-rule-layers.ts'
 import { ourLayersLeavingOut, rulesTheTeamSets, withEveryTwin } from './rules-the-team-sets.ts'
-import { CATCH_ALL_FILES, ourOxlintPartOf, whereTheOverrideApplies, whereTheOverrideLeavesItOn } from './where-our-parts-run.ts'
+import {
+  CATCH_ALL_FILES,
+  type OurOxlintPart,
+  ourOxlintPartOf,
+  whereOurOxlintPartRuns,
+  whereTheOverrideApplies,
+  whereTheOverrideLeavesItOn,
+} from './where-our-parts-run.ts'
 
 // How oxlint 1.87 applies a config the merge writes, beside what oxlint-config-reading.ts says of
 // how it resolves one (oxc tag oxlint_v1.87.0, crates/oxc_linter/src/config), and checked against its
@@ -68,11 +76,23 @@ type OnStatement = { readonly oxlintName: string; readonly entry: RuleEntry; rea
 /** Statements holding in the same files. */
 type OnStatementsWhere = { readonly where: FilesCondition; readonly statements: readonly OnStatement[] }
 
-/** What each override of ours stays out of: the files our ignores leave out, as oxlint reads them, and the env keys and globals the team's root sets. */
-type OursBesideTheTeams = { readonly leftOut: FilesCondition; readonly teamsRoot: EnvAndGlobals }
+/**
+ * What each override of ours stays out of: the files our ignores leave out, as oxlint reads them, and
+ * the env keys and globals the team's root sets; and where it keeps our runtimes' envs to, the files
+ * a rule of ours reading them runs in.
+ */
+type OursBesideTheTeams = {
+  readonly leftOut: FilesCondition
+  readonly teamsRoot: EnvAndGlobals
+  readonly runtimeEnvs: ReadonlySet<string>
+  readonly whereRuntimeEnvsAreRead: FilesCondition
+}
 
 /** The keys of a config or an override that give names as globals: its env, and its globals. */
 type EnvAndGlobals = Pick<OxlintOverride, 'env' | 'globals'>
+
+/** Our runtimes' env keys, and the rest of the env with the globals. */
+type RuntimeEnvApart = { readonly runtimeEnv: OxlintEnv; readonly others: EnvAndGlobals }
 
 // Each engine flags the other's suppressions as unused (measured 2026-10-04).
 const UNUSED_DIRECTIVES_UNREPORTED: AllowWarnDeny = 'off'
@@ -149,12 +169,23 @@ function envAndGlobalsGivenBy({ env, globals }: EnvAndGlobals): EnvAndGlobals {
  * else. Each override of our part alone keeps the rules it turns on to the files it applies to that
  * our ignores leave in, as our part alone's `ignorePatterns` read them, less those a later override
  * of ours turns the rule off in. Our env and globals go where our part alone sets them, less each env
- * key and global the team's root sets (Q-E).
+ * key and global the team's root sets (Q-E); and our runtimes' envs only where a rule of ours reading
+ * them runs, so a team's own no-undef stays its own elsewhere (#68, read-q68).
  */
 function ourOnStatements(layers: RuleLayers, catalog: Catalog, teamsRoot: EnvAndGlobals): OxlintOverride[] {
-  const { inLine, leftOut } = ourOxlintPartOf(layers, catalog)
-  const beside: OursBesideTheTeams = { leftOut, teamsRoot }
-  return inLine.flatMap((override, index) => turningOnOnly(override, inLine.slice(index + 1), beside))
+  const ourPart = ourOxlintPartOf(layers, catalog)
+  const beside: OursBesideTheTeams = {
+    leftOut: ourPart.leftOut,
+    teamsRoot,
+    runtimeEnvs: runtimeEnvsOf(catalog),
+    whereRuntimeEnvsAreRead: whereOurRuntimeEnvsAreRead(layers, ourPart, catalog),
+  }
+  return ourPart.inLine.flatMap((override, index) => turningOnOnly(override, ourPart.inLine.slice(index + 1), beside))
+}
+
+/** Where a rule of ours that reads our runtimes' globals runs, as oxlint reads our part alone. */
+function whereOurRuntimeEnvsAreRead(layers: RuleLayers, ourPart: OurOxlintPart, catalog: Catalog): FilesCondition {
+  return eitherOf(...runtimeGlobalReadersOnIn(layers, catalog).map((ruleId) => whereOurOxlintPartRuns(ruleId, ourPart, catalog)))
 }
 
 /** One override of our part alone as overrides that turn rules on only, each where the override leaves it on. */
@@ -162,8 +193,25 @@ function turningOnOnly(override: OxlintOverride, laterOfOurs: readonly OxlintOve
   const statements = rulesTurnedOnIn(override).map(
     ([oxlintName, entry]): OnStatement => ({ oxlintName, entry, where: whereTheOverrideLeavesItOn(override, laterOfOurs, oxlintName, beside.leftOut) }),
   )
-  const envAndGlobals = envAndGlobalsLessTheTeams(override, beside.teamsRoot)
-  return withEnvAndGlobalsWhereTheyHold(statementsByWhere(statements), whereTheOverrideApplies(override, beside.leftOut), envAndGlobals)
+  const { runtimeEnv, others } = runtimeEnvApart(envAndGlobalsLessTheTeams(override, beside.teamsRoot), beside.runtimeEnvs)
+  const where = whereTheOverrideApplies(override, beside.leftOut)
+  return [
+    ...withEnvAndGlobalsWhereTheyHold(statementsByWhere(statements), where, others),
+    ...runtimeEnvWhere(bothOf(where, beside.whereRuntimeEnvsAreRead), runtimeEnv),
+  ]
+}
+
+/** The runtimes' env keys apart from the rest of the env and the globals. */
+function runtimeEnvApart({ env = {}, ...globals }: EnvAndGlobals, runtimeEnvs: ReadonlySet<string>): RuntimeEnvApart {
+  const runtimeEnv = Object.fromEntries(Object.entries(env).filter(([key]) => runtimeEnvs.has(key)))
+  const otherEnv = Object.fromEntries(Object.entries(env).filter(([key]) => !runtimeEnvs.has(key)))
+  return { runtimeEnv, others: { ...(isEmpty(otherEnv) ? {} : { env: otherEnv }), ...globals } }
+}
+
+/** Overrides giving the runtimes' env keys in the files given: none where there are none. */
+function runtimeEnvWhere(where: FilesCondition, runtimeEnv: OxlintEnv): OxlintOverride[] {
+  if (isEmpty(runtimeEnv)) return []
+  return overrideFilesOf(where).map((files): OxlintOverride => ({ ...files, env: runtimeEnv }))
 }
 
 /** The statements, those holding in the same files together. */

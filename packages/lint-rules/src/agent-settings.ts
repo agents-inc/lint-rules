@@ -1,7 +1,7 @@
 // `check` imports agents-inc.lint.mts and sees only the editor parts it exports. This registry,
 // keyed by each part `defineLintRules` returned, gives it back the agent set's settings, from which
 // the agent builders make both complete configs. Internal: no package.json export and no
-// declaration file names it, and index and the future `check` entry share this one module.
+// declaration file names it, and index and `check` share this one module.
 
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import { configErrorIn } from './core/config-error.ts'

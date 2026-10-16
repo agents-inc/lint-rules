@@ -1,7 +1,8 @@
 import type { Linter } from 'eslint'
-import { createNodeResolver } from 'eslint-plugin-import-x'
+import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript'
 import { JS_AND_TS_EXTENSIONS } from './eslint-file-types.ts'
 import { isRecord } from './is-record.ts'
+import type { ProjectFacts } from './project-facts.ts'
 
 type Settings = NonNullable<Linter.Config['settings']>
 
@@ -56,19 +57,49 @@ const N_SETTINGS_READ_AS_ONE_OBJECT = ['typescriptExtensionMap', 'tsconfigPath']
 const IMPORT_X_RESOLVER_NEXT = 'import-x/resolver-next'
 const IMPORT_X_LEGACY_RESOLVERS = ['import-x/resolver-legacy', 'import-x/resolver', 'import-x/resolve']
 
+// The files import-x parses for what a module exports: by default JS alone (import-x 4.17.1,
+// lib/utils/ignore.js, getFileExtensions), so an import of a TS module drew no import-x/named report
+// (#33 fix C). The key is built from import-x's settings prefix: its rule import-x/extensions has the
+// same name, so a literal would read, to names-no-rule.test.ts, as the core naming a rule.
+const IMPORT_X_SETTINGS_PREFIX = 'import-x'
+const IMPORT_X_EXTENSIONS = `${IMPORT_X_SETTINGS_PREFIX}/extensions`
+const TS_AND_JS_EXTENSIONS_IMPORT_X_PARSES = ['.ts', '.tsx', '.cts', '.mts', '.js', '.jsx', '.cjs', '.mjs']
+
+// Without a version eslint-plugin-react warns on every run, and `detect` reads the React installed.
+// Where none is, `detect` assumes this one and prints a warning saying so (ULTIMATE_LATEST_SEMVER in
+// lib/util/version.js, 7.37.5, which the plugin does not export): given outright, the plugin
+// behaves the same and prints nothing (spec-core.md C13).
+const DETECT_THE_INSTALLED_REACT = 'detect'
+const REACT_VERSION_ASSUMED_WITHOUT_REACT = '999.999.999'
+
 /** The team's settings a setting of ours given whole under the key yields to, by that key; one under a key not here yields to none. */
 const TEAM_SETTINGS_YIELDED_TO: ReadonlyMap<string, readonly SettingPath[]> = new Map([
   [IMPORT_X_RESOLVER_NEXT, [IMPORT_X_RESOLVER_NEXT, ...IMPORT_X_LEGACY_RESOLVERS].map(wholeSettingAt)],
 ])
 
-export function buildEslintSettings(): Settings {
+/** Our settings for the project its facts describe. */
+export function buildEslintSettings({ reactIsInstalled, tsconfigFiles }: ProjectFacts): Settings {
   return {
-    [IMPORT_X_RESOLVER_NEXT]: [createNodeResolver()],
+    [IMPORT_X_RESOLVER_NEXT]: [typeScriptResolverOf(tsconfigFiles)],
+    [IMPORT_X_EXTENSIONS]: TS_AND_JS_EXTENSIONS_IMPORT_X_PARSES,
     immutability: { overrides: IMMUTABILITY_TYPE_OVERRIDES },
     [ESLINT_PLUGIN_N_SETTINGS_KEY]: { tryExtensions: nTryExtensions() },
-    // Without a version, eslint-plugin-react warns on every run; detect reads the installed react.
-    react: { version: 'detect' },
+    react: { version: reactIsInstalled ? DETECT_THE_INSTALLED_REACT : REACT_VERSION_ASSUMED_WITHOUT_REACT },
   }
+}
+
+/**
+ * import-x resolves a module as TypeScript does with eslint-import-resolver-typescript, given every
+ * tsconfig.json and jsconfig.json of the project, each file read with the one nearest it that takes
+ * it in (#33 fix C; spec-core.md C1): an import without its extension, `.js` naming a `.ts` module,
+ * and each package's own path aliases. Not one tsconfig for the root, which misses a package's
+ * aliases, and not a `**` glob, which read tsconfigs in node_modules and crashed ESLint. Given more
+ * than one, the resolver would print a warning once per process that the team cannot act on, since
+ * we give it the list; that warning is off. With none, it reads the tsconfig in the process's cwd,
+ * if any, and still resolves an import without its extension.
+ */
+function typeScriptResolverOf(tsconfigFiles: readonly string[]): ReturnType<typeof createTypeScriptImportResolver> {
+  return createTypeScriptImportResolver({ project: [...tsconfigFiles], noWarnOnMultipleProjects: true })
 }
 
 /**

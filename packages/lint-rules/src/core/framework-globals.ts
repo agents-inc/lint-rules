@@ -3,6 +3,8 @@
 // components, so our oxlint part gives each framework's names in its files. Our ESLint part lints
 // JS and TS files alone, so of these files it lints Svelte's rune modules alone.
 
+import { JS_AND_TS_EXTENSIONS } from './eslint-file-types.ts'
+
 /** A framework's globals as an env both engines know: oxlint's, and the `globals` package's, which ESLint reads. */
 export type FrameworkEnv = { readonly files: readonly string[]; readonly env: string }
 
@@ -37,3 +39,20 @@ export const OTHER_FRAMEWORK_ENVS: readonly FrameworkEnv[] = [
   { files: ['**/*.vue'], env: 'vue' },
   { files: ['**/*.astro'], env: 'astro' },
 ]
+
+/** A test runner's globals in its test files, as envs both engines know. */
+export type TestRunnerEnvs = { readonly files: readonly string[]; readonly envs: readonly string[] }
+
+const BRACE_SEPARATOR = ','
+const TEST_FILE_EXTENSIONS = `{${[...JS_AND_TS_EXTENSIONS].join(BRACE_SEPARATOR)}}`
+
+/**
+ * Vitest's and Jest's globals (describe, it, expect, vi, jest, …), read-only, in test files,
+ * whatever rulesets are listed (q76; spec-core.md C10, call 5): the shapes the shipped test-file
+ * ignores use, `*.test.*` and `*.spec.*` and any file under `__tests__`, of each JS and TS extension.
+ * Each engine's `vitest` and `jest` env names them (oxlint 1.87's schema, globals 17.13).
+ */
+export const TEST_RUNNER_GLOBALS: TestRunnerEnvs = {
+  files: [`**/*.{test,spec}.${TEST_FILE_EXTENSIONS}`, `**/__tests__/**/*.${TEST_FILE_EXTENSIONS}`],
+  envs: ['vitest', 'jest'],
+}

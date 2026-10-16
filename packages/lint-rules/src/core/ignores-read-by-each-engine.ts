@@ -1,10 +1,12 @@
 import { eitherOf, type FilesCondition, filesIgnoredBy } from './file-conditions.ts'
-import { everyFileUnderFoldersMatching, NEGATION, namesFoldersOnly, pathNamedBy } from './globs.ts'
+import { everyFileUnderFoldersMatching, NEGATION, namesFoldersOnly, pathNamedBy, withoutTheLastSlash } from './globs.ts'
 
 // Which files our ignores keep our part for each engine out of, each engine reading the same values
 // its own way (decisions.md, fix round 1 review): ESLint as global ignores, oxlint as
-// ignorePatterns. Both merges and the agent build's two configs meet here, so a value one engine
-// reads differently from the other keeps each engine's part out of the files that engine leaves out.
+// ignorePatterns. Our layers hold each value in the forms both read as its .gitignore line
+// (`formsOfAnIgnoresValue`, q62), so the two readings differ only where a negated value takes back a
+// file under a folder another value leaves out. Both merges and the agent build's two configs meet
+// here, so there each engine's part is kept out of the files that engine leaves out.
 //
 // ESLint (@eslint/config-array, measured 10.12): a path is left out where some value matches it and
 // no negated value after that one does; a file is left out where it is, or where any folder above it
@@ -310,10 +312,6 @@ function lastSegmentOf(path: string): string {
 
 function segmentsOf(path: string): string[] {
   return path.split(FOLDER_SEPARATOR)
-}
-
-function withoutTheLastSlash(glob: string): string {
-  return namesFoldersOnly(glob) ? glob.slice(0, -FOLDER_SEPARATOR.length) : glob
 }
 
 function withoutALeadingDotSlash(value: string): string {

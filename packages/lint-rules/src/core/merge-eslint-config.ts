@@ -1,4 +1,4 @@
-import { isAbsolute, relative, resolve, sep } from 'node:path'
+import { relative, resolve, sep } from 'node:path'
 import type { Catalog } from '@workspace/rule-data'
 import type { ESLint, Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
@@ -6,13 +6,16 @@ import {
   type BlocksBeforeTheOffSwitch,
   type EslintBlocksSource,
   type EslintPluginRegistry,
+  type EslintSettings,
   eslintBlocksBeforeTheOffSwitch,
   extensionsOffWhereOxlintRunsTheirCore,
   filesMatchedByBoth,
+  layersWithoutRuntimeGlobals,
   oxlintRuleNamesByPrefix,
   type PluginNeeds,
   pluginsForEveryBlock,
   ruleNamesByPrefix,
+  runtimeGlobalsBlocksWithin,
   type TeamTypeInformationBlock,
   type TypeInformation,
   type TypeInformationSwitch,
@@ -20,16 +23,18 @@ import {
 import { currentExtensionsOf, isOxlintRoute, routeOf } from './catalog-lookups.ts'
 import type { EslintPart } from './editor-parts.ts'
 import { firstGiven, pluginsRegisteredBy, ruleIdsTheTeamsEslintConfigSets, rulesStatedIn } from './eslint-config-reading.ts'
-import { eslintDefaultIgnoresHoldUnder } from './eslint-file-types.ts'
+import { asFilesEntry, eslintDefaultIgnoresHoldUnder } from './eslint-file-types.ts'
 import { eachWithin, groupedByWhere, type Where, type Within, whereOf } from './eslint-off-blocks.ts'
-import { givesTheSetting, type SettingOfOurs, type SettingPath, settingsGiving, settingsOfOurs } from './eslint-settings.ts'
-import { eitherOf, type FilesAndIgnores, type FilesCondition, type FilesEntry, filesInScopeOf, globsOf, matchesEveryFile, notOf } from './file-conditions.ts'
+import { buildEslintSettings, givesTheSetting, type SettingOfOurs, type SettingPath, settingsGiving, settingsOfOurs } from './eslint-settings.ts'
+import { bothOf, eitherOf, type FilesAndIgnores, type FilesCondition, type FilesEntry, filesInScopeOf, globsOf, matchesEveryFile, notOf } from './file-conditions.ts'
 import { literalGlobOf, NEGATION } from './globs.ts'
+import { globsReadFromTheRoot } from './globs-read-from-above.ts'
 import { isRecord } from './is-record.ts'
-import { ruleIdsOnIn } from './resolve-rule-layers.ts'
+import { liesOutside } from './lies-outside.ts'
+import { type ProjectFacts, projectFactsOf } from './project-facts.ts'
+import { type RuleLayers, ruleIdsOnIn, runtimeGlobalReadersOnIn } from './resolve-rule-layers.ts'
 import { ourLayersLeavingOut, rulesTheTeamSets } from './rules-the-team-sets.ts'
-import { tsFilesOutsideEveryTsconfig } from './ts-files-outside-every-tsconfig.ts'
-import { type OurEslintPart, ourEslintPartOf } from './where-our-parts-run.ts'
+import { type OurEslintPart, ourEslintPartOf, whereOurEslintPartRuns } from './where-our-parts-run.ts'
 
 /** A team's whole ESLint config: whatever ESLint's `defineConfig` takes. */
 export type TeamEslintConfig = Parameters<typeof defineConfig>[number]
@@ -61,7 +66,6 @@ const TYPE_INFORMATION_OPTIONS = ['project', 'projectService'] as const
 // Joined to a plugin's own version as semver build metadata, so its cache key carries ours too.
 const OUR_BUILD_TAG = 'agents-inc-lint-rules'
 const GLOB_SEPARATOR = '/'
-const PARENT_DIRECTORY = '..'
 const LEADING_DOT_SLASH = './'
 const EVERY_FILE_UNDER = '/**'
 const CONFINED = 'confined'
@@ -95,12 +99,15 @@ export function mergeEslintPart(
   const teamBlocks = defineConfig(theirs)
   const setByTheTeam = rulesTheTeamSets([...ruleIdsTheTeamsEslintConfigSets(teamBlocks, registry, catalog), ...setByTheTeamsOxlintConfig], catalog)
   const part = ourPartLeavingOut(setByTheTeam, partGiven)
+  const projectFacts = projectFactsOf(part.tsconfigRootDir)
   const plugins = withOurVersionInEachCacheKey(pluginsForEveryBlock(registry, pluginsRegisteredBy(teamBlocks), pluginNeedsOf(part, catalog)), ourVersion)
-  const blocks = eslintBlocksBeforeTheOffSwitch(ourBlocksSource(part, plugins, typeInformationFor(part, teamBlocks)), catalog)
+  const source = ourBlocksSource(part, plugins, buildEslintSettings(projectFacts), typeInformationFor(part, teamBlocks, projectFacts))
+  const blocks = eslintBlocksBeforeTheOffSwitch(source, catalog)
   const settings = ourSettingsBeside(blocks.base, teamBlocks, part.tsconfigRootDir)
   const whereOurBlocksMayRun = whereOurBlocksMayRunBeside(teamBlocks, part)
+  const runtimeGlobals = runtimeGlobalsBlocksWithin(part.layers, bothOf(whereOurRuntimeGlobalsAreRead(part.layers, catalog), whereOurBlocksMayRun))
   return [
-    ...blocksInOrder({ ...blocks, base: settings.base }).flatMap((block) => confinedBeside(block, whereOurBlocksMayRun)),
+    ...blocksInOrder({ ...blocks, base: settings.base }, runtimeGlobals).flatMap((block) => confinedBeside(block, whereOurBlocksMayRun)),
     ...settings.keptToTheirFiles,
     ...teamBlocks.map((block) => teamBlockBeside(block, plugins)),
     ...extensionsOffWhereOxlintRunsTheirCore(part.oxlintLayers, part.layers, catalog),
@@ -130,23 +137,13 @@ function filesOurBlocksAreKeptOutOf({ leftOut, leftOutByOurIgnores }: OurEslintP
 
 /**
  * Whether ESLint's default ignores hold beside the team's global ignores, which it reads after them,
- * in order: none takes a file back. Their globs are read from the project root; a function among
- * them leaves files out and takes none back, so it adds no glob. A block of them whose basePath lies
- * outside the root may still reach every file of it, as an ancestor's does (measured, ESLint 10.12),
- * and its globs cannot be read from the root, so any negated glob of it may take files back.
+ * in order: none takes a file back. Their globs are read from the project root, as ESLint reads them
+ * from each block's basePath; a function among them leaves files out and takes none back, so it adds
+ * no glob.
  */
 function eslintDefaultIgnoresHoldBeside(teamBlocks: readonly Linter.Config[], tsconfigRootDir: string): boolean {
   const globalIgnores = teamBlocks.filter(isGlobalIgnores).map(withGlobsOnly)
-  if (globalIgnores.some((block) => isReadFromOutsideTheRoot(block, tsconfigRootDir) && holdsANegatedGlob(block))) return false
   return eslintDefaultIgnoresHoldUnder(globalIgnores.flatMap((block) => teamFilesFromTheRoot(block, tsconfigRootDir).flatMap(({ ignores }) => ignores)))
-}
-
-function isReadFromOutsideTheRoot({ basePath }: Linter.Config, tsconfigRootDir: string): boolean {
-  return basePath !== undefined && pathFromTheRoot(basePath, tsconfigRootDir) === null
-}
-
-function holdsANegatedGlob({ ignores = [] }: Linter.Config): boolean {
-  return ignores.some((glob) => glob.startsWith(NEGATION))
 }
 
 /** Whether ESLint reads the block as global ignores. One holding a name or basePath alone counts too, and gives no glob. */
@@ -154,9 +151,21 @@ function isGlobalIgnores(block: Linter.Config): boolean {
   return Object.keys(block).every((key) => KEYS_OF_GLOBAL_IGNORES.has(key))
 }
 
-/** Our blocks in order. Our ignores keep our rules out of their files, and nothing else: no global ignores (D-a). */
-function blocksInOrder({ base, afterTheBase }: BlocksBeforeTheOffSwitch): OurBlocks {
-  return [base, ...afterTheBase]
+/**
+ * Our blocks in order, our runtime globals' right after the base block. Our ignores keep our rules
+ * out of their files, and nothing else: no global ignores (D-a).
+ */
+function blocksInOrder({ base, afterTheBase }: BlocksBeforeTheOffSwitch, runtimeGlobals: OurBlocks): OurBlocks {
+  return [base, ...runtimeGlobals, ...afterTheBase]
+}
+
+/**
+ * Where a rule of ours that reads our runtimes' globals runs in our ESLint part, which beside oxlint
+ * runs none (#68, read-q68): our runtime globals are given there alone, so a team's own no-undef
+ * stays its own elsewhere. A rule the team sets is not ours, so it reads none of ours.
+ */
+function whereOurRuntimeGlobalsAreRead(layers: RuleLayers, catalog: Catalog): FilesCondition {
+  return eitherOf(...runtimeGlobalReadersOnIn(layers, catalog).map((ruleId) => whereOurEslintPartRuns(ruleId, layers)))
 }
 
 /**
@@ -308,13 +317,20 @@ function extensionsTakingOverOnTsFiles(ruleIdsRun: readonly string[], { usesOxli
   })
 }
 
-function ourBlocksSource(part: EslintPart, plugins: ReadonlyMap<string, ESLint.Plugin>, typeInformation: TypeInformation): Omit<EslintBlocksSource, 'offSwitch'> {
+function ourBlocksSource(
+  part: EslintPart,
+  plugins: ReadonlyMap<string, ESLint.Plugin>,
+  settings: EslintSettings,
+  typeInformation: TypeInformation,
+): Omit<EslintBlocksSource, 'offSwitch'> {
   return {
-    layers: part.layers,
+    // Our runtime globals go in blocks of their own, kept to where our rules read them (`runtimeGlobalsBlocksWithin`).
+    layers: layersWithoutRuntimeGlobals(part.layers),
     plugins,
     // The team's noInlineConfig stands either way. Beside oxlint, each engine flags the other's
     // suppressions as unused (measured 2026-10-04).
     linterOptions: part.usesOxlint ? { reportUnusedDisableDirectives: 'off' } : null,
+    settings,
     typeInformation,
     twinsOnTsFiles: !part.usesOxlint,
   }
@@ -357,13 +373,10 @@ function withOurVersion(prefix: string, plugin: ESLint.Plugin, ourVersion: strin
  * information ours would collide with it: `project` beside `projectService` is fatal, and our
  * `projectService: true` over the team's `allowDefaultProject` made a root file fatal (measured).
  * Our typed rules then run only in the files the team's blocks give types to, and in none a later
- * team block takes them away from again, as typescript-eslint's disableTypeChecked does. Where the
- * type information is ours, the TS files outside every tsconfig are looked up then, and only then.
+ * team block takes them away from again, as typescript-eslint's disableTypeChecked does.
  */
-function typeInformationFor({ tsconfigRootDir }: EslintPart, teamBlocks: readonly Linter.Config[]): TypeInformation {
-  if (!teamBlocks.some(givesTypeInformation)) {
-    return { from: 'ours', tsconfigRootDir, tsFilesOutsideEveryTsconfig: tsFilesOutsideEveryTsconfig(tsconfigRootDir) }
-  }
+function typeInformationFor({ tsconfigRootDir }: EslintPart, teamBlocks: readonly Linter.Config[], { tsFilesOutsideEveryTsconfig }: ProjectFacts): TypeInformation {
+  if (!teamBlocks.some(givesTypeInformation)) return { from: 'ours', tsconfigRootDir, tsFilesOutsideEveryTsconfig }
   return {
     from: 'the team',
     blocks: teamBlocks.flatMap((block, index) => typeInformationBlocksOf(block, teamBlocks.slice(0, index), tsconfigRootDir)),
@@ -423,16 +436,50 @@ function switchesOff(value: unknown): boolean {
 
 /**
  * ESLint reads a block's files and ignores from its basePath and ours from the project root, so the
- * team's are put under the basePath: one block cannot read from both. A block without `files`
- * applies to every file under it. None where the basePath lies outside the root, which holds every
- * file this config lints.
+ * team's are read from the root: put under a basePath inside it, or read past the root's folders
+ * from one above it (spec-core.md C8). A block without `files` applies to every file under its
+ * basePath. None where the basePath holds no file of the project, as a sibling folder does.
  */
 function teamFilesFromTheRoot({ basePath, files, ignores = [] }: Linter.Config, tsconfigRootDir: string): TeamFiles[] {
   const asWritten: TeamFiles = { files: files === undefined ? null : files, ignores }
   if (basePath === undefined) return [asWritten]
   const basePathFromTheRoot = pathFromTheRoot(basePath, tsconfigRootDir)
-  if (basePathFromTheRoot === null) return []
+  if (basePathFromTheRoot === null) return teamFilesReadFromAbove(asWritten, rootFromTheBasePath(basePath, tsconfigRootDir))
   return basePathFromTheRoot === '' ? [asWritten] : [teamFilesUnder(literalGlobOf(basePathFromTheRoot), asWritten)]
+}
+
+/**
+ * The root's folders from a basePath above it, one each, as ESLint reads a relative basePath from
+ * the root (`pathFromTheRoot`): null where the basePath is not above the root, which then holds no
+ * file of the project.
+ */
+function rootFromTheBasePath(basePath: string, tsconfigRootDir: string): string[] | null {
+  const fromTheBasePath = relative(resolve(tsconfigRootDir, basePath), tsconfigRootDir)
+  return liesOutside(fromTheBasePath) ? null : fromTheBasePath.split(sep)
+}
+
+/**
+ * A block's files and ignores read from a folder above the root, as globs read from the root: each
+ * `files` entry once for each way its globs read past the root's folders, and each ignore as each
+ * of its readings. None where no entry reaches the root's files, or the basePath is not above it.
+ */
+function teamFilesReadFromAbove({ files, ignores }: TeamFiles, folders: readonly string[] | null): TeamFiles[] {
+  if (folders === null) return []
+  const ignoresFromTheRoot = ignores.flatMap((glob) => globsReadFromTheRoot(glob, folders))
+  if (files === null) return [{ files: null, ignores: ignoresFromTheRoot }]
+  const entries = files.flatMap((entry) => entriesReadFromTheRoot(globsOf(entry), folders))
+  return entries.length === 0 ? [] : [{ files: entries, ignores: ignoresFromTheRoot }]
+}
+
+/** An entry, whose globs a file must match each, read from the root: one entry for each choice of a reading of each glob. */
+function entriesReadFromTheRoot(globs: readonly string[], folders: readonly string[]): FilesEntry[] {
+  const readingsOfEachGlob = globs.map((glob) => globsReadFromTheRoot(glob, folders))
+  return cartesianProductOf(readingsOfEachGlob).map(asFilesEntry)
+}
+
+/** Every list made of one member of each list given, in their order: one empty list where none is given, and none where one is empty. */
+function cartesianProductOf<Member>(lists: readonly (readonly Member[])[]): Member[][] {
+  return lists.reduce<Member[][]>((sofar, list) => sofar.flatMap((combination) => list.map((member) => [...combination, member])), [[]])
 }
 
 /**
@@ -444,11 +491,6 @@ function teamFilesFromTheRoot({ basePath, files, ignores = [] }: Linter.Config, 
 function pathFromTheRoot(basePath: string, tsconfigRootDir: string): string | null {
   const fromTheRoot = relative(tsconfigRootDir, resolve(tsconfigRootDir, basePath))
   return liesOutside(fromTheRoot) ? null : fromTheRoot.split(sep).join(GLOB_SEPARATOR)
-}
-
-/** A path relative to the root leads up out of it, or onto another drive. */
-function liesOutside(fromTheRoot: string): boolean {
-  return fromTheRoot === PARENT_DIRECTORY || fromTheRoot.startsWith(`${PARENT_DIRECTORY}${sep}`) || isAbsolute(fromTheRoot)
 }
 
 /** Every entry ANDs every file under the basePath, as the block applies to no other: a negated glob alone would match outside it. */

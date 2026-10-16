@@ -3,7 +3,7 @@ import type { DummyRule, DummyRuleMap, OxlintConfig, OxlintEnv, OxlintGlobals, O
 import { isOxlintRoute, type OxlintRoute, routeOf } from './catalog-lookups.ts'
 import { TS_FILES } from './eslint-file-types.ts'
 import { bothOf, EVERY_FILE, type FilesCondition, filesInScopeOf } from './file-conditions.ts'
-import { type FrameworkEnv, OTHER_FRAMEWORK_ENVS, SVELTE_COMPONENT_GLOBALS, SVELTE_RUNES } from './framework-globals.ts'
+import { type FrameworkEnv, OTHER_FRAMEWORK_ENVS, SVELTE_COMPONENT_GLOBALS, SVELTE_RUNES, TEST_RUNNER_GLOBALS } from './framework-globals.ts'
 import type { LintRulesInput } from './lint-rules-input.ts'
 import { overrideFilesOf } from './oxlint-override-files.ts'
 import {
@@ -42,11 +42,12 @@ const BUILTIN_ENV = { builtin: true, es2024: true } as const satisfies OxlintEnv
 // Read-only, as both engines' envs give every other framework global (oxlint 1.87, globals 17.13).
 const READ_ONLY: NonNullable<OxlintGlobals[string]> = 'readonly'
 
-// Whatever rulesets are listed: framework globals are globals of those files, not of a ruleset.
-const FRAMEWORK_GLOBALS_OVERRIDES: readonly OxlintOverride[] = [
+// Whatever rulesets are listed: framework and test-runner globals are globals of those files, not of a ruleset.
+const GLOBALS_OVERRIDES: readonly OxlintOverride[] = [
   envOverrideOf(SVELTE_RUNES),
   { files: [...SVELTE_COMPONENT_GLOBALS.files], globals: globalsReadOnly(SVELTE_COMPONENT_GLOBALS.names) },
   ...OTHER_FRAMEWORK_ENVS.map(envOverrideOf),
+  { files: [...TEST_RUNNER_GLOBALS.files], env: envSwitchedTo(true, TEST_RUNNER_GLOBALS.envs) },
 ]
 
 // ESLint never lints node_modules; ignoring it here too means both engines see the same files.
@@ -99,12 +100,13 @@ export function topLevelRuleMap(layers: RuleLayers, catalog: Catalog): DummyRule
 }
 
 /**
- * Every override after the top-level rules: each framework's globals in its files, each rule off
- * under its own ignores, then the top level's TS files' rules, then each file-override entry's.
+ * Every override after the top-level rules: each framework's globals in its files, the test
+ * runners' in test files, each rule off under its own ignores, then the top level's TS files'
+ * rules, then each file-override entry's.
  */
 export function oxlintOverridesOf(layers: RuleLayers, catalog: Catalog): OxlintOverride[] {
   return [
-    ...FRAMEWORK_GLOBALS_OVERRIDES,
+    ...GLOBALS_OVERRIDES,
     ...oxlintSettingsOf(layers.rules, catalog).filter(hasIgnores).map(offUnderItsIgnores),
     ...tsFileOverridesOf(EVERY_FILE, tsFileRulesOf(layers), catalog),
     ...layers.fileOverrides.flatMap((layer) => fileOverrideOverrides(layer, catalog)),

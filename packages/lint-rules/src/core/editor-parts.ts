@@ -6,7 +6,16 @@ import type { Catalog } from '@workspace/rule-data'
 import { isEslintRoute, isOxlintRoute, routeOf } from './catalog-lookups.ts'
 import { isRecord } from './is-record.ts'
 import { type FileOverrideInput, type LintRulesInput, projectedOnto, type TwoSetLintRulesInput } from './lint-rules-input.ts'
-import { layersKeepingRules, type RuleLayers, resolveRuleLayers, ruleIdsOnIn, type StatedRule } from './resolve-rule-layers.ts'
+import {
+  layersKeepingRules,
+  layersWithEachRuleMap,
+  type RuleLayers,
+  type RuleSetting,
+  type RuleSettings,
+  resolveRuleLayers,
+  ruleIdsOnIn,
+  type StatedRule,
+} from './resolve-rule-layers.ts'
 import { layersWithEachTwinPairDecidedBesideOxlint } from './twin-pairs.ts'
 
 /** The editor set's ESLint side. The merge turns it into blocks before the team's. */
@@ -102,17 +111,68 @@ function partsBesideOxlint(tsconfigRootDir: string, resolved: RuleLayers, catalo
 /**
  * Without oxlint, ESLint also takes over each oxlint-routed rule it has a version of, unless the
  * skip list names it: one whose fixture does not fire in ESLint, or one the owner decided against.
- * A rule ESLint has no version of, or a skipped one, is not stated, so the team's setting stands.
- * No rule runs in another engine, so nothing is stated off after the team's blocks.
+ * Where ESLint has none, a rule of its stands in for some (`eslintStandIns`). A rule ESLint has no
+ * version of, or a skipped one, is not stated, so the team's setting stands. No rule runs in
+ * another engine, so nothing is stated off after the team's blocks.
  */
 function eslintPartWithoutOxlint(tsconfigRootDir: string, layers: RuleLayers, catalog: Catalog): EslintPart {
+  const standIns = standInsIn(catalog)
+  const layersWithStandIns = layersWithEachRuleMap(layers, (settings) => withStandIns(settings, standIns))
   return {
     engine: 'eslint',
     tsconfigRootDir,
     usesOxlint: false,
-    layers: layersKeepingRules(layers, (rule) => runsInEslintWithoutOxlint(rule, catalog)),
+    layers: layersKeepingRules(layersWithStandIns, (rule) => runsInEslintWithoutOxlint(rule, catalog)),
     oxlintLayers: layersKeepingRules(layers, keepsNoRule),
   }
+}
+
+/**
+ * Each oxlint-only rule with a stand-in, stated as its stand-in too: at its severity, files and
+ * ignores, and none of its options, which are the oxc rule's (#55, r2-d49-51; spec-core.md C4).
+ * Where the map states the stand-in itself, that setting stands, so the stand-in is stated once.
+ */
+function withStandIns(settings: RuleSettings, standIns: ReadonlyMap<string, string>): RuleSettings {
+  const standInSettings = Object.entries(settings).flatMap(([id, setting]): [string, RuleSetting][] => {
+    const standIn = standIns.get(id)
+    return standIn === undefined || Object.hasOwn(settings, standIn) ? [] : [[standIn, { ...setting, options: [] }]]
+  })
+  return { ...settings, ...Object.fromEntries(standInSettings) }
+}
+
+/**
+ * The catalog's stand-ins, each oxlint-only rule's: throws where the data breaks what C4 needs
+ * (spec-core.md 2.6). Only then does each stand-in run in ESLint exactly where its oxlint-only rule
+ * would have run in oxlint: a rule ESLint runs or has a version of would report twice, a stand-in
+ * oxlint runs or that needs type information would run nowhere or fail, one we ship would be stated
+ * twice, and one standing in for two rules would take one setting for both.
+ */
+function standInsIn(catalog: Catalog): ReadonlyMap<string, string> {
+  const breach = [...catalog.eslintStandIns].find(([oxlintOnly, standIn]) => !isStandInAsTheDataGuarantees(oxlintOnly, standIn, catalog))
+  if (breach !== undefined) {
+    const [oxlintOnly, standIn] = breach
+    throw new Error(`${oxlintOnly}: stood in for by ${standIn}, so ${oxlintOnly} is a rule oxlint alone runs, and ${standIn} an untyped rule ESLint runs, not shipped, standing in for it alone`)
+  }
+  return catalog.eslintStandIns
+}
+
+function isStandInAsTheDataGuarantees(oxlintOnly: string, standIn: string, catalog: Catalog): boolean {
+  return isRunByOxlintAlone(oxlintOnly, catalog) && canStandIn(standIn, catalog) && standsInForOneRule(standIn, catalog)
+}
+
+/** Whether oxlint runs the rule and ESLint has no version of it. */
+function isRunByOxlintAlone(ruleId: string, catalog: Catalog): boolean {
+  return isOxlintRoute(routeOf(ruleId, catalog)) && !catalog.ruleIdsWithAnEslintVersion.has(ruleId)
+}
+
+/** Whether the rule is one ESLint runs without type information, and one we do not ship. */
+function canStandIn(ruleId: string, catalog: Catalog): boolean {
+  const route = routeOf(ruleId, catalog)
+  return isEslintRoute(route) && !route.typed && route.shipped === null
+}
+
+function standsInForOneRule(standIn: string, catalog: Catalog): boolean {
+  return [...catalog.eslintStandIns.values()].filter((each) => each === standIn).length === 1
 }
 
 function keepsNoRule(): boolean {

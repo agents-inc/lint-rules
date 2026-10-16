@@ -131,3 +131,13 @@ export function envOfRulesets(listed: ReadonlySet<string>, catalog: Catalog): st
     listed.has(ruleset.name) && ruleset.env !== null ? [ruleset.env] : [],
   )
 }
+
+/** Whether our runtimes' globals serve the rule (`readsRuntimeGlobals`): an unshipped rule reads none of ours. */
+export function readsRuntimeGlobals({ shipped }: RuleRoute): boolean {
+  return shipped !== null && shipped.readsRuntimeGlobals
+}
+
+/** Each env a runtime ruleset gives, the runtimes' envs: no other ruleset gives one. */
+export function runtimeEnvsOf(catalog: Catalog): ReadonlySet<string> {
+  return new Set(catalog.rulesets.flatMap(({ env }) => (env === null ? [] : [env])))
+}

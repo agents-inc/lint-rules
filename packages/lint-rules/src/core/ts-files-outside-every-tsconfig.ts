@@ -1,11 +1,14 @@
 import { type Dirent, readdirSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import ts from 'typescript'
 
 type ReleaseLine = { readonly major: number; readonly minor: number }
 
 /** What a config file gives the project service: the files it lists itself, and the config files it loads besides. */
 type ConfigFileRead = { readonly ownFiles: ReadonlySet<string>; readonly loadedReferences: readonly string[] }
+
+/** What one walk of tsconfigRootDir finds: the TS files no tsconfig takes in, relative to it, and every config file, absolute. */
+export type TsconfigWalk = { readonly tsFilesOutsideEveryTsconfig: readonly string[]; readonly tsconfigFiles: readonly string[] }
 
 /** What one computation has read, each read once. */
 type Reads = {
@@ -37,10 +40,34 @@ const CONFIG_HOST: ts.ParseConfigFileHost = { ...ts.sys, onUnRecoverableConfigFi
  * a config it references, lists it. Before TypeScript 5.7 only the nearest config counts. A file a
  * config only imports is listed here, though the service finds it through the importer (D-h).
  */
-export function tsFilesOutsideEveryTsconfig(tsconfigRootDir: string): string[] {
+export function tsFilesOutsideEveryTsconfig(tsconfigRootDir: string): readonly string[] {
+  return tsconfigWalkOf(tsconfigRootDir).tsFilesOutsideEveryTsconfig
+}
+
+/**
+ * One walk of tsconfigRootDir, outside node_modules and .git: the TS files outside every tsconfig
+ * (`tsFilesOutsideEveryTsconfig`), and every tsconfig.json and jsconfig.json, which the import-x
+ * resolver reads (spec-core.md C1).
+ */
+export function tsconfigWalkOf(tsconfigRootDir: string): TsconfigWalk {
   const root = resolve(tsconfigRootDir)
-  const reads: Reads = { configFiles: new Map(), configFilesInDirectory: new Map(), extendedConfigs: new Map() }
-  return tsFilesUnder(root, '').filter((file) => !isTakenInByAConfig(resolve(root, file), root, reads))
+  const reads = newReads()
+  const files = filesUnder(root, '')
+  return {
+    tsFilesOutsideEveryTsconfig: files.filter(isTsFile).filter((file) => !isTakenInByAConfig(resolve(root, file), root, reads)),
+    tsconfigFiles: files.filter(isConfigFile).map((file) => resolve(root, file)),
+  }
+}
+
+/** Of the files given, relative to tsconfigRootDir, those a config the project service tries for them takes in, by the same search. */
+export function filesTakenInByAConfig(tsconfigRootDir: string, files: readonly string[]): string[] {
+  const root = resolve(tsconfigRootDir)
+  const reads = newReads()
+  return files.filter((file) => isTakenInByAConfig(resolve(root, file), root, reads))
+}
+
+function newReads(): Reads {
+  return { configFiles: new Map(), configFilesInDirectory: new Map(), extendedConfigs: new Map() }
 }
 
 function isTakenInByAConfig(file: string, root: string, reads: Reads): boolean {
@@ -116,13 +143,22 @@ function releaseLineOf(versionMajorMinor: string): ReleaseLine {
   return { major: Number(major), minor: Number(minor) }
 }
 
-/** Every TS file under the directory, declaration files included, relative to the root. */
-function tsFilesUnder(root: string, fromRoot: string): string[] {
+/** Every file under the directory, relative to the root, `/` between segments. */
+function filesUnder(root: string, fromRoot: string): string[] {
   return entriesOf(join(root, fromRoot)).flatMap((entry) => {
     const path = fromRoot === '' ? entry.name : `${fromRoot}${GLOB_SEPARATOR}${entry.name}`
-    if (entry.isDirectory()) return DIRECTORIES_NEVER_WALKED.has(entry.name) ? [] : tsFilesUnder(root, path)
-    return entry.isFile() && TS_FILE.test(entry.name) ? [path] : []
+    if (entry.isDirectory()) return DIRECTORIES_NEVER_WALKED.has(entry.name) ? [] : filesUnder(root, path)
+    return entry.isFile() ? [path] : []
   })
+}
+
+/** A TS file, declaration files included. */
+function isTsFile(path: string): boolean {
+  return TS_FILE.test(path)
+}
+
+function isConfigFile(path: string): boolean {
+  return CONFIG_FILE_NAMES.includes(basename(path))
 }
 
 /** A directory's entries; none where it cannot be listed. */

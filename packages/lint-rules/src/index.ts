@@ -59,6 +59,7 @@ export type LintRules = {
    * oxlint merge turns that copy off.
    */
   readonly editorRulesets: Rulesets
+  /** Files our rules stay out of, each value read as a .gitignore line in both engines: `legacy/` is every `legacy` folder, `./a.js` or `/a.js` the root `a.js` alone. */
   readonly ignores?: readonly string[]
   /**
    * Whether sub-agents may add suppression comments (`eslint-disable*`, `oxlint-disable*`, inline
