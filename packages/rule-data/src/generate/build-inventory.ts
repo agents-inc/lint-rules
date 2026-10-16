@@ -1,6 +1,6 @@
 import type { OxlintCategory } from '../catalog.ts'
+import { compareCodeUnits, sharedKeys } from '../collections.ts'
 import { canonicalIdOf, eslintAliasCandidatesOf, oxlintPluginOf } from '../rule-id-parts.ts'
-import { compareCodeUnits, sharedKeys } from './collections.ts'
 import type { InstalledEngines, InstalledEslintRule, InstalledOxlintRule } from './read-installed.ts'
 
 export type OxlintImplementation = {

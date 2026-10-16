@@ -1,9 +1,8 @@
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, symlink, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
-import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 import {
   CHANGED_SETTING_CASES,
@@ -28,7 +27,8 @@ import {
   shippedSettingsOf,
   writeCaseFiles,
 } from './__tests__/rule-case-runs.ts'
-import { type Engine, type RuleRoute, catalog } from './catalog.ts'
+import { setUpTempDir } from './__tests__/temp-dirs.ts'
+import { type Engine, type RuleRoute, catalog, routeOf } from './catalog.ts'
 
 // The owner's answers of 2026-10-14 changed these rules' options, files, engines and rulesets
 // (docs/work/spec-data.md, D3 and D5 to D8). Each rule runs here as it ships, its settings read from
@@ -43,12 +43,6 @@ const VITEST = 'vitest'
 type OutcomesByEngine = Readonly<Record<string, Readonly<Record<string, FileOutcome>>>>
 
 const requireFromHere = createRequire(import.meta.url)
-
-function routeOf(ruleId: string): RuleRoute {
-  const route = catalog.rules.get(ruleId)
-  if (route === undefined) throw new Error(`${ruleId} is not a RuleId`)
-  return route
-}
 
 /** The engines that may run the rule: the one it is routed to, and ESLint, which runs an oxlint rule without oxlint. */
 function enginesThatMayRun(route: RuleRoute): readonly Engine[] {
@@ -87,24 +81,24 @@ function owedOutcomesByEngine(engines: readonly Engine[], silentIn: readonly Cas
 }
 
 describe('the rules whose settings, engine or ruleset the owner changed on 2026-10-14, run as the catalog ships them', () => {
-  let projectDir: string
+  const projectDir = setUpTempDir('rule-data-changed-settings-')
 
   async function outcomesOn(engine: Engine, route: RuleRoute, settings: RuleSettings, files: readonly CaseFile[], configFile: string): Promise<Readonly<Record<string, FileOutcome>>> {
     const read = readBy(engine, files)
     const outcomes =
       engine === 'oxlint'
-        ? oxlintOutcomesOf(projectDir, configFile, oxlintNamesOf(route), settings, read)
-        : await eslintOutcomesOf(projectDir, eslintBlocksOf(route, settings, catalog), read, { typed: route.typed })
+        ? oxlintOutcomesOf(projectDir(), configFile, oxlintNamesOf(route), settings, read)
+        : await eslintOutcomesOf(projectDir(), eslintBlocksOf(route, settings, catalog), read, { typed: route.typed })
     return Object.fromEntries(outcomes)
   }
 
   /** The case's rule with its shipped settings, on each engine given or each that may run it. */
   async function outcomesOfCase(folder: string, { rule, engines, silentIn, reportedIn }: RuleCase): Promise<{ readonly actual: OutcomesByEngine; readonly expected: OutcomesByEngine }> {
-    const route = routeOf(rule)
+    const route = routeOf(rule, catalog)
     const settings = shippedSettingsOf(route)
     const silent = inFolder(folder, silentIn)
     const reported = inFolder(folder, reportedIn)
-    await writeCaseFiles(projectDir, [...silent, ...reported])
+    await writeCaseFiles(projectDir(), [...silent, ...reported])
     const runOn = engines ?? enginesThatMayRun(route)
     const actual = Object.fromEntries(
       await Promise.all(
@@ -118,24 +112,19 @@ describe('the rules whose settings, engine or ruleset the owner changed on 2026-
   }
 
   beforeAll(async () => {
-    projectDir = await mkdtemp(join(tmpdir(), 'rule-data-changed-settings-'))
-    await mkdir(join(projectDir, 'node_modules', '@types'), { recursive: true })
-    await symlink(dirname(requireFromHere.resolve(`${TYPES_OF_NODE}/package.json`)), join(projectDir, 'node_modules', TYPES_OF_NODE))
-    await symlink(dirname(requireFromHere.resolve(`${VITEST}/package.json`)), join(projectDir, 'node_modules', VITEST))
+    await mkdir(join(projectDir(), 'node_modules', '@types'), { recursive: true })
+    await symlink(dirname(requireFromHere.resolve(`${TYPES_OF_NODE}/package.json`)), join(projectDir(), 'node_modules', TYPES_OF_NODE))
+    await symlink(dirname(requireFromHere.resolve(`${VITEST}/package.json`)), join(projectDir(), 'node_modules', VITEST))
     await Promise.all(
       STUB_PACKAGES.map(async ({ name, declarations }) => {
-        const packageDir = join(projectDir, 'node_modules', name)
+        const packageDir = join(projectDir(), 'node_modules', name)
         await mkdir(packageDir, { recursive: true })
         await writeFile(join(packageDir, 'package.json'), JSON.stringify({ name, version: '0.0.0', types: 'index.d.ts' }))
         await writeFile(join(packageDir, 'index.d.ts'), declarations)
       }),
     )
-    await writeFile(join(projectDir, 'tsconfig.json'), JSON.stringify(TYPED_PROJECT_TSCONFIG))
-    await writeFile(join(projectDir, 'package.json'), JSON.stringify(PROJECT_MANIFEST))
-  })
-
-  afterAll(async () => {
-    await rm(projectDir, { recursive: true, force: true })
+    await writeFile(join(projectDir(), 'tsconfig.json'), JSON.stringify(TYPED_PROJECT_TSCONFIG))
+    await writeFile(join(projectDir(), 'package.json'), JSON.stringify(PROJECT_MANIFEST))
   })
 
   describe('a rule whose options or files changed', () => {
@@ -192,15 +181,15 @@ describe('the rules whose settings, engine or ruleset the owner changed on 2026-
   // code oxlint's rule reports, and leave the code oxlint's rule leaves.
   describe('an oxlint rule ESLint has no version of, and its ESLint stand-in', () => {
     async function standInOutcomesOf(folder: string, { oxlintRule, silentIn, reportedIn }: StandInCase): Promise<{ readonly actual: OutcomesByEngine; readonly expected: OutcomesByEngine }> {
-      const route = routeOf(oxlintRule)
+      const route = routeOf(oxlintRule, catalog)
       const standIn = catalog.eslintStandIns.get(oxlintRule)
       if (standIn === undefined) throw new Error(`no ESLint stand-in is recorded for ${oxlintRule}`)
       const silent = inFolder(folder, silentIn)
       const reported = inFolder(folder, reportedIn)
       const files = [...silent, ...reported]
-      await writeCaseFiles(projectDir, files)
-      const oxlint = Object.fromEntries(oxlintOutcomesOf(projectDir, `${folder}.oxlintrc.json`, oxlintNamesOf(route), shippedSettingsOf(route), files))
-      const eslint = Object.fromEntries(await eslintOutcomesOf(projectDir, [{ ruleId: standIn, settings: UNSHIPPED_RULE_SETTINGS }], files, { typed: false }))
+      await writeCaseFiles(projectDir(), files)
+      const oxlint = Object.fromEntries(oxlintOutcomesOf(projectDir(), `${folder}.oxlintrc.json`, oxlintNamesOf(route), shippedSettingsOf(route), files))
+      const eslint = Object.fromEntries(await eslintOutcomesOf(projectDir(), [{ ruleId: standIn, settings: UNSHIPPED_RULE_SETTINGS }], files, { typed: false }))
       const owed = owedOutcomes(silent, reported)
       return { actual: { [oxlintRule]: oxlint, [standIn]: eslint }, expected: { [oxlintRule]: owed, [standIn]: owed } }
     }

@@ -8,12 +8,12 @@ import type { ESLint, Rule } from 'eslint'
 import { builtinRules } from 'eslint/use-at-your-own-risk'
 
 import type { OxlintCategory } from '../catalog.ts'
+import { compareCodeUnits } from '../collections.ts'
 import { eslintPlugins } from '../eslint-plugins.ts'
 import { isObject } from '../is-object.ts'
 import { parseOxlintCategory } from '../parse-names.ts'
-import { oxlintNameOf, pluginPrefixOf } from '../rule-id-parts.ts'
+import { oxlintNameOf, ruleNameOf } from '../rule-id-parts.ts'
 import type { InventoryVersions } from './build-inventory.ts'
-import { compareCodeUnits } from './collections.ts'
 import { eslintPluginPackageNames } from './eslint-plugin-package-names.ts'
 
 export type InstalledOxlintRule = { oxlintName: string; typeAware: boolean; category: OxlintCategory }
@@ -188,12 +188,6 @@ function coreRuleExtendedBy(id: string, { meta }: RuleWithMeta): string | null {
   const { extendsBaseRule } = docs
   if (extendsBaseRule === true) return ruleNameOf(id)
   return typeof extendsBaseRule === 'string' ? extendsBaseRule : null
-}
-
-/** The rule ID without its plugin prefix, as a core rule of the same name is called. */
-function ruleNameOf(id: string): string {
-  const prefix = pluginPrefixOf(id)
-  return prefix === null ? id : id.slice(`${prefix}/`.length)
 }
 
 function isDeprecated({ meta }: RuleWithMeta): boolean {

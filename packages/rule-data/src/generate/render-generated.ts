@@ -1,6 +1,6 @@
 import type { RulesetDefinition, RulesetList } from '../catalog.ts'
+import { groupBy } from '../collections.ts'
 import type { TurnedOnBy } from '../turned-on-by.ts'
-import { groupBy } from './collections.ts'
 
 /** What the rule-ID file reads of a route, as routing writes it or the catalog gives it: its ID, and what turns it on. */
 type RouteTurnedOnBy = { readonly id: string; readonly shipped: TurnedOnBy | null }

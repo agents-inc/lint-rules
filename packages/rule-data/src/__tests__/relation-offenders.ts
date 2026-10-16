@@ -1,5 +1,6 @@
-import { sharedKeys } from '../generate/collections.ts'
+import { sharedKeys } from '../collections.ts'
 import type { CanonicalRule } from '../generate/build-routing.ts'
+import { type Breach, breachesOf } from './breaches.ts'
 
 // What the canonical list guarantees the two relations the core applies between shipped rules
 // (docs/work/spec-data.md, 2.6). "Covered by": the narrow rule is left out wherever the rule covering
@@ -7,22 +8,19 @@ import type { CanonicalRule } from '../generate/build-routing.ts'
 // turn. "Split by types": the untyped rule is off where its typed partner runs with type information,
 // so both run in ESLint, on every file, turned on by a ruleset.
 
-/** A way a rule of a relation can break it: what is wrong, and the rules it is wrong of. */
-type Breach = readonly [wrong: string, breaks: (rule: CanonicalRule) => boolean]
+const TURNED_ON_BY_NO_RULESET: Breach<CanonicalRule> = ['is turned on by no ruleset', ({ ruleset, alwaysOn, whenSuppressions }) => ruleset === undefined || alwaysOn === true || whenSuppressions !== undefined]
+const RUN_BY_OXLINT: Breach<CanonicalRule> = ['is run by oxlint', ({ engine }) => engine === 'oxlint']
+const SCOPED: Breach<CanonicalRule> = ['is scoped by files or ignores', ({ files, ignores }) => files !== undefined || ignores !== undefined]
+const COVERED: Breach<CanonicalRule> = ['is covered by another rule', ({ coveredBy }) => coveredBy !== undefined]
+const SPLIT_BY_TYPES: Breach<CanonicalRule> = ['splits by types with another rule', ({ splitByTypesWith }) => splitByTypesWith !== undefined]
+const TYPED: Breach<CanonicalRule> = ['is typed', ({ typed }) => typed]
+const UNTYPED: Breach<CanonicalRule> = ['is untyped', ({ typed }) => !typed]
 
-const TURNED_ON_BY_NO_RULESET: Breach = ['is turned on by no ruleset', ({ ruleset, alwaysOn, whenSuppressions }) => ruleset === undefined || alwaysOn === true || whenSuppressions !== undefined]
-const RUN_BY_OXLINT: Breach = ['is run by oxlint', ({ engine }) => engine === 'oxlint']
-const SCOPED: Breach = ['is scoped by files or ignores', ({ files, ignores }) => files !== undefined || ignores !== undefined]
-const COVERED: Breach = ['is covered by another rule', ({ coveredBy }) => coveredBy !== undefined]
-const SPLIT_BY_TYPES: Breach = ['splits by types with another rule', ({ splitByTypesWith }) => splitByTypesWith !== undefined]
-const TYPED: Breach = ['is typed', ({ typed }) => typed]
-const UNTYPED: Breach = ['is untyped', ({ typed }) => !typed]
-
-const COVERED_RULE_BREACHES: readonly Breach[] = [TURNED_ON_BY_NO_RULESET]
+const COVERED_RULE_BREACHES: readonly Breach<CanonicalRule>[] = [TURNED_ON_BY_NO_RULESET]
 // A cover that is itself left out somewhere would leave nothing reporting there.
-const COVER_BREACHES: readonly Breach[] = [TURNED_ON_BY_NO_RULESET, COVERED, SPLIT_BY_TYPES]
-const UNTYPED_RULE_BREACHES: readonly Breach[] = [TYPED, RUN_BY_OXLINT, SCOPED, TURNED_ON_BY_NO_RULESET, COVERED]
-const TYPED_RULE_BREACHES: readonly Breach[] = [UNTYPED, RUN_BY_OXLINT, SCOPED, TURNED_ON_BY_NO_RULESET, COVERED, SPLIT_BY_TYPES]
+const COVER_BREACHES: readonly Breach<CanonicalRule>[] = [TURNED_ON_BY_NO_RULESET, COVERED, SPLIT_BY_TYPES]
+const UNTYPED_RULE_BREACHES: readonly Breach<CanonicalRule>[] = [TYPED, RUN_BY_OXLINT, SCOPED, TURNED_ON_BY_NO_RULESET, COVERED]
+const TYPED_RULE_BREACHES: readonly Breach<CanonicalRule>[] = [UNTYPED, RUN_BY_OXLINT, SCOPED, TURNED_ON_BY_NO_RULESET, COVERED, SPLIT_BY_TYPES]
 
 /** A rule naming the other rule of its relation. */
 type Relation = { readonly rule: CanonicalRule; readonly other: string }
@@ -75,8 +73,4 @@ function relationsOf(rules: readonly CanonicalRule[], relationOf: (rule: Canonic
     const relation = relationOf(rule)
     return relation === undefined ? [] : [{ rule, other: relation.rule }]
   })
-}
-
-function breachesOf(rule: CanonicalRule, breaches: readonly Breach[]): string[] {
-  return breaches.filter(([, breaks]) => breaks(rule)).map(([wrong]) => wrong)
 }

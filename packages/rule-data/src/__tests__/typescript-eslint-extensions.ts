@@ -1,3 +1,4 @@
+import type { ESLint } from 'eslint'
 import typescriptEslint from 'typescript-eslint'
 
 import { eslintPlugins } from '../eslint-plugins.ts'
@@ -24,11 +25,16 @@ const OFF_SEVERITIES: ReadonlySet<unknown> = new Set(['off', 0])
  * Read from the installed plugin, not from our data.
  */
 export function typescriptEslintExtensions(): TypescriptEslintExtension[] {
-  const plugin = eslintPlugins[TYPESCRIPT_ESLINT_PREFIX]
-  if (plugin?.rules === undefined) throw new Error(`no plugin with rules is registered under ${TYPESCRIPT_ESLINT_PREFIX}`)
-  return Object.entries(plugin.rules)
+  return Object.entries(typescriptEslintRules())
     .flatMap(([name, rule]) => extensionOf(name, rule))
     .toSorted((first, second) => first.id.localeCompare(second.id))
+}
+
+/** The installed typescript-eslint plugin's rules, by rule name, as registered under its prefix. */
+export function typescriptEslintRules(): NonNullable<ESLint.Plugin['rules']> {
+  const plugin = eslintPlugins[TYPESCRIPT_ESLINT_PREFIX]
+  if (plugin?.rules === undefined) throw new Error(`no plugin with rules is registered under ${TYPESCRIPT_ESLINT_PREFIX}`)
+  return plugin.rules
 }
 
 /**

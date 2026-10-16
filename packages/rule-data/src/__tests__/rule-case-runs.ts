@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -6,10 +5,10 @@ import { dirname, join } from 'node:path'
 import { ESLint, type Linter } from 'eslint'
 import typescriptEslint from 'typescript-eslint'
 
-import type { Catalog, Engine, RuleRoute } from '../catalog.ts'
+import { type Catalog, type Engine, type RuleRoute, shippedRuleOf } from '../catalog.ts'
 import { eslintPlugins } from '../eslint-plugins.ts'
-import { isObject } from '../is-object.ts'
-import { OXLINT_BIN } from './oxlint-print-config.ts'
+import { buildOxlintConfigRunningTheRuleWith } from './factories/oxlint-config-factories.ts'
+import { type OxlintJsonDiagnostic, oxlintJsonRun } from './oxlint-cli.ts'
 
 // One rule at a time, on the files of a case, through the real ESLint or the real oxlint: what each
 // engine made of each file. Read by changed-settings.integration.test.ts.
@@ -35,7 +34,6 @@ export type RuleSettings = {
 type EslintRuleBlock = { readonly ruleId: string; readonly settings: RuleSettings }
 
 const ERROR = 'error'
-const OXLINT_CATEGORIES = ['correctness', 'suspicious', 'pedantic', 'style', 'nursery', 'restriction', 'perf']
 const ALL_SOURCE_FILES = '**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'
 const JS_FILES = '**/*.{js,jsx,mjs,cjs}'
 const TS_FILES = '**/*.{ts,tsx,mts,cts}'
@@ -48,8 +46,7 @@ const REACT_VERSION = '19.0'
  * ones it runs with where suppressions are allowed.
  */
 export function shippedSettingsOf(route: RuleRoute): RuleSettings {
-  const { shipped } = route
-  if (shipped === null) throw new Error(`${route.id} is not shipped`)
+  const shipped = shippedRuleOf(route)
   const { options, files, ignores } = shipped
   if (!('whenSuppressions' in shipped)) return { options, files, ignores }
   const { allowed } = shipped.whenSuppressions
@@ -140,17 +137,14 @@ export function oxlintOutcomesOf(
 ): ReadonlyMap<string, FileOutcome> {
   if (files !== null) throw new Error(`${oxlintName} ships files of its own, which the oxlint build refuses`)
   const config = {
-    plugins: [oxlintPlugin],
-    categories: Object.fromEntries(OXLINT_CATEGORIES.map((category) => [category, 'off'])),
-    rules: { [oxlintName]: [ERROR, ...options] },
+    ...buildOxlintConfigRunningTheRuleWith(oxlintName, options, { plugins: [oxlintPlugin] }),
     overrides: ignores === null ? [] : [{ files: ignores, rules: { [oxlintName]: 'off' } }],
   }
   writeFileSync(join(projectDir, configFile), JSON.stringify(config))
   const paths = caseFiles.map(({ path }) => path)
-  const { stdout } = spawnSync(process.execPath, [OXLINT_BIN, '-c', configFile, '-f', 'json', ...paths], { cwd: projectDir, encoding: 'utf8' })
-  // oxlint prints something other than JSON when it cannot load the config.
-  if (!stdout.trimStart().startsWith('{')) return new Map(paths.map((path) => [path, 'not linted']))
-  const diagnostics = diagnosticsIn(stdout)
+  const run = oxlintJsonRun(projectDir, configFile, paths)
+  if (run.outcome === 'refused') return new Map(paths.map((path) => [path, 'not linted']))
+  const { diagnostics } = run.report
   return new Map(paths.map((path) => [path, oxlintOutcomeOf(diagnostics.filter(({ filename }) => filename === path))]))
 }
 
@@ -168,28 +162,8 @@ function eslintOutcomeOf(messages: readonly Linter.LintMessage[], ruleIds: reado
   return messages.some(({ ruleId }) => ruleId !== null && ruleIds.includes(ruleId)) ? 'reports' : 'silent'
 }
 
-/** A diagnostic in oxlint's JSON report: a rule's finding links to the rule's page, a parse error links nowhere. */
-type OxlintDiagnostic = { readonly filename: string; readonly url: string | null }
-
-/** Only one rule is on, so any linked diagnostic in the file is its finding. */
-function oxlintOutcomeOf(diagnostics: readonly OxlintDiagnostic[]): FileOutcome {
-  if (diagnostics.some(({ url }) => url === null)) return 'not linted'
+/** Only one rule is on, so any linked diagnostic in the file is its finding; one that links nowhere is a parse error. */
+function oxlintOutcomeOf(diagnostics: readonly OxlintJsonDiagnostic[]): FileOutcome {
+  if (diagnostics.some(({ url }) => url === undefined)) return 'not linted'
   return diagnostics.length > 0 ? 'reports' : 'silent'
-}
-
-/** The diagnostics of oxlint's JSON report. Parse boundary: oxlint's output. */
-function diagnosticsIn(stdout: string): readonly OxlintDiagnostic[] {
-  const report: unknown = JSON.parse(stdout)
-  if (!isObject(report) || !('diagnostics' in report) || !Array.isArray(report.diagnostics)) {
-    throw new Error(`oxlint's JSON report has no diagnostics: ${stdout}`)
-  }
-  return report.diagnostics.map(diagnosticOf)
-}
-
-function diagnosticOf(diagnostic: unknown): OxlintDiagnostic {
-  if (!isObject(diagnostic) || !('filename' in diagnostic) || typeof diagnostic.filename !== 'string') {
-    throw new Error(`oxlint reported a diagnostic with no file: ${JSON.stringify(diagnostic)}`)
-  }
-  const url = 'url' in diagnostic && typeof diagnostic.url === 'string' ? diagnostic.url : null
-  return { filename: diagnostic.filename, url }
 }

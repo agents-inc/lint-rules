@@ -4,6 +4,7 @@ import { parseEngine } from '../parse-names.ts'
 import {
   type SettingFieldBySuppressionMode,
   type SuppressionModeSettingField,
+  inEachSuppressionMode,
   parseSuppressionModeSetting,
 } from '../turned-on-by.ts'
 import type { CanonicalRule, CanonicalSuppressionModeSetting } from './build-routing.ts'
@@ -29,12 +30,7 @@ function whenSuppressionsOf(
   field: SettingFieldBySuppressionMode | undefined,
 ): Pick<CanonicalRule, 'whenSuppressions'> {
   if (field === undefined) return {}
-  return {
-    whenSuppressions: {
-      banned: parseCanonicalSetting(id, field.banned),
-      allowed: parseCanonicalSetting(id, field.allowed),
-    },
-  }
+  return { whenSuppressions: inEachSuppressionMode(field, (setting) => parseCanonicalSetting(id, setting)) }
 }
 
 function parseCanonicalSetting(id: string, setting: SuppressionModeSettingField): CanonicalSuppressionModeSetting {

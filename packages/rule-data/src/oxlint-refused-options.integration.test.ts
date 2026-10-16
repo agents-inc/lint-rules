@@ -1,15 +1,15 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 import { catalog } from './catalog.ts'
 import { optionKeysOxlintRefuses } from './oxlint-refused-options.ts'
 import { EXTENSION_ONLY_OPTION_FIXTURES, type ExtensionOnlyOptionFixture, IMPORTED_FILE } from './__tests__/cases/extension-only-option-fixtures.ts'
 import { buildOxlintConfigRunningTheRuleWith } from './__tests__/factories/oxlint-config-factories.ts'
-import { printOxlintConfig } from './__tests__/oxlint-print-config.ts'
+import { printOxlintConfig } from './__tests__/oxlint-cli.ts'
 import { optionListsTheSchemaTakes, optionsOnlyTheFirstSchemaTakes } from './__tests__/schema-options.ts'
+import { setUpTempDir } from './__tests__/temp-dirs.ts'
 import {
   type EngineReport,
   oxlintReportOn,
@@ -73,34 +73,33 @@ function isHonoured({ typescriptEslint, oxlint }: FixtureOutcome): boolean {
 }
 
 describe("the options typescript-eslint's version of each twin pair takes, given to oxlint's copy of the core rule, against data/oxlint-refused-options.json", () => {
-  let projectDir: string
+  const projectDir = setUpTempDir('rule-data-oxlint-refused-options-')
   let verdicts: readonly OptionVerdict[] = []
   let outcomes: readonly FixtureOutcome[] = []
 
   async function verdictOf(pair: TwinPairRoutedToOxlint, options: readonly unknown[], keys: readonly string[]): Promise<OptionVerdict> {
-    await writeFile(join(projectDir, OPTIONS_CONFIG), JSON.stringify(buildOxlintConfigRunningTheRuleWith(pair.oxlintName, options, { plugins: [pair.oxlintPlugin] })))
-    return { pair, options, keys, refused: printOxlintConfig(join(projectDir, OPTIONS_CONFIG)).status === 'refused' }
+    await writeFile(join(projectDir(), OPTIONS_CONFIG), JSON.stringify(buildOxlintConfigRunningTheRuleWith(pair.oxlintName, options, { plugins: [pair.oxlintPlugin] })))
+    return { pair, options, keys, refused: printOxlintConfig(join(projectDir(), OPTIONS_CONFIG)).status === 'refused' }
   }
 
   async function outcomeOf(fixture: ExtensionOnlyOptionFixture, index: number): Promise<FixtureOutcome> {
     const pair = pairOf(fixture.coreRule)
     const file = `fixture-${String(index)}.ts`
-    await writeFile(join(projectDir, file), fixture.source)
+    await writeFile(join(projectDir(), file), fixture.source)
     const typescriptEslint = changeOf(
-      await typescriptEslintReportOn(projectDir, pair.extension, fixture.without, file, fixture.reportOf),
-      await typescriptEslintReportOn(projectDir, pair.extension, fixture.with, file, fixture.reportOf),
+      await typescriptEslintReportOn(projectDir(), pair.extension, fixture.without, file, fixture.reportOf),
+      await typescriptEslintReportOn(projectDir(), pair.extension, fixture.with, file, fixture.reportOf),
     )
     const oxlint = oxlintChangeOf(
-      oxlintReportOn(projectDir, pair, fixture.without, file, fixture.source, fixture.reportOf),
-      oxlintReportOn(projectDir, pair, fixture.with, file, fixture.source, fixture.reportOf),
+      oxlintReportOn(projectDir(), pair, fixture.without, file, fixture.source, fixture.reportOf),
+      oxlintReportOn(projectDir(), pair, fixture.with, file, fixture.source, fixture.reportOf),
     )
     return { fixture, typescriptEslint, oxlint }
   }
 
   beforeAll(async () => {
-    projectDir = await mkdtemp(join(tmpdir(), 'rule-data-oxlint-refused-options-'))
-    await writeFile(join(projectDir, 'tsconfig.json'), JSON.stringify(TSCONFIG))
-    await writeFile(join(projectDir, IMPORTED_FILE.name), IMPORTED_FILE.source)
+    await writeFile(join(projectDir(), 'tsconfig.json'), JSON.stringify(TSCONFIG))
+    await writeFile(join(projectDir(), IMPORTED_FILE.name), IMPORTED_FILE.source)
     const lists = TWIN_PAIRS.flatMap((pair) => optionListsTheSchemaTakes(schemaOfTheExtension(pair.extension)).map((list) => ({ pair, ...list })))
     const made: OptionVerdict[] = []
     for (const { pair, options, keys } of lists) made.push(await verdictOf(pair, options, keys))
@@ -109,10 +108,6 @@ describe("the options typescript-eslint's version of each twin pair takes, given
     for (const [index, fixture] of EXTENSION_ONLY_OPTION_FIXTURES.entries()) fixtureOutcomes.push(await outcomeOf(fixture, index))
     outcomes = fixtureOutcomes
   }, ENGINES_TIMEOUT_MS)
-
-  afterAll(async () => {
-    await rm(projectDir, { recursive: true, force: true })
-  })
 
   it('are loaded by oxlint wherever they set no key the data lists', () => {
     expect(

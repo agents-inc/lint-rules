@@ -1,6 +1,6 @@
 import oxlintScopes from '../data/oxlint-scopes.json' with { type: 'json' }
 
-import { compareCodeUnits } from './generate/collections.ts'
+import { compareCodeUnits } from './collections.ts'
 
 type OxlintScope = {
   oxlintPlugin: string
@@ -38,6 +38,15 @@ export function pluginPrefixOf(ruleId: string): string | null {
   return ruleId.startsWith(SCOPED_PACKAGE_MARK)
     ? ruleId.slice(0, ruleId.lastIndexOf('/'))
     : ruleId.slice(0, ruleId.indexOf('/'))
+}
+
+/**
+ * A rule ID without its plugin prefix, split where ESLint splits it: `n/prefer-global/buffer` →
+ * `prefer-global/buffer`. An oxlint name splits the same way: its scope is one segment.
+ */
+export function ruleNameOf(ruleId: string): string {
+  const prefix = pluginPrefixOf(ruleId)
+  return prefix === null ? ruleId : ruleId.slice(`${prefix}/`.length)
 }
 
 /** The name `oxlint --rules` prints and oxlint's config accepts: bare for core rules. */

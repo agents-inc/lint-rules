@@ -1,13 +1,10 @@
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-
 import { ESLint, type Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
 import { consumerConfigSource } from './__tests__/cases/consumer-config-source.ts'
-import { type ShippedRule, catalog } from './catalog.ts'
+import { setUpTempDir } from './__tests__/temp-dirs.ts'
+import { catalog, routeOf, shippedRuleOf } from './catalog.ts'
 import { consumerConfigFiles } from './consumer-config-files.ts'
 import { eslintPlugins } from './eslint-plugins.ts'
 import { pluginPrefixOf } from './rule-id-parts.ts'
@@ -31,15 +28,8 @@ const LINTED_FILES = '**/*.{ts,mts,mjs}'
 const ESLINT_TIMEOUT_MS = 60_000
 const CATALOG_MODULE = './catalog.ts'
 
-function shippedRuleOf(ruleId: string): ShippedRule {
-  const route = catalog.rules.get(ruleId)
-  if (route === undefined) throw new Error(`${ruleId} is not a RuleId`)
-  if (route.shipped === null) throw new Error(`${ruleId} is not a rule we ship`)
-  return route.shipped
-}
-
 function sortedShippedIgnoresOf(ruleId: string): readonly string[] {
-  const { ignores } = shippedRuleOf(ruleId)
+  const { ignores } = shippedRuleOf(routeOf(ruleId, catalog))
   if (ignores === null) throw new Error(`${ruleId} ships without ignores`)
   return ignores.toSorted()
 }
@@ -54,7 +44,7 @@ function pluginEntryOf(ruleId: string): [string, ESLint.Plugin] {
 
 /** The rule's block as it ships: everywhere we lint, minus its own ignores, with its options. */
 function shippedBlockOf(ruleId: string): Linter.Config {
-  const { files, ignores, options } = shippedRuleOf(ruleId)
+  const { files, ignores, options } = shippedRuleOf(routeOf(ruleId, catalog))
   const entry: Linter.RuleEntry = ['error', ...options]
   return {
     files: [...(files ?? [LINTED_FILES])],
@@ -104,13 +94,12 @@ describe('consumerConfigFiles, the one source of the names of the files a consum
 })
 
 describe('the rules that report the files plan.md has a consumer write', () => {
-  let projectDir: string
+  const projectDir = setUpTempDir('rule-data-consumer-files-')
   let eslint: ESLint
 
-  beforeAll(async () => {
-    projectDir = await mkdtemp(join(tmpdir(), 'rule-data-consumer-files-'))
+  beforeAll(() => {
     eslint = new ESLint({
-      cwd: projectDir,
+      cwd: projectDir(),
       overrideConfigFile: true,
       overrideConfig: [
         {
@@ -121,10 +110,6 @@ describe('the rules that report the files plan.md has a consumer write', () => {
         ...RULES_THE_CONSUMER_FILES_BREAK.map(shippedBlockOf),
       ],
     })
-  })
-
-  afterAll(async () => {
-    await rm(projectDir, { recursive: true, force: true })
   })
 
   async function ruleIdsReportedOn(filePath: string): Promise<readonly string[]> {

@@ -1,7 +1,7 @@
 import eslintFallbackSkips from '../data/eslint-fallback-skips.json' with { type: 'json' }
 import eslintStandIns from '../data/eslint-stand-ins.json' with { type: 'json' }
 
-import { groupBy } from './generate/collections.ts'
+import { groupBy } from './collections.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
 import routing from './generated/routing.json' with { type: 'json' }
 import { parseEngine, parseOxlintCategory } from './parse-names.ts'
@@ -115,6 +115,8 @@ export type OxlintRule = {
   readonly category: OxlintCategory
 }
 
+export type OxlintRoute = RuleRoute & { readonly oxlintName: string; readonly oxlintPlugin: string }
+
 /** An installed ESLint rule that extends a core rule under another name. */
 type CoreRuleExtension = { readonly id: string; readonly coreRule: string }
 
@@ -149,6 +151,27 @@ export const catalog: Catalog = {
  * turns on with `options.typeAware`: a category never runs one otherwise.
  */
 export const ruleIdsOxlintRunsTypeAware: ReadonlySet<string> = new Set(inventory.rules.filter(isRunTypeAwareByOxlint).map(({ id }) => id))
+
+export function routeOf(id: string, { rules }: Pick<Catalog, 'rules'>): RuleRoute {
+  const route = rules.get(id)
+  if (route === undefined) throw new Error(`unknown rule ID "${id}"`)
+  return route
+}
+
+/** Narrows an oxlint-routed rule to one that carries the oxlint name and plugin it needs. */
+export function isOxlintRoute(route: RuleRoute): route is OxlintRoute {
+  if (route.engine !== 'oxlint') return false
+  if (route.oxlintName === null || route.oxlintPlugin === null) {
+    throw new Error(`${route.id}: routed to oxlint without an oxlint name and plugin`)
+  }
+  return true
+}
+
+/** What the rule ships with; a rule we do not ship throws. */
+export function shippedRuleOf({ id, shipped }: RuleRoute): ShippedRule {
+  if (shipped === null) throw new Error(`${id} is not shipped`)
+  return shipped
+}
 
 function isRunTypeAwareByOxlint({ oxlint }: InventoryRule): boolean {
   return oxlint !== null && oxlint.typeAware

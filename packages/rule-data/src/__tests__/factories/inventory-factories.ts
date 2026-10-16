@@ -3,6 +3,7 @@ import type {
   EslintImplementation,
   Inventory,
   InventoryRule,
+  InventoryVersions,
   OxlintImplementation,
 } from '../../generate/build-inventory.ts'
 import type { CanonicalRule, RoutingEntry } from '../../generate/build-routing.ts'
@@ -15,8 +16,17 @@ import type {
 
 const OXLINT_VERSION = '1.87.0'
 const ESLINT_VERSION = '10.12.0'
+const FIXED_VERSIONS: InventoryVersions = { oxlint: OXLINT_VERSION, eslint: ESLINT_VERSION, eslintPlugins: {} }
 // No join or route reads a rule's category, so both oxlint factories file it under one, alike.
 const OXLINT_CATEGORY: OxlintCategory = 'correctness'
+const SHIPPED_DEFAULTS: Omit<ShippedRule, 'ruleset' | 'alwaysOn' | 'whenSuppressions'> = {
+  options: [],
+  files: null,
+  ignores: null,
+  coveredBy: null,
+  splitByTypesWith: null,
+  readsRuntimeGlobals: false,
+}
 
 /**
  * What the generator reads from the installed engines: exactly these rules. Joining them never
@@ -25,10 +35,7 @@ const OXLINT_CATEGORY: OxlintCategory = 'correctness'
 export function buildInstalledEngines(
   rules: Pick<InstalledEngines, 'eslintRules' | 'oxlintRules'>,
 ): InstalledEngines {
-  return {
-    versions: { oxlint: OXLINT_VERSION, eslint: ESLINT_VERSION, eslintPlugins: {} },
-    ...rules,
-  }
+  return { versions: FIXED_VERSIONS, ...rules }
 }
 
 /** One line of `oxlint --rules`, under the name oxlint prints. */
@@ -52,10 +59,7 @@ export function buildInstalledEslintRule(
  * here rather than asked for.
  */
 export function buildInventory(rules: readonly InventoryRule[]): Inventory {
-  return {
-    versions: { oxlint: OXLINT_VERSION, eslint: ESLINT_VERSION, eslintPlugins: {} },
-    rules,
-  }
+  return { versions: FIXED_VERSIONS, rules }
 }
 
 /**
@@ -97,7 +101,7 @@ export function buildShippedRule(
   ruleset: string,
   fields: Partial<Pick<ShippedRule, 'coveredBy' | 'files' | 'ignores' | 'options' | 'readsRuntimeGlobals' | 'splitByTypesWith'>> = {},
 ): ShippedRule {
-  return { ruleset, options: [], files: null, ignores: null, coveredBy: null, splitByTypesWith: null, readsRuntimeGlobals: false, ...fields }
+  return { ruleset, ...SHIPPED_DEFAULTS, ...fields }
 }
 
 /** A route's `shipped` for a rule `allowSuppressions` decides: its setting in each mode, its options, on every file. */
@@ -105,7 +109,7 @@ export function buildShippedRuleDecidedBySuppressions(
   whenSuppressions: SettingBySuppressionMode,
   fields: Partial<Pick<ShippedRule, 'options'>> = {},
 ): ShippedRule {
-  return { whenSuppressions, options: [], files: null, ignores: null, coveredBy: null, splitByTypesWith: null, readsRuntimeGlobals: false, ...fields }
+  return { whenSuppressions, ...SHIPPED_DEFAULTS, ...fields }
 }
 
 /** The route of a rule oxlint runs: oxlint never has type information, so `typed` is false. */

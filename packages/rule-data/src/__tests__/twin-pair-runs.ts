@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -7,10 +6,11 @@ import { builtinRules } from 'eslint/use-at-your-own-risk'
 import typescriptEslint from 'typescript-eslint'
 
 import type { Catalog } from '../catalog.ts'
-import { eslintPlugins } from '../eslint-plugins.ts'
+import { ruleNameOf } from '../rule-id-parts.ts'
 import type { ReportKind } from './cases/extension-only-option-fixtures.ts'
 import { buildOxlintConfigRunningTheRuleWith } from './factories/oxlint-config-factories.ts'
-import { OXLINT_BIN } from './oxlint-print-config.ts'
+import { type OxlintJsonReport, oxlintJsonRun } from './oxlint-cli.ts'
+import { typescriptEslintRules } from './typescript-eslint-extensions.ts'
 
 // Each twin pair oxlint runs the core rule of, and each engine's report on a file under the options
 // given, for checking data/oxlint-refused-options.json against the installed engines.
@@ -27,7 +27,6 @@ export type TwinPairRoutedToOxlint = {
 export type EngineReport = { readonly outcome: 'refused' } | { readonly outcome: 'reported'; readonly report: readonly string[] }
 
 const TYPESCRIPT_ESLINT_PREFIX = '@typescript-eslint'
-const RULE_NAME_START = `${TYPESCRIPT_ESLINT_PREFIX}/`.length
 const OXLINT_CONFIG_FILE = 'fixture.oxlintrc.json'
 const TS_FILES = '**/*.ts'
 
@@ -42,9 +41,7 @@ export function twinPairsRoutedToOxlint({ rules, coreRuleExtensions }: Catalog):
 
 /** The schema of typescript-eslint's rule, as its installed plugin declares it: none for a rule that declares no options. */
 export function schemaOfTheExtension(extension: string): unknown {
-  const plugin = eslintPlugins[TYPESCRIPT_ESLINT_PREFIX]
-  if (plugin === undefined || plugin.rules === undefined) throw new Error(`no plugin with rules is registered under ${TYPESCRIPT_ESLINT_PREFIX}`)
-  const rule = plugin.rules[extension.slice(RULE_NAME_START)]
+  const rule = typescriptEslintRules()[ruleNameOf(extension)]
   if (rule === undefined || typeof rule === 'function') throw new Error(`typescript-eslint's installed plugin has no rule ${extension}`)
   return schemaDeclaredBy(rule.meta)
 }
@@ -97,17 +94,14 @@ export function oxlintReportOn(projectDir: string, pair: TwinPairRoutedToOxlint,
   const config = buildOxlintConfigRunningTheRuleWith(pair.oxlintName, options, { plugins: [pair.oxlintPlugin] })
   writeFileSync(join(projectDir, OXLINT_CONFIG_FILE), JSON.stringify(config))
   const fixing = kind === 'fixed text' ? ['--fix'] : []
-  const { stdout } = spawnSync(process.execPath, [OXLINT_BIN, '-c', OXLINT_CONFIG_FILE, '-f', 'json', ...fixing, file], { cwd: projectDir, encoding: 'utf8' })
-  // oxlint prints something other than JSON when it cannot load the config.
-  if (!stdout.trimStart().startsWith('{')) return { outcome: 'refused' }
+  const run = oxlintJsonRun(projectDir, OXLINT_CONFIG_FILE, [...fixing, file])
+  if (run.outcome === 'refused') return { outcome: 'refused' }
   if (kind === 'fixed text') return { outcome: 'reported', report: [readFileSync(join(projectDir, file), 'utf8')] }
-  return { outcome: 'reported', report: linesOf(diagnosticLinesIn(stdout)) }
+  return { outcome: 'reported', report: linesOf(diagnosticLinesIn(run.report)) }
 }
 
 /** The line of each diagnostic in oxlint's JSON report. */
-function diagnosticLinesIn(stdout: string): number[] {
-  // Parse boundary: oxlint's JSON report.
-  const { diagnostics } = JSON.parse(stdout) as { readonly diagnostics: readonly { readonly labels: readonly { readonly span: { readonly line: number } }[] }[] }
+function diagnosticLinesIn({ diagnostics }: OxlintJsonReport): number[] {
   return diagnostics.flatMap(({ labels: [firstLabel] }) => (firstLabel === undefined ? [] : [firstLabel.span.line]))
 }
 

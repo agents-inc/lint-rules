@@ -2,8 +2,8 @@
 // here may import a plugin, the parser, `globals`, typescript-eslint, `@eslint/compat` or
 // import-x: a team's oxlint config imports the parts, and must not load ESLint's side to do it.
 
-import type { Catalog } from '@workspace/rule-data'
-import { isEslintRoute, isOxlintRoute, routeOf } from './catalog-lookups.ts'
+import { type Catalog, isOxlintRoute, routeOf } from '@workspace/rule-data'
+import { isEslintRoute } from './catalog-lookups.ts'
 import { isRecord } from './is-record.ts'
 import { type FileOverrideInput, type LintRulesInput, projectedOnto, type TwoSetLintRulesInput } from './lint-rules-input.ts'
 import {

@@ -1,5 +1,6 @@
 import type { Catalog, RuleRoute } from '../catalog.ts'
-import { sharedKeys } from '../generate/collections.ts'
+import { sharedKeys } from '../collections.ts'
+import { type Breach, breachesOf } from './breaches.ts'
 
 // What data/eslint-stand-ins.json guarantees (docs/work/spec-data.md, 2.6): without oxlint, ESLint
 // states each stand-in in place of a shipped oxlint rule ESLint has no version of. So the oxlint
@@ -12,20 +13,17 @@ export type StandInSources = Pick<Catalog, 'eslintFallbackSkips' | 'eslintStandI
   readonly candidateIds: ReadonlySet<string>
 }
 
-/** A way one side of a pair can break it: what is wrong, and the routes it is wrong of. */
-type Breach = readonly [wrong: string, breaks: (route: RuleRoute) => boolean]
-
 /**
  * `stand-in for oxlint rule: what is wrong` for each pair that does not hold, then `stand-in: stands
  * in for …` for each stand-in named for more than one rule.
  */
 export function standInOffenders({ eslintStandIns, rules, ruleIdsWithAnEslintVersion, eslintFallbackSkips, candidateIds }: StandInSources): string[] {
-  const oxlintRuleBreaches: readonly Breach[] = [
+  const oxlintRuleBreaches: readonly Breach<RuleRoute>[] = [
     ['does not ship', ({ shipped }) => shipped === null],
     ['is run by ESLint', ({ engine }) => engine === 'eslint'],
     ['has an ESLint version, which ESLint takes over without oxlint', ({ id }) => ruleIdsWithAnEslintVersion.has(id)],
   ]
-  const standInBreaches: readonly Breach[] = [
+  const standInBreaches: readonly Breach<RuleRoute>[] = [
     ['is run by oxlint', ({ engine }) => engine === 'oxlint'],
     ['is typed', ({ typed }) => typed],
     ['ships', ({ shipped }) => shipped !== null],
@@ -43,7 +41,7 @@ export function standInOffenders({ eslintStandIns, rules, ruleIdsWithAnEslintVer
   return [...broken, ...shared]
 }
 
-function breachesOfSide(side: string, route: RuleRoute | undefined, breaches: readonly Breach[]): string[] {
+function breachesOfSide(side: string, route: RuleRoute | undefined, breaches: readonly Breach<RuleRoute>[]): string[] {
   if (route === undefined) return [`${side} is no RuleId`]
-  return breaches.filter(([, breaks]) => breaks(route)).map(([wrong]) => `${side} ${wrong}`)
+  return breachesOf(route, breaches).map((wrong) => `${side} ${wrong}`)
 }

@@ -1,6 +1,6 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
+import inventory from '@workspace/rule-data/generated/inventory.json' with { type: 'json' }
 import type { OxlintConfig, OxlintOverride } from 'oxlint'
-import inventory from '../../../rule-data/src/generated/inventory.json' with { type: 'json' }
 import { oxlintPluginListedAs, oxlintRuleKeyedBy } from './oxlint-rule-keys.ts'
 
 // When the team's oxlint config sets a rule (spec-merge-model.md, 1.2): anywhere, in whatever files,

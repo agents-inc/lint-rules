@@ -1,5 +1,5 @@
-import type { Catalog } from '@workspace/rule-data'
-import { routeOf, twinsOf } from './catalog-lookups.ts'
+import { type Catalog, routeOf } from '@workspace/rule-data'
+import { twinsOf } from './catalog-lookups.ts'
 import { layersKeepingRules, type RuleLayers } from './resolve-rule-layers.ts'
 
 // The owner's model (decisions.md, "Owner 2026-10-14"; spec-merge-model.md, 1.1): a rule the team's

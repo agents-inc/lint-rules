@@ -1,8 +1,7 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 import oxlintFileTypes from '../data/oxlint-file-types.json' with { type: 'json' }
 import {
@@ -22,6 +21,7 @@ import {
   runOxlintJson,
   type TriggerOutcome,
 } from './__tests__/oxlint-trigger-runs.ts'
+import { setUpTempDir } from './__tests__/temp-dirs.ts'
 import { fileTypesOxlintRunsTheRuleIn } from './oxlint-file-types.ts'
 import { oxlintPluginOf } from './rule-id-parts.ts'
 
@@ -72,7 +72,7 @@ function typesOwingAFinding(rule: string): FileType[] {
 }
 
 describe("the file types data/oxlint-file-types.json says oxlint runs each rule it guards in, against the installed oxlint's reports", () => {
-  let projectDir: string
+  const projectDir = setUpTempDir('rule-data-oxlint-file-types-')
   let outcomesByRule: OutcomesByRule = new Map()
 
   function typesWhere(rule: string, outcome: TriggerOutcome): FileType[] {
@@ -82,17 +82,17 @@ describe("the file types data/oxlint-file-types.json says oxlint runs each rule 
   }
 
   async function writeEachRulesFileOfEachType(): Promise<void> {
-    await Promise.all(FILE_TYPES.map((type) => mkdir(join(projectDir, folderOf(type)))))
+    await Promise.all(FILE_TYPES.map((type) => mkdir(join(projectDir(), folderOf(type)))))
     await Promise.all(
       FILE_TYPES.flatMap((type) =>
-        GUARDED_RULES.map((rule, index) => writeFile(join(projectDir, fileOf(type, index)), fileTextHolding(type, triggerOf(rule)))),
+        GUARDED_RULES.map((rule, index) => writeFile(join(projectDir(), fileOf(type, index)), fileTextHolding(type, triggerOf(rule)))),
       ),
     )
     const config = buildOxlintConfigRunningEachRuleIn(
       GUARDED_RULES.map((rule, index) => ({ files: [`**/rule-${String(index)}.*`], rule, options: triggerOf(rule).options })),
       { plugins: [...new Set(GUARDED_RULES.map(oxlintPluginOf))] },
     )
-    await writeFile(join(projectDir, RULES_CONFIG), JSON.stringify(config))
+    await writeFile(join(projectDir(), RULES_CONFIG), JSON.stringify(config))
   }
 
   /** One oxlint run over the files of each type: what it made of each file. */
@@ -100,24 +100,19 @@ describe("the file types data/oxlint-file-types.json says oxlint runs each rule 
     return FILE_TYPES.map((type) => ({
       type,
       byFile: outcomesOf(
-        runOxlintJson(projectDir, RULES_CONFIG, [folderOf(type)]),
+        runOxlintJson(projectDir(), RULES_CONFIG, [folderOf(type)]),
         GUARDED_RULES.map((_rule, index) => fileOf(type, index)),
       ),
     }))
   }
 
   beforeAll(async () => {
-    projectDir = await mkdtemp(join(tmpdir(), 'rule-data-oxlint-file-types-'))
     await writeEachRulesFileOfEachType()
     const ofEachType = outcomesOfEachType()
     outcomesByRule = new Map(
       GUARDED_RULES.map((rule, index) => [rule, new Map(ofEachType.map(({ type, byFile }) => [type, outcomeOfFile(byFile, fileOf(type, index))]))]),
     )
   }, OXLINT_TIMEOUT_MS)
-
-  afterAll(async () => {
-    await rm(projectDir, { recursive: true, force: true })
-  })
 
   it('reports each rule in exactly the file types the data says oxlint runs it in, but those its code cannot be parsed in or finds nothing in', () => {
     expect(Object.fromEntries(GUARDED_RULES.map((rule) => [rule, typesWhere(rule, 'reports')]))).toStrictEqual(
@@ -157,27 +152,22 @@ describe('data/oxlint-file-types.json', () => {
 })
 
 describe('the extensions data/oxlint-file-types.json says oxlint lints by default, against the installed oxlint', () => {
-  let projectDir: string
+  const projectDir = setUpTempDir('rule-data-oxlint-extensions-')
 
   beforeAll(async () => {
-    projectDir = await mkdtemp(join(tmpdir(), 'rule-data-oxlint-extensions-'))
-    await mkdir(join(projectDir, EXTENSIONS_FOLDER))
+    await mkdir(join(projectDir(), EXTENSIONS_FOLDER))
     const lintedFiles = LINTED_EXTENSIONS.map((extension): [string, string] => [
       `a.${extension}`,
       fileTextHolding(extension, { code: DEBUGGER_STATEMENT, unparsedIn: [] }),
     ])
     await Promise.all(
-      [...lintedFiles, ...Object.entries(NOT_LINTED_FILES)].map(([file, text]) => writeFile(join(projectDir, EXTENSIONS_FOLDER, file), text)),
+      [...lintedFiles, ...Object.entries(NOT_LINTED_FILES)].map(([file, text]) => writeFile(join(projectDir(), EXTENSIONS_FOLDER, file), text)),
     )
-    await writeFile(join(projectDir, EXTENSIONS_CONFIG), JSON.stringify(buildOxlintConfigEnabling([UNGUARDED_RULE], { plugins: [] })))
+    await writeFile(join(projectDir(), EXTENSIONS_CONFIG), JSON.stringify(buildOxlintConfigEnabling([UNGUARDED_RULE], { plugins: [] })))
   }, OXLINT_TIMEOUT_MS)
 
-  afterAll(async () => {
-    await rm(projectDir, { recursive: true, force: true })
-  })
-
   it('lints a file of each of them, and no file of any other extension', () => {
-    const report = runOxlintJson(projectDir, EXTENSIONS_CONFIG, [EXTENSIONS_FOLDER])
+    const report = runOxlintJson(projectDir(), EXTENSIONS_CONFIG, [EXTENSIONS_FOLDER])
     const extensions = fileTypesOxlintRunsTheRuleIn(UNGUARDED_RULE).extensions
 
     expect({

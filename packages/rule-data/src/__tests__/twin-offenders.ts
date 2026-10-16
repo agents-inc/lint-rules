@@ -1,5 +1,5 @@
 import type { Catalog, RuleRoute } from '../catalog.ts'
-import { sharedKeys } from '../generate/collections.ts'
+import { sharedKeys } from '../collections.ts'
 
 /** A shipped rule and one of its typescript-eslint twins. */
 type ShippedTwin = { readonly ruleId: string; readonly twin: string }

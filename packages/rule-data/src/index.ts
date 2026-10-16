@@ -1,5 +1,15 @@
-export { catalog, ruleIdsOxlintRunsTypeAware } from './catalog.ts'
-export type { Catalog, Engine, OxlintCategory, OxlintRule, RuleRoute, RulesetDefinition, RulesetList, ShippedRule } from './catalog.ts'
+export { catalog, isOxlintRoute, routeOf, ruleIdsOxlintRunsTypeAware, shippedRuleOf } from './catalog.ts'
+export type {
+  Catalog,
+  Engine,
+  OxlintCategory,
+  OxlintRoute,
+  OxlintRule,
+  RuleRoute,
+  RulesetDefinition,
+  RulesetList,
+  ShippedRule,
+} from './catalog.ts'
 export type { RuleId, SuppressionRuleId } from './generated/rule-ids.ts'
 export type {
   LanguageRulesetName,

@@ -1,12 +1,12 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import { buildOxlintConfigEnabling } from './__tests__/factories/oxlint-config-factories.ts'
-import { type PrintedOxlintConfig, printOxlintConfig } from './__tests__/oxlint-print-config.ts'
-import { type RuleRoute, catalog } from './catalog.ts'
+import { type PrintedOxlintConfig, printOxlintConfig } from './__tests__/oxlint-cli.ts'
+import { setUpTempDir } from './__tests__/temp-dirs.ts'
+import { catalog, routeOf } from './catalog.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
 
 type SpelledRule = { nativeName: string; spellings: readonly string[] }
@@ -29,15 +29,9 @@ const oxlintImplementations = inventory.rules.flatMap(({ id, oxlint }) =>
 )
 const oxlintPlugins = [...new Set(oxlintImplementations.map(({ plugin }) => plugin))]
 
-function routeOf(id: string): RuleRoute {
-  const route = catalog.rules.get(id)
-  if (route === undefined) throw new Error(`${id} is in the inventory but not a RuleId`)
-  return route
-}
-
 const spelledRules: readonly SpelledRule[] = oxlintImplementations.map(({ id, nativeName }) => ({
   nativeName,
-  spellings: routeOf(id).oxlintSpellings,
+  spellings: routeOf(id, catalog).oxlintSpellings,
 }))
 
 // One config per spelling position: config k holds the k-th spelling of every rule that has one, so
@@ -63,21 +57,13 @@ function isRefusedAsUnknown(printed: PrintedOxlintConfig): boolean {
 }
 
 describe("the oxlint spellings of every RuleId oxlint implements, read by the installed oxlint's config", () => {
-  let configDir: string
+  const configDir = setUpTempDir('rule-data-oxlint-spellings-')
 
   async function printConfigEnabling(name: string, ruleKeys: readonly string[]): Promise<PrintedOxlintConfig> {
-    const configPath = join(configDir, `${name}.json`)
+    const configPath = join(configDir(), `${name}.json`)
     await writeFile(configPath, JSON.stringify(buildOxlintConfigEnabling(ruleKeys, { plugins: oxlintPlugins })))
     return printOxlintConfig(configPath)
   }
-
-  beforeAll(async () => {
-    configDir = await mkdtemp(join(tmpdir(), 'rule-data-oxlint-spellings-'))
-  })
-
-  afterAll(async () => {
-    await rm(configDir, { recursive: true, force: true })
-  })
 
   it(
     "resolves each spelling of each rule to that rule's native oxlint name",

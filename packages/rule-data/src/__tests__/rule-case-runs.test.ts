@@ -1,12 +1,9 @@
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 
 import type { RuleRoute } from '../catalog.ts'
 import { buildEslintRoute, buildOxlintRoute, buildShippedRule, buildShippedRuleDecidedBySuppressions } from './factories/inventory-factories.ts'
 import { type CaseFile, UNSHIPPED_RULE_SETTINGS, eslintBlocksOf, eslintOutcomesOf, oxlintOutcomesOf, shippedSettingsOf, writeCaseFiles } from './rule-case-runs.ts'
+import { setUpTempDir } from './temp-dirs.ts'
 
 const ENGINES_TIMEOUT_MS = 60_000
 const SKIPPED = 'skipped/**'
@@ -94,15 +91,10 @@ describe('eslintBlocksOf', () => {
 })
 
 describe("each engine's outcome on each file, against the installed engines", () => {
-  let projectDir: string
+  const projectDir = setUpTempDir('rule-data-rule-case-runs-')
 
   beforeAll(async () => {
-    projectDir = await mkdtemp(join(tmpdir(), 'rule-data-rule-case-runs-'))
-    await writeCaseFiles(projectDir, [DEBUGGER_FILE, QUIET_FILE, UNPARSABLE_FILE, SKIPPED_FILE])
-  })
-
-  afterAll(async () => {
-    await rm(projectDir, { recursive: true, force: true })
+    await writeCaseFiles(projectDir(), [DEBUGGER_FILE, QUIET_FILE, UNPARSABLE_FILE, SKIPPED_FILE])
   })
 
   it(
@@ -110,7 +102,7 @@ describe("each engine's outcome on each file, against the installed engines", ()
     async () => {
       const svelteFile: CaseFile = { path: 'src/counter.svelte', source: '<script>\n  debugger\n</script>\n' }
       const outcomes = await eslintOutcomesOf(
-        projectDir,
+        projectDir(),
         [{ ruleId: 'no-debugger', settings: { ...UNSHIPPED_RULE_SETTINGS, ignores: [SKIPPED] } }],
         [DEBUGGER_FILE, QUIET_FILE, UNPARSABLE_FILE, SKIPPED_FILE, svelteFile],
         { typed: false },
@@ -130,7 +122,7 @@ describe("each engine's outcome on each file, against the installed engines", ()
   it(
     "gives oxlint's finding, its silence, a file it cannot parse as not linted, and silence in the rule's ignores",
     async () => {
-      const outcomes = oxlintOutcomesOf(projectDir, 'outcomes.oxlintrc.json', { oxlintName: 'no-debugger', oxlintPlugin: 'eslint' }, shippedSettingsOf(noDebuggerInOxlint), [
+      const outcomes = oxlintOutcomesOf(projectDir(), 'outcomes.oxlintrc.json', { oxlintName: 'no-debugger', oxlintPlugin: 'eslint' }, shippedSettingsOf(noDebuggerInOxlint), [
         DEBUGGER_FILE,
         QUIET_FILE,
         UNPARSABLE_FILE,
@@ -150,7 +142,7 @@ describe("each engine's outcome on each file, against the installed engines", ()
   it(
     'gives every file as not linted where oxlint refuses the config',
     () => {
-      const outcomes = oxlintOutcomesOf(projectDir, 'refused.oxlintrc.json', { oxlintName: 'no-such-rule', oxlintPlugin: 'eslint' }, UNSHIPPED_RULE_SETTINGS, [DEBUGGER_FILE, QUIET_FILE])
+      const outcomes = oxlintOutcomesOf(projectDir(), 'refused.oxlintrc.json', { oxlintName: 'no-such-rule', oxlintPlugin: 'eslint' }, UNSHIPPED_RULE_SETTINGS, [DEBUGGER_FILE, QUIET_FILE])
 
       expect(Object.fromEntries(outcomes)).toStrictEqual({ [DEBUGGER_FILE.path]: 'not linted', [QUIET_FILE.path]: 'not linted' })
     },
@@ -158,7 +150,7 @@ describe("each engine's outcome on each file, against the installed engines", ()
   )
 
   it('throws for a rule shipping files of its own, which the oxlint build refuses', () => {
-    expect(() => oxlintOutcomesOf(projectDir, 'files.oxlintrc.json', { oxlintName: 'no-debugger', oxlintPlugin: 'eslint' }, { ...UNSHIPPED_RULE_SETTINGS, files: ['**/*.ts'] }, [DEBUGGER_FILE])).toThrow(
+    expect(() => oxlintOutcomesOf(projectDir(), 'files.oxlintrc.json', { oxlintName: 'no-debugger', oxlintPlugin: 'eslint' }, { ...UNSHIPPED_RULE_SETTINGS, files: ['**/*.ts'] }, [DEBUGGER_FILE])).toThrow(
       /no-debugger ships files of its own/,
     )
   })

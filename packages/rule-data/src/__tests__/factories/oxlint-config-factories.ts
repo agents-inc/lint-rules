@@ -1,5 +1,6 @@
 // Every category oxlint enables rules by. Off, so a config runs exactly the rules it names.
 const OXLINT_CATEGORIES = ['correctness', 'suspicious', 'pedantic', 'style', 'nursery', 'restriction', 'perf']
+const ALL_CATEGORIES_OFF: Readonly<Record<string, string>> = Object.fromEntries(OXLINT_CATEGORIES.map((category) => [category, 'off']))
 const DENY = 'deny'
 const ERROR = 'error'
 const JSON_INDENT = 2
@@ -20,7 +21,7 @@ export function buildOxlintConfigEnabling(
 ): OxlintConfigFile {
   return {
     plugins,
-    categories: Object.fromEntries(OXLINT_CATEGORIES.map((category) => [category, 'off'])),
+    categories: ALL_CATEGORIES_OFF,
     rules: Object.fromEntries(ruleKeys.map((ruleKey) => [ruleKey, ERROR])),
   }
 }
@@ -51,7 +52,7 @@ export function buildOxlintConfigRunningEachRuleIn(
 ): Omit<OxlintConfigFile, 'rules'> & { overrides: { files: readonly string[]; rules: Readonly<Record<string, unknown>> }[] } {
   return {
     plugins,
-    categories: Object.fromEntries(OXLINT_CATEGORIES.map((category) => [category, 'off'])),
+    categories: ALL_CATEGORIES_OFF,
     overrides: ruleFiles.map(({ files, rule, options }) => ({ files, rules: { [rule]: options === undefined ? ERROR : [ERROR, ...options] } })),
   }
 }
@@ -64,7 +65,7 @@ export function buildOxlintConfigRunningTheRuleWith(
 ): Omit<OxlintConfigFile, 'rules'> & { rules: Readonly<Record<string, readonly unknown[]>> } {
   return {
     plugins,
-    categories: Object.fromEntries(OXLINT_CATEGORIES.map((category) => [category, 'off'])),
+    categories: ALL_CATEGORIES_OFF,
     rules: { [rule]: [ERROR, ...options] },
   }
 }

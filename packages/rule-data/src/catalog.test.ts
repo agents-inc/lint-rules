@@ -4,39 +4,18 @@ import rulesetDefinitions from '../data/ruleset-definitions.json' with { type: '
 import { RULES_UNICORN_78_ADDS } from './__tests__/cases/plugin-upgrades.ts'
 import { ROUND_2_DROPS, RULES_NEEDING_NEWER_NODE } from './__tests__/cases/round-2-drops.ts'
 import { isSortingRuleset } from './__tests__/cases/sorting-rulesets.ts'
-import { buildEslintRoute, buildShippedRule } from './__tests__/factories/inventory-factories.ts'
+import { buildEslintRoute, buildOxlintRoute, buildShippedRule } from './__tests__/factories/inventory-factories.ts'
 import { negatedShippedGlobsIn } from './__tests__/negated-globs.ts'
-import { ruleNameOf } from './__tests__/rule-name.ts'
 import { coreRulesExtendedMoreThanOnce, twinsSharedByShippedRules } from './__tests__/twin-offenders.ts'
 import { typescriptEslintExtensions } from './__tests__/typescript-eslint-extensions.ts'
-import { type RuleRoute, type ShippedRule, catalog } from './catalog.ts'
+import { type RuleRoute, catalog, isOxlintRoute, routeOf, shippedRuleOf } from './catalog.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
+import { ruleNameOf } from './rule-id-parts.ts'
 
 const routes = [...catalog.rules.values()]
 const nativeOxlintNameById: ReadonlyMap<string, string> = new Map(
   inventory.rules.flatMap<[string, string]>(({ id, oxlint }) => (oxlint === null ? [] : [[id, oxlint.oxlintName]])),
 )
-
-function routeOf(id: string): RuleRoute {
-  const route = catalog.rules.get(id)
-  if (route === undefined) throw new Error(`${id} is not a RuleId`)
-  return route
-}
-
-function shippedOptionsOf(route: RuleRoute): readonly unknown[] {
-  if (route.shipped === null) throw new Error(`${route.id} is not shipped`)
-  return route.shipped.options
-}
-
-function oxlintNameOf(route: RuleRoute): string {
-  if (route.oxlintName === null) throw new Error(`${route.id} is routed to oxlint without an oxlint name`)
-  return route.oxlintName
-}
-
-function shippedOf(route: RuleRoute): ShippedRule {
-  if (route.shipped === null) throw new Error(`${route.id} is not shipped`)
-  return route.shipped
-}
 
 /** A relation as the catalog gives it: another rule's ID, or null for none. */
 function isRelationValue(value: unknown): boolean {
@@ -179,7 +158,7 @@ describe('the catalog, src/generated/routing.json', () => {
     it("parses each as the other rule's ID where rules.json records one, and as null where it records none", () => {
       const relationsById = Object.fromEntries(
         ['no-return-assign', 'no-throw-literal', 'eqeqeq'].map((id) => {
-          const { coveredBy, splitByTypesWith } = shippedOf(routeOf(id))
+          const { coveredBy, splitByTypesWith } = shippedRuleOf(routeOf(id, catalog))
           return [id, { coveredBy, splitByTypesWith }]
         }),
       )
@@ -204,7 +183,7 @@ describe('the catalog, src/generated/routing.json', () => {
   // mark, false where rules.json gives none (spec-core.md, 2.5).
   describe("whether our runtimes' globals serve each shipped rule", () => {
     it('parses it as true where rules.json marks the rule, and as false where it does not', () => {
-      const markById = Object.fromEntries(['no-undef', 'eqeqeq'].map((id) => [id, shippedOf(routeOf(id)).readsRuntimeGlobals]))
+      const markById = Object.fromEntries(['no-undef', 'eqeqeq'].map((id) => [id, shippedRuleOf(routeOf(id, catalog)).readsRuntimeGlobals]))
 
       expect(markById).toStrictEqual({ 'no-undef': true, eqeqeq: false })
     })
@@ -232,8 +211,9 @@ describe('the catalog, src/generated/routing.json', () => {
     // oxlint's names (spec-core.md, C5). A third rename needs those stubs checked for it.
     it('runs exactly the two renamed unicorn rules in oxlint under a rule name of its own', () => {
       const renamedInOxlint = routes
-        .filter((route) => route.engine === 'oxlint' && ruleNameOf(route.id) !== ruleNameOf(oxlintNameOf(route)))
-        .map((route) => `${route.id} (oxlint: ${oxlintNameOf(route)})`)
+        .filter(isOxlintRoute)
+        .filter((route) => ruleNameOf(route.id) !== ruleNameOf(route.oxlintName))
+        .map((route) => `${route.id} (oxlint: ${route.oxlintName})`)
 
       expect(renamedInOxlint).toStrictEqual([
         'unicorn/dom-node-dataset (oxlint: unicorn/prefer-dom-node-dataset)',
@@ -242,7 +222,7 @@ describe('the catalog, src/generated/routing.json', () => {
     })
 
     it('runs unicorn/no-for-each in oxlint under its old name, and keeps the spellings oxlint knows it by', () => {
-      const { engine, oxlintName, oxlintPlugin, oxlintSpellings } = routeOf('unicorn/no-for-each')
+      const { engine, oxlintName, oxlintPlugin, oxlintSpellings } = routeOf('unicorn/no-for-each', catalog)
 
       expect({ engine, oxlintName, oxlintPlugin, oxlintSpellings }).toStrictEqual({
         engine: 'oxlint',
@@ -253,7 +233,7 @@ describe('the catalog, src/generated/routing.json', () => {
     })
 
     it('runs unicorn/dom-node-dataset in oxlint under its old name, and keeps the spellings oxlint knows it by', () => {
-      const { engine, oxlintName, oxlintPlugin, oxlintSpellings } = routeOf('unicorn/dom-node-dataset')
+      const { engine, oxlintName, oxlintPlugin, oxlintSpellings } = routeOf('unicorn/dom-node-dataset', catalog)
 
       expect({ engine, oxlintName, oxlintPlugin, oxlintSpellings }).toStrictEqual({
         engine: 'oxlint',
@@ -265,7 +245,7 @@ describe('the catalog, src/generated/routing.json', () => {
 
     // oxlint has it under react/, but refuses an option ESLint's version takes (spec-merge-model.md, 3.2).
     it('routes react-hooks/rules-of-hooks to ESLint, though oxlint has it under a name that differs in prefix only', () => {
-      const { engine, oxlintName } = routeOf('react-hooks/rules-of-hooks')
+      const { engine, oxlintName } = routeOf('react-hooks/rules-of-hooks', catalog)
       const oxlintsNames = catalog.oxlintRules.filter(({ id }) => id === 'react-hooks/rules-of-hooks').map((rule) => rule.oxlintName)
 
       expect({ engine, oxlintName, oxlintsNames }).toStrictEqual({ engine: 'eslint', oxlintName: null, oxlintsNames: ['react/rules-of-hooks'] })
@@ -276,7 +256,7 @@ describe('the catalog, src/generated/routing.json', () => {
     it('keeps no-use-before-define available to enable in oxlint but unshipped, beside a shipped core rule', () => {
       const routesById = Object.fromEntries(
         ['no-dupe-class-members', 'no-use-before-define'].map((id) => {
-          const { engine, shipped } = routeOf(id)
+          const { engine, shipped } = routeOf(id, catalog)
           return [id, { engine, shipped }]
         }),
       )
@@ -311,7 +291,7 @@ describe('the catalog, src/generated/routing.json', () => {
           'unicorn/prefer-math-constants',
           'unicorn/prefer-type-literal-last',
         ].map((id) => {
-          const { shipped } = routeOf(id)
+          const { shipped } = routeOf(id, catalog)
           return [id, shipped === null ? null : shipped.ruleset]
         }),
       )
@@ -333,8 +313,8 @@ describe('the catalog, src/generated/routing.json', () => {
     it('routes both suppression bans to ESLint, each with its shipped options', () => {
       const bans = Object.fromEntries(
         ['@typescript-eslint/ban-ts-comment', 'house/no-suppressions'].map((id) => {
-          const route = routeOf(id)
-          return [id, { engine: route.engine, oxlintName: route.oxlintName, options: shippedOptionsOf(route) }]
+          const route = routeOf(id, catalog)
+          return [id, { engine: route.engine, oxlintName: route.oxlintName, options: shippedRuleOf(route).options }]
         }),
       )
 
@@ -350,7 +330,7 @@ describe('the catalog, src/generated/routing.json', () => {
 
     // Owner, 2026-10-14 (q-r2-class-helper-ruleset, lib-structure): a libs ruleset of its own.
     it('ships house/require-class-helper in class-names, run by ESLint at its defaults, related to no other rule', () => {
-      const { engine, shipped } = routeOf('house/require-class-helper')
+      const { engine, shipped } = routeOf('house/require-class-helper', catalog)
 
       expect({ engine, shipped }).toStrictEqual({
         engine: 'eslint',
@@ -364,8 +344,8 @@ describe('the catalog, src/generated/routing.json', () => {
     // n/no-extraneous-import no longer ships; import-x/no-extraneous-dependencies reports the same.
     it("ships n/no-unpublished-import with enhanced-resolve's tsconfig option beside its allowModules, and n/no-extraneous-import not at all", () => {
       expect({
-        'n/no-unpublished-import': shippedOptionsOf(routeOf('n/no-unpublished-import')),
-        'n/no-extraneous-import': routeOf('n/no-extraneous-import').shipped,
+        'n/no-unpublished-import': shippedRuleOf(routeOf('n/no-unpublished-import', catalog)).options,
+        'n/no-extraneous-import': routeOf('n/no-extraneous-import', catalog).shipped,
       }).toStrictEqual({
         'n/no-unpublished-import': [{ allowModules: expect.any(Array), resolverConfig: { tsconfig: true } }],
         'n/no-extraneous-import': null,
@@ -422,7 +402,49 @@ describe('the catalog, src/generated/routing.json', () => {
     })
 
     it('gives a rule only ESLint has no oxlint spellings', () => {
-      expect(routeOf('sonarjs/cognitive-complexity').oxlintSpellings).toStrictEqual([])
+      expect(routeOf('sonarjs/cognitive-complexity', catalog).oxlintSpellings).toStrictEqual([])
+    })
+  })
+})
+
+describe('the route lookups', () => {
+  const SHIPPED_IN_QUALITY = buildShippedRule('quality')
+  const OXLINT_ROUTE = buildOxlintRoute('plugin/oxlint-rule', {
+    oxlintName: 'plugin/oxlint-rule',
+    oxlintPlugin: 'plugin',
+    eslintAliases: [],
+    oxlintSpellings: [],
+    shipped: SHIPPED_IN_QUALITY,
+  })
+  const UNSHIPPED_ESLINT_ROUTE = buildEslintRoute('plugin/eslint-rule', { typed: false, oxlintSpellings: [], shipped: null })
+
+  describe('routeOf', () => {
+    it("gives a RuleId's route, and throws for an ID the catalog does not hold, naming it", () => {
+      const rules = new Map([[OXLINT_ROUTE.id, OXLINT_ROUTE]])
+
+      expect(routeOf('plugin/oxlint-rule', { rules })).toBe(OXLINT_ROUTE)
+      expect(() => routeOf('plugin/unknown', { rules })).toThrow('unknown rule ID "plugin/unknown"')
+    })
+  })
+
+  describe('isOxlintRoute', () => {
+    it('holds for a route oxlint runs, and not for one ESLint runs', () => {
+      expect([isOxlintRoute(OXLINT_ROUTE), isOxlintRoute(UNSHIPPED_ESLINT_ROUTE)]).toStrictEqual([true, false])
+    })
+
+    it('throws for a route oxlint runs without an oxlint name, or without an oxlint plugin, naming the rule', () => {
+      const withoutName: RuleRoute = { ...OXLINT_ROUTE, oxlintName: null }
+      const withoutPlugin: RuleRoute = { ...OXLINT_ROUTE, oxlintPlugin: null }
+
+      expect(() => isOxlintRoute(withoutName)).toThrow('plugin/oxlint-rule: routed to oxlint without an oxlint name and plugin')
+      expect(() => isOxlintRoute(withoutPlugin)).toThrow('plugin/oxlint-rule: routed to oxlint without an oxlint name and plugin')
+    })
+  })
+
+  describe('shippedRuleOf', () => {
+    it('gives what a shipped rule ships with, and throws for a rule we do not ship, naming it', () => {
+      expect(shippedRuleOf(OXLINT_ROUTE)).toBe(SHIPPED_IN_QUALITY)
+      expect(() => shippedRuleOf(UNSHIPPED_ESLINT_ROUTE)).toThrow('plugin/eslint-rule is not shipped')
     })
   })
 })

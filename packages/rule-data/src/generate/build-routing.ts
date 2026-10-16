@@ -1,13 +1,14 @@
 import type { Engine, RuleRoute, ShippedScope } from '../catalog.ts'
+import { compareCodeUnits, sharedKeys } from '../collections.ts'
 import { oxlintSpellingsOf } from '../rule-id-parts.ts'
 import {
-  type SuppressionMode,
+  type BySuppressionMode,
   type SuppressionModeSetting,
   type TurnedOnBy,
+  inEachSuppressionMode,
   parseTurnedOnBy,
 } from '../turned-on-by.ts'
 import type { Inventory, InventoryRule } from './build-inventory.ts'
-import { compareCodeUnits, sharedKeys } from './collections.ts'
 
 /** How a rule came by its ruleset, or by `alwaysOn`: the draft's confidence and author, kept for review. */
 export type RulesetAssignment = {
@@ -48,7 +49,7 @@ export type CanonicalRule = {
    * Present on the rules `allowSuppressions` decides, whatever rulesets are listed: routing ships
    * this in place of `ruleset` and `alwaysOn`, which canonical-list.test.ts still requires one of.
    */
-  whenSuppressions?: { readonly [mode in SuppressionMode]: CanonicalSuppressionModeSetting }
+  whenSuppressions?: BySuppressionMode<CanonicalSuppressionModeSetting>
   engine: Engine
   /**
    * Why ESLint runs a rule oxlint has an untyped version of: where oxlint's version is measurably
@@ -148,12 +149,7 @@ function relatedRuleIdsOf({ coveredBy, splitByTypesWith }: CanonicalRule): Pick<
 
 function turnedOnByOf({ id, ruleset, alwaysOn, whenSuppressions, options }: CanonicalRule): TurnedOnBy {
   if (whenSuppressions === undefined) return parseTurnedOnBy(id, { ruleset, alwaysOn })
-  return {
-    whenSuppressions: {
-      banned: resolvedSettingOf(whenSuppressions.banned, options),
-      allowed: resolvedSettingOf(whenSuppressions.allowed, options),
-    },
-  }
+  return { whenSuppressions: inEachSuppressionMode(whenSuppressions, (setting) => resolvedSettingOf(setting, options)) }
 }
 
 function resolvedSettingOf(

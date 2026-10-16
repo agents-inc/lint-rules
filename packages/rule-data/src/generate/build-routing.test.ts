@@ -12,6 +12,16 @@ import {
 import { oxlintSpellingsOf } from '../rule-id-parts.ts'
 import { buildRouting } from './build-routing.ts'
 
+const UNTYPED_ESLINT_VERSION = buildEslintImplementation({ deprecated: false, typed: false })
+const TYPED_ESLINT_VERSION = buildEslintImplementation({ deprecated: false, typed: true })
+const OXLINT_NO_ARRAY_FOR_EACH = buildOxlintImplementation('unicorn/no-array-for-each', { oxlintPlugin: 'unicorn', typeAware: false, eslintAliases: [] })
+const OXLINT_NO_THENABLE = buildOxlintImplementation('unicorn/no-thenable', { oxlintPlugin: 'unicorn', typeAware: false, eslintAliases: [] })
+const TYPE_AWARE_OXLINT_NO_FLOATING_PROMISES = buildOxlintImplementation('typescript/no-floating-promises', {
+  oxlintPlugin: 'typescript',
+  typeAware: true,
+  eslintAliases: [],
+})
+
 describe('buildRouting', () => {
   describe('a rule the canonical list names', () => {
     it('runs on the engine the canonical list names, though oxlint has an untyped version', () => {
@@ -22,7 +32,7 @@ describe('buildRouting', () => {
             typeAware: false,
             eslintAliases: [],
           }),
-          eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+          eslint: UNTYPED_ESLINT_VERSION,
         }),
       ])
       const canonicalRules = [
@@ -56,7 +66,7 @@ describe('buildRouting', () => {
             typeAware: false,
             eslintAliases: [],
           }),
-          eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+          eslint: UNTYPED_ESLINT_VERSION,
         }),
       ])
       const canonicalRules = [
@@ -84,7 +94,7 @@ describe('buildRouting', () => {
       const inventory = buildInventory([
         buildInventoryRule('max-lines', {
           oxlint: null,
-          eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+          eslint: UNTYPED_ESLINT_VERSION,
         }),
       ])
       const canonicalRules = [
@@ -119,15 +129,15 @@ describe('buildRouting', () => {
     const inventory = buildInventory([
       buildInventoryRule('no-new', {
         oxlint: buildOxlintImplementation('no-new', { oxlintPlugin: 'eslint', typeAware: false, eslintAliases: [] }),
-        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+        eslint: UNTYPED_ESLINT_VERSION,
       }),
       buildInventoryRule('no-return-assign', {
         oxlint: null,
-        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+        eslint: UNTYPED_ESLINT_VERSION,
       }),
       buildInventoryRule('functional/no-expression-statements', {
         oxlint: null,
-        eslint: buildEslintImplementation({ deprecated: false, typed: true }),
+        eslint: TYPED_ESLINT_VERSION,
       }),
     ])
 
@@ -192,15 +202,15 @@ describe('buildRouting', () => {
     const inventory = buildInventory([
       buildInventoryRule('no-undef', {
         oxlint: buildOxlintImplementation('no-undef', { oxlintPlugin: 'eslint', typeAware: false, eslintAliases: [] }),
-        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+        eslint: UNTYPED_ESLINT_VERSION,
       }),
       buildInventoryRule('no-return-assign', {
         oxlint: null,
-        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+        eslint: UNTYPED_ESLINT_VERSION,
       }),
       buildInventoryRule('eqeqeq', {
         oxlint: null,
-        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+        eslint: UNTYPED_ESLINT_VERSION,
       }),
     ])
 
@@ -223,12 +233,8 @@ describe('buildRouting', () => {
     it("are oxlint's spellings of its own name for a rule oxlint has under another name, though ESLint runs it", () => {
       const inventory = buildInventory([
         buildInventoryRule('unicorn/no-for-each', {
-          oxlint: buildOxlintImplementation('unicorn/no-array-for-each', {
-            oxlintPlugin: 'unicorn',
-            typeAware: false,
-            eslintAliases: [],
-          }),
-          eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+          oxlint: OXLINT_NO_ARRAY_FOR_EACH,
+          eslint: UNTYPED_ESLINT_VERSION,
         }),
       ])
       const canonicalRules = [
@@ -259,7 +265,7 @@ describe('buildRouting', () => {
             typeAware: false,
             eslintAliases: [],
           }),
-          eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+          eslint: UNTYPED_ESLINT_VERSION,
         }),
         buildInventoryRule('oxc/no-accumulating-spread', {
           oxlint: buildOxlintImplementation('oxc/no-accumulating-spread', {
@@ -292,12 +298,8 @@ describe('buildRouting', () => {
     it("runs on ESLint when oxlint's version needs type information", () => {
       const inventory = buildInventory([
         buildInventoryRule('@typescript-eslint/no-floating-promises', {
-          oxlint: buildOxlintImplementation('typescript/no-floating-promises', {
-            oxlintPlugin: 'typescript',
-            typeAware: true,
-            eslintAliases: [],
-          }),
-          eslint: buildEslintImplementation({ deprecated: false, typed: true }),
+          oxlint: TYPE_AWARE_OXLINT_NO_FLOATING_PROMISES,
+          eslint: TYPED_ESLINT_VERSION,
         }),
       ])
 
@@ -314,11 +316,11 @@ describe('buildRouting', () => {
       const inventory = buildInventory([
         buildInventoryRule('sonarjs/cognitive-complexity', {
           oxlint: null,
-          eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+          eslint: UNTYPED_ESLINT_VERSION,
         }),
         buildInventoryRule('functional/prefer-immutable-types', {
           oxlint: null,
-          eslint: buildEslintImplementation({ deprecated: false, typed: true }),
+          eslint: TYPED_ESLINT_VERSION,
         }),
       ])
 
@@ -333,7 +335,7 @@ describe('buildRouting', () => {
     const inventory = buildInventory([
       buildInventoryRule('unicorn/dom-node-dataset', {
         oxlint: null,
-        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+        eslint: UNTYPED_ESLINT_VERSION,
       }),
       buildInventoryRule('unicorn/prefer-dom-node-dataset', {
         oxlint: null,
@@ -377,7 +379,7 @@ describe('buildRouting', () => {
             typeAware: false,
             eslintAliases: ['import/no-cycle'],
           }),
-          eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+          eslint: UNTYPED_ESLINT_VERSION,
         }),
       ])
 
@@ -400,11 +402,11 @@ describe('buildRouting', () => {
             typeAware: false,
             eslintAliases: ['@typescript-eslint/no-unused-vars'],
           }),
-          eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+          eslint: UNTYPED_ESLINT_VERSION,
         }),
         buildInventoryRule('@typescript-eslint/no-unused-vars', {
           oxlint: null,
-          eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+          eslint: UNTYPED_ESLINT_VERSION,
         }),
       ])
 
@@ -425,19 +427,11 @@ describe('buildRouting', () => {
     it('throws when both claim one oxlint name, naming both IDs', () => {
       const inventory = buildInventory([
         buildInventoryRule('unicorn/no-for-each', {
-          oxlint: buildOxlintImplementation('unicorn/no-array-for-each', {
-            oxlintPlugin: 'unicorn',
-            typeAware: false,
-            eslintAliases: [],
-          }),
-          eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+          oxlint: OXLINT_NO_ARRAY_FOR_EACH,
+          eslint: UNTYPED_ESLINT_VERSION,
         }),
         buildInventoryRule('unicorn/no-array-for-each', {
-          oxlint: buildOxlintImplementation('unicorn/no-array-for-each', {
-            oxlintPlugin: 'unicorn',
-            typeAware: false,
-            eslintAliases: [],
-          }),
+          oxlint: OXLINT_NO_ARRAY_FOR_EACH,
           eslint: null,
         }),
       ])
@@ -450,20 +444,12 @@ describe('buildRouting', () => {
     it('routes both when each has an oxlint name of its own', () => {
       const inventory = buildInventory([
         buildInventoryRule('unicorn/no-for-each', {
-          oxlint: buildOxlintImplementation('unicorn/no-array-for-each', {
-            oxlintPlugin: 'unicorn',
-            typeAware: false,
-            eslintAliases: [],
-          }),
-          eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+          oxlint: OXLINT_NO_ARRAY_FOR_EACH,
+          eslint: UNTYPED_ESLINT_VERSION,
         }),
         buildInventoryRule('unicorn/no-thenable', {
-          oxlint: buildOxlintImplementation('unicorn/no-thenable', {
-            oxlintPlugin: 'unicorn',
-            typeAware: false,
-            eslintAliases: [],
-          }),
-          eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+          oxlint: OXLINT_NO_THENABLE,
+          eslint: UNTYPED_ESLINT_VERSION,
         }),
       ])
 
@@ -497,7 +483,7 @@ describe('buildRouting', () => {
     })
     const complexityRuleOnlyEslintHas = buildInventoryRule('sonarjs/cognitive-complexity', {
       oxlint: null,
-      eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+      eslint: UNTYPED_ESLINT_VERSION,
     })
 
     it('routes a canonical rule to the engine that has it', () => {
@@ -559,11 +545,7 @@ describe('buildRouting', () => {
     it('throws for a rule outside the canonical list that only oxlint has, as a type-aware version', () => {
       const inventory = buildInventory([
         buildInventoryRule('@typescript-eslint/no-floating-promises', {
-          oxlint: buildOxlintImplementation('typescript/no-floating-promises', {
-            oxlintPlugin: 'typescript',
-            typeAware: true,
-            eslintAliases: [],
-          }),
+          oxlint: TYPE_AWARE_OXLINT_NO_FLOATING_PROMISES,
           eslint: null,
         }),
       ])
@@ -578,7 +560,7 @@ describe('buildRouting', () => {
       const inventory = buildInventory([
         buildInventoryRule('sonarjs/cognitive-complexity', {
           oxlint: null,
-          eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+          eslint: UNTYPED_ESLINT_VERSION,
         }),
       ])
       const canonicalRules = [
@@ -603,20 +585,16 @@ describe('buildRouting', () => {
   it('lists routes in ascending ID order whatever order the inventory gives', () => {
     const inventory = buildInventory([
       buildInventoryRule('unicorn/no-thenable', {
-        oxlint: buildOxlintImplementation('unicorn/no-thenable', {
-          oxlintPlugin: 'unicorn',
-          typeAware: false,
-          eslintAliases: [],
-        }),
-        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+        oxlint: OXLINT_NO_THENABLE,
+        eslint: UNTYPED_ESLINT_VERSION,
       }),
       buildInventoryRule('sonarjs/cognitive-complexity', {
         oxlint: null,
-        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+        eslint: UNTYPED_ESLINT_VERSION,
       }),
       buildInventoryRule('@typescript-eslint/no-unused-vars', {
         oxlint: null,
-        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+        eslint: UNTYPED_ESLINT_VERSION,
       }),
     ])
 

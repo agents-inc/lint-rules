@@ -1,5 +1,7 @@
 import type { Engine, OxlintCategory, RulesetList } from './catalog.ts'
 
+const ENGINES: readonly Engine[] = ['oxlint', 'eslint']
+
 const RULESET_LISTS: readonly RulesetList[] = ['quality', 'libs', 'runtimes', 'languages']
 
 const OXLINT_CATEGORIES: readonly OxlintCategory[] = [
@@ -13,29 +15,17 @@ const OXLINT_CATEGORIES: readonly OxlintCategory[] = [
 ]
 
 /** JSON gives every string the type `string`; these narrow the ones our data restricts. */
-export function parseEngine(value: string): Engine {
-  if (!isEngine(value)) throw new Error(`"${value}" is not an engine (oxlint or eslint)`)
-  return value
-}
+export const parseEngine = oneOf(ENGINES, `an engine (${ENGINES.join(' or ')})`)
 
-export function parseRulesetList(value: string): RulesetList {
-  if (!isRulesetList(value)) throw new Error(`"${value}" is not a ruleset list (${RULESET_LISTS.join(', ')})`)
-  return value
-}
+export const parseRulesetList = oneOf(RULESET_LISTS, `a ruleset list (${RULESET_LISTS.join(', ')})`)
 
-export function parseOxlintCategory(value: string): OxlintCategory {
-  if (!isOxlintCategory(value)) throw new Error(`"${value}" is not an oxlint category (${OXLINT_CATEGORIES.join(', ')})`)
-  return value
-}
+export const parseOxlintCategory = oneOf(OXLINT_CATEGORIES, `an oxlint category (${OXLINT_CATEGORIES.join(', ')})`)
 
-function isOxlintCategory(value: string): value is OxlintCategory {
-  return OXLINT_CATEGORIES.some((category) => category === value)
-}
-
-function isEngine(value: string): value is Engine {
-  return value === 'oxlint' || value === 'eslint'
-}
-
-function isRulesetList(value: string): value is RulesetList {
-  return RULESET_LISTS.some((list) => list === value)
+/** A parser taking each allowed name as itself, and refusing any other as not being `what`. */
+function oneOf<Name extends string>(allowed: readonly Name[], what: string): (value: string) => Name {
+  return (value) => {
+    const name = allowed.find((candidate) => candidate === value)
+    if (name === undefined) throw new Error(`"${value}" is not ${what}`)
+    return name
+  }
 }

@@ -1,4 +1,4 @@
-import { catalog } from '@workspace/rule-data'
+import { catalog, routeOf } from '@workspace/rule-data'
 import { ESLint, type Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
 import type { OxlintConfig } from 'oxlint'
@@ -12,7 +12,6 @@ import { EMPTY_TEAM_OXLINT_CONFIG, NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG } from
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { buildEslintConfig } from './core/build-eslint-config.ts'
 import { buildOxlintConfig } from './core/build-oxlint-config.ts'
-import { routeOf } from './core/catalog-lookups.ts'
 import { editorPartsOf } from './core/editor-parts.ts'
 import { ruleIdsTheTeamsEslintConfigSets } from './core/eslint-config-reading.ts'
 import { mergeEslintPart } from './core/merge-eslint-config.ts'

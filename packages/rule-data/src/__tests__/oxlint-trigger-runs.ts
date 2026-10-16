@@ -1,17 +1,9 @@
-import { spawnSync } from 'node:child_process'
-
 import type { OxlintRuleFileTypes } from '../oxlint-file-types.ts'
 import { DECLARATION_FILE_TYPES, type FileType, LINTED_EXTENSIONS, type RuleTrigger, type ScriptBlock } from './cases/oxlint-rule-triggers.ts'
-import { OXLINT_BIN } from './oxlint-print-config.ts'
+import { type OxlintJsonReport, oxlintJsonRun } from './oxlint-cli.ts'
 
 /** What oxlint made of a file holding a rule's trigger: the rule's finding, a parse error, or nothing. */
 export type TriggerOutcome = 'reports' | 'cannot parse' | 'silent'
-
-/** A diagnostic in oxlint's JSON report: a rule's finding links to the rule's page, a parse error links nowhere. */
-export type OxlintJsonDiagnostic = { readonly filename: string; readonly url?: string }
-
-/** oxlint's JSON report: its diagnostics, and how many files it linted. */
-export type OxlintJsonReport = { readonly diagnostics: readonly OxlintJsonDiagnostic[]; readonly number_of_files: number }
 
 /** Every file type written: each extension oxlint lints by default, then each kind of declaration file. */
 export const FILE_TYPES: readonly FileType[] = [...LINTED_EXTENSIONS, ...declarationFileTypes()]
@@ -41,14 +33,9 @@ export function outcomesOf(report: OxlintJsonReport, files: readonly string[]): 
 
 /** The installed oxlint over the paths given, from the project's folder, with the config file given: its JSON report. */
 export function runOxlintJson(projectDir: string, configFile: string, paths: readonly string[]): OxlintJsonReport {
-  const { stdout, stderr } = spawnSync(process.execPath, [OXLINT_BIN, '-c', configFile, '-f', 'json', ...paths], {
-    cwd: projectDir,
-    encoding: 'utf8',
-  })
-  // oxlint prints something other than JSON when it cannot load the config.
-  if (!stdout.trimStart().startsWith('{')) throw new Error(`oxlint could not lint with ${configFile}: ${stdout}${stderr}`)
-  // Parse boundary: oxlint's JSON report.
-  return JSON.parse(stdout) as OxlintJsonReport
+  const run = oxlintJsonRun(projectDir, configFile, paths)
+  if (run.outcome === 'refused') throw new Error(`oxlint could not lint with ${configFile}: ${run.output}`)
+  return run.report
 }
 
 /** A script block's opening tag: TypeScript, or TSX where the trigger asks for it; a .vue file's `setup` where it asks for that. */
