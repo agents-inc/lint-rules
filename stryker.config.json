@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "vitest",
+  "vitest": {
+    "configFile": "packages/lint-rules/vitest.mutation.config.ts",
+    "related": false
+  },
+  "checkers": ["typescript"],
+  "tsconfigFile": "packages/lint-rules/tsconfig.json",
+  "buildCommand": "bun run --cwd packages/lint-rules build",
+  "mutate": [
+    "packages/lint-rules/src/**/*.ts",
+    "!packages/lint-rules/src/**/*.test.ts",
+    "!packages/lint-rules/src/**/*.type-test.ts",
+    "!packages/lint-rules/src/__tests__/**"
+  ],
+  "disableTypeChecks": "packages/lint-rules/src/core/**/*.ts",
+  "ignorePatterns": ["docs", ".claude", ".agents-inc", ".turbo", "packages/*/dist", "reports"],
+  "ignoreStatic": true,
+  "concurrency": 4,
+  "dryRunTimeoutMinutes": 30,
+  "timeoutMS": 1800000,
+  "incremental": true,
+  "reporters": ["clear-text", "progress-append-only", "html", "json"],
+  "clearTextReporter": { "reportTests": false },
+  "cleanTempDir": "always"
+}
