@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest'
 import {
   buildCanonicalRule,
   buildEslintImplementation,
-  buildEslintRoute,
+  buildEslintRoutingEntry,
   buildInventory,
   buildInventoryRule,
   buildOxlintImplementation,
-  buildOxlintRoute,
+  buildOxlintRoutingEntry,
 } from '../__tests__/factories/inventory-factories.ts'
 import { oxlintSpellingsOf } from '../rule-id-parts.ts'
 import { buildRouting } from './build-routing.ts'
@@ -35,7 +35,7 @@ describe('buildRouting', () => {
       ]
 
       expect(buildRouting({ inventory, canonicalRules })).toStrictEqual([
-        buildEslintRoute('unicorn/prefer-at', {
+        buildEslintRoutingEntry('unicorn/prefer-at', {
           typed: false,
           oxlintSpellings: oxlintSpellingsOf('unicorn/prefer-at'),
           shipped: {
@@ -70,7 +70,7 @@ describe('buildRouting', () => {
       ]
 
       expect(buildRouting({ inventory, canonicalRules })).toStrictEqual([
-        buildOxlintRoute('eqeqeq', {
+        buildOxlintRoutingEntry('eqeqeq', {
           oxlintName: 'eqeqeq',
           oxlintSpellings: oxlintSpellingsOf('eqeqeq'),
           oxlintPlugin: 'eslint',
@@ -99,7 +99,7 @@ describe('buildRouting', () => {
       ]
 
       expect(buildRouting({ inventory, canonicalRules })).toStrictEqual([
-        buildEslintRoute('max-lines', {
+        buildEslintRoutingEntry('max-lines', {
           typed: false,
           oxlintSpellings: [],
           shipped: {
@@ -109,6 +109,112 @@ describe('buildRouting', () => {
             ignores: ['**/*.stories.{ts,tsx,js,jsx}'],
           },
         }),
+      ])
+    })
+  })
+
+  // rules.json records each relation with its reason; routing carries the other rule's ID alone, and
+  // only where rules.json gives one (spec-data.md, 2.4).
+  describe("a rule's relations to other shipped rules", () => {
+    const inventory = buildInventory([
+      buildInventoryRule('no-new', {
+        oxlint: buildOxlintImplementation('no-new', { oxlintPlugin: 'eslint', typeAware: false, eslintAliases: [] }),
+        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+      }),
+      buildInventoryRule('no-return-assign', {
+        oxlint: null,
+        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+      }),
+      buildInventoryRule('functional/no-expression-statements', {
+        oxlint: null,
+        eslint: buildEslintImplementation({ deprecated: false, typed: true }),
+      }),
+    ])
+
+    it('carries the ID of the rule covering it, from oxlint and ESLint routes alike, and leaves the field out of a rule covered by none', () => {
+      const canonicalRules = [
+        buildCanonicalRule('functional/no-expression-statements', { engine: 'eslint', ruleset: 'declarative', options: [], typed: true }),
+        buildCanonicalRule('no-new', {
+          engine: 'oxlint',
+          oxlintName: 'no-new',
+          ruleset: 'redundancy',
+          options: [],
+          typed: false,
+          coveredBy: { rule: 'functional/no-expression-statements', because: 'card: the cover reports every new expression statement' },
+        }),
+        buildCanonicalRule('no-return-assign', {
+          engine: 'eslint',
+          ruleset: 'correctness',
+          options: [],
+          typed: false,
+          coveredBy: { rule: 'functional/no-expression-statements', because: 'card: the cover reports it' },
+        }),
+      ]
+
+      expect(buildRouting({ inventory, canonicalRules }).map(({ id, shipped }) => [id, shipped])).toStrictEqual([
+        ['functional/no-expression-statements', { ruleset: 'declarative', options: [], files: null, ignores: null }],
+        ['no-new', { ruleset: 'redundancy', options: [], files: null, ignores: null, coveredBy: 'functional/no-expression-statements' }],
+        ['no-return-assign', { ruleset: 'correctness', options: [], files: null, ignores: null, coveredBy: 'functional/no-expression-statements' }],
+      ])
+    })
+
+    it('carries the ID of the typed rule it splits by types with, from oxlint and ESLint routes alike, and leaves the field out of a rule split with none', () => {
+      const canonicalRules = [
+        buildCanonicalRule('functional/no-expression-statements', { engine: 'eslint', ruleset: 'declarative', options: [], typed: true }),
+        buildCanonicalRule('no-new', {
+          engine: 'oxlint',
+          oxlintName: 'no-new',
+          ruleset: 'redundancy',
+          options: [],
+          typed: false,
+          splitByTypesWith: { rule: 'functional/no-expression-statements', because: 'card: the typed rule reports it with types' },
+        }),
+        buildCanonicalRule('no-return-assign', {
+          engine: 'eslint',
+          ruleset: 'correctness',
+          options: [],
+          typed: false,
+          splitByTypesWith: { rule: 'functional/no-expression-statements', because: 'card: the typed rule reports it with types' },
+        }),
+      ]
+
+      expect(buildRouting({ inventory, canonicalRules }).map(({ id, shipped }) => [id, shipped])).toStrictEqual([
+        ['functional/no-expression-statements', { ruleset: 'declarative', options: [], files: null, ignores: null }],
+        ['no-new', { ruleset: 'redundancy', options: [], files: null, ignores: null, splitByTypesWith: 'functional/no-expression-statements' }],
+        ['no-return-assign', { ruleset: 'correctness', options: [], files: null, ignores: null, splitByTypesWith: 'functional/no-expression-statements' }],
+      ])
+    })
+  })
+
+  // rules.json marks each rule our runtimes' globals serve; routing carries the mark only where
+  // rules.json gives it (spec-core.md, 2.4).
+  describe("whether our runtimes' globals serve a rule", () => {
+    const inventory = buildInventory([
+      buildInventoryRule('no-undef', {
+        oxlint: buildOxlintImplementation('no-undef', { oxlintPlugin: 'eslint', typeAware: false, eslintAliases: [] }),
+        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+      }),
+      buildInventoryRule('no-return-assign', {
+        oxlint: null,
+        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+      }),
+      buildInventoryRule('eqeqeq', {
+        oxlint: null,
+        eslint: buildEslintImplementation({ deprecated: false, typed: false }),
+      }),
+    ])
+
+    it('carries the mark where the canonical list gives it, from oxlint and ESLint routes alike, and leaves the field out of a rule it leaves unmarked', () => {
+      const canonicalRules = [
+        buildCanonicalRule('no-undef', { engine: 'oxlint', oxlintName: 'no-undef', ruleset: 'correctness', options: [], typed: false, readsRuntimeGlobals: true }),
+        buildCanonicalRule('no-return-assign', { engine: 'eslint', ruleset: 'correctness', options: [], typed: false, readsRuntimeGlobals: true }),
+        buildCanonicalRule('eqeqeq', { engine: 'eslint', ruleset: 'correctness', options: [], typed: false }),
+      ]
+
+      expect(buildRouting({ inventory, canonicalRules }).map(({ id, shipped }) => [id, shipped])).toStrictEqual([
+        ['eqeqeq', { ruleset: 'correctness', options: [], files: null, ignores: null }],
+        ['no-return-assign', { ruleset: 'correctness', options: [], files: null, ignores: null, readsRuntimeGlobals: true }],
+        ['no-undef', { ruleset: 'correctness', options: [], files: null, ignores: null, readsRuntimeGlobals: true }],
       ])
     })
   })
@@ -135,7 +241,7 @@ describe('buildRouting', () => {
       ]
 
       expect(buildRouting({ inventory, canonicalRules })).toStrictEqual([
-        buildEslintRoute('unicorn/no-for-each', {
+        buildEslintRoutingEntry('unicorn/no-for-each', {
           typed: false,
           oxlintSpellings: oxlintSpellingsOf('unicorn/no-array-for-each'),
           shipped: { ruleset: 'modern-js', options: [], files: null, ignores: null },
@@ -166,14 +272,14 @@ describe('buildRouting', () => {
       ])
 
       expect(buildRouting({ inventory, canonicalRules: [] })).toStrictEqual([
-        buildOxlintRoute('no-debugger', {
+        buildOxlintRoutingEntry('no-debugger', {
           oxlintName: 'no-debugger',
           oxlintSpellings: oxlintSpellingsOf('no-debugger'),
           oxlintPlugin: 'eslint',
           eslintAliases: [],
           shipped: null,
         }),
-        buildOxlintRoute('oxc/no-accumulating-spread', {
+        buildOxlintRoutingEntry('oxc/no-accumulating-spread', {
           oxlintName: 'oxc/no-accumulating-spread',
           oxlintSpellings: oxlintSpellingsOf('oxc/no-accumulating-spread'),
           oxlintPlugin: 'oxc',
@@ -196,7 +302,7 @@ describe('buildRouting', () => {
       ])
 
       expect(buildRouting({ inventory, canonicalRules: [] })).toStrictEqual([
-        buildEslintRoute('@typescript-eslint/no-floating-promises', {
+        buildEslintRoutingEntry('@typescript-eslint/no-floating-promises', {
           typed: true,
           shipped: null,
           oxlintSpellings: oxlintSpellingsOf('typescript/no-floating-promises'),
@@ -217,8 +323,8 @@ describe('buildRouting', () => {
       ])
 
       expect(buildRouting({ inventory, canonicalRules: [] })).toStrictEqual([
-        buildEslintRoute('functional/prefer-immutable-types', { typed: true, shipped: null, oxlintSpellings: [] }),
-        buildEslintRoute('sonarjs/cognitive-complexity', { typed: false, shipped: null, oxlintSpellings: [] }),
+        buildEslintRoutingEntry('functional/prefer-immutable-types', { typed: true, shipped: null, oxlintSpellings: [] }),
+        buildEslintRoutingEntry('sonarjs/cognitive-complexity', { typed: false, shipped: null, oxlintSpellings: [] }),
       ])
     })
   })
@@ -237,7 +343,7 @@ describe('buildRouting', () => {
 
     it('is not a RuleId when the canonical list does not name it', () => {
       expect(buildRouting({ inventory, canonicalRules: [] })).toStrictEqual([
-        buildEslintRoute('unicorn/dom-node-dataset', { typed: false, shipped: null, oxlintSpellings: [] }),
+        buildEslintRoutingEntry('unicorn/dom-node-dataset', { typed: false, shipped: null, oxlintSpellings: [] }),
       ])
     })
 
@@ -252,8 +358,8 @@ describe('buildRouting', () => {
       ]
 
       expect(buildRouting({ inventory, canonicalRules })).toStrictEqual([
-        buildEslintRoute('unicorn/dom-node-dataset', { typed: false, shipped: null, oxlintSpellings: [] }),
-        buildEslintRoute('unicorn/prefer-dom-node-dataset', {
+        buildEslintRoutingEntry('unicorn/dom-node-dataset', { typed: false, shipped: null, oxlintSpellings: [] }),
+        buildEslintRoutingEntry('unicorn/prefer-dom-node-dataset', {
           typed: false,
           oxlintSpellings: [],
           shipped: { ruleset: 'browser', options: [], files: null, ignores: null },
@@ -276,7 +382,7 @@ describe('buildRouting', () => {
       ])
 
       expect(buildRouting({ inventory, canonicalRules: [] })).toStrictEqual([
-        buildOxlintRoute('import-x/no-cycle', {
+        buildOxlintRoutingEntry('import-x/no-cycle', {
           oxlintName: 'import/no-cycle',
           oxlintSpellings: oxlintSpellingsOf('import/no-cycle'),
           oxlintPlugin: 'import',
@@ -303,8 +409,8 @@ describe('buildRouting', () => {
       ])
 
       expect(buildRouting({ inventory, canonicalRules: [] })).toStrictEqual([
-        buildEslintRoute('@typescript-eslint/no-unused-vars', { typed: false, shipped: null, oxlintSpellings: [] }),
-        buildOxlintRoute('no-unused-vars', {
+        buildEslintRoutingEntry('@typescript-eslint/no-unused-vars', { typed: false, shipped: null, oxlintSpellings: [] }),
+        buildOxlintRoutingEntry('no-unused-vars', {
           oxlintName: 'no-unused-vars',
           oxlintSpellings: oxlintSpellingsOf('no-unused-vars'),
           oxlintPlugin: 'eslint',
@@ -362,14 +468,14 @@ describe('buildRouting', () => {
       ])
 
       expect(buildRouting({ inventory, canonicalRules: [] })).toStrictEqual([
-        buildOxlintRoute('unicorn/no-for-each', {
+        buildOxlintRoutingEntry('unicorn/no-for-each', {
           oxlintName: 'unicorn/no-array-for-each',
           oxlintSpellings: oxlintSpellingsOf('unicorn/no-array-for-each'),
           oxlintPlugin: 'unicorn',
           eslintAliases: [],
           shipped: null,
         }),
-        buildOxlintRoute('unicorn/no-thenable', {
+        buildOxlintRoutingEntry('unicorn/no-thenable', {
           oxlintName: 'unicorn/no-thenable',
           oxlintSpellings: oxlintSpellingsOf('unicorn/no-thenable'),
           oxlintPlugin: 'unicorn',
@@ -407,7 +513,7 @@ describe('buildRouting', () => {
       ]
 
       expect(buildRouting({ inventory, canonicalRules })).toStrictEqual([
-        buildOxlintRoute('react-hooks/rules-of-hooks', {
+        buildOxlintRoutingEntry('react-hooks/rules-of-hooks', {
           oxlintName: 'react/rules-of-hooks',
           oxlintSpellings: oxlintSpellingsOf('react/rules-of-hooks'),
           oxlintPlugin: 'react',

@@ -13,10 +13,18 @@ import { eslintPlugins } from './eslint-plugins.ts'
 import { pluginPrefixOf } from './rule-id-parts.ts'
 
 // Both report plan.md's three files as written (real run). ESLint runs both.
-const RULES_THE_CONSUMER_FILES_BREAK = ['perfectionist/sort-objects', 'unicorn/no-top-level-side-effects']
+const SORT_OBJECTS = 'perfectionist/sort-objects'
+const NO_TOP_LEVEL_SIDE_EFFECTS = 'unicorn/no-top-level-side-effects'
+// Reports each of the three files importing our package in a package npm may publish (measured,
+// check right after init).
+const NO_UNPUBLISHED_IMPORT = 'n/no-unpublished-import'
+const RULES_THE_CONSUMER_FILES_BREAK = [SORT_OBJECTS, NO_TOP_LEVEL_SIDE_EFFECTS]
 const CONSUMER_FILES = Object.values(consumerConfigFiles)
 // The names the files had before the owner's rename to .mts: now any other file of the consumer's.
+// oxlint.config.ts is a tool's config file all the same, which no-top-level-side-effects skips.
 const FORMER_CONSUMER_FILES = ['agents-inc.lint.ts', 'oxlint.config.ts']
+// Owner, 2026-10-14 (q71): every tool's config file default-exports a call.
+const TOOL_CONFIG_FILES = '**/*.config.{js,mjs,cjs,ts,mts,cts}'
 const NESTED_PACKAGE = 'apps/web'
 const ORDINARY_FILES = ['src/app.ts', 'src/app.mts', 'src/app.mjs']
 const LINTED_FILES = '**/*.{ts,mts,mjs}'
@@ -79,12 +87,19 @@ describe('consumerConfigFiles, the one source of the names of the files a consum
     expect(loaded.consumerConfigFiles).toStrictEqual(consumerConfigFiles)
   })
 
-  it('gives the rules the consumer files break exactly those files, under any directory, as their shipped ignores', () => {
-    const consumerFilesAnywhere = CONSUMER_FILES.map((file) => `**/${file}`).toSorted()
+  it('gives the rules the consumer files break those files, under any directory, as their shipped ignores, and no-top-level-side-effects every tool config file beside them', () => {
+    const consumerFilesAnywhere = CONSUMER_FILES.map((file) => `**/${file}`)
 
     expect(
       Object.fromEntries(RULES_THE_CONSUMER_FILES_BREAK.map((ruleId) => [ruleId, sortedShippedIgnoresOf(ruleId)])),
-    ).toStrictEqual(Object.fromEntries(RULES_THE_CONSUMER_FILES_BREAK.map((ruleId) => [ruleId, consumerFilesAnywhere])))
+    ).toStrictEqual({
+      [SORT_OBJECTS]: consumerFilesAnywhere.toSorted(),
+      [NO_TOP_LEVEL_SIDE_EFFECTS]: [...consumerFilesAnywhere, TOOL_CONFIG_FILES].toSorted(),
+    })
+  })
+
+  it('gives n/no-unpublished-import those files, under any directory, as its shipped ignores, and no other', () => {
+    expect(sortedShippedIgnoresOf(NO_UNPUBLISHED_IMPORT)).toStrictEqual(CONSUMER_FILES.map((file) => `**/${file}`).toSorted())
   })
 })
 
@@ -148,11 +163,12 @@ describe('the rules that report the files plan.md has a consumer write', () => {
   )
 
   it(
-    'still report the same code in a file under the name a consumer file had before it became .mts',
+    'still report the same code under the names the consumer files had before they became .mts, but for the side effect of oxlint.config.ts, a tool config file',
     async () => {
-      expect(await reportsByFile(FORMER_CONSUMER_FILES)).toStrictEqual(
-        Object.fromEntries(FORMER_CONSUMER_FILES.map((file) => [file, RULES_THE_CONSUMER_FILES_BREAK])),
-      )
+      expect(await reportsByFile(FORMER_CONSUMER_FILES)).toStrictEqual({
+        'agents-inc.lint.ts': RULES_THE_CONSUMER_FILES_BREAK,
+        'oxlint.config.ts': [SORT_OBJECTS],
+      })
     },
     ESLINT_TIMEOUT_MS,
   )

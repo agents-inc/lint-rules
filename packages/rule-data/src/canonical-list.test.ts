@@ -3,6 +3,11 @@ import { describe, expect, it } from 'vitest'
 import canonicalRules from '../data/rules.json' with { type: 'json' }
 import rulesetDefinitions from '../data/ruleset-definitions.json' with { type: 'json' }
 import { ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON } from './__tests__/cases/routed-to-eslint-for-a-reason.ts'
+import { ROUND_2_DROPS } from './__tests__/cases/round-2-drops.ts'
+import { COVERED_BY, SPLIT_BY_TYPES_WITH } from './__tests__/cases/rule-relations.ts'
+import { isSortingRuleset, RULES_THAT_SORT, SORTING_RULESETS } from './__tests__/cases/sorting-rulesets.ts'
+import { coveredByOffenders, splitByTypesOffenders } from './__tests__/relation-offenders.ts'
+import { canonicalRules as parsedCanonicalRules } from './generate/canonical-rules.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
 import { canonicalIdOf } from './rule-id-parts.ts'
 
@@ -30,7 +35,7 @@ const LIBS_RULESETS_BY_DOMAIN = {
   ui: ['react'],
   testing: ['vitest', 'testing-library', 'storybook'],
   forms: ['react-hook-form'],
-  styling: ['css-modules'],
+  styling: ['css-modules', 'class-names'],
 }
 
 const RUNTIME_RULESETS = ['node', 'browser']
@@ -55,6 +60,16 @@ function shippedRulesetOf(id: string): string | null {
   if (entry === undefined) return null
   if (entry.ruleset === undefined) throw new Error(`${id} ships always on, in no ruleset`)
   return entry.ruleset
+}
+
+/** Each rule recording the relation, and the rule it names. */
+function namedByRelation(relationOf: (rule: (typeof parsedCanonicalRules)[number]) => { readonly rule: string } | undefined): Readonly<Record<string, string>> {
+  return Object.fromEntries(
+    parsedCanonicalRules.flatMap((rule) => {
+      const relation = relationOf(rule)
+      return relation === undefined ? [] : [[rule.id, relation.rule]]
+    }),
+  )
 }
 
 describe('the canonical list, data/rules.json', () => {
@@ -158,6 +173,49 @@ describe('the canonical list, data/rules.json', () => {
 
       expect(unassigned).toStrictEqual([])
     })
+
+    // Owner, 2026-10-14: where one rule's findings are a subset of another's in a different ruleset,
+    // the narrow one is left out wherever the broad one is on (spec-data.md, 2.6).
+    it('has no "covered by" that does not hold: each rule and its cover shipped, in rulesets of their own, the cover left out nowhere', () => {
+      expect(coveredByOffenders(parsedCanonicalRules)).toStrictEqual([])
+    })
+
+    // Owner, 2026-10-14: an untyped rule is off where its typed partner runs with type information.
+    it('has no "split by types" that does not hold: an untyped and a typed rule, both shipped, run by ESLint on every file, each typed rule named once', () => {
+      expect(splitByTypesOffenders(parsedCanonicalRules)).toStrictEqual([])
+    })
+  })
+
+  describe('the relations between shipped rules the owner chose on 2026-10-14', () => {
+    it('records "covered by" on exactly the covered rules of the cards an (S) option was chosen on, each naming its cover', () => {
+      expect(namedByRelation(({ coveredBy }) => coveredBy)).toStrictEqual(COVERED_BY)
+    })
+
+    it('records "split by types" on exactly the untyped rules of the cards a (T) option was chosen on, each naming its typed partner', () => {
+      expect(namedByRelation(({ splitByTypesWith }) => splitByTypesWith)).toStrictEqual(SPLIT_BY_TYPES_WITH)
+    })
+
+    it('gives each relation a reason', () => {
+      const unexplained = parsedCanonicalRules
+        .flatMap(({ id, coveredBy, splitByTypesWith }) => [
+          ...(coveredBy !== undefined && coveredBy.because.trim() === '' ? [`${id} covered by ${coveredBy.rule}`] : []),
+          ...(splitByTypesWith !== undefined && splitByTypesWith.because.trim() === '' ? [`${id} split by types with ${splitByTypesWith.rule}`] : []),
+        ])
+
+      expect(unexplained).toStrictEqual([])
+    })
+  })
+
+  // In the editor merges our runtimes' globals go only where a rule of ours that reads them runs
+  // (owner 2026-10-14, questions.md #68; spec-core.md, 2.6).
+  describe("the rules our runtimes' globals serve", () => {
+    it('are marked on no-undef alone', () => {
+      const marked = Object.fromEntries(
+        parsedCanonicalRules.flatMap(({ id, readsRuntimeGlobals }) => (readsRuntimeGlobals === undefined ? [] : [[id, readsRuntimeGlobals]])),
+      )
+
+      expect(marked).toStrictEqual({ 'no-undef': true })
+    })
   })
 
   // Where oxlint's version of a rule is measurably worse than ESLint's, ESLint runs it, with the
@@ -208,24 +266,24 @@ describe('the canonical list, data/rules.json', () => {
       expect(canonicalRules.map((rule) => rule.id)).not.toContain('react/rules-of-hooks')
     })
 
-    // oxlint knows both unicorn rules only by their old names, so a suppression comment naming the
-    // RuleId would not reach oxlint's report: ESLint runs them.
-    it("keys the dataset rule by unicorn's current name and runs it in ESLint, as oxlint has only the old name", () => {
+    // oxlint knows both unicorn rules only by their old names. Owner, 2026-10-14: oxlint runs them
+    // where it is on, and beside oxlint a suppression comment names oxlint's spelling (spec-data.md, D7).
+    it("keys the dataset rule by unicorn's current name and runs it in oxlint, under the old name oxlint has", () => {
       const { engine, oxlintName, ruleset } = canonicalEntryFor('unicorn/dom-node-dataset')
 
       expect({ engine, oxlintName, ruleset }).toStrictEqual({
-        engine: 'eslint',
-        oxlintName: undefined,
+        engine: 'oxlint',
+        oxlintName: 'unicorn/prefer-dom-node-dataset',
         ruleset: 'browser',
       })
     })
 
-    it("keys the for-each rule by unicorn's current name and runs it in ESLint, as oxlint has only no-array-for-each", () => {
+    it("keys the for-each rule by unicorn's current name and runs it in oxlint, under no-array-for-each, the name oxlint has", () => {
       const { engine, oxlintName, ruleset } = canonicalEntryFor('unicorn/no-for-each')
 
       expect({ engine, oxlintName, ruleset }).toStrictEqual({
-        engine: 'eslint',
-        oxlintName: undefined,
+        engine: 'oxlint',
+        oxlintName: 'unicorn/no-array-for-each',
         ruleset: 'modern-js',
       })
     })
@@ -318,6 +376,17 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
+    // Owner, 2026-10-14 (round 2 of the duplicate cards): each dropped rule's findings are reported by
+    // the shipped rule beside it, or it conflicted with that rule.
+    it('ships none of the round 2 drops, and ships each rule a drop leaves reporting', () => {
+      const shippedIds = new Set(canonicalRules.map(({ id }) => id))
+
+      expect({
+        stillShipped: ROUND_2_DROPS.flatMap(({ dropped }) => dropped).filter((id) => shippedIds.has(id)),
+        reportingButUnshipped: ROUND_2_DROPS.flatMap(({ stillReporting }) => stillReporting).filter((id) => !shippedIds.has(id)),
+      }).toStrictEqual({ stillShipped: [], reportingButUnshipped: [] })
+    })
+
     // Object types last, then null and undefined: `{ a: 1 } | null` stays as written. Mapped types
     // match perfectionist's object selector, and void its nullish one, so a custom group keeps each
     // with the other types. lint-rules' sort-union-types.integration.test.ts runs the fix.
@@ -399,6 +468,43 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
+    // generate/render-generated.ts renders exactly these as SuppressionRuleId, which `rules` cannot set.
+    it('has allowSuppressions decide exactly the two bans, the blanket-suppression rule and the hooks rule that reports suppressions', () => {
+      expect(canonicalRules.filter((rule) => rule.whenSuppressions !== undefined).map((rule) => rule.id)).toStrictEqual([
+        '@typescript-eslint/ban-ts-comment',
+        'house/no-suppressions',
+        'react-hooks/rule-suppression',
+        'unicorn/no-abusive-eslint-disable',
+      ])
+    })
+
+    // Owner, 2026-10-14 (q-r1): unicorn's rule moves to oxlint, which reports a blanket comment of
+    // either engine's (measured, oxlint 1.87); where suppressions are banned, house/no-suppressions
+    // reports every comment.
+    it("runs unicorn/no-abusive-eslint-disable in oxlint under its own name, only where suppressions are allowed", () => {
+      const { engine, oxlintName, ruleset, whenSuppressions } = canonicalEntryFor('unicorn/no-abusive-eslint-disable')
+
+      expect({ engine, oxlintName, ruleset, whenSuppressions }).toStrictEqual({
+        engine: 'oxlint',
+        oxlintName: 'unicorn/no-abusive-eslint-disable',
+        ruleset: 'comments',
+        whenSuppressions: { banned: 'off', allowed: 'on' },
+      })
+    })
+
+    // Owner, 2026-10-14 (r2-d22): tied to allowSuppressions; where suppressions are banned,
+    // house/no-suppressions reports the comment already.
+    it('runs react-hooks/rule-suppression in oxlint only where suppressions are allowed', () => {
+      const { engine, oxlintName, ruleset, whenSuppressions } = canonicalEntryFor('react-hooks/rule-suppression')
+
+      expect({ engine, oxlintName, ruleset, whenSuppressions }).toStrictEqual({
+        engine: 'oxlint',
+        oxlintName: 'react/rule-suppression',
+        ruleset: 'react',
+        whenSuppressions: { banned: 'off', allowed: 'on' },
+      })
+    })
+
     // Owner, 2026-10-10: a loop whose body can run only once is a bug, or `const [first] = items` in disguise.
     it('ships no-unreachable-loop in correctness, run by oxlint at its defaults on every file', () => {
       const { engine, oxlintName, ruleset, options, typed, files, ignores } = canonicalEntryFor('no-unreachable-loop')
@@ -423,17 +529,80 @@ describe('the canonical list, data/rules.json', () => {
         ignores: undefined,
       })
     })
+
+    // Owner, 2026-10-14 (q-r2-class-helper-ruleset): a libs ruleset of its own, for teams composing
+    // classes through a helper.
+    it('ships house/require-class-helper in class-names, run by ESLint untyped on every file at its defaults', () => {
+      const { engine, oxlintName, ruleset, options, typed, files, ignores } = canonicalEntryFor('house/require-class-helper')
+
+      expect({ engine, oxlintName, ruleset, options, typed, files, ignores }).toStrictEqual({
+        engine: 'eslint',
+        oxlintName: undefined,
+        ruleset: 'class-names',
+        options: [],
+        typed: false,
+        files: undefined,
+        ignores: undefined,
+      })
+    })
+
+    // Orchestrator's call, 2026-10-15 (decisions.md, carded): import-x/first places imports above other
+    // code and sorts nothing, so it moved from the opt-in import-order to modules, which init lists.
+    it('ships import-x/first in modules, run by oxlint as import/first at its defaults', () => {
+      const { engine, oxlintName, ruleset, options, typed } = canonicalEntryFor('import-x/first')
+
+      expect({ engine, oxlintName, ruleset, options, typed }).toStrictEqual({
+        engine: 'oxlint',
+        oxlintName: 'import/first',
+        ruleset: 'modules',
+        options: [],
+        typed: false,
+      })
+    })
+
+    // Owner, 2026-10-14 (q70): off for Node code, read as moving it to the browser runtime (spec-data.md, 7.7).
+    it('ships no-implicit-globals in the browser runtime', () => {
+      expect(shippedRulesetOf('no-implicit-globals')).toBe('browser')
+    })
+
+    // Owner, 2026-10-14 (q-r6): the core versions reach JS files and TS files outside every tsconfig,
+    // where the typed versions cannot run.
+    it('ships consistent-return in correctness and no-implied-eval in security, each run by ESLint untyped at its defaults', () => {
+      const entries = Object.fromEntries(
+        ['consistent-return', 'no-implied-eval'].map((id) => {
+          const { engine, oxlintName, ruleset, options, typed } = canonicalEntryFor(id)
+          return [id, { engine, oxlintName, ruleset, options, typed }]
+        }),
+      )
+
+      expect(entries).toStrictEqual({
+        'consistent-return': { engine: 'eslint', oxlintName: undefined, ruleset: 'correctness', options: [], typed: false },
+        'no-implied-eval': { engine: 'eslint', oxlintName: undefined, ruleset: 'security', options: [], typed: false },
+      })
+    })
   })
 })
 
 describe('the ruleset definitions, data/ruleset-definitions.json', () => {
-  it("defines the owner's rulesets, in the owner's order, each in its list, domain and env", () => {
+  // Owner, 2026-10-15: the two rulesets that sort code are opt-in; `init` reads `optIn`, and names
+  // each ruleset whose `sortsCode` is true in its formatter warning.
+  it("defines the owner's rulesets, in the owner's order, each in its list, domain and env, opt-in and sorting code exactly where it sorts code", () => {
     expect(rulesetDefinitions).toStrictEqual([
-      ...QUALITY_RULESETS.map((name) => ({ name, list: 'quality', domain: null, env: null })),
+      ...QUALITY_RULESETS.map((name) => ({ name, list: 'quality', domain: null, env: null, optIn: isSortingRuleset(name), sortsCode: isSortingRuleset(name) })),
       ...Object.entries(LIBS_RULESETS_BY_DOMAIN).flatMap(([domain, names]) =>
-        names.map((name) => ({ name, list: 'libs', domain, env: null })),
+        names.map((name) => ({ name, list: 'libs', domain, env: null, optIn: isSortingRuleset(name), sortsCode: isSortingRuleset(name) })),
       ),
-      ...RUNTIME_RULESETS.map((name) => ({ name, list: 'runtimes', domain: null, env: name })),
+      ...RUNTIME_RULESETS.map((name) => ({ name, list: 'runtimes', domain: null, env: name, optIn: isSortingRuleset(name), sortsCode: isSortingRuleset(name) })),
     ])
+  })
+
+  // They are opt-in because they sort, so a rule that sorts nothing would leave every new repo
+  // with it: import-x/first, which only places imports above other code, moved to modules.
+  it('puts in the rulesets that sort code exactly the rules that reorder code', () => {
+    const rulesByRuleset = Object.fromEntries(
+      SORTING_RULESETS.map((ruleset) => [ruleset, canonicalRules.filter((rule) => rule.ruleset === ruleset).map(({ id }) => id)]),
+    )
+
+    expect(rulesByRuleset).toStrictEqual(RULES_THAT_SORT)
   })
 })

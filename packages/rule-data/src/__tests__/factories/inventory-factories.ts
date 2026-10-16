@@ -5,7 +5,8 @@ import type {
   InventoryRule,
   OxlintImplementation,
 } from '../../generate/build-inventory.ts'
-import type { CanonicalRule } from '../../generate/build-routing.ts'
+import type { CanonicalRule, RoutingEntry } from '../../generate/build-routing.ts'
+import type { SettingBySuppressionMode } from '../../turned-on-by.ts'
 import type {
   InstalledEngines,
   InstalledEslintRule,
@@ -86,17 +87,25 @@ export function buildEslintImplementation(fields: EslintImplementation): EslintI
 export function buildCanonicalRule(
   id: string,
   fields: Pick<CanonicalRule, 'engine' | 'options' | 'ruleset' | 'typed'> &
-    Partial<Pick<CanonicalRule, 'files' | 'ignores' | 'oxlintName'>>,
+    Partial<Pick<CanonicalRule, 'alwaysOn' | 'coveredBy' | 'files' | 'ignores' | 'oxlintName' | 'readsRuntimeGlobals' | 'splitByTypesWith' | 'whenSuppressions'>>,
 ): CanonicalRule {
   return { id, assignment: { confidence: 'high', by: 'plugin' }, ...fields }
 }
 
-/** A route's `shipped`: turned on by its ruleset, with no options, on every file unless given. */
+/** A route's `shipped`: turned on by its ruleset, with no options, on every file, related to no other rule, served by none of our runtime globals, unless given. */
 export function buildShippedRule(
   ruleset: string,
-  fields: Partial<Pick<ShippedRule, 'options' | 'files' | 'ignores'>> = {},
+  fields: Partial<Pick<ShippedRule, 'coveredBy' | 'files' | 'ignores' | 'options' | 'readsRuntimeGlobals' | 'splitByTypesWith'>> = {},
 ): ShippedRule {
-  return { ruleset, options: [], files: null, ignores: null, ...fields }
+  return { ruleset, options: [], files: null, ignores: null, coveredBy: null, splitByTypesWith: null, readsRuntimeGlobals: false, ...fields }
+}
+
+/** A route's `shipped` for a rule `allowSuppressions` decides: its setting in each mode, its options, on every file. */
+export function buildShippedRuleDecidedBySuppressions(
+  whenSuppressions: SettingBySuppressionMode,
+  fields: Partial<Pick<ShippedRule, 'options'>> = {},
+): ShippedRule {
+  return { whenSuppressions, options: [], files: null, ignores: null, coveredBy: null, splitByTypesWith: null, readsRuntimeGlobals: false, ...fields }
 }
 
 /** The route of a rule oxlint runs: oxlint never has type information, so `typed` is false. */
@@ -118,5 +127,24 @@ export function buildEslintRoute(
   id: string,
   fields: Pick<RuleRoute, 'oxlintSpellings' | 'shipped' | 'typed'>,
 ): RuleRoute {
+  return { id, engine: 'eslint', oxlintName: null, oxlintPlugin: null, eslintAliases: [], ...fields }
+}
+
+/** `buildOxlintRoute` as the generator writes it: `shipped` holds a relation only where `data/rules.json` records one. */
+export function buildOxlintRoutingEntry(
+  id: string,
+  fields: Pick<RoutingEntry, 'eslintAliases' | 'oxlintSpellings' | 'shipped'> & {
+    oxlintName: string
+    oxlintPlugin: string
+  },
+): RoutingEntry {
+  return { id, engine: 'oxlint', typed: false, ...fields }
+}
+
+/** `buildEslintRoute` as the generator writes it: `shipped` holds a relation only where `data/rules.json` records one. */
+export function buildEslintRoutingEntry(
+  id: string,
+  fields: Pick<RoutingEntry, 'oxlintSpellings' | 'shipped' | 'typed'>,
+): RoutingEntry {
   return { id, engine: 'eslint', oxlintName: null, oxlintPlugin: null, eslintAliases: [], ...fields }
 }

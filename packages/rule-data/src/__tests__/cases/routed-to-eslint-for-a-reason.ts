@@ -1,7 +1,8 @@
 // The shipped rules oxlint's version of which is measurably worse than ESLint's, so ESLint runs them
 // beside oxlint too (decisions.md, "Owner 2026-10-14"; spec-merge-model.md, 3.2, the 19 its open
 // point 5 recommends): oxlint skips the JS files ESLint's version reports in, or refuses an option
-// ESLint's version takes and then loads no part of the config (measured, oxlint 1.87).
+// ESLint's version takes and then loads no part of the config (measured, oxlint 1.87). Since
+// 2026-10-14, also the untyped rules split by types (spec-data.md, D5).
 
 /** By the file types oxlint skips: a finding ESLint's version reports in a .js file. */
 const SKIPPED_FILE_TYPES = ['@typescript-eslint/ban-ts-comment', '@typescript-eslint/no-this-alias', '@typescript-eslint/triple-slash-reference']
@@ -26,5 +27,12 @@ const REFUSED_OPTIONS = [
   'vitest/no-focused-tests',
 ]
 
+/**
+ * By type information: the untyped rule of a pair split by types (owner, 2026-10-14; spec-data.md,
+ * D5). oxlint cannot tell which files have type information, so beside the typed rule its copy would
+ * report twice there.
+ */
+const SPLIT_BY_TYPES = ['no-constant-condition', 'no-implied-eval', 'unicorn/no-await-in-promise-methods']
+
 /** Every rule routed to ESLint for a measured reason, sorted. */
-export const ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON: readonly string[] = [...SKIPPED_FILE_TYPES, ...REFUSED_OPTIONS].toSorted()
+export const ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON: readonly string[] = [...SKIPPED_FILE_TYPES, ...REFUSED_OPTIONS, ...SPLIT_BY_TYPES].toSorted()

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import candidates from '../data/rule-candidates.json' with { type: 'json' }
 import canonicalRules from '../data/rules.json' with { type: 'json' }
+import { ROUND_2_DROPS, RULES_NEEDING_NEWER_NODE } from './__tests__/cases/round-2-drops.ts'
 import { catalog } from './catalog.ts'
 import { pluginPrefixOf } from './rule-id-parts.ts'
 
@@ -84,6 +85,21 @@ describe('the considering list, data/rule-candidates.json', () => {
         status: candidateFor('shadcn/no-arbitrary-values').status,
         isRuleId: catalog.rules.has('shadcn/no-arbitrary-values'),
       }).toStrictEqual({ status: 'considering', isRuleId: false })
+    })
+
+    // Owner, 2026-10-11 (third sweep): shipped off until a category for the newest language features,
+    // enabled by Node version, exists.
+    it('parks each modern-js rule whose fix writes an API Node 22 lacks', () => {
+      expect(candidates.filter(({ id }) => RULES_NEEDING_NEWER_NODE.includes(id)).map(({ id, status }) => [id, status])).toStrictEqual(
+        RULES_NEEDING_NEWER_NODE.map((id) => [id, 'parked']),
+      )
+    })
+
+    // Owner, 2026-10-14: a rule dropped as a duplicate or a conflict is in no list.
+    it('considers none of the round 2 drops', () => {
+      const dropped = new Set(ROUND_2_DROPS.flatMap(({ dropped: ids }) => ids))
+
+      expect(candidates.filter(({ id }) => dropped.has(id)).map(({ id }) => id)).toStrictEqual([])
     })
   })
 })

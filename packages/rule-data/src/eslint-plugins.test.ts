@@ -20,7 +20,8 @@ const PACKAGE_NAME_BY_PREFIX = {
   functional: 'eslint-plugin-functional',
   house: '@workspace/eslint-plugin-house',
   'import-x': 'eslint-plugin-import-x',
-  'jsx-a11y': 'eslint-plugin-jsx-a11y',
+  // The fork, which accepts ESLint 10, registered under the original's prefix (questions.md #54).
+  'jsx-a11y': 'eslint-plugin-jsx-a11y-x',
   n: 'eslint-plugin-n',
   'no-secrets': 'eslint-plugin-no-secrets',
   perfectionist: 'eslint-plugin-perfectionist',
