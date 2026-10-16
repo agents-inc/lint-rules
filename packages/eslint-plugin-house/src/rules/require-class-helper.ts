@@ -10,7 +10,9 @@ type Options = [ClassHelpers]
 
 // `class` as well: Preact and Solid take it where React takes className.
 const CLASS_ATTRIBUTES: ReadonlySet<string> = new Set(['className', 'class'])
-const DEFAULT_CLASS_HELPERS: readonly string[] = ['cn', 'clsx', 'cx', 'cva', 'twMerge']
+const DEFAULT_CLASS_HELPERS: readonly string[] = ['cn', 'clsx', 'cx', 'cva', 'twMerge', 'classNames', 'classnames']
+// cva returns a function, named by convention for what it styles: `buttonVariants`.
+const CVA_FUNCTION_SUFFIX = 'Variants'
 const HELPER_LIST_SEPARATOR = ', '
 
 function filledClassHelpersOf({ helpers }: ClassHelpers): Required<ClassHelpers> {
@@ -54,11 +56,17 @@ function isPlainClass(value: TSESTree.Expression): boolean {
   }
 }
 
+// A cva-made function returns a class whichever helpers a team configures, so its suffix counts as a
+// helper beside the helpers option rather than through it.
+function isClassHelperName(calleeName: string, helperNames: ReadonlySet<string>): boolean {
+  return helperNames.has(calleeName) || calleeName.endsWith(CVA_FUNCTION_SUFFIX)
+}
+
 // A helper's own arguments are its business: templates and ternaries inside `cn(…)` are not reported.
 function isHelperCall(value: TSESTree.Expression, helperNames: ReadonlySet<string>): boolean {
   if (value.type !== AST_NODE_TYPES.CallExpression) return false
   const name = calleeNameOf(value.callee)
-  return name !== null && helperNames.has(name)
+  return name !== null && isClassHelperName(name, helperNames)
 }
 
 // Not fixable: which helper a file imports, if it imports one at all, is not the rule's to guess.
@@ -66,7 +74,8 @@ export const requireClassHelper = ESLintUtils.RuleCreator.withoutDocs<Options, '
   meta: {
     type: 'suggestion',
     docs: {
-      description: 'Require className and class to be a string, a name or lookup, or a call to a configured class helper',
+      description:
+        'Require className and class to be a string, a name or lookup, or a call to a configured class helper or to a cva-made `*Variants` function',
     },
     messages: {
       useClassHelper:

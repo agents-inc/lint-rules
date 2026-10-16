@@ -1,8 +1,8 @@
-// Code for house/require-class-helper. Each shape below was measured on the JSX and TSX files under
-// ~/dev (not ~/dev/cli): the reported ones compose classes inline, the silent ones name a class or
-// hand the composing to a helper.
+// Code for house/require-class-helper. The reported shapes compose classes inline or call something
+// else; the silent ones name a class, hand the composing to a helper or to a function whose name ends
+// in `Variants`, or compose classes outside className and class.
 
-export const DEFAULT_CLASS_HELPERS = ['cn', 'clsx', 'cx', 'cva', 'twMerge']
+export const DEFAULT_CLASS_HELPERS = ['cn', 'clsx', 'cx', 'cva', 'twMerge', 'classNames', 'classnames']
 
 /** A className passed through a call to `helper`, on line 2. */
 export function classNameFromCallTo(helper: string): string {
@@ -111,7 +111,7 @@ export const logicalClasses = `export function Tab({ active, className }: { read
 `
 
 export const callToAnotherHelper = `export function Badge({ active }: { readonly active: boolean }) {
-  return <span className={classNames('badge', { 'badge-active': active })}>new</span>
+  return <span className={joinClasses('badge', { 'badge-active': active })}>new</span>
 }
 `
 
@@ -125,6 +125,78 @@ export const classAttribute = `export function Card({ size }: { readonly size: s
     <section class="card">
       <p class={\`card-body card-\${size}\`}>Body</p>
     </section>
+  )
+}
+`
+
+export const variantsCallWithOptions = `export function Button({ variant, className }: { readonly variant: 'primary' | 'ghost'; readonly className?: string }) {
+  return <button className={buttonVariants({ variant, className })}>Save</button>
+}
+`
+
+export const variantsCallWithNoArguments = `export function MenuItem() {
+  return <div className={dropdownMenuItemVariants()}>Rename</div>
+}
+`
+
+export const variantsCallThroughAnObject = `import * as ui from './variants'
+
+export function Button() {
+  return <button className={ui.buttonVariants()}>Save</button>
+}
+`
+
+export const optionalVariantsCall = `export function Button() {
+  return <button className={buttonVariants?.()}>Save</button>
+}
+`
+
+export const variantsCallWithATernaryArgument = `export function Button({ large }: { readonly large: boolean }) {
+  return <button className={buttonVariants({ size: large ? 'lg' : 'sm' })}>Save</button>
+}
+`
+
+export const callToVariantsItself = `export function Button() {
+  return <button className={Variants()}>Save</button>
+}
+`
+
+export const callToASingularVariant = `export function Button() {
+  return <button className={buttonVariant()}>Save</button>
+}
+`
+
+export const callToLowercaseVariants = `export function Button() {
+  return <button className={buttonvariants()}>Save</button>
+}
+`
+
+export const callToLowercaseVariantsAlone = `export function Button() {
+  return <button className={variants()}>Save</button>
+}
+`
+
+export const callWithVariantsMidName = `export function Button() {
+  return <button className={buttonVariantsFor()}>Save</button>
+}
+`
+
+export const callToAClassNameGetter = `export function Button() {
+  return <button className={getButtonClassName()}>Save</button>
+}
+`
+
+export const templateWrappingAVariantsCall = `export function Button() {
+  return <button className={\`\${buttonVariants()} extra\`}>Save</button>
+}
+`
+
+/** A call to cn on line 3, and a call to a `*Variants` function on line 4. */
+export const variantsCallBesideACnCall = `export function Toolbar({ className }: { readonly className?: string }) {
+  return (
+    <div className={cn('toolbar', className)}>
+      <button className={buttonVariants({ variant: 'ghost' })}>Undo</button>
+    </div>
   )
 }
 `

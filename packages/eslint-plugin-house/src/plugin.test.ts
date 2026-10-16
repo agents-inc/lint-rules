@@ -30,4 +30,13 @@ describe('housePlugin', () => {
   it("declares the 'house' namespace", () => {
     expect(housePlugin.meta.namespace).toStrictEqual('house')
   })
+
+  // Of ESLint's own formatters, only `json-with-metadata` prints a rule's description.
+  it('gives every house rule a description', () => {
+    const rulesWithoutADescription = Object.entries(housePlugin.rules)
+      .filter(([, rule]) => rule.meta.docs === undefined || rule.meta.docs.description === '')
+      .map(([name]) => name)
+
+    expect(rulesWithoutADescription).toStrictEqual([])
+  })
 })
