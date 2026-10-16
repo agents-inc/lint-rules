@@ -1,0 +1,60 @@
+// Every line `init` prints (spec-cli.md "I: init", "Output"; q-i3, q-i5, q-i8, q-i9, P7).
+
+const COMMAND = 'init'
+const COULD_NOT_RUN = `${COMMAND}: could not run: `
+const NOTE = `${COMMAND}: note: `
+
+export const INTERRUPTED = `${COMMAND}: interrupted`
+
+/** The runner and install command of a package manager (q-i5). */
+export type PackageManagerCommands = { readonly install: string; readonly runner: string }
+
+export type EntryWritten = { readonly kind: 'added'; readonly range: string } | { readonly kind: 'kept' }
+
+/** What init prints once it wrote: the files, the install to run, and the lines for the agents' instructions (q-i3). */
+export function initStdoutLines(entry: EntryWritten, packageName: string, configFile: string, { install, runner }: PackageManagerCommands): string[] {
+  const wrote =
+    entry.kind === 'added'
+      ? `${COMMAND}: wrote ${configFile} and added ${packageName} ${entry.range} to devDependencies in package.json.`
+      : `${COMMAND}: wrote ${configFile} and kept the existing ${packageName} entry in package.json.`
+  return [
+    wrote,
+    `Next: run "${install}".`,
+    "Then add these lines to your agents' instructions:",
+    '',
+    `After changing code, run \`${runner} agents-inc-lint check\` with no arguments. Exit 0: done. Exit 1: fix every finding in code you wrote, then run it again; when only findings in code you did not write remain, you are done. Exit 2: stop and report its output. Never add a suppression comment, and never edit ${configFile}.`,
+  ]
+}
+
+/** q-i8: init still writes outside git, and says check will need it. */
+export function outsideGitNote(folder: string): string {
+  return `${NOTE}${folder} is not in a git repository, and check needs one.`
+}
+
+/** q-i9: the file reads import.meta.dirname, which TypeScript types only with @types/node. */
+export function typesNodeNote(configFile: string): string {
+  return `${NOTE}${configFile} reads import.meta.dirname, which TypeScript knows only from @types/node. If your tsconfig includes the file, add @types/node to devDependencies.`
+}
+
+/** q-i1: exit 1, and nothing changed. */
+export function configExists(configFile: string, folder: string): string {
+  return `${COMMAND}: ${configFile} already exists in ${folder}; nothing was changed. Delete it to start again.`
+}
+
+export function noPackageJson(folder: string): string {
+  return `there is no package.json in ${folder}. Run init in the folder of the package to lint.`
+}
+
+export function notAnObject(path: string, field: string): string {
+  return `${path}: ${field} is not a JSON object`
+}
+
+/** A write failed and init put back what it wrote before it. */
+export function nothingWritten(reason: string): string {
+  return `${reason}. Nothing was changed.`
+}
+
+/** Why init could not run, on stderr: its exit code is EXIT_COULD_NOT_RUN. */
+export function couldNotRun(reason: string): string {
+  return `${COULD_NOT_RUN}${reason}`
+}
