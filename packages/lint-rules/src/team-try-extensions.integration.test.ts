@@ -1,6 +1,5 @@
 import type { Linter } from 'eslint'
 import { describe, expect, it } from 'vitest'
-import type { OurRulesets } from './__tests__/cases/both-engines-corpus.ts'
 import {
   OWED_BY_EACH_PACKAGES_SETTINGS,
   TEAMS_OWN_UNPUBLISHED_IMPORT_BLOCK,
@@ -9,12 +8,11 @@ import {
 } from './__tests__/cases/team-try-extensions.ts'
 import { NO_UNPUBLISHED_IMPORT } from './__tests__/cases/workspace-package-imports.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, setUpConsumerEslintCliRun } from './__tests__/consumer-cli-runs.ts'
-import { agentsIncLintModuleTextRootedAtItsFolder, mergedEslintConfigText, teamEslintModuleOfBlocksText } from './__tests__/factories/consumer-project-factories.ts'
-import { buildConsumerSettings } from './__tests__/factories/lint-rules-factories.ts'
+import { projectMergingOurEslintPartText, teamEslintModuleOfBlocksText } from './__tests__/factories/consumer-project-factories.ts'
+import { buildConsumerSettings, MODULES_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJson, buildPackageJsonListingOxlint, type PackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { TEAM_OXLINT_CONFIG_SETTING_NO_RULE, teamOxlintConfigSettingNoRuleFiles } from './__tests__/team-configs-of-the-other-engine.ts'
 import type { ProjectFiles } from './__tests__/temp-projects.ts'
 
 // Our `settings.n.tryExtensions` is ours only where the team's config sets neither
@@ -27,19 +25,17 @@ import type { ProjectFiles } from './__tests__/temp-projects.ts'
 
 allowEveryTestForParallelLoad()
 
-const LINT_RULES_MODULE = 'agents-inc.lint.mts'
 const TEAM_ESLINT_MODULE = 'team.eslint.mjs'
-// The ruleset that ships n/no-unpublished-import, in both sets.
-const MODULES: OurRulesets = { agentRulesets: { quality: ['modules'] }, editorRulesets: { quality: ['modules'] } }
 
 /** The monorepo with the packages, its package.json given, and an eslint.config.mjs merging our ESLint part into the team's blocks. */
 function monorepoFiles(packageJson: PackageJson, teamBlocks: readonly Linter.Config[]): ProjectFiles {
   return {
     'package.json': packageJsonText(packageJson),
-    [LINT_RULES_MODULE]: agentsIncLintModuleTextRootedAtItsFolder(buildConsumerSettings(MODULES)),
-    'eslint.config.mjs': mergedEslintConfigText(LINT_RULES_MODULE, TEAM_ESLINT_MODULE, TEAM_OXLINT_CONFIG_SETTING_NO_RULE),
-    ...teamOxlintConfigSettingNoRuleFiles,
-    [TEAM_ESLINT_MODULE]: teamEslintModuleOfBlocksText(teamBlocks),
+    ...projectMergingOurEslintPartText({
+      settings: buildConsumerSettings(MODULES_IN_BOTH_SETS),
+      team: { file: TEAM_ESLINT_MODULE, text: teamEslintModuleOfBlocksText(teamBlocks) },
+      teamOxlint: 'setting no rule',
+    }),
     ...tryExtensionsPackageFiles,
   }
 }

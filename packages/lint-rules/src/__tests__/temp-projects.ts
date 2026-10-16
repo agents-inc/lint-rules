@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
@@ -23,6 +23,7 @@ export type TempProjects = {
   readonly create: (project: TempProject) => string
 }
 
+const EMPTY_FOLDER_PREFIX = 'lint-rules-empty-'
 const TEMP_DIR_PREFIX = 'lint-rules-project-'
 const PROJECT_DIR_NAME = 'project'
 const NODE_MODULES = 'node_modules'
@@ -50,6 +51,12 @@ export const THIS_PACKAGE: LinkedPackage = {
   name: '@agents-inc/lint-rules',
   dir: fileURLToPath(new URL('../..', import.meta.url)),
 }
+
+/** The build output of this package, which `turbo test` builds first. */
+export const BUILT_DIST_DIR = join(THIS_PACKAGE.dir, 'dist')
+
+/** A consumer's install: this package, and the oxlint it runs. */
+export const CONSUMER_INSTALL: readonly LinkedPackage[] = [THIS_PACKAGE, INSTALLED_OXLINT]
 
 /**
  * Temp projects, removed after the suite, or with the test file's temp dir where the suite never
@@ -79,7 +86,35 @@ export function setUpTempProjects(): TempProjects {
   }
 }
 
-function writeFileCreatingItsDir(path: string, content: string): void {
+/**
+ * Empty folders, removed after the suite, for a run to point HOME, XDG_STATE_HOME or TMPDIR at:
+ * anything the run writes outside the project shows up in one. Call it at the top of a test file or
+ * a describe block: it registers that scope's cleanup.
+ */
+export function setUpEmptyFolders(): () => string {
+  const made: string[] = []
+  afterAll(() => {
+    made.forEach((folder) => rmSync(folder, { recursive: true, force: true }))
+  })
+  return () => {
+    const folder = realpathSync(mkdtempSync(join(tmpdir(), EMPTY_FOLDER_PREFIX)))
+    made.push(folder)
+    return folder
+  }
+}
+
+/** Every entry under the folder, by its path relative to it, sorted. */
+export function entriesUnder(dir: string): string[] {
+  return readdirSync(dir, { recursive: true, encoding: 'utf8' }).toSorted()
+}
+
+/** The files given, by their path in the folder, as they are now. */
+export function textsOf(dir: string, files: readonly string[]): Record<string, string> {
+  return Object.fromEntries(files.map((file) => [file, readFileSync(join(dir, file), 'utf8')]))
+}
+
+/** Writes the file, making the folders above it first where they are missing. */
+export function writeFileCreatingItsDir(path: string, content: string): void {
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, content)
 }

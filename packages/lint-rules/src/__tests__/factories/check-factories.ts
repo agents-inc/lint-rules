@@ -1,7 +1,10 @@
+import { writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import type { ESLint, Linter } from 'eslint'
 import type { ChangedLines } from '../../cli/check/changed-lines.ts'
 import type { FileReports } from '../../cli/check/findings.ts'
+import type { InPlaceFixer } from '../../cli/check/fix-writes.ts'
 import type { OxlintDiagnostic, OxlintSpan } from '../../cli/check/oxlint-output.ts'
 import type { CheckFinding } from '../../cli/check/report.ts'
 import type { LintRules } from '../../index.ts'
@@ -26,8 +29,24 @@ const OXLINT_WARNING = 'warning'
 const BLOCK_COMMENT_START = '/*'
 const BLOCK_COMMENT_END = '*/'
 const NOT_FOUND = -1
+const UNUSED_SUPPRESSION_LABEL = 'unused suppression'
 /** The file a unit test's reports are on, as check prints it. */
 export const REPORTED_FILE = 'src/a.ts'
+
+/** The agent rulesets most check runs use: their fixtures fire rules that report and never fix. */
+export const REDUNDANCY = { quality: ['redundancy'] } as const
+
+/** Settings that allow suppression comments in the files under src/allowed (q-c15). */
+export const SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED: SharedFields = { fileOverrides: [{ files: ['src/allowed/**'], allowSuppressions: true }] }
+
+/** A package's folder below the repo's top level, as in a monorepo. */
+export const NESTED_PACKAGE = 'packages/a'
+
+/** check's stderr where a signal stopped it (q-c2). */
+export const CHECK_INTERRUPTED = 'check: interrupted\n'
+
+/** How check's stderr starts where ESLint failed. */
+export const CHECK_ESLINT_FAILED = 'check: could not run: ESLint failed: '
 
 /** agents-inc.lint.mts listing the agent rulesets given and the other settings given, the editor set empty. */
 export function checkConfigText(agentRulesets: Partial<Rulesets>, fields: SharedFields = {}): string {
@@ -96,6 +115,19 @@ export function exportedLet(name: string): string {
 /** That line as prefer-const's fix leaves it. */
 export function exportedConstFixedFromLet(name: string): string {
   return `export const ${name} = 1`
+}
+
+/**
+ * oxlint's fix run as a stand-in: it writes the text after its fixes of each file given that has one,
+ * by its path in the project, and leaves any other file alone, as oxlint leaves a file it finds
+ * nothing to fix in.
+ */
+export function oxlintFixRunWriting(projectDir: string, afterFixes: ProjectFiles): InPlaceFixer {
+  return async (paths) => {
+    Object.entries(afterFixes).forEach(([file, fixed]) => {
+      if (paths.includes(join(projectDir, file))) writeFileSync(join(projectDir, file), fixed)
+    })
+  }
 }
 
 /** A file whose lines all change: ESLint's ChangedLines for it. */
@@ -235,6 +267,24 @@ export type EnableComment = { readonly form: SuppressionForm; readonly ruleName:
 
 export function blockEnable({ form, ruleName }: EnableComment): string {
   return ruleName === null ? `/* ${form}-enable */` : `/* ${form}-enable ${ruleName} */`
+}
+
+/** A block disable comment in the form given of the rule named, the line given, then its enable comment. */
+export function blockPairAround(form: SuppressionForm, ruleName: string, between: string): string[] {
+  return [blockDisable(form, ruleName), between, blockEnable({ form, ruleName })]
+}
+
+/** What check says of a suppression comment of the rule named that silenced nothing (q-c15). */
+export function unusedSuppressionMessageOf(ruleName: string): string {
+  return `suppresses ${ruleName}, which reported nothing here`
+}
+
+/** A suppression comment of the rule named that silenced nothing, at its line: in REPORTED_FILE unless a file is given. */
+export type UnusedSuppressionAt = { readonly line: number; readonly ruleName: string; readonly file?: string }
+
+/** That suppression as check reports it (q-c15). */
+export function buildUnusedSuppressionFinding({ line, ruleName, file = REPORTED_FILE }: UnusedSuppressionAt): CheckFinding {
+  return buildCheckFinding({ file, line, label: UNUSED_SUPPRESSION_LABEL, message: unusedSuppressionMessageOf(ruleName) })
 }
 
 /**

@@ -17,30 +17,32 @@ import {
   WRAP_FIXED,
 } from './__tests__/cases/check-sources.ts'
 import { autofixedFilesIn, autofixedLineOf, findingsIn, findingsInFile } from './__tests__/check-output.ts'
-import { setUpRunsBeforeTheSuite } from './__tests__/consumer-cli-runs.ts'
 import {
+  type BackgroundRun,
+  checkRunningOnBesideAnotherWriter,
+  checkSignalledAfterAnotherWriter,
+  checkSignalledOnceItFixedAnotherWritersText,
+  checkSignalledOnceTheFileChanges,
+  type CliRun,
+  EXIT,
+  runCheck,
+  RUNS_IN_THE_BACKGROUND,
+} from './__tests__/cli-runs.ts'
+import {
+  CHECK_ESLINT_FAILED,
+  CHECK_INTERRUPTED,
   checkedPackageFiles,
   DEBUGGER_STATEMENT,
   exportedConstant,
   exportedConstFixedFromLet,
   exportedLet,
   moduleText,
+  REDUNDANCY,
 } from './__tests__/factories/check-factories.ts'
-import {
-  type BackgroundRun,
-  type CliRun,
-  checkRunningOnBesideAnotherWriter,
-  checkSignalledAfterAnotherWriter,
-  checkSignalledOnceItFixedAnotherWritersText,
-  checkSignalledOnceTheFileChanges,
-  createGitProject,
-  EXIT,
-  type GitProject,
-  runCheck,
-  setUpAsyncRunsBeforeTheSuite,
-} from './__tests__/git-projects.ts'
+import { createGitProject, type GitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import type { TempProjects } from './__tests__/temp-projects.ts'
+import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
+import { type TempProjects, textsOf } from './__tests__/temp-projects.ts'
 
 // spec-cli.md "The fix step" (q-c11, P1): check applies the autofixes first, then lints, and
 // reports what is left. A fix may change only lines already changed: ESLint applies a fix only when
@@ -60,7 +62,6 @@ allowEveryTestForParallelLoad()
 
 const FIXES = { quality: ['correctness', 'redundancy', 'modern-js', 'immutability', 'conventions'] } as const
 const ORDERING_AND_MODERN_JS = { quality: ['ordering', 'modern-js'] } as const
-const REDUNDANCY = { quality: ['redundancy'] } as const
 const IMMUTABILITY = { quality: ['immutability'] } as const
 
 // A project both engines fix, for a run a signal stops while check fixes. ESLint fixes the files
@@ -76,13 +77,6 @@ const FIXED_BY_BOTH_ENGINES = [FIXED_BY_ESLINT_FIRST, ...FIXED_BY_OXLINT]
 const NOTHING_TO_FIX = 'src/untouched.ts'
 const NOTHING_TO_FIX_TEXT = moduleText(exportedConstant('untouched'))
 const EVERY_CHANGED_FILE = [...FIXED_BY_BOTH_ENGINES, NOTHING_TO_FIX]
-const INTERRUPTED = 'check: interrupted\n'
-const ESLINT_FAILED = 'check: could not run: ESLint failed: '
-
-/** The files' texts, by path. */
-function textsOf(project: GitProject, files: readonly string[]): Record<string, string> {
-  return Object.fromEntries(files.map((file) => [file, project.read(file)]))
-}
 
 /** The `let` the file at the index of FIXED_BY_OXLINT exports. */
 function letOfFileAt(index: number): string {
@@ -152,9 +146,9 @@ describe('check fixing what agents changed', () => {
     project.write('src/caught-new.ts', moduleText(...ATTEMPT_CATCHING))
     project.write('src/shifted.ts', moduleText(NAMES, ...IDS_AS_AN_ARRAY, DEBUGGER_STATEMENT))
     const changedFiles = ['src/both-fixable.ts', 'src/eslint-partly.ts', 'src/oxlint-guard.ts', 'src/eslint-guard.ts', 'src/caught-partly.ts', 'src/caught-new.ts', 'src/shifted.ts']
-    const before = textsOf(project, changedFiles)
+    const before = textsOf(project.dir, changedFiles)
     const result = runCheck(project.dir)
-    return { result, before, after: textsOf(project, changedFiles) }
+    return { result, before, after: textsOf(project.dir, changedFiles) }
   })
 
   it('fixes an ESLint-fixable and an oxlint-fixable finding in a new file, reports neither, and names the file in the autofixed line (F-1)', () => {
@@ -231,7 +225,7 @@ describe('check on a fix it withholds, and on a warning (F-4, P4)', () => {
     project.write('src/units.ts', moduleText(...UNITS))
     project.write('src/warned.ts', moduleText(...WRAP))
     const result = runCheck(project.dir)
-    return { result, after: textsOf(project, ['src/units.ts', 'src/warned.ts']) }
+    return { result, after: textsOf(project.dir, ['src/units.ts', 'src/warned.ts']) }
   })
 
   it('keeps an array whose order the program observes in its order, and reports it (F-4)', () => {
@@ -260,9 +254,9 @@ describe('check where nothing it finds can be fixed (F-8)', () => {
     project.write('src/unfixable.ts', moduleText(exportedConstant('unfixable'), DEBUGGER_STATEMENT))
     project.append('src/old.ts', moduleText(DEBUGGER_STATEMENT))
     const files = ['src/unfixable.ts', 'src/old.ts']
-    const before = textsOf(project, files)
+    const before = textsOf(project.dir, files)
     const result = runCheck(project.dir)
-    return { result, before, after: textsOf(project, files) }
+    return { result, before, after: textsOf(project.dir, files) }
   })
 
   it('changes no file and prints no autofixed line', () => {
@@ -287,9 +281,9 @@ describe('check fixing only what it checks (F-9)', () => {
     project.write(`${APP}/src/generated/generated.ts`, moduleText(exportedLet('generated')))
     project.write(`${APP}/src/component.vue`, componentWithAScript(exportedLet('inAComponent')))
     project.write(`${APP}/src/fixable.ts`, moduleText(exportedLet('fixable')))
-    const before = textsOf(project, UNTOUCHABLE)
+    const before = textsOf(project.dir, UNTOUCHABLE)
     const result = runCheck(project.pathOf(APP))
-    return { result, before, after: textsOf(project, [...UNTOUCHABLE, `${APP}/src/fixable.ts`]) }
+    return { result, before, after: textsOf(project.dir, [...UNTOUCHABLE, `${APP}/src/fixable.ts`]) }
   })
 
   it("fixes no file outside the config's folder, none its ignores name, and none that is not JS or TS, while it fixes the one beside them", () => {
@@ -308,14 +302,14 @@ describe('check fixing only what it checks (F-9)', () => {
 // naming the files it rewrote so far, for the agent to read them again (P2).
 
 describe('check interrupted while ESLint fixes, after oxlint wrote its fixes (spec-cli.md "Signals and leftovers")', () => {
-  const runs = setUpAsyncRunsBeforeTheSuite(async (tempProjects) => {
+  const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const signalledWith = async (signal: NodeJS.Signals): Promise<{ readonly stopped: BackgroundRun; readonly after: Record<string, string> }> => {
       const project = projectBothEnginesFix(tempProjects)
       const stopped = await checkSignalledOnceTheFileChanges(project.dir, project.pathOf(FIXED_BY_ESLINT_FIRST), signal)
-      return { stopped, after: textsOf(project, EVERY_CHANGED_FILE) }
+      return { stopped, after: textsOf(project.dir, EVERY_CHANGED_FILE) }
     }
     return { SIGINT: await signalledWith('SIGINT'), SIGTERM: await signalledWith('SIGTERM') }
-  })
+  }, RUNS_IN_THE_BACKGROUND)
 
   it.each([
     { signal: 'SIGINT', exitCode: EXIT.interrupted },
@@ -325,7 +319,7 @@ describe('check interrupted while ESLint fixes, after oxlint wrote its fixes (sp
 
     expect({ signalled: stopped.signalled, run: stopped.run, after }).toStrictEqual({
       signalled: true,
-      run: { exitCode, signal: null, stdout: autofixedLineOf(FIXED_BY_BOTH_ENGINES), stderr: INTERRUPTED },
+      run: { exitCode, signal: null, stdout: autofixedLineOf(FIXED_BY_BOTH_ENGINES), stderr: CHECK_INTERRUPTED },
       after: textsAfterEveryFix(),
     })
   })
@@ -339,7 +333,7 @@ describe('check interrupted while it fixes, after another writer rewrote a file 
   const ANOTHER_WRITERS_TEXT = moduleText(exportedConstant('writtenByAnotherWriter'))
   const ANOTHER_WRITERS_TEXT_WHERE_NOTHING_WAS_FIXED = moduleText(exportedConstant('alsoWrittenByAnotherWriter'))
 
-  const run = setUpAsyncRunsBeforeTheSuite(async (tempProjects) => {
+  const run = setUpRunsBeforeTheSuite(async (tempProjects) => {
     if (REWRITTEN_MEANWHILE === undefined) throw new Error('there is no last file oxlint fixes')
     const project = projectBothEnginesFix(tempProjects)
     const anotherWriter = (): void => {
@@ -347,15 +341,15 @@ describe('check interrupted while it fixes, after another writer rewrote a file 
       project.write(NOTHING_TO_FIX, ANOTHER_WRITERS_TEXT_WHERE_NOTHING_WAS_FIXED)
     }
     const interrupted = await checkSignalledAfterAnotherWriter(project.dir, project.pathOf(FIXED_BY_ESLINT_FIRST), anotherWriter, 'SIGINT')
-    return { interrupted, rewritten: REWRITTEN_MEANWHILE, after: textsOf(project, EVERY_CHANGED_FILE) }
-  })
+    return { interrupted, rewritten: REWRITTEN_MEANWHILE, after: textsOf(project.dir, EVERY_CHANGED_FILE) }
+  }, RUNS_IN_THE_BACKGROUND)
 
   it("keeps that writer's text in both files and every other file's fix, names only the files check fixed in the autofixed line, says it was interrupted, and exits 130", () => {
     const { interrupted, rewritten, after } = run()
 
     expect({ signalled: interrupted.signalled, run: interrupted.run, after }).toStrictEqual({
       signalled: true,
-      run: { exitCode: EXIT.interrupted, signal: null, stdout: autofixedLineOf(FIXED_BY_BOTH_ENGINES), stderr: INTERRUPTED },
+      run: { exitCode: EXIT.interrupted, signal: null, stdout: autofixedLineOf(FIXED_BY_BOTH_ENGINES), stderr: CHECK_INTERRUPTED },
       after: { ...textsAfterEveryFix(), [rewritten]: ANOTHER_WRITERS_TEXT, [NOTHING_TO_FIX]: ANOTHER_WRITERS_TEXT_WHERE_NOTHING_WAS_FIXED },
     })
   })
@@ -371,21 +365,21 @@ describe('check interrupted once ESLint fixed what another writer wrote into a f
   const ANOTHER_WRITERS_TEXT = moduleText(letFixedOfFileAt(MIDDLE), ...WRAP)
   const ANOTHER_WRITERS_TEXT_FIXED = moduleText(letFixedOfFileAt(MIDDLE), ...WRAP_FIXED)
 
-  const run = setUpAsyncRunsBeforeTheSuite(async (tempProjects) => {
+  const run = setUpRunsBeforeTheSuite(async (tempProjects) => {
     if (WRITTEN_MEANWHILE === undefined) throw new Error('there is no middle file oxlint fixes')
     const project = projectBothEnginesFix(tempProjects)
     const anotherWriter = (): void => project.write(WRITTEN_MEANWHILE, ANOTHER_WRITERS_TEXT)
     const fixed = { path: project.pathOf(WRITTEN_MEANWHILE), text: ANOTHER_WRITERS_TEXT_FIXED }
     const interrupted = await checkSignalledOnceItFixedAnotherWritersText(project.dir, project.pathOf(FIXED_BY_ESLINT_FIRST), anotherWriter, fixed, 'SIGINT')
-    return { interrupted, written: WRITTEN_MEANWHILE, after: textsOf(project, EVERY_CHANGED_FILE) }
-  })
+    return { interrupted, written: WRITTEN_MEANWHILE, after: textsOf(project.dir, EVERY_CHANGED_FILE) }
+  }, RUNS_IN_THE_BACKGROUND)
 
   it("keeps that writer's line, as ESLint fixed it, and every other file's fix, names each file it fixed in the autofixed line, says it was interrupted, and exits 130", () => {
     const { interrupted, written, after } = run()
 
     expect({ signalled: interrupted.signalled, run: interrupted.run, after }).toStrictEqual({
       signalled: true,
-      run: { exitCode: EXIT.interrupted, signal: null, stdout: autofixedLineOf(FIXED_BY_BOTH_ENGINES), stderr: INTERRUPTED },
+      run: { exitCode: EXIT.interrupted, signal: null, stdout: autofixedLineOf(FIXED_BY_BOTH_ENGINES), stderr: CHECK_INTERRUPTED },
       after: { ...textsAfterEveryFix(), [written]: ANOTHER_WRITERS_TEXT_FIXED },
     })
   })
@@ -394,12 +388,12 @@ describe('check interrupted once ESLint fixed what another writer wrote into a f
 describe('check that runs to its end while another writer rewrites a changed file it fixes nothing in (P2)', () => {
   const ANOTHER_WRITERS_TEXT = moduleText(exportedConstant('writtenByAnotherWriter'))
 
-  const run = setUpAsyncRunsBeforeTheSuite(async (tempProjects) => {
+  const run = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const project = projectBothEnginesFix(tempProjects)
     const anotherWriter = (): void => project.write(NOTHING_TO_FIX, ANOTHER_WRITERS_TEXT)
     const ranOn = await checkRunningOnBesideAnotherWriter(project.dir, project.pathOf(FIXED_BY_ESLINT_FIRST), anotherWriter)
-    return { ranOn, after: textsOf(project, EVERY_CHANGED_FILE) }
-  })
+    return { ranOn, after: textsOf(project.dir, EVERY_CHANGED_FILE) }
+  }, RUNS_IN_THE_BACKGROUND)
 
   it('names only the files its own fixes rewrote in the autofixed line, not the one that writer changed, and keeps that writer\'s text', () => {
     const { ranOn, after } = run()
@@ -422,7 +416,7 @@ describe('check that could not run once oxlint had written its fixes: ESLint fai
       const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(IMMUTABILITY, ESLINT_THROWING) })
       FILES.forEach((file, index) => project.write(file, moduleText(lineOfFileAt(index))))
       const result = runCheck(project.dir)
-      return { result, after: textsOf(project, FILES) }
+      return { result, after: textsOf(project.dir, FILES) }
     }
     return { oxlintFixed: runOn(letOfFileAt), nothingFixed: runOn(letFixedOfFileAt) }
   })
@@ -430,7 +424,7 @@ describe('check that could not run once oxlint had written its fixes: ESLint fai
   it("keeps oxlint's fixes, names the files in the autofixed line, says why it could not run, and exits 2", () => {
     const { result, after } = runs().oxlintFixed
 
-    expect({ exitCode: result.exitCode, stdout: result.stdout, couldNotRun: result.stderr.startsWith(ESLINT_FAILED), after }).toStrictEqual({
+    expect({ exitCode: result.exitCode, stdout: result.stdout, couldNotRun: result.stderr.startsWith(CHECK_ESLINT_FAILED), after }).toStrictEqual({
       exitCode: EXIT.couldNotRun,
       stdout: autofixedLineOf(FILES),
       couldNotRun: true,
@@ -441,7 +435,7 @@ describe('check that could not run once oxlint had written its fixes: ESLint fai
   it('prints no autofixed line where it rewrote nothing before it could not run, beside that run', () => {
     const { result } = runs().nothingFixed
 
-    expect({ exitCode: result.exitCode, stdout: result.stdout, couldNotRun: result.stderr.startsWith(ESLINT_FAILED) }).toStrictEqual({
+    expect({ exitCode: result.exitCode, stdout: result.stdout, couldNotRun: result.stderr.startsWith(CHECK_ESLINT_FAILED) }).toStrictEqual({
       exitCode: EXIT.couldNotRun,
       stdout: '',
       couldNotRun: true,

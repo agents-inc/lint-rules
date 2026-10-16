@@ -1,6 +1,7 @@
 import { catalog } from '@workspace/rule-data'
 import type { OxlintConfig } from 'oxlint'
 import { beforeAll, describe, expect, it } from 'vitest'
+import { oxlintPartOf } from './__tests__/agent-configs.ts'
 import { oxlintOverridesMatchingNoFile } from './__tests__/blocks-matching-no-file.ts'
 import {
   FILE_EXCLUDED_BY_TWO_LISTINGS,
@@ -23,11 +24,10 @@ import { buildConsumerLintRulesFromShape, type OxlintMergeShapeValue } from './_
 import { buildTeamOxlintConfigFrom } from './__tests__/factories/team-config-factories.ts'
 import { ownerOfOxlintFindings, oxlintFindingsOwed } from './__tests__/oxlint-findings-owed.ts'
 import { oxlintPartAlone } from './__tests__/oxlint-part-alone.ts'
-import { coverageOf, pairsMetInNoShape, pairwiseShapes, type Shape } from './__tests__/pairwise-shapes.ts'
+import { coverageOf, pairsMetInNoShape, pairwiseShapes, type Shape, shapeNameOf } from './__tests__/pairwise-shapes.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { TEAM_ESLINT_CONFIG_SETTING_NO_RULE, teamEslintConfigSettingNoRuleFiles } from './__tests__/team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
-import type { OxlintPart } from './core/editor-parts.ts'
 import { defineLintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
@@ -49,7 +49,6 @@ type FindingsOwed = { readonly merged: readonly string[]; readonly owed: readonl
 
 const SHAPES = pairwiseShapes(OXLINT_MERGE_DIMENSIONS, OXLINT_MERGE_SEEDS)
 const COVERAGE = coverageOf(OXLINT_MERGE_DIMENSIONS, SHAPES)
-const SHAPE_SEPARATOR = '; '
 
 const PROJECT = setUpTempProjects().create({
   files: {
@@ -67,15 +66,6 @@ allowEveryTestForParallelLoad()
 function findingsWith(file: string, config: OxlintConfig): OxlintFinding[] {
   writeOxlintConfigFile(PROJECT, file, config)
   return oxlintFindingsWithSeverityIn(runOxlintCli(PROJECT, file, OXLINT_MERGE_LINTED_DIRS).report)
-}
-
-function oxlintPartOf({ oxlint }: ReturnType<typeof defineLintRules>['editorRulesets']): OxlintPart {
-  if (oxlint === undefined) throw new Error('the project lists oxlint, so it has an oxlint part')
-  return oxlint
-}
-
-function nameOf(shape: Shape<OxlintMergeShapeValue>): string {
-  return shape.map(({ name }) => name).join(SHAPE_SEPARATOR)
 }
 
 /** The team's config of the shape with our part merged in. */
@@ -114,7 +104,7 @@ describe('mergeOxlintConfig, against the real oxlint CLI in shapes meeting every
     expect(overridesMatchingNoFile).toStrictEqual([])
   })
 
-  it.each(SHAPES.map((shape, index) => ({ index, shape, name: nameOf(shape) })))(
+  it.each(SHAPES.map((shape, index) => ({ index, shape, name: shapeNameOf(shape) })))(
     "shape $index gives the team's findings of each rule the team sets, in every file, and ours of every other where ours runs it: $name",
     ({ index, shape }) => {
       const { merged, owed } = findingsOwedIn(`shape-${String(index)}`, shape)

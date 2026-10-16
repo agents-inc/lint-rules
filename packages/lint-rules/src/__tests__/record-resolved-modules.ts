@@ -6,8 +6,7 @@
 //   node record-resolved-modules.ts <record file> <dist dir> eslint-entry
 import { writeFileSync } from 'node:fs'
 import { registerHooks } from 'node:module'
-import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { builtEntry } from './built-entries.ts'
 
 type Step = 'oxlint-side' | 'eslint-entry'
 
@@ -44,10 +43,6 @@ async function loadTheOxlintSide(dist: string, lintRules: string | undefined): P
   if (eslint === undefined) throw new Error('defineLintRules returned no ESLint part')
   const oxlintEntry: typeof import('../oxlint.ts') = await import(builtEntry(dist, 'oxlint.mjs'))
   oxlintEntry.mergeOxlintConfig({}, oxlint, { eslintConfig: null })
-}
-
-function builtEntry(dist: string, file: string): string {
-  return pathToFileURL(join(dist, file)).href
 }
 
 function parseStep(argument: string | undefined): Step {

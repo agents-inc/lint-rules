@@ -1,21 +1,17 @@
 import { messageOf } from './caught-errors.ts'
 import { removeLeftovers } from './check/leftovers.ts'
 import { checkIn } from './check/run-check.ts'
-import { couldNotRun as checkCouldNotRun, INTERRUPTED as CHECK_INTERRUPTED } from './check/texts.ts'
+import { type Command, couldNotRunLine, interruptedLine } from './command-lines.ts'
 import { EXIT_COULD_NOT_RUN, EXIT_INTERRUPTED, EXIT_TERMINATED } from './exit-codes.ts'
 import { initIn } from './init/run-init.ts'
-import { couldNotRun as initCouldNotRun, INTERRUPTED as INIT_INTERRUPTED } from './init/texts.ts'
 import { type Outcome, stdoutIfStopped } from './outcome.ts'
 import { textOfLines } from './printed-lines.ts'
-import type { Command } from './usage.ts'
 
 type Interruption = { readonly signal: AbortSignal; readonly exitCode: () => number }
 
 const EXIT_CODE_OF_SIGNAL = { SIGINT: EXIT_INTERRUPTED, SIGTERM: EXIT_TERMINATED } as const
 const SIGNALS = ['SIGINT', 'SIGTERM'] as const
 
-const COULD_NOT_RUN_LINE = { check: checkCouldNotRun, init: initCouldNotRun } as const
-const INTERRUPTED_LINE = { check: CHECK_INTERRUPTED, init: INIT_INTERRUPTED } as const
 const EXPERIMENTAL_WARNING = 'ExperimentalWarning'
 const TYPE_STRIPPING = /^Type Stripping /u
 
@@ -47,11 +43,11 @@ async function outcomeOf(command: Command, { signal, exitCode }: Interruption): 
 }
 
 function interruptedOutcome(command: Command, exitCode: number, stdout: string): Outcome {
-  return { stdout, stderr: textOfLines([INTERRUPTED_LINE[command]]), exitCode }
+  return { stdout, stderr: textOfLines([interruptedLine(command)]), exitCode }
 }
 
 function couldNotRunOutcome(command: Command, error: unknown, stdout: string): Outcome {
-  return { stdout, stderr: textOfLines([COULD_NOT_RUN_LINE[command](messageOf(error))]), exitCode: EXIT_COULD_NOT_RUN }
+  return { stdout, stderr: textOfLines([couldNotRunLine(command, messageOf(error))]), exitCode: EXIT_COULD_NOT_RUN }
 }
 
 /** Aborts on the first SIGINT or SIGTERM; on a second, removes what check left and exits at once. */

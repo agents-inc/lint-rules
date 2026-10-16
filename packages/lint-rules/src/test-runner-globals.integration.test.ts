@@ -1,14 +1,13 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { type BothEnginesRuns, setUpBothEnginesRuns } from './__tests__/both-engines-runs.ts'
-import type { OurRulesets } from './__tests__/cases/both-engines-corpus.ts'
 import { NO_UNDEF } from './__tests__/cases/svelte-components.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, eslintLintedFilesOf, setUpConsumerEslintCliRun } from './__tests__/consumer-cli-runs.ts'
-import { agentsIncLintModuleTextRootedAtItsFolder, emptyTeamEslintModuleText, mergedEslintConfigText } from './__tests__/factories/consumer-project-factories.ts'
-import { buildConsumerSettings } from './__tests__/factories/lint-rules-factories.ts'
+import { EMPTY_TEAM_ESLINT_MODULE_FILE, projectMergingOurEslintPartText } from './__tests__/factories/consumer-project-factories.ts'
+import { buildConsumerSettings, CORRECTNESS_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { EMPTY_TEAM_OXLINT_CONFIG, TEAM_OXLINT_CONFIG_SETTING_NO_RULE, teamOxlintConfigSettingNoRuleFiles } from './__tests__/team-configs-of-the-other-engine.ts'
+import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 
 // q76 (spec-core.md C10): Vitest's and Jest's globals, read-only, in test files, whatever rulesets
 // are listed, as the framework globals are given (call 5): oxlint's `vitest` and `jest` envs, and
@@ -19,11 +18,8 @@ import { EMPTY_TEAM_OXLINT_CONFIG, TEAM_OXLINT_CONFIG_SETTING_NO_RULE, teamOxlin
 
 allowEveryTestForParallelLoad()
 
-// The ruleset that ships no-undef, in both sets: no testing ruleset is listed.
-const CORRECTNESS: OurRulesets = { agentRulesets: { quality: ['correctness'] }, editorRulesets: { quality: ['correctness'] } }
+// The rule under test, which our correctness ruleset ships: that ruleset alone is listed, no testing one.
 const RULES = [NO_UNDEF]
-const LINT_RULES_MODULE = 'agents-inc.lint.mts'
-const EMPTY_TEAM_ESLINT_MODULE = 'empty-team.eslint.mjs'
 
 // Each test runner's globals, one to a line: describe (1), it (2), vi (3), jest (4), expect (5).
 const TEST_SOURCE = `describe('sum', () => {
@@ -70,7 +66,7 @@ const OWED_BY_ESLINT = owedBy('no-undef')
 const JS_FILES = Object.keys(OWED_BY_OXLINT)
 
 describe("a JS test file using Vitest's and Jest's globals, beside a file that is no test using them, our correctness ruleset on, in a project whose package.json lists oxlint", () => {
-  const runs = setUpBothEnginesRuns({ sources, ourRulesets: CORRECTNESS, ours: {}, teamEslintRules: {}, teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG })
+  const runs = setUpBothEnginesRuns({ sources, ourRulesets: CORRECTNESS_IN_BOTH_SETS, ours: {}, teamEslintRules: {}, teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG })
   // Read before the tests, so a run the engines cannot make fails the file.
   let made: BothEnginesRuns | undefined
 
@@ -104,10 +100,11 @@ describe("a JS test file using Vitest's and Jest's globals, beside a file that i
 describe("a JS test file using Vitest's and Jest's globals, beside a file that is no test using them, our correctness ruleset on, in a project whose package.json lists no oxlint, linted by the ESLint CLI through the built package", () => {
   const run = setUpConsumerEslintCliRun({
     'package.json': packageJsonText(buildPackageJson()),
-    [LINT_RULES_MODULE]: agentsIncLintModuleTextRootedAtItsFolder(buildConsumerSettings(CORRECTNESS)),
-    'eslint.config.mjs': mergedEslintConfigText(LINT_RULES_MODULE, EMPTY_TEAM_ESLINT_MODULE, TEAM_OXLINT_CONFIG_SETTING_NO_RULE),
-    ...teamOxlintConfigSettingNoRuleFiles,
-    [EMPTY_TEAM_ESLINT_MODULE]: emptyTeamEslintModuleText(),
+    ...projectMergingOurEslintPartText({
+      settings: buildConsumerSettings(CORRECTNESS_IN_BOTH_SETS),
+      team: EMPTY_TEAM_ESLINT_MODULE_FILE,
+      teamOxlint: 'setting no rule',
+    }),
     ...sources,
   })
 

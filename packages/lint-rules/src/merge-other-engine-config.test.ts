@@ -37,7 +37,7 @@ import {
 import { BLOCK_TURNING_NO_DEBUGGER_OFF, OURS_NO_THIS_ALIAS } from './__tests__/cases/team-sets-a-rule.ts'
 import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
 import { CONSUMER_CONFIG_FILES, eslintConfigCallingTheMergeTwiceText, projectNamingEachConfigText } from './__tests__/factories/consumer-project-factories.ts'
-import { buildConsumerLintRules, buildConsumerSettings } from './__tests__/factories/lint-rules-factories.ts'
+import { buildConsumerSettings } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJson, buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildTeamOxlintrcExtending } from './__tests__/factories/shape-factories.ts'
 import { buildTeamOxlintConfig } from './__tests__/factories/team-config-factories.ts'
@@ -47,8 +47,9 @@ import {
   moduleThrowingText,
   teamOxlintrcTextWithTrailingCommas,
 } from './__tests__/factories/team-config-file-factories.ts'
+import { NOT_STATED, ourOxlintPartIn, ourPartsIn, projectListingOxlintIn, severityStatedFor } from './__tests__/other-engine-merges.ts'
 import { mergedConfigsOf, setUpOxlintMergesInOneProcess } from './__tests__/oxlint-merges-in-one-process.ts'
-import { oxlintEntryOfRuleFor, oxlintSeverityFor, severityOfOxlintEntry } from './__tests__/oxlint-config-oracle.ts'
+import { oxlintSeverityFor } from './__tests__/oxlint-config-oracle.ts'
 import {
   EMPTY_TEAM_OXLINT_CONFIG,
   NO_TEAM_ESLINT_CONFIG,
@@ -56,9 +57,8 @@ import {
   TEAM_ESLINT_CONFIG_SETTING_NO_RULE,
   teamEslintConfigSettingNoRuleFiles,
 } from './__tests__/team-configs-of-the-other-engine.ts'
-import { INSTALLED_OXLINT, installedPackage, type ProjectFiles, setUpTempProjects } from './__tests__/temp-projects.ts'
+import { installedPackage, type ProjectFiles, setUpTempProjects } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
-import { defineLintRules, type LintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
 // Each merge takes the path of the team's other engine config, so it can see the rules set only
@@ -70,8 +70,6 @@ import { mergeOxlintConfig } from './oxlint.ts'
 // JSON oxlint config is parsed, comments and paths it extends included. A config that calls our merge
 // for its own engine is read as what it hands that merge, which only the built package, loaded once
 // in a process of its own, shows (the last describe).
-
-type OurRules = NonNullable<LintRules['rules']>
 
 const tempProjects = setUpTempProjects()
 const { ruleSeverityInProjectFor } = setUpEslintConfigOracle()
@@ -90,7 +88,6 @@ const JS_FILE_ELSEWHERE = 'lib/b.js'
 const TOP_LEVEL_AWAIT_REFUSED = 'ERR_REQUIRE_ASYNC_MODULE'
 const TOP_LEVEL_AWAIT_EXPLAINED = 'a config read while another loads cannot use top-level await'
 const NO_THIS_ALIAS = '@typescript-eslint/no-this-alias'
-const NOT_STATED = 'not stated'
 const TYPESCRIPT_ESLINT = installedPackage('typescript-eslint')
 
 // Config files that fail to load, each the way the spec's failure rows name, and nothing else.
@@ -100,25 +97,9 @@ const FAILING_CONFIG_FILES: ProjectFiles = {
   [AWAITING_CONFIG]: moduleAwaitingAtItsTopLevelText(buildTeamOxlintConfig()),
 }
 
-/** A project listing oxlint, with the installed oxlint, holding the files given. */
-function projectListingOxlint(files: ProjectFiles = {}): string {
-  return tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()), ...files }, linkedPackages: [INSTALLED_OXLINT] })
-}
-
 /** A project listing no oxlint, holding the files given. */
 function projectListingNoOxlint(files: ProjectFiles = {}): string {
   return tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJson()), ...files } })
-}
-
-/** Both parts of the project, our settings listing no ruleset and turning on the rules given. */
-function partsOf(projectDir: string, rules: OurRules = {}): ReturnType<typeof defineLintRules>['editorRulesets'] {
-  return defineLintRules(buildConsumerLintRules(projectDir, {}, { rules })).editorRulesets
-}
-
-function oxlintPartOf(projectDir: string, rules: OurRules = {}): NonNullable<ReturnType<typeof defineLintRules>['editorRulesets']['oxlint']> {
-  const { oxlint } = partsOf(projectDir, rules)
-  if (oxlint === undefined) throw new Error('the project lists oxlint, so it has an oxlint part')
-  return oxlint
 }
 
 /** The name oxlint runs a rule of ours under: throws for a rule it has no version of. */
@@ -126,14 +107,6 @@ function oxlintNameOf(ruleId: string): string {
   const route = catalog.rules.get(ruleId)
   if (route === undefined || route.oxlintName === null) throw new Error(`oxlint runs no ${ruleId} of ours`)
   return route.oxlintName
-}
-
-/** The severity the merged config states the rule at in the file, under any spelling oxlint takes it by: NOT_STATED where none applies there. */
-function severityStatedFor(merged: OxlintConfig, file: string, ruleId: string): string {
-  const route = catalog.rules.get(ruleId)
-  if (route === undefined) throw new Error(`${ruleId} is no rule of ours`)
-  const entry = oxlintEntryOfRuleFor(merged, file, route.oxlintSpellings)
-  return entry === undefined ? NOT_STATED : severityOfOxlintEntry(entry)
 }
 
 /** The error the call throws, for a test of its cause: throws where the call does not. */
@@ -153,8 +126,8 @@ function messageAndCauseCodeOf(error: Error): { readonly message: string; readon
 }
 
 describe("mergeEslintConfig's third argument, in a project whose package.json lists oxlint", () => {
-  const projectDir = projectListingOxlint({ [OXLINT_CONFIG]: OXLINT_CONFIG_SETTING_NO_RULE_TEXT, ...FAILING_CONFIG_FILES })
-  const { eslint } = partsOf(projectDir)
+  const projectDir = projectListingOxlintIn(tempProjects, { [OXLINT_CONFIG]: OXLINT_CONFIG_SETTING_NO_RULE_TEXT, ...FAILING_CONFIG_FILES })
+  const { eslint } = ourPartsIn(projectDir)
 
   it.each([
     // @ts-expect-error the third argument is required
@@ -215,7 +188,7 @@ describe("mergeEslintConfig's third argument, in a project whose package.json li
 
 describe("mergeEslintConfig's third argument, in a project whose package.json lists no oxlint", () => {
   const projectDir = projectListingNoOxlint()
-  const { eslint } = partsOf(projectDir)
+  const { eslint } = ourPartsIn(projectDir)
 
   // No oxlint runs there, so no rule of the team's is set in it.
   it.each([
@@ -228,8 +201,8 @@ describe("mergeEslintConfig's third argument, in a project whose package.json li
 })
 
 describe("mergeOxlintConfig's third argument", () => {
-  const projectDir = projectListingOxlint({ [ESLINT_CONFIG]: ESLINT_CONFIG_SETTING_NO_RULE_TEXT, ...FAILING_CONFIG_FILES })
-  const oxlint = oxlintPartOf(projectDir)
+  const projectDir = projectListingOxlintIn(tempProjects, { [ESLINT_CONFIG]: ESLINT_CONFIG_SETTING_NO_RULE_TEXT, ...FAILING_CONFIG_FILES })
+  const oxlint = ourOxlintPartIn(projectDir)
 
   it.each([
     // @ts-expect-error the third argument is required
@@ -299,8 +272,8 @@ describe("mergeOxlintConfig's third argument", () => {
 // lists the others. An ESLint config is judged block by block: one block of several holding such a
 // key refuses it. A config holding every key that engine's config can hold is read.
 describe("a file named as the team's oxlint config, read by mergeEslintConfig", () => {
-  const projectDir = projectListingOxlint({ ...filesOf(FILES_THAT_ARE_NO_OXLINT_CONFIG), ...filesOf(OXLINT_CONFIGS_HOLDING_EVERY_KEY) })
-  const { eslint } = partsOf(projectDir, OURS_RUN_BY_ESLINT)
+  const projectDir = projectListingOxlintIn(tempProjects, { ...filesOf(FILES_THAT_ARE_NO_OXLINT_CONFIG), ...filesOf(OXLINT_CONFIGS_HOLDING_EVERY_KEY) })
+  const { eslint } = ourPartsIn(projectDir, OURS_RUN_BY_ESLINT)
 
   it.each(FILES_THAT_ARE_NO_OXLINT_CONFIG)('is refused where it is $what, the error naming the keys no oxlint config holds', ({ file, foreignKeys }) => {
     expect(() => mergeEslintConfig([], eslint, { oxlintConfig: file })).toThrowError(
@@ -322,8 +295,8 @@ describe("a file named as the team's oxlint config, read by mergeEslintConfig", 
 })
 
 describe("a file named as the team's ESLint config, read by mergeOxlintConfig", () => {
-  const projectDir = projectListingOxlint({ ...filesOf(FILES_THAT_ARE_NO_ESLINT_CONFIG), ...filesOf([ESLINT_CONFIG_HOLDING_EVERY_KEY]) })
-  const oxlint = oxlintPartOf(projectDir, OURS_RUN_BY_OXLINT)
+  const projectDir = projectListingOxlintIn(tempProjects, { ...filesOf(FILES_THAT_ARE_NO_ESLINT_CONFIG), ...filesOf([ESLINT_CONFIG_HOLDING_EVERY_KEY]) })
+  const oxlint = ourOxlintPartIn(projectDir, OURS_RUN_BY_OXLINT)
 
   it.each(FILES_THAT_ARE_NO_ESLINT_CONFIG)('is refused where it is $what, the error naming the keys no ESLint config holds', ({ file, foreignKeys }) => {
     expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: file })).toThrowError(
@@ -348,8 +321,8 @@ describe("a file named as the team's ESLint config, read by mergeOxlintConfig", 
 // of oxlint's default plugins. ESLint runs no-this-alias for us (3.2); oxlint's is in that category,
 // under typescript, a default plugin.
 describe('mergeEslintConfig, in a project whose package.json lists oxlint, given an oxlint config that writes no category, or writes correctness on', () => {
-  const projectDir = projectListingOxlint(teamOxlintrcsBesideOxlintsOwnCorrectnessFiles)
-  const { eslint } = partsOf(projectDir, OURS_NO_THIS_ALIAS)
+  const projectDir = projectListingOxlintIn(tempProjects, teamOxlintrcsBesideOxlintsOwnCorrectnessFiles)
+  const { eslint } = ourPartsIn(projectDir, OURS_NO_THIS_ALIAS)
 
   it.each([
     { how: 'null, the project having none', given: NO_TEAM_OXLINT_CONFIG },
@@ -373,7 +346,7 @@ describe('mergeEslintConfig, in a project whose package.json lists oxlint, given
 // on, the rule is the team's: nothing of ours states it. The project's ESLint config sets no rule,
 // and calls no merge of ours: which rules our ESLint part runs is read from our parts.
 describe("mergeOxlintConfig, beside our ESLint part running no-this-alias, whose oxlint version is in oxlint's correctness category", () => {
-  const oxlint = oxlintPartOf(projectListingOxlint(teamEslintConfigSettingNoRuleFiles), OURS_NO_THIS_ALIAS)
+  const oxlint = ourOxlintPartIn(projectListingOxlintIn(tempProjects, teamEslintConfigSettingNoRuleFiles), OURS_NO_THIS_ALIAS)
   const files = [SOURCE_FILE, JS_FILE_ELSEWHERE]
 
   it.each([
@@ -395,7 +368,7 @@ describe("mergeOxlintConfig, beside our ESLint part running no-this-alias, whose
 // oxlint itself refuses a path in `extends` of a JS or TS config (#43, round 6): the merge refuses it
 // first, naming what to do instead (the spec's recommended answer to its open point 3).
 describe('a team oxlint config handed to mergeOxlintConfig', () => {
-  const oxlint = oxlintPartOf(projectListingOxlint())
+  const oxlint = ourOxlintPartIn(projectListingOxlintIn(tempProjects))
 
   it('is refused where its extends holds a path, the error naming the entry and what to do instead', () => {
     expect(() => mergeOxlintConfig(buildTeamOxlintrcExtending(['./base.json']), oxlint, NO_TEAM_ESLINT_CONFIG)).toThrowError(
@@ -412,11 +385,11 @@ describe('a team oxlint config handed to mergeOxlintConfig', () => {
 // and trailing commas allowed, and each path in extends read from the folder of the config naming it,
 // at any depth.
 describe('a team JSON oxlint config, read by mergeEslintConfig', () => {
-  const projectDir = projectListingOxlint({
+  const projectDir = projectListingOxlintIn(tempProjects, {
     ...teamOxlintrcExtendingThroughAFolderFiles,
     [TEAM_OXLINTRC_WRITING_TRAILING_COMMAS]: teamOxlintrcTextWithTrailingCommas(NO_VAR),
   })
-  const { eslint } = partsOf(projectDir, OURS_RUN_BY_ESLINT)
+  const { eslint } = ourPartsIn(projectDir, OURS_RUN_BY_ESLINT)
 
   it('drops from our part a rule a config it extends, through another by path, sets; and keeps the rule the team sets nowhere', async () => {
     const merged = mergeEslintConfig([], eslint, { oxlintConfig: TEAM_OXLINTRC_EXTENDING_THROUGH_A_FOLDER })
@@ -441,9 +414,9 @@ describe('a team JSON oxlint config, read by mergeEslintConfig', () => {
 // from the same pair of configs. Each config sets one rule each engine runs for us, in legacy/**
 // alone; each merge must drop the rules the other config sets as well as its own, in every file.
 describe('both merges, given one pair of team configs, each naming the other', () => {
-  const projectDir = projectListingOxlint(teamConfigsSettingRulesInLegacyFiles)
-  const { eslint } = partsOf(projectDir, OURS_BESIDE_THE_LEGACY_CONFIGS)
-  const oxlint = oxlintPartOf(projectDir, OURS_BESIDE_THE_LEGACY_CONFIGS)
+  const projectDir = projectListingOxlintIn(tempProjects, teamConfigsSettingRulesInLegacyFiles)
+  const { eslint } = ourPartsIn(projectDir, OURS_BESIDE_THE_LEGACY_CONFIGS)
+  const oxlint = ourOxlintPartIn(projectDir, OURS_BESIDE_THE_LEGACY_CONFIGS)
 
   it('drop, each from its own engine, every rule either config sets, and no other, where neither config reaches', async () => {
     const mergedEslint = mergeEslintConfig(TEAM_ESLINT_BLOCKS_IN_LEGACY, eslint, { oxlintConfig: TEAM_OXLINTRC_SETTING_RULES_IN_LEGACY })

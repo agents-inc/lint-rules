@@ -1,7 +1,8 @@
 import type { Catalog } from '@workspace/rule-data'
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
-import type { ESLint, Linter } from 'eslint'
+import type { Linter } from 'eslint'
 import { describe, expect, it } from 'vitest'
+import { pluginRegisteredUnder } from '../__tests__/eslint-config-reads.ts'
 import { buildCatalog, buildEslintRoute, buildOxlintRoute, buildQualityRuleset, buildShippedRule } from '../__tests__/factories/catalog-factories.ts'
 import { buildFileOverride, buildLintRules, buildTwoSetFileOverride, buildTwoSetLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { lintRulesPackageVersion } from '../__tests__/factories/package-json-factories.ts'
@@ -62,14 +63,8 @@ const catalogExtendingTheCoreRuleTwice = buildCatalog({
 /** Our settings: the ruleset shipping the core rule, and our rules stating typescript-eslint's version alone, with an option oxlint refuses. */
 const lintRules = buildLintRules({ quality: ['correctness'] }, { rules: { [EXTENSION]: ['error', { [REFUSED_OPTION]: true }] } })
 
-function registeredRealPlugin(prefix: string): ESLint.Plugin {
-  const plugin = eslintPlugins[prefix]
-  if (plugin === undefined) throw new Error(`no ESLint plugin is registered under ${prefix}`)
-  return plugin
-}
-
 // The real typescript-eslint plugin, whose rules refuse options they do not take.
-const plugins = { '@typescript-eslint': registeredRealPlugin('@typescript-eslint') }
+const plugins = { '@typescript-eslint': pluginRegisteredUnder(eslintPlugins, '@typescript-eslint') }
 
 /** oxlint's entry of the core rule in the file, as the agent build's oxlint config states it, or NOT_RUN where no statement of it applies or it is off. */
 function oxlintRunningEntryFor(given: LintRulesInput, file: string): unknown {

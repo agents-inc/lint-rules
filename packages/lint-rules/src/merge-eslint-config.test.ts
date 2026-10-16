@@ -27,7 +27,8 @@ import { suppressionOfARuleNobodyDefines } from './__tests__/cases/suppression-c
 import { SVELTE_RUNES_ESLINT_BLOCK_NAME, TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME } from './__tests__/cases/svelte-components.ts'
 import { TEAM_CONFIG_MODULE, teamBlockWithFunctionFiles, teamBlockWithFunctionIgnores, unusedVariable } from './__tests__/cases/team-eslint-projects.ts'
 import { NOT_LINTED, type RuleIdsReportedByFile, setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
-import { ABSENT, type CalculatedEntry, calculatedEntryOf } from './__tests__/eslint-entries-owed.ts'
+import { blockNamed } from './__tests__/eslint-config-reads.ts'
+import { ABSENT, type CalculatedEntry, calculatedEntryOf, entriesOfEachFileIn } from './__tests__/eslint-entries-owed.ts'
 import { buildCatalog, buildEslintRoute, buildFakePlugin, buildPluginRegistry, buildReportingPlugin } from './__tests__/factories/catalog-factories.ts'
 import {
   buildPluginNamedAtTopLevel,
@@ -66,6 +67,7 @@ import { importedTeamConfig } from './__tests__/team-config-modules.ts'
 import { NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG, writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
 import { editorPartsOf } from './core/editor-parts.ts'
+import { isRecord } from './core/is-record.ts'
 import { mergeEslintPart } from './core/merge-eslint-config.ts'
 import { ruleIdsStatedIn } from './core/resolve-rule-layers.ts'
 import { mergeEslintConfig } from './eslint.ts'
@@ -339,6 +341,8 @@ const {
   calculatedConfigInProjectFor,
   calculatedRulesOfEach,
   globalsFor,
+  linterOptionsFor,
+  lintedConfigFor,
   messagesReportedOn,
   parserOptionsFor,
   ruleEntryFor,
@@ -366,12 +370,6 @@ async function severitiesOf(config: Linter.Config[], ruleId: string, files: read
     files.map(async (file): Promise<[string, string]> => [file, (await ruleSeverityFor(config, file, ruleId)) ?? 'off']),
   )
   return Object.fromEntries(severities)
-}
-
-async function linterOptionsFor(config: Linter.Config[], file: string): Promise<Linter.LinterOptions> {
-  const calculated = await calculatedConfigFor(config, file)
-  if (calculated?.linterOptions === undefined) throw new Error(`ESLint calculated no linterOptions for ${file}`)
-  return calculated.linterOptions
 }
 
 /** The rule IDs given that ESLint runs in the file, at any severity but off. */
@@ -423,14 +421,7 @@ async function entriesByFileOf(
   ruleIds: readonly string[],
   files: readonly string[],
 ): Promise<Record<string, Record<string, CalculatedEntry> | typeof NOT_LINTED>> {
-  const rulesByFile = await calculatedRulesOfEach(config, files)
-  return Object.fromEntries(
-    files.map((file): [string, Record<string, CalculatedEntry> | typeof NOT_LINTED] => {
-      const rules = rulesByFile[file]
-      if (rules === undefined) throw new Error(`ESLint calculated nothing for ${file}`)
-      return [file, rules === NOT_LINTED ? NOT_LINTED : Object.fromEntries(ruleIds.map((id) => [id, calculatedEntryOf(rules, id)]))]
-    }),
-  )
+  return entriesOfEachFileIn(await calculatedRulesOfEach(config, files), ruleIds, files)
 }
 
 /** The rule's entries as the team's config alone gives them, linting every JS and TS file, as merged beside our base block it does. */
@@ -469,12 +460,6 @@ function ourRegisteredPlugin(prefix: string): ESLint.Plugin {
   return plugin
 }
 
-function blockNamed(config: readonly Linter.Config[], name: string): Linter.Config {
-  const block = config.find((candidate) => candidate.name === name)
-  if (block === undefined) throw new Error(`no block is named ${name}`)
-  return block
-}
-
 /** The block with each plugin object read as the prefix it is registered under, so blocks compare by everything else. */
 function withPluginPrefixesOnly({ plugins, ...block }: Linter.Config): Record<string, unknown> {
   return plugins === undefined ? block : { ...block, plugins: Object.keys(plugins).toSorted() }
@@ -487,9 +472,7 @@ function whosePlugin(plugin: ESLint.Plugin, prefix: string, { plugins = {} }: Li
 
 /** The parser's name, one parser option, one global and one setting ESLint calculates for the file. */
 async function languageOptionsAndSettingsIn(config: Linter.Config[], file: string): Promise<Record<string, unknown>> {
-  const calculated = await calculatedConfigFor(config, file)
-  if (calculated === undefined) throw new Error(`ESLint does not lint ${file}`)
-  const { languageOptions, settings } = calculated
+  const { languageOptions, settings } = await lintedConfigFor(config, file)
   if (languageOptions === undefined || settings === undefined) throw new Error(`ESLint calculated no language options or settings for ${file}`)
   const parser: unknown = languageOptions['parser']
   const parserOptions: unknown = languageOptions['parserOptions']
@@ -501,10 +484,6 @@ async function languageOptionsAndSettingsIn(config: Linter.Config[], file: strin
     $state: isRecord(globals) ? globals['$state'] : undefined,
     reactVersion: isRecord(react) ? react['version'] : undefined,
   }
-}
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === 'object' && value !== null
 }
 
 describe('a team block registering, under the prefix of a rule we run, a plugin object of its own', () => {

@@ -2,8 +2,9 @@
 // while giving sub-agents enough context). stdout carries the findings and the summary, stderr the
 // notes and why check could not run.
 
+import { noteLine } from '../command-lines.ts'
+
 const COMMAND = 'check'
-const COULD_NOT_RUN = `${COMMAND}: could not run: `
 // What to do with the errors listed, after "Fix " or "The list is complete: fix ".
 const ERRORS_ADVICE = "what is in code you wrote, then run check again. Do not read the lint configuration or this package's source; each line says what to fix."
 const LIST_IS_COMPLETE = 'The list is complete'
@@ -16,7 +17,6 @@ export const WARNING_MARK = ' (warning)'
 export const MESSAGE_SEPARATOR = ' — '
 
 export const NOTHING_TO_CHECK = `${COMMAND}: no changed JS or TS files.`
-export const INTERRUPTED = `${COMMAND}: interrupted`
 
 /** `1 error`, `2 errors`. */
 export function countOf(count: number, singular: string, plural: string): string {
@@ -68,12 +68,7 @@ function errorsAdvice(list: ListPrinted): string {
 
 /** The one note (q-c6): changed files outside the config's folder, which check leaves to that folder's own config. */
 export function skippedNote(count: number, configFolder: string): string {
-  return `${COMMAND}: note: skipped ${countOf(count, 'changed file', 'changed files')} outside ${configFolder}.`
-}
-
-/** Why check could not run, on stderr: its exit code is EXIT_COULD_NOT_RUN. */
-export function couldNotRun(reason: string): string {
-  return `${COULD_NOT_RUN}${reason}`
+  return noteLine(COMMAND, `skipped ${countOf(count, 'changed file', 'changed files')} outside ${configFolder}.`)
 }
 
 export function notInGit(cwd: string): string {

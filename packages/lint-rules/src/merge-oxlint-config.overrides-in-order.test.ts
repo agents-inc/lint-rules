@@ -1,5 +1,6 @@
 import type { OxlintConfig } from 'oxlint'
 import { describe, expect, it } from 'vitest'
+import { oxlintPartOf } from './__tests__/agent-configs.ts'
 import { FILE_EXCLUDED_BY_TWO_LISTINGS } from './__tests__/cases/oxlint-merge-shapes.ts'
 import { buildConsumerLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
@@ -27,9 +28,7 @@ const projectDir = tempProjects.create({ files: { 'package.json': packageJsonTex
 
 /** Our oxlint part of the settings given, merged into the team config given. */
 function mergedWith(fields: Partial<Omit<LintRules, 'tsconfigRootDir'>>, team: OxlintConfig): OxlintConfig {
-  const { oxlint } = defineLintRules(buildConsumerLintRules(projectDir, {}, fields)).editorRulesets
-  if (oxlint === undefined) throw new Error('the project lists oxlint, so it has an oxlint part')
-  return mergeOxlintConfig(team, oxlint, NO_TEAM_ESLINT_CONFIG)
+  return mergeOxlintConfig(team, oxlintPartOf(defineLintRules(buildConsumerLintRules(projectDir, {}, fields)).editorRulesets), NO_TEAM_ESLINT_CONFIG)
 }
 
 /** The severity oxlint runs the rule at in each file given: NOT_RUN where it is off or no statement applies. */

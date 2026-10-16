@@ -49,6 +49,10 @@ describe('isOnChangedLines', () => {
     expect([2, 3, 4, 5].map((line) => isOnChangedLines(line, linesChanged(3, 4)))).toStrictEqual([false, true, true, false])
   })
 
+  it('keeps a finding on the first line, where that line changed', () => {
+    expect(isOnChangedLines(1, linesChanged(1, 2))).toBe(true)
+  })
+
   it('drops a finding at line 0 in a file only part of which changed, even where its first line changed', () => {
     expect(isOnChangedLines(0, linesChanged(1, 2))).toBe(false)
   })

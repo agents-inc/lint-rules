@@ -14,11 +14,7 @@ import {
   buildTwoSetFileOverride,
   buildTwoSetLintRules,
 } from './__tests__/factories/lint-rules-factories.ts'
-import {
-  buildPackageJsonListingOthers,
-  buildPackageJsonListingOxlint,
-  packageJsonText,
-} from './__tests__/factories/package-json-factories.ts'
+import { buildPackageJsonListingOthers, createProjectListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildProjectFacts } from './__tests__/factories/project-facts-factories.ts'
 import { pathsOfFunctionsIn } from './__tests__/functions-in.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
@@ -34,7 +30,7 @@ import { defineLintRules } from './index.ts'
 const EDITOR_PART_KEYS = ['eslint', 'oxlint']
 
 const tempProjects = setUpTempProjects()
-const PROJECT_WITH_OXLINT = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) } })
+const PROJECT_WITH_OXLINT = createProjectListingOxlint(tempProjects)
 const PROJECT_WITHOUT_OXLINT = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOthers()) } })
 
 const PROJECTS = [

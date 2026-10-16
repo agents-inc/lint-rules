@@ -1,10 +1,7 @@
-import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { CONFIG_FILE, exportedConstant, moduleText, PACKAGE_JSON_FILE } from '../../__tests__/factories/check-factories.ts'
-import { OUR_PACKAGE, OUR_RANGE } from '../../__tests__/factories/init-factories.ts'
-import { buildPackageJson, packageJsonText } from '../../__tests__/factories/package-json-factories.ts'
-import { entriesUnder } from '../../__tests__/git-projects.ts'
+import { CONFIG_FILE, PACKAGE_JSON_FILE } from '../../__tests__/factories/check-factories.ts'
+import { filesStateOf, initWritesIn, PACKAGE_JSON_AFTER_INIT, PACKAGE_JSON_BEFORE_INIT } from '../../__tests__/factories/init-factories.ts'
 import { setUpTempProjects } from '../../__tests__/temp-projects.ts'
 import { writeAllOrNone } from './write-all-or-none.ts'
 
@@ -31,57 +28,44 @@ vi.mock('node:fs', async (importOriginal) => {
 
 const tempProjects = setUpTempProjects()
 
-const PACKAGE_JSON_BEFORE = packageJsonText(buildPackageJson())
-const PACKAGE_JSON_AFTER = packageJsonText(buildPackageJson({ devDependencies: { [OUR_PACKAGE]: OUR_RANGE } }))
-const CONFIG_TEXT = moduleText(exportedConstant('writtenByInit'))
-
 afterEach(() => {
   renames.target = null
 })
 
 describe('replacing the files init changes, each by its temporary file', () => {
   it('replaces every file where every rename succeeds', () => {
-    const projectDir = tempProjects.create({ files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_BEFORE } })
-    writeAllOrNone([
-      { path: join(projectDir, PACKAGE_JSON_FILE), text: PACKAGE_JSON_AFTER },
-      { path: join(projectDir, CONFIG_FILE), text: CONFIG_TEXT },
-    ])
+    const projectDir = tempProjects.create({ files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_BEFORE_INIT } })
+    writeAllOrNone(initWritesIn(projectDir, 'package.json first'))
 
-    expect({ entries: entriesUnder(projectDir), packageJson: readFileSync(join(projectDir, PACKAGE_JSON_FILE), 'utf8') }).toStrictEqual({
+    expect(filesStateOf(projectDir)).toStrictEqual({
       entries: [CONFIG_FILE, PACKAGE_JSON_FILE],
-      packageJson: PACKAGE_JSON_AFTER,
+      packageJson: PACKAGE_JSON_AFTER_INIT,
     })
   })
 
   it('puts back the file it replaced first, as it was, where the second rename fails, and leaves no temporary file', () => {
-    const projectDir = tempProjects.create({ files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_BEFORE } })
+    const projectDir = tempProjects.create({ files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_BEFORE_INIT } })
     renames.target = join(projectDir, CONFIG_FILE)
 
     expect(() =>
-      writeAllOrNone([
-        { path: join(projectDir, PACKAGE_JSON_FILE), text: PACKAGE_JSON_AFTER },
-        { path: join(projectDir, CONFIG_FILE), text: CONFIG_TEXT },
-      ]),
+      writeAllOrNone(initWritesIn(projectDir, 'package.json first')),
     ).toThrowError(`could not write ${join(projectDir, CONFIG_FILE)}: EACCES`)
-    expect({ entries: entriesUnder(projectDir), packageJson: readFileSync(join(projectDir, PACKAGE_JSON_FILE), 'utf8') }).toStrictEqual({
+    expect(filesStateOf(projectDir)).toStrictEqual({
       entries: [PACKAGE_JSON_FILE],
-      packageJson: PACKAGE_JSON_BEFORE,
+      packageJson: PACKAGE_JSON_BEFORE_INIT,
     })
   })
 
   it('removes the file it created first where the second rename fails', () => {
-    const projectDir = tempProjects.create({ files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_BEFORE } })
+    const projectDir = tempProjects.create({ files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_BEFORE_INIT } })
     renames.target = join(projectDir, PACKAGE_JSON_FILE)
 
     expect(() =>
-      writeAllOrNone([
-        { path: join(projectDir, CONFIG_FILE), text: CONFIG_TEXT },
-        { path: join(projectDir, PACKAGE_JSON_FILE), text: PACKAGE_JSON_AFTER },
-      ]),
+      writeAllOrNone(initWritesIn(projectDir, 'config first')),
     ).toThrowError(`could not write ${join(projectDir, PACKAGE_JSON_FILE)}: EACCES`)
-    expect({ entries: entriesUnder(projectDir), packageJson: readFileSync(join(projectDir, PACKAGE_JSON_FILE), 'utf8') }).toStrictEqual({
+    expect(filesStateOf(projectDir)).toStrictEqual({
       entries: [PACKAGE_JSON_FILE],
-      packageJson: PACKAGE_JSON_BEFORE,
+      packageJson: PACKAGE_JSON_BEFORE_INIT,
     })
   })
 })

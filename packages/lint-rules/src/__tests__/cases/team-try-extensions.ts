@@ -1,5 +1,7 @@
 import type { Linter } from 'eslint'
-import { buildTsconfig } from '../factories/tsconfig-factories.ts'
+import { buildPublishedPackageJson, fileInPackage, filesUnderPackage, packageDirOf } from '../factories/monorepo-package-factories.ts'
+import { jsonFileText } from '../factories/team-config-file-factories.ts'
+import { buildBundlerTsconfig } from '../factories/tsconfig-factories.ts'
 import type { ProjectFiles } from '../temp-projects.ts'
 
 // Our `settings.n.tryExtensions` is ours only where the team's config sets neither
@@ -30,44 +32,24 @@ const TRY_EXTENSIONS_PACKAGES = {
   teamSetsNKeysVersion: 'team-sets-n-version',
 } as const
 
-const PACKAGES_DIR = 'packages'
-
 /** The module importing `@/both` in each package. */
 const USES_BOTH_MODULE = 'src/uses-both.ts'
 
-const TSCONFIG = buildTsconfig({
-  compilerOptions: {
-    target: 'ES2022',
-    module: 'esnext',
-    moduleResolution: 'bundler',
-    strict: true,
-    noEmit: true,
-    skipLibCheck: true,
-    resolveJsonModule: true,
-    paths: { '@/*': ['./src/*'] },
-  },
-  include: ['src'],
-})
+const TSCONFIG = buildBundlerTsconfig({ resolveJsonModule: true, paths: { '@/*': ['./src/*'] } })
 
 const USES_BOTH = `import both from '@/both'
 
 export const all = [both]
 `
 
-function packageDirOf(packageName: string): string {
-  return `${PACKAGES_DIR}/${packageName}`
-}
-
 /** The package's files, by their paths in the project: its package.json, its tsconfig, both.json, both.ts and the module importing `@/both`. */
 function filesOfPackage(packageName: string): [string, string][] {
-  const packageDir = packageDirOf(packageName)
-  const manifest = { name: `@repo/${packageName}`, version: '0.0.0', files: ['src/both.json', USES_BOTH_MODULE] }
-  return Object.entries({
-    [`${packageDir}/package.json`]: `${JSON.stringify(manifest, null, 2)}\n`,
-    [`${packageDir}/tsconfig.json`]: `${JSON.stringify(TSCONFIG, null, 2)}\n`,
-    [`${packageDir}/src/both.json`]: '{ "both": 1 }\n',
-    [`${packageDir}/src/both.ts`]: 'const both = 1\nexport default both\n',
-    [`${packageDir}/${USES_BOTH_MODULE}`]: USES_BOTH,
+  return filesUnderPackage(packageName, {
+    'package.json': jsonFileText(buildPublishedPackageJson(packageName, ['src/both.json', USES_BOTH_MODULE])),
+    'tsconfig.json': jsonFileText(TSCONFIG),
+    'src/both.json': '{ "both": 1 }\n',
+    'src/both.ts': 'const both = 1\nexport default both\n',
+    [USES_BOTH_MODULE]: USES_BOTH,
   })
 }
 
@@ -75,7 +57,7 @@ function filesOfPackage(packageName: string): [string, string][] {
 export const tryExtensionsPackageFiles: ProjectFiles = Object.fromEntries(Object.values(TRY_EXTENSIONS_PACKAGES).flatMap(filesOfPackage))
 
 function usesBothIn(packageName: string): string {
-  return `${packageDirOf(packageName)}/${USES_BOTH_MODULE}`
+  return fileInPackage(packageName, USES_BOTH_MODULE)
 }
 
 /** The module importing `@/both` in each package, by its path in the project. */

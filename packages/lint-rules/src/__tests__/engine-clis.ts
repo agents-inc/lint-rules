@@ -3,7 +3,8 @@ import { writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, relative } from 'node:path'
 import type { OxlintConfig } from 'oxlint'
-import { INSTALLED_OXLINT } from './temp-projects.ts'
+import { rawOxlintOutput } from './oxlint-raw-output.ts'
+import { projectPathOf } from './project-paths.ts'
 
 /** One ESLint message as `eslint -f json` prints it: `ruleId` null for a parse error or ESLint's own. */
 export type EslintCliMessage = {
@@ -18,10 +19,14 @@ export type EslintCliResult = { readonly filePath: string; readonly messages: re
 /** A finding a rule reports, by file relative to the project. */
 export type Finding = { readonly file: string; readonly rule: string; readonly line: number | null }
 
+/** A finding either engine reports, under the engine's own name for the rule, and its message. */
+export type EngineFinding = Finding & { readonly engine: 'eslint' | 'oxlint'; readonly message: string }
+
 /** A finding oxlint reports, under oxlint's code for the rule (`eslint(no-debugger)`), at `warning` or `error`. */
 export type OxlintFinding = Finding & { readonly severity: string }
 
-type OxlintCliDiagnostic = {
+/** One diagnostic as `oxlint -f json` prints it. */
+export type OxlintCliDiagnostic = {
   readonly code: string
   readonly filename: string
   /** `warning` or `error`. */
@@ -35,7 +40,6 @@ export type OxlintCliReport = { readonly diagnostics: readonly OxlintCliDiagnost
 export type OxlintCliRun = { readonly exitCode: number | null; readonly report: OxlintCliReport }
 
 const ESLINT_BIN = join(dirname(createRequire(import.meta.url).resolve('eslint/package.json')), 'bin', 'eslint.js')
-const OXLINT_BIN = join(INSTALLED_OXLINT.dir, 'bin', 'oxlint')
 // ESLint exits 2 when it cannot run at all: a config that fails to load, or a crash.
 const ESLINT_COULD_NOT_RUN = 2
 const ESLINT_CLI_TIMEOUT_MS = 240_000
@@ -77,7 +81,16 @@ export function fatalMessagesIn(results: readonly EslintCliResult[], projectDir:
   return results.flatMap((result) =>
     result.messages
       .filter((message) => message.fatal === true)
-      .map((message) => `${relative(projectDir, result.filePath)}: ${message.message}`),
+      .map((message) => `${projectPathOf(result.filePath, projectDir)}: ${message.message}`),
+  )
+}
+
+/** Every finding a rule reports in ESLint, by the file's path in the project, with its message. */
+export function eslintEngineFindingsIn(results: readonly EslintCliResult[], projectDir: string): EngineFinding[] {
+  return results.flatMap((result) =>
+    result.messages.flatMap(({ ruleId, line, message }): EngineFinding[] =>
+      ruleId === null ? [] : [{ engine: 'eslint', file: projectPathOf(result.filePath, projectDir), rule: ruleId, line, message }],
+    ),
   )
 }
 
@@ -104,19 +117,21 @@ export function runOxlintCli(projectDir: string, configFile: string, paths: read
 
 /** The real oxlint CLI over the paths given, with the config file given: its report parsed, or its refusal to load the config. */
 export function oxlintCliOutcomeOf(projectDir: string, configFile: string, paths: readonly string[] = ['.']): OxlintCliOutcome {
-  const { status, stdout, stderr } = spawnSync(process.execPath, [OXLINT_BIN, '-c', configFile, '-f', 'json', ...paths], {
-    cwd: projectDir,
-    encoding: 'utf8',
-  })
+  const { exitCode, stdout, stderr } = rawOxlintOutput(projectDir, configFile, paths)
   // oxlint prints something other than JSON when the config fails to load.
   if (!stdout.trimStart().startsWith('{')) return { outcome: 'refused', output: `${stdout}${stderr}` }
   // Parse boundary: oxlint's JSON report.
-  return { outcome: 'linted', run: { exitCode: status, report: JSON.parse(stdout) as OxlintCliReport } }
+  return { outcome: 'linted', run: { exitCode, report: JSON.parse(stdout) as OxlintCliReport } }
 }
 
 /** Every diagnostic, under oxlint's code for it (`eslint(no-debugger)`), sorted by file, line and code. */
 export function oxlintFindingsIn({ diagnostics }: OxlintCliReport): Finding[] {
   return diagnostics.map(findingOf).toSorted(byFileLineThenRule)
+}
+
+/** Every diagnostic, under oxlint's code for it (`eslint(no-debugger)`), with its message. */
+export function oxlintEngineFindingsIn({ diagnostics }: OxlintCliReport): EngineFinding[] {
+  return diagnostics.map((diagnostic) => ({ engine: 'oxlint', ...findingOf(diagnostic), message: diagnostic.message }))
 }
 
 /** Every diagnostic, with the severity oxlint reports it at. */

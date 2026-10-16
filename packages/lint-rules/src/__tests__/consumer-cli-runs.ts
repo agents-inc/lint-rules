@@ -1,20 +1,23 @@
-import { relative, sep } from 'node:path'
-import { beforeAll } from 'vitest'
 import {
   describeFinding,
   describeOxlintFindings,
+  type EngineFinding,
   type EslintCliOutcome,
   type EslintCliResult,
   eslintCliOutcomeOf,
+  eslintEngineFindingsIn,
   eslintFindingsIn,
   fatalMessagesIn,
   type OxlintCliOutcome,
   oxlintCliOutcomeOf,
+  oxlintEngineFindingsIn,
   oxlintFindingsIn,
   oxlintFindingsWithSeverityIn,
 } from './engine-clis.ts'
-import type { EngineFinding, RuleByItsNames } from './findings-beside-the-team.ts'
-import { INSTALLED_OXLINT, type LinkedPackage, type ProjectFiles, setUpTempProjects, THIS_PACKAGE, type TempProjects } from './temp-projects.ts'
+import type { RuleByItsNames } from './findings-beside-the-team.ts'
+import { projectPathOf } from './project-paths.ts'
+import { setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
+import { CONSUMER_INSTALL, type LinkedPackage, type ProjectFiles, THIS_PACKAGE } from './temp-projects.ts'
 
 /** What each engine's CLI made of a consumer's project, run from its root with the project's own config files. */
 export type ConsumerCliRuns = { readonly projectDir: string; readonly oxlint: OxlintCliOutcome; readonly eslint: EslintCliOutcome }
@@ -25,16 +28,7 @@ export type ConsumerEslintCliRun = Pick<ConsumerCliRuns, 'projectDir' | 'eslint'
 /** What one engine's CLI made of the project: each finding as `file:line rule`, sorted, or what it printed where it refused to run. */
 export type EngineReport = { readonly refused: false; readonly findings: readonly string[] } | { readonly refused: true; readonly output: string }
 
-/** As `runsBeforeTheSuite` in both-engines-runs.ts: a run that threw is kept as its error, so each test reports it as its own failure. */
-type RunsBeforeTheSuite<Runs> =
-  | { readonly outcome: 'not made' }
-  | { readonly outcome: 'completed'; readonly runs: Runs }
-  | { readonly outcome: 'failed'; readonly error: unknown }
-
-const CONSUMER_CLI_RUNS_TIMEOUT_MS = 300_000
-const LINKED_PACKAGES = [THIS_PACKAGE, INSTALLED_OXLINT]
 const EVERYTHING = ['.']
-const GLOB_SEPARATOR = '/'
 
 /**
  * Makes the project before the suite, with the built package, oxlint and each package the team's
@@ -45,7 +39,7 @@ const GLOB_SEPARATOR = '/'
  */
 export function setUpConsumerCliRuns(files: ProjectFiles, oxlintConfigFile: string, packagesTheTeamImports: readonly LinkedPackage[] = []): () => ConsumerCliRuns {
   return setUpRunsBeforeTheSuite((tempProjects) => {
-    const projectDir = tempProjects.create({ files, linkedPackages: [...LINKED_PACKAGES, ...packagesTheTeamImports] })
+    const projectDir = tempProjects.create({ files, linkedPackages: [...CONSUMER_INSTALL, ...packagesTheTeamImports] })
     return { projectDir, oxlint: oxlintCliOutcomeOf(projectDir, oxlintConfigFile, EVERYTHING), eslint: eslintCliOutcomeOf(projectDir) }
   })
 }
@@ -106,7 +100,7 @@ export function setUpMergedAndTeamAloneCliRuns(
   packagesTheTeamImports: readonly LinkedPackage[] = [],
 ): () => MergedAndTeamAloneCliRuns {
   return setUpRunsBeforeTheSuite((tempProjects) => {
-    const projectDir = tempProjects.create({ files, linkedPackages: [...LINKED_PACKAGES, ...packagesTheTeamImports] })
+    const projectDir = tempProjects.create({ files, linkedPackages: [...CONSUMER_INSTALL, ...packagesTheTeamImports] })
     return { merged: cliRunsWith(projectDir, configFiles.merged), teamAlone: cliRunsWith(projectDir, configFiles.teamAlone) }
   })
 }
@@ -123,13 +117,7 @@ export function bothEnginesFindingsOf(runs: ConsumerCliRuns): EngineFinding[] {
 /** Every finding oxlint reports, under its code for the rule (`eslint(no-debugger)`), with its message: throws where it refused the config. */
 export function oxlintEngineFindingsOf({ projectDir, oxlint }: ConsumerCliRuns): EngineFinding[] {
   if (oxlint.outcome === 'refused') throw new Error(`oxlint could not run on ${projectDir}: ${oxlint.output}`)
-  return oxlint.run.report.diagnostics.map(({ code, filename, message, labels: [firstLabel] }) => ({
-    engine: 'oxlint',
-    file: filename,
-    rule: code,
-    line: firstLabel === undefined ? null : firstLabel.span.line,
-    message,
-  }))
+  return oxlintEngineFindingsIn(oxlint.run.report)
 }
 
 /** oxlint's findings of the rule given, under any of its names, as `file:line code severity`, sorted: throws where it refused the config. */
@@ -157,11 +145,7 @@ export function eslintFatalMessagesOf({ projectDir, eslint }: ConsumerEslintCliR
 
 /** Every finding a rule reports in ESLint, with its message, for `findingsByFileAndRule`: throws where ESLint could not run. */
 export function eslintEngineFindingsOf({ projectDir, eslint }: ConsumerEslintCliRun): EngineFinding[] {
-  return eslintResultsOf({ projectDir, eslint }).flatMap((result) =>
-    result.messages.flatMap(({ ruleId, line, message }): EngineFinding[] =>
-      ruleId === null ? [] : [{ engine: 'eslint', file: projectPathOf(result.filePath, projectDir), rule: ruleId, line, message }],
-    ),
-  )
+  return eslintEngineFindingsIn(eslintResultsOf({ projectDir, eslint }), projectDir)
 }
 
 /** The files ESLint linted, each one it gives a result for, by its path in the project, sorted: throws where ESLint could not run. */
@@ -180,34 +164,4 @@ export function eslintStderrOf({ projectDir, eslint }: ConsumerEslintCliRun): st
 function eslintResultsOf({ projectDir, eslint }: ConsumerEslintCliRun): readonly EslintCliResult[] {
   if (eslint.outcome === 'refused') throw new Error(`ESLint could not run on ${projectDir}: ${eslint.output}`)
   return eslint.results
-}
-
-/**
- * The runs `make` makes in the project it creates, before the suite: read after it, a run that threw
- * throws as each test's own failure, since vitest reports a test whose beforeAll threw as skipped.
- * Call it at the top of a describe block: it registers that scope's hooks.
- */
-export function setUpRunsBeforeTheSuite<Runs>(make: (tempProjects: TempProjects) => Runs): () => Runs {
-  const tempProjects = setUpTempProjects()
-  let runsBeforeTheSuite: RunsBeforeTheSuite<Runs> = { outcome: 'not made' }
-
-  beforeAll(() => {
-    try {
-      runsBeforeTheSuite = { outcome: 'completed', runs: make(tempProjects) }
-    } catch (error) {
-      runsBeforeTheSuite = { outcome: 'failed', error }
-    }
-  }, CONSUMER_CLI_RUNS_TIMEOUT_MS)
-
-  return () => {
-    if (runsBeforeTheSuite.outcome === 'failed') {
-      throw new Error('the engines could not be run on the project before the suite', { cause: runsBeforeTheSuite.error })
-    }
-    if (runsBeforeTheSuite.outcome === 'not made') throw new Error('the runs were read outside the suite that made them')
-    return runsBeforeTheSuite.runs
-  }
-}
-
-function projectPathOf(filePath: string, projectDir: string): string {
-  return relative(projectDir, filePath).split(sep).join(GLOB_SEPARATOR)
 }

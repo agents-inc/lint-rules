@@ -1,4 +1,4 @@
-// Imported into every Node process a check run starts, never by a test: git-projects.ts's
+// Imported into every Node process a check run starts, never by a test: cli-runs.ts's
 // anotherWriterAsOxlintsLintRunEnds puts it in NODE_OPTIONS, as the mutation run puts its
 // child-coverage-hook.mjs there. In oxlint's lint run, the last of check's two oxlint runs (its
 // arguments hold no `--fix`), it writes each file the variable below names, with the text it gives,
@@ -9,7 +9,7 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-// Set by git-projects.ts, under the same name there: JSON, an array of `{ path, text }`.
+// Set by cli-runs.ts, under the same name there: JSON, an array of `{ path, text }`.
 const WRITES_VARIABLE = 'AGENTS_INC_TEST_WRITES_AS_OXLINT_LINT_RUN_ENDS'
 const OXLINT_BIN = join('oxlint', 'bin', 'oxlint')
 const FIX_FLAG = '--fix'

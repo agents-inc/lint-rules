@@ -19,6 +19,7 @@ import {
   sortedById,
   uniqueById,
 } from './__tests__/rules-on-engines.ts'
+import { isCoveredByAShippedRule } from './__tests__/shipped-covers.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG, NO_TEAM_ESLINT_CONFIG, writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
@@ -78,12 +79,6 @@ function routeOf(id: string): RuleRoute {
  */
 function shippedRoutesBesidesTheSuppressionRules(): RuleRoute[] {
   return [...catalog.rules.values()].filter((route) => route.shipped !== null && !SUPPRESSION_RULE_IDS.has(route.id) && !isCoveredByAShippedRule(route))
-}
-
-/** Whether the catalog records a shipped rule covering the rule: none before this round's data lands. */
-function isCoveredByAShippedRule({ shipped }: RuleRoute): boolean {
-  if (shipped === null || typeof shipped.coveredBy !== 'string') return false
-  return routeOf(shipped.coveredBy).shipped !== null
 }
 
 /** The rule standing in, without oxlint, for each shipped oxlint-only rule, which every ruleset listed turns on (spec-core.md C4). */

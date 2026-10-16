@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { checkConfigText, checkedPackageFiles, CONFIG_FILE, emittingAWarning, exportedConstant, moduleText } from './__tests__/factories/check-factories.ts'
-import { checkInTheBackground, createGitProject, EXIT, setUpAsyncRunsBeforeTheSuite } from './__tests__/git-projects.ts'
+import { checkInTheBackground, EXIT, RUNS_IN_THE_BACKGROUND } from './__tests__/cli-runs.ts'
+import {
+  checkConfigText,
+  checkedPackageFiles,
+  CONFIG_FILE,
+  emittingAWarning,
+  exportedConstant,
+  moduleText,
+  REDUNDANCY,
+} from './__tests__/factories/check-factories.ts'
+import { createGitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
+import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 
 // spec-cli.md "Output contract": stderr holds the note and why check could not run, and agents read
 // it. Node 23 warns there that type stripping is experimental as check imports agents-inc.lint.mts,
@@ -10,7 +20,6 @@ import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 
 allowEveryTestForParallelLoad()
 
-const REDUNDANCY = { quality: ['redundancy'] } as const
 // Node 23.10's own words (measured).
 const NODES_TYPE_STRIPPING_WARNING = 'Type Stripping is an experimental feature and might change at any time'
 // Experimental, and naming type stripping, but not as Node's warning starts.
@@ -19,7 +28,7 @@ const ANOTHER_EXPERIMENT = 'A loader that replaces Type Stripping is experimenta
 const A_DEPRECATION = 'Type Stripping options in this config are deprecated'
 
 describe('check where the config it imports has Node warn (Output contract)', () => {
-  const runs = setUpAsyncRunsBeforeTheSuite(async (tempProjects) => {
+  const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const config = `${checkConfigText(REDUNDANCY)}${moduleText(
       emittingAWarning('ExperimentalWarning', NODES_TYPE_STRIPPING_WARNING),
       emittingAWarning('ExperimentalWarning', ANOTHER_EXPERIMENT),
@@ -28,7 +37,7 @@ describe('check where the config it imports has Node warn (Output contract)', ()
     const project = createGitProject(tempProjects, { repo: 'committed', files: { ...checkedPackageFiles(REDUNDANCY), [CONFIG_FILE]: config } })
     project.write('src/a.ts', moduleText(exportedConstant('a')))
     return checkInTheBackground(project.dir)
-  })
+  }, RUNS_IN_THE_BACKGROUND)
 
   it("prints every warning but Node's on type stripping, each as the first line Node prints for it", () => {
     const { pid, run } = runs()

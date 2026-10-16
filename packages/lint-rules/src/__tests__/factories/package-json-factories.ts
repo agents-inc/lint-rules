@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { INSTALLED_OXLINT } from '../temp-projects.ts'
+import { INSTALLED_OXLINT, type TempProjects } from '../temp-projects.ts'
 
 /** The fields of a project's package.json that say which packages it uses. */
 export type DependencyField = 'dependencies' | 'devDependencies'
@@ -75,6 +75,11 @@ export function buildPackageJson(fields: Pick<PackageJson, DependencyField> = {}
 export function buildPackageJsonListingOxlint(field: DependencyField = 'devDependencies'): PackageJson {
   const oxlint = { [OXLINT]: oxlintPeerRange() }
   return field === 'dependencies' ? buildPackageJson({ dependencies: oxlint }) : buildPackageJson({ devDependencies: oxlint })
+}
+
+/** A project holding only a package.json that lists oxlint: one that uses oxlint, as our parts read it. */
+export function createProjectListingOxlint(tempProjects: TempProjects): string {
+  return tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) } })
 }
 
 /** A project that lists packages, none of them oxlint. */

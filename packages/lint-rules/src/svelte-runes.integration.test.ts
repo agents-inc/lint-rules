@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { setUpBothEnginesRuns } from './__tests__/both-engines-runs.ts'
-import type { OurRulesets } from './__tests__/cases/both-engines-corpus.ts'
 import {
   NO_GLOBAL_ASSIGN,
   NO_UNDEF,
@@ -12,12 +11,12 @@ import {
   svelteTestFiles,
 } from './__tests__/cases/svelte-components.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, eslintLintedFilesOf, setUpConsumerEslintCliRun } from './__tests__/consumer-cli-runs.ts'
-import { agentsIncLintModuleTextRootedAtItsFolder, emptyTeamEslintModuleText, mergedEslintConfigText } from './__tests__/factories/consumer-project-factories.ts'
-import { buildConsumerSettings } from './__tests__/factories/lint-rules-factories.ts'
+import { EMPTY_TEAM_ESLINT_MODULE_FILE, projectMergingOurEslintPartText } from './__tests__/factories/consumer-project-factories.ts'
+import { buildConsumerSettings, CORRECTNESS_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { EMPTY_TEAM_OXLINT_CONFIG, TEAM_OXLINT_CONFIG_SETTING_NO_RULE, teamOxlintConfigSettingNoRuleFiles } from './__tests__/team-configs-of-the-other-engine.ts'
+import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 
 // Svelte 5's runes are globals in .svelte files and in .svelte.js and .svelte.ts modules, in both
 // engines and both builds (decisions.md, 2026-10-14 "real run 3, scale lane"). Real run 3, case
@@ -30,17 +29,13 @@ import { EMPTY_TEAM_OXLINT_CONFIG, TEAM_OXLINT_CONFIG_SETTING_NO_RULE, teamOxlin
 
 allowEveryTestForParallelLoad()
 
-// The ruleset that ships no-undef and no-global-assign, in both sets.
-const CORRECTNESS: OurRulesets = { agentRulesets: { quality: ['correctness'] }, editorRulesets: { quality: ['correctness'] } }
 const RULES = [NO_UNDEF, NO_GLOBAL_ASSIGN]
 const SVELTE_COMPONENT = /\.svelte$/u
-const LINT_RULES_MODULE = 'agents-inc.lint.mts'
-const EMPTY_TEAM_ESLINT_MODULE = 'empty-team.eslint.mjs'
 
 describe('Svelte 5 components and rune modules, our correctness ruleset on, in a project whose package.json lists oxlint', () => {
   const runs = setUpBothEnginesRuns({
     sources: svelteSourceFiles,
-    ourRulesets: CORRECTNESS,
+    ourRulesets: CORRECTNESS_IN_BOTH_SETS,
     ours: {},
     teamEslintRules: {},
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
@@ -77,10 +72,11 @@ describe('Svelte 5 components and rune modules, our correctness ruleset on, in a
 describe('Svelte 5 components and rune modules, our correctness ruleset on, in a project whose package.json lists no oxlint, linted by the ESLint CLI through the built package', () => {
   const run = setUpConsumerEslintCliRun({
     'package.json': packageJsonText(buildPackageJson()),
-    [LINT_RULES_MODULE]: agentsIncLintModuleTextRootedAtItsFolder(buildConsumerSettings(CORRECTNESS)),
-    'eslint.config.mjs': mergedEslintConfigText(LINT_RULES_MODULE, EMPTY_TEAM_ESLINT_MODULE, TEAM_OXLINT_CONFIG_SETTING_NO_RULE),
-    ...teamOxlintConfigSettingNoRuleFiles,
-    [EMPTY_TEAM_ESLINT_MODULE]: emptyTeamEslintModuleText(),
+    ...projectMergingOurEslintPartText({
+      settings: buildConsumerSettings(CORRECTNESS_IN_BOTH_SETS),
+      team: EMPTY_TEAM_ESLINT_MODULE_FILE,
+      teamOxlint: 'setting no rule',
+    }),
     ...svelteSourceFiles,
   })
 
@@ -105,7 +101,7 @@ describe('Svelte 5 components and rune modules, our correctness ruleset on, in a
 describe("Svelte's tests of runes and files named like them, our correctness ruleset on, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: svelteTestFiles,
-    ourRulesets: CORRECTNESS,
+    ourRulesets: CORRECTNESS_IN_BOTH_SETS,
     ours: {},
     teamEslintRules: {},
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
@@ -128,10 +124,11 @@ describe("Svelte's tests of runes and files named like them, our correctness rul
 describe("Svelte's tests of runes and files named like them, our correctness ruleset on, in a project whose package.json lists no oxlint, linted by the ESLint CLI through the built package", () => {
   const run = setUpConsumerEslintCliRun({
     'package.json': packageJsonText(buildPackageJson()),
-    [LINT_RULES_MODULE]: agentsIncLintModuleTextRootedAtItsFolder(buildConsumerSettings(CORRECTNESS)),
-    'eslint.config.mjs': mergedEslintConfigText(LINT_RULES_MODULE, EMPTY_TEAM_ESLINT_MODULE, TEAM_OXLINT_CONFIG_SETTING_NO_RULE),
-    ...teamOxlintConfigSettingNoRuleFiles,
-    [EMPTY_TEAM_ESLINT_MODULE]: emptyTeamEslintModuleText(),
+    ...projectMergingOurEslintPartText({
+      settings: buildConsumerSettings(CORRECTNESS_IN_BOTH_SETS),
+      team: EMPTY_TEAM_ESLINT_MODULE_FILE,
+      teamOxlint: 'setting no rule',
+    }),
     ...svelteTestFiles,
   })
 

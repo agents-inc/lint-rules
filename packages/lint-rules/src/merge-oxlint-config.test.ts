@@ -2,6 +2,7 @@ import { isDeepStrictEqual } from 'node:util'
 import { catalog, type RuleRoute } from '@workspace/rule-data'
 import type { DummyRuleMap, OxlintConfig, OxlintOverride } from 'oxlint'
 import { describe, expect, it } from 'vitest'
+import { oxlintPartOf } from './__tests__/agent-configs.ts'
 import { buildConsumerLintRules, buildEveryRulesetLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOthers, buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildTeamOxlintConfig } from './__tests__/factories/team-config-factories.ts'
@@ -85,11 +86,6 @@ const PROJECT_WITHOUT_OXLINT = tempProjects.create({
 /** Our editor parts for a config listing the rulesets given, none unless given, with these shared settings. */
 function ourEditorParts(fields: SharedFields, rulesets: OurRulesets = {}): EditorParts {
   return defineLintRules(buildConsumerLintRules(PROJECT_WITH_OXLINT, rulesets, fields)).editorRulesets
-}
-
-function oxlintPartOf({ oxlint }: EditorParts): OxlintPart {
-  if (oxlint === undefined) throw new Error('the project lists oxlint, so it has an oxlint part')
-  return oxlint
 }
 
 /** Our editor oxlint part for a config listing no ruleset, with these shared settings, merged into the team's config. */

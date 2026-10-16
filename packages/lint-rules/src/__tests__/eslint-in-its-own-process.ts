@@ -1,11 +1,11 @@
-import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { OxlintConfig } from 'oxlint'
 import { defineLintRules, type LintRules } from '../index.ts'
 import { agentConfigsOf } from './agent-configs.ts'
-import { setUpRunsBeforeTheSuite } from './consumer-cli-runs.ts'
 import { type EslintCliResult, type OxlintCliOutcome, oxlintCliOutcomeOf, writeOxlintConfigFile } from './engine-clis.ts'
+import { runNodeScript } from './node-process.ts'
+import { setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
 import type { TempProject } from './temp-projects.ts'
 
 /** The two builds that lint the project: the agent build, and our ESLint part merged into an empty team config. */
@@ -86,12 +86,11 @@ function resultFor(results: readonly EslintProcessResult[], rootDir: string, fil
 }
 
 function eslintResultsInItsOwnProcess(rootDir: string, lintRules: LintRules, teamOxlintConfig: OxlintConfig | null): EslintResultsByBuild {
-  const { status, stdout, stderr } = spawnSync(process.execPath, [ESLINT_BUILD_PROCESS, JSON.stringify(lintRules), ...teamOxlintConfigArgument(rootDir, teamOxlintConfig)], {
+  const stdout = runNodeScript(ESLINT_BUILD_PROCESS, [JSON.stringify(lintRules), ...teamOxlintConfigArgument(rootDir, teamOxlintConfig)], {
     cwd: rootDir,
-    encoding: 'utf8',
-    timeout: PROCESS_TIMEOUT_MS,
+    timeoutMs: PROCESS_TIMEOUT_MS,
+    whatFailed: `ESLint's process failed in ${rootDir}`,
   })
-  if (status !== 0) throw new Error(`ESLint's process failed in ${rootDir} (exit ${String(status)}): ${stderr}`)
   // Parse boundary: what eslint-build-process.ts printed.
   return JSON.parse(stdout) as EslintResultsByBuild
 }

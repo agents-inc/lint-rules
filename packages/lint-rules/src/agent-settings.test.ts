@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { agentConfigsOf } from './__tests__/agent-configs.ts'
+import { agentConfigsOf, oxlintPartOf } from './__tests__/agent-configs.ts'
 import { buildConsumerLintRules } from './__tests__/factories/lint-rules-factories.ts'
-import {
-  buildPackageJsonListingOthers,
-  buildPackageJsonListingOxlint,
-  packageJsonText,
-} from './__tests__/factories/package-json-factories.ts'
+import { buildPackageJsonListingOthers, createProjectListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { rulesOnInEslint, rulesOnInOxlint } from './__tests__/rules-on-engines.ts'
 import { writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
@@ -19,7 +15,7 @@ import { defineLintRules, type LintRules } from './index.ts'
 // no declaration file names it (dist.test.ts).
 
 const tempProjects = setUpTempProjects()
-const PROJECT_WITH_OXLINT = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) } })
+const PROJECT_WITH_OXLINT = createProjectListingOxlint(tempProjects)
 const PROJECT_WITHOUT_OXLINT = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOthers()) } })
 
 const AGENT_RULESETS = { quality: ['correctness'], libs: { ui: ['react'] }, runtimes: ['node'], languages: [] } satisfies LintRules['agentRulesets']
@@ -61,8 +57,7 @@ describe('agentSettingsOf', () => {
   })
 
   it('returns the same settings for the oxlint part of the same config', () => {
-    const { oxlint } = defineLintRules(lintRules).editorRulesets
-    if (oxlint === undefined) throw new Error('a project whose package.json lists oxlint got no oxlint part')
+    const oxlint = oxlintPartOf(defineLintRules(lintRules).editorRulesets)
 
     expect(agentSettingsOf(oxlint)).toStrictEqual(AGENT_SETTINGS)
   })

@@ -6,12 +6,14 @@ import {
   A_SUPPRESSION_REASON,
   blockDisable,
   blockEnable,
+  blockPairAround,
   buildCheckFinding,
   buildFileReports,
   buildLintMessage,
   buildLintWarning,
   buildOxlintDiagnostic,
   buildOxlintWarning,
+  buildUnusedSuppressionFinding,
   DEBUGGER_STATEMENT,
   type EnableComment,
   ESLINT_FINDING_MESSAGE,
@@ -141,10 +143,6 @@ describe('unused suppressions, where suppressions are allowed (q-c15)', () => {
     return [exportedConstant('before'), suppressionOfTheNextLine(form, ruleName), nextLine]
   }
 
-  function unusedSuppressionOf(ruleName: string): CheckFinding {
-    return buildCheckFinding({ line: COMMENT_LINE, label: 'unused suppression', message: `suppresses ${ruleName}, which reported nothing here` })
-  }
-
   it('reports an `oxlint-disable` comment oxlint calls unused, which ESLint never reads', () => {
     const lines = suppressingLines('oxlint', 'no-debugger', exportedConstant('after'))
     const reports = buildFileReports({
@@ -153,7 +151,7 @@ describe('unused suppressions, where suppressions are allowed (q-c15)', () => {
       oxlintDiagnostics: [oxlintUnusedSuppression('oxlint', spanOfLine(moduleText(...lines), COMMENT_LINE))],
     })
 
-    expect(findingsIn(reports, catalog)).toStrictEqual([unusedSuppressionOf('no-debugger')])
+    expect(findingsIn(reports, catalog)).toStrictEqual([buildUnusedSuppressionFinding({ line: COMMENT_LINE, ruleName: 'no-debugger' })])
   })
 
   // oxlint spans the whole comment, its reason included (measured, 1.87).
@@ -165,7 +163,7 @@ describe('unused suppressions, where suppressions are allowed (q-c15)', () => {
       oxlintDiagnostics: [oxlintUnusedSuppression('oxlint', spanOfLine(moduleText(...lines), COMMENT_LINE))],
     })
 
-    expect(findingsIn(reports, catalog)).toStrictEqual([unusedSuppressionOf('no-debugger')])
+    expect(findingsIn(reports, catalog)).toStrictEqual([buildUnusedSuppressionFinding({ line: COMMENT_LINE, ruleName: 'no-debugger' })])
   })
 
   it("reports none where suppressions are banned, though oxlint calls an `oxlint-disable` comment unused there too, beside where they are allowed", () => {
@@ -176,7 +174,7 @@ describe('unused suppressions, where suppressions are allowed (q-c15)', () => {
 
     expect({ banned: reportsWhereSuppressions(false), allowed: reportsWhereSuppressions(true) }).toStrictEqual({
       banned: [],
-      allowed: [unusedSuppressionOf('no-debugger')],
+      allowed: [buildUnusedSuppressionFinding({ line: COMMENT_LINE, ruleName: 'no-debugger' })],
     })
   })
 
@@ -189,7 +187,7 @@ describe('unused suppressions, where suppressions are allowed (q-c15)', () => {
       oxlintDiagnostics: [oxlintUnusedSuppression('eslint', spanOfLine(moduleText(...lines), COMMENT_LINE))],
     })
 
-    expect(findingsIn(reports, catalog)).toStrictEqual([unusedSuppressionOf('no-debugger')])
+    expect(findingsIn(reports, catalog)).toStrictEqual([buildUnusedSuppressionFinding({ line: COMMENT_LINE, ruleName: 'no-debugger' })])
   })
 
   it('reports no `eslint-disable` comment only oxlint calls unused: ESLint, which runs the rule, used it', () => {
@@ -299,16 +297,8 @@ describe('unused block pairs, where suppressions are allowed (q-c15)', () => {
   const SECOND_DISABLE_LINE = 4
   const SECOND_ENABLE_LINE = 6
 
-  function pairAround(form: SuppressionForm, ruleName: string, between: string): string[] {
-    return [blockDisable(form, ruleName), between, blockEnable({ form, ruleName })]
-  }
-
-  function unusedSuppressionAt(line: number, ruleName: string): CheckFinding {
-    return buildCheckFinding({ line, label: 'unused suppression', message: `suppresses ${ruleName}, which reported nothing here` })
-  }
-
   it('reports an `eslint-disable` … `eslint-enable` pair both engines call unused once, at its disable comment', () => {
-    const lines = pairAround('eslint', 'no-debugger', exportedConstant('between'))
+    const lines = blockPairAround('eslint', 'no-debugger', exportedConstant('between'))
     const reports = buildFileReports({
       lines,
       changed: wholeFileChanged(),
@@ -316,22 +306,22 @@ describe('unused block pairs, where suppressions are allowed (q-c15)', () => {
       oxlintDiagnostics: [oxlintUnusedSuppression('eslint', spanOfLine(moduleText(...lines), ENABLE_LINE))],
     })
 
-    expect(findingsIn(reports, catalog)).toStrictEqual([unusedSuppressionAt(DISABLE_LINE, 'no-debugger')])
+    expect(findingsIn(reports, catalog)).toStrictEqual([buildUnusedSuppressionFinding({ line: DISABLE_LINE, ruleName: 'no-debugger' })])
   })
 
   it('reports an `oxlint-disable` … `oxlint-enable` pair oxlint calls unused at its disable comment', () => {
-    const lines = pairAround('oxlint', 'no-debugger', exportedConstant('between'))
+    const lines = blockPairAround('oxlint', 'no-debugger', exportedConstant('between'))
     const reports = buildFileReports({
       lines,
       changed: wholeFileChanged(),
       oxlintDiagnostics: [oxlintUnusedSuppression('oxlint', spanOfLine(moduleText(...lines), ENABLE_LINE))],
     })
 
-    expect(findingsIn(reports, catalog)).toStrictEqual([unusedSuppressionAt(DISABLE_LINE, 'no-debugger')])
+    expect(findingsIn(reports, catalog)).toStrictEqual([buildUnusedSuppressionFinding({ line: DISABLE_LINE, ruleName: 'no-debugger' })])
   })
 
   it('reports each of two pairs at its own disable comment', () => {
-    const lines = [...pairAround('eslint', 'no-debugger', exportedConstant('first')), ...pairAround('eslint', 'no-debugger', exportedConstant('second'))]
+    const lines = [...blockPairAround('eslint', 'no-debugger', exportedConstant('first')), ...blockPairAround('eslint', 'no-debugger', exportedConstant('second'))]
     const text = moduleText(...lines)
     const reports = buildFileReports({
       lines,
@@ -340,11 +330,11 @@ describe('unused block pairs, where suppressions are allowed (q-c15)', () => {
       oxlintDiagnostics: [oxlintUnusedSuppression('eslint', spanOfLine(text, ENABLE_LINE)), oxlintUnusedSuppression('eslint', spanOfLine(text, SECOND_ENABLE_LINE))],
     })
 
-    expect(findingsIn(reports, catalog)).toStrictEqual([unusedSuppressionAt(DISABLE_LINE, 'no-debugger'), unusedSuppressionAt(SECOND_DISABLE_LINE, 'no-debugger')])
+    expect(findingsIn(reports, catalog)).toStrictEqual([buildUnusedSuppressionFinding({ line: DISABLE_LINE, ruleName: 'no-debugger' }), buildUnusedSuppressionFinding({ line: SECOND_DISABLE_LINE, ruleName: 'no-debugger' })])
   })
 
   it('reports no `eslint-disable` … `eslint-enable` pair only oxlint calls unused: ESLint, which runs the rule, used it', () => {
-    const lines = pairAround('eslint', 'no-var', 'var between = 1')
+    const lines = blockPairAround('eslint', 'no-var', 'var between = 1')
     const reports = buildFileReports({
       lines,
       changed: wholeFileChanged(),
@@ -371,9 +361,7 @@ describe('unused suppressions oxlint reports at an enable comment, read at the d
   // comment is the first naming the rule since the last enable comment naming it above, whatever
   // the form of either.
   function unusedSuppressionsOf(unused: readonly UnusedAt[]): CheckFinding[] {
-    return unused.map(({ line, ruleName }) =>
-      buildCheckFinding({ line, label: 'unused suppression', message: `suppresses ${ruleName}, which reported nothing here` }),
-    )
+    return unused.map(buildUnusedSuppressionFinding)
   }
 
   it.each(SUPPRESSION_PAIR_CASES)('reports $shape at the disable comment', ({ lines, oxlintReport, unusedInEslint, reported }) => {
@@ -415,7 +403,7 @@ describe('unused suppressions oxlint reports at an enable comment, read at the d
     })
 
     expect(findingsIn(reports, catalog)).toStrictEqual([
-      buildCheckFinding({ file: TSX_FILE, line: DISABLE_LINE, label: 'unused suppression', message: 'suppresses no-debugger, which reported nothing here' }),
+      buildUnusedSuppressionFinding({ file: TSX_FILE, line: DISABLE_LINE, ruleName: 'no-debugger' }),
     ])
   })
 

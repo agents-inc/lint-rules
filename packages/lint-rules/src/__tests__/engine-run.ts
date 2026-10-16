@@ -1,28 +1,21 @@
 import { spawnSync } from 'node:child_process'
 import { writeFile } from 'node:fs/promises'
-import { join, relative } from 'node:path'
+import { join } from 'node:path'
 import { ESLint, type Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
 import type { OxlintConfig } from 'oxlint'
 import { beforeAll } from 'vitest'
+import { oxlintBin } from '../cli/check/oxlint-run.ts'
 import { mergeEslintConfig } from '../eslint.ts'
 import { mergeOxlintConfig } from '../oxlint.ts'
 import { agentConfigsOf, type DefinedLintRules } from './agent-configs.ts'
-import { writeOxlintConfigFile } from './engine-clis.ts'
+import { fatalMessagesIn, type OxlintCliDiagnostic, writeOxlintConfigFile } from './engine-clis.ts'
+import { projectPathOf } from './project-paths.ts'
 import { rulesNotFoundAmong } from './rules-not-found.ts'
 import { NO_TEAM_ESLINT_CONFIG, type TeamEslintConfigPath } from './team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, type LinkedPackage, type ProjectFiles, setUpTempProjects } from './temp-projects.ts'
 
 export type ProcessOutput = { readonly exitCode: number | null; readonly stdout: string }
-
-type OxlintLabel = { readonly span: { readonly line: number } }
-
-type OxlintDiagnostic = {
-  readonly code: string
-  readonly filename: string
-  readonly severity: string
-  readonly labels: readonly OxlintLabel[]
-}
 
 /** One ESLint message: `ruleId` null for ESLint's own, a parse error or an inline-config warning. */
 export type EslintMessageAt = { readonly ruleId: string | null; readonly severity: number; readonly line: number }
@@ -30,7 +23,7 @@ export type EslintMessageAt = { readonly ruleId: string | null; readonly severit
 /** A finding at error severity from either engine, under the engine's own name for the rule. */
 export type ErrorAt = { readonly engine: 'eslint' | 'oxlint'; readonly rule: string | null; readonly line: number | null }
 
-export type OxlintReport = { readonly diagnostics: readonly OxlintDiagnostic[]; readonly number_of_rules: number }
+export type OxlintReport = { readonly diagnostics: readonly OxlintCliDiagnostic[]; readonly number_of_rules: number }
 
 /** The team's own configs an editor build merges our parts into. */
 export type TeamConfigs = {
@@ -91,7 +84,6 @@ type CompletedRun = {
 
 type EmittedConfigs = { readonly oxlint: OxlintConfig | null; readonly eslint: Linter.Config[] }
 
-const OXLINT_BIN = join(INSTALLED_OXLINT.dir, 'bin', 'oxlint')
 const OXLINT_CONFIG_FILE = '.oxlintrc.json'
 // The team's own oxlint config in an editor build, which the ESLint merge reads: a name oxlint never finds by itself.
 const TEAM_OXLINT_CONFIG_FILE = 'team.oxlintrc.json'
@@ -145,7 +137,7 @@ export function setUpEngineRun(
 
   function eslintResultFor(file: string): ESLint.LintResult {
     const { projectDir, eslintResults } = completedRun()
-    const result = eslintResults.find((candidate) => relative(projectDir, candidate.filePath) === file)
+    const result = eslintResults.find((candidate) => projectPathOf(candidate.filePath, projectDir) === file)
     if (result === undefined) throw new Error(`ESLint did not lint ${file}`)
     return result
   }
@@ -186,16 +178,12 @@ export function setUpEngineRun(
     eslintRulesNotFound: () => {
       const { projectDir, eslintResults } = completedRun()
       return eslintResults.flatMap((result) =>
-        rulesNotFoundAmong(result.messages).map((ruleId) => `${relative(projectDir, result.filePath)}: ${String(ruleId)}`),
+        rulesNotFoundAmong(result.messages).map((ruleId) => `${projectPathOf(result.filePath, projectDir)}: ${String(ruleId)}`),
       )
     },
     eslintFatalMessages: () => {
       const { projectDir, eslintResults } = completedRun()
-      return eslintResults.flatMap((result) =>
-        result.messages
-          .filter((message) => message.fatal === true)
-          .map((message) => `${relative(projectDir, result.filePath)}: ${message.message}`),
-      )
+      return fatalMessagesIn(eslintResults, projectDir)
     },
   }
 }
@@ -259,7 +247,7 @@ function byLineThenEngine(first: ErrorAt, second: ErrorAt): number {
 }
 
 function runOxlint(projectDir: string, args: readonly string[]): ProcessOutput {
-  const { status, stdout } = spawnSync(process.execPath, [OXLINT_BIN, '-c', OXLINT_CONFIG_FILE, ...args], {
+  const { status, stdout } = spawnSync(process.execPath, [oxlintBin(), '-c', OXLINT_CONFIG_FILE, ...args], {
     cwd: projectDir,
     encoding: 'utf8',
   })

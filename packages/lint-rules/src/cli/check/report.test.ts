@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { EXIT } from '../../__tests__/git-projects.ts'
 import { linesOf } from '../../__tests__/check-output.ts'
+import { EXIT } from '../../__tests__/cli-runs.ts'
 import {
   buildCheckFinding,
   ERRORS_SUMMARY_TAIL,

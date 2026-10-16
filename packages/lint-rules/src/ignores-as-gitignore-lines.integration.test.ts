@@ -10,7 +10,8 @@ import {
   NEGATED_UNDER_A_LEFT_OUT_FOLDER,
   ROOT_TAKE_BACKS_BESIDE_AN_ENTRY,
 } from './__tests__/cases/ignores-as-gitignore-lines.ts'
-import { type EngineFinding, filesReportingIn, type RuleByItsNames } from './__tests__/findings-beside-the-team.ts'
+import type { EngineFinding } from './__tests__/engine-clis.ts'
+import { filesReportingIn, type RuleByItsNames } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 

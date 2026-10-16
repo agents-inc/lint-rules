@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Linter } from 'eslint'
+import { isRecord } from '../core/is-record.ts'
 
 /**
  * The `teamConfig` a JS module in the project exports, as a team's eslint.config.mjs hands its
@@ -18,10 +19,6 @@ export async function importedTeamConfig(projectDir: string, file: string): Prom
   })
 }
 
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === 'object' && value !== null
-}
-
 function isConfigBlock(value: unknown): value is Linter.Config {
-  return isRecord(value) && !Array.isArray(value)
+  return isRecord(value)
 }

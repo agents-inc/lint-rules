@@ -33,8 +33,6 @@ const OBJECTS = 'objects'
 // Rename and copy entries carry the old path, then the new one.
 const PAIRED_STATUSES = new Set(['R', 'C'])
 const ADDED = 'A'
-const ENTRY_LENGTH = 2
-const PAIRED_ENTRY_LENGTH = 3
 const GIT_OUTPUT_LIMIT = 256 * 1024 * 1024
 
 /** The top level of the git repository holding the folder, or null where no repository does. Throws where git cannot be started. */
@@ -78,7 +76,7 @@ export function changedFilesIn({ topLevel, scratch }: GitRepo): ChangedFile[] {
     return entriesOf(git(topLevel, null, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])).map((path) => ({ path, oldPath: null, isNew: true }))
   }
   const entries = entriesOf(git(topLevel, scratch, ['diff', '--name-status', '-z', '--no-ext-diff', FIND_RENAMES, '--diff-filter=ACMR', 'HEAD']))
-  return changedFilesFrom(entries)
+  return Array.from(changedFilesFrom(entries))
 }
 
 /** The lines of the file a change added: all of a file with no old path, else those its diff against HEAD adds. */
@@ -90,13 +88,13 @@ export function changedLinesOf(repo: GitRepo, file: ChangedFile): ChangedLines {
 }
 
 function askGitForTheTopLevel(cwd: string): SpawnSyncReturns<string> {
-  return spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd, env: gitEnv(null), encoding: 'utf8' })
+  return askGit(cwd, null, ['rev-parse', '--show-toplevel'])
 }
 
 /** The top level git answered with: null where it found no repository. Throws where git could not be started. */
-function topLevelFrom({ error, status, stdout }: SpawnSyncReturns<string>): string | null {
-  if (error !== undefined) throw new Error(gitFailed(error.message), { cause: error })
-  return status === 0 ? stdout.trim() : null
+function topLevelFrom(answer: SpawnSyncReturns<string>): string | null {
+  throwWhereGitCouldNotStart(answer)
+  return answer.status === 0 ? answer.stdout.trim() : null
 }
 
 /** The repo's own objects, then any alternates git is already given. */
@@ -105,31 +103,27 @@ function alternateObjectFolders(repoObjects: string): string {
 }
 
 function hasCommits(topLevel: string): boolean {
-  return spawnSync('git', ['rev-parse', '--verify', '--quiet', 'HEAD'], { cwd: topLevel, env: gitEnv(null) }).status === 0
+  return askGit(topLevel, null, ['rev-parse', '--verify', '--quiet', 'HEAD']).status === 0
 }
 
-/** `<status>\0<path>\0`, or `R<score>\0<old>\0<new>\0` for a pair: a pair's entry takes one more path. */
-function changedFilesFrom(entries: readonly string[]): ChangedFile[] {
-  const files: ChangedFile[] = []
-  let next = 0
-  while (next < entries.length) {
-    const kind = entryAt(entries, next).charAt(0)
-    const first = entryAt(entries, next + 1)
-    if (PAIRED_STATUSES.has(kind)) {
-      files.push({ path: entryAt(entries, next + 2), oldPath: first, isNew: false })
-      next += PAIRED_ENTRY_LENGTH
-    } else {
-      files.push({ path: first, oldPath: null, isNew: kind === ADDED })
-      next += ENTRY_LENGTH
-    }
+/**
+ * `<status>\0<path>\0`, or `R<score>\0<old>\0<new>\0` for a pair: a pair's entry takes one more path.
+ * The loop and nextPathIn share one iterator over the fields, so each path taken inside the loop is
+ * one the loop skips, and the loop's next field is the next entry's status.
+ */
+function* changedFilesFrom(entries: readonly string[]): Generator<ChangedFile> {
+  const fields = entries.values()
+  for (const status of fields) {
+    const kind = status.charAt(0)
+    const first = nextPathIn(fields, entries)
+    yield PAIRED_STATUSES.has(kind) ? { path: nextPathIn(fields, entries), oldPath: first, isNew: false } : { path: first, oldPath: null, isNew: kind === ADDED }
   }
-  return files
 }
 
-function entryAt(entries: readonly string[], index: number): string {
-  const entry = entries[index]
-  if (entry === undefined) throw new Error(gitFailed(`its --name-status list ends part way through an entry: ${entries.join(' ')}`))
-  return entry
+function nextPathIn(fields: Iterator<string>, entries: readonly string[]): string {
+  const field = fields.next()
+  if (field.done === true) throw new Error(gitFailed(`its --name-status list ends part way through an entry: ${entries.join(' ')}`))
+  return field.value
 }
 
 function entriesOf(nulSeparated: string): string[] {
@@ -138,10 +132,19 @@ function entriesOf(nulSeparated: string): string[] {
 
 /** Runs git from the top level: its stdout, or throws quoting the first line it printed. */
 function git(topLevel: string, scratch: ScratchGit | null, args: readonly string[]): string {
-  const { error, status, stdout, stderr } = spawnSync('git', args, { cwd: topLevel, env: gitEnv(scratch), encoding: 'utf8', maxBuffer: GIT_OUTPUT_LIMIT })
-  if (error !== undefined) throw new Error(gitFailed(error.message), { cause: error })
+  const answer = askGit(topLevel, scratch, args)
+  throwWhereGitCouldNotStart(answer)
+  const { status, stdout, stderr } = answer
   if (status !== 0) throw new Error(gitFailed(firstPrintedLineOf([stderr], `git ${args.join(' ')} exited ${String(status)}`)))
   return stdout
+}
+
+function askGit(cwd: string, scratch: ScratchGit | null, args: readonly string[]): SpawnSyncReturns<string> {
+  return spawnSync('git', args, { cwd, env: gitEnv(scratch), encoding: 'utf8', maxBuffer: GIT_OUTPUT_LIMIT })
+}
+
+function throwWhereGitCouldNotStart({ error }: SpawnSyncReturns<string>): void {
+  if (error !== undefined) throw new Error(gitFailed(error.message), { cause: error })
 }
 
 function gitEnv(scratch: ScratchGit | null): NodeJS.ProcessEnv {

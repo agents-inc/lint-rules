@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
   COMPONENT_FILE,
   FLOATING_PROMISE_FILE,
@@ -44,8 +44,9 @@ import {
 } from './__tests__/factories/package-json-factories.ts'
 import { buildReactTsconfig } from './__tests__/factories/tsconfig-factories.ts'
 import { ruleIdsStatedInEslint } from './__tests__/rules-on-engines.ts'
+import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { teamOxlintConfigSettingNoRuleFiles, writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
-import { installedPackage, type ProjectFiles, setUpTempProjects, THIS_PACKAGE } from './__tests__/temp-projects.ts'
+import { installedPackage, type ProjectFiles, type TempProjects, THIS_PACKAGE } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
@@ -63,21 +64,12 @@ type TeamProjectRuns = {
 
 type CompletedRuns = { readonly projectDir: string; readonly teamAlone: readonly EslintCliResult[]; readonly merged: readonly EslintCliResult[] }
 
-/**
- * The two runs made before the suite. A run ESLint could not finish is kept as its error, so each
- * test reports it as its own failure: vitest reports a test whose beforeAll threw as skipped.
- */
-type RunsBeforeTheSuite =
-  | { readonly outcome: 'not made' }
-  | { readonly outcome: 'completed'; readonly runs: CompletedRuns }
-  | { readonly outcome: 'failed'; readonly error: unknown }
-
 const AGENTS_INC_LINT_WITH_EVERY_RULESET = readFileSync(
   fileURLToPath(new URL('../test-fixtures/consumer-files/agents-inc.lint.mts', import.meta.url)),
   'utf8',
 )
 const LINKED_PACKAGES = [THIS_PACKAGE, installedPackage('typescript-eslint'), installedPackage('eslint-plugin-react')]
-const CLI_RUNS_TIMEOUT_MS = 480_000
+const TEAM_PROJECT_RUNS: RunsBeforeTheSuiteOptions = { timeoutMs: 480_000, whatFailed: 'ESLint could not lint the team project before the suite' }
 // The core rule, and its typescript-eslint extension, which the ESLint part runs on TS files in its place without oxlint.
 const UNUSED_VARIABLE_RULES = ['no-unused-vars', '@typescript-eslint/no-unused-vars']
 // Two core rules oxlint runs for us, and typescript-eslint's extensions of them, which its recommended config turns on.
@@ -99,18 +91,9 @@ const PROJECTS = [
  * the suite: with the team's config alone, and merged.
  */
 function setUpTeamProjectRuns(packageJson: PackageJson, teamConfigModule: string, extraFiles: ProjectFiles = {}): TeamProjectRuns {
-  const tempProjects = setUpTempProjects()
-  let runsBeforeTheSuite: RunsBeforeTheSuite = { outcome: 'not made' }
+  const completedRuns = setUpRunsBeforeTheSuite(lintTeamProjectTwice, TEAM_PROJECT_RUNS)
 
-  beforeAll(() => {
-    try {
-      runsBeforeTheSuite = { outcome: 'completed', runs: lintTeamProjectTwice() }
-    } catch (error) {
-      runsBeforeTheSuite = { outcome: 'failed', error }
-    }
-  }, CLI_RUNS_TIMEOUT_MS)
-
-  function lintTeamProjectTwice(): CompletedRuns {
+  function lintTeamProjectTwice(tempProjects: TempProjects): CompletedRuns {
     const projectDir = tempProjects.create({
       files: {
         'package.json': packageJsonText(packageJson),
@@ -133,14 +116,6 @@ function setUpTeamProjectRuns(packageJson: PackageJson, teamConfigModule: string
       teamAlone: runEslintCli(projectDir, TEAM_ALONE_CONFIG_FILE),
       merged: runEslintCli(projectDir, MERGED_CONFIG_FILE),
     }
-  }
-
-  function completedRuns(): CompletedRuns {
-    if (runsBeforeTheSuite.outcome === 'failed') {
-      throw new Error('ESLint could not lint the team project before the suite', { cause: runsBeforeTheSuite.error })
-    }
-    if (runsBeforeTheSuite.outcome === 'not made') throw new Error('the runs were read outside the suite that made them')
-    return runsBeforeTheSuite.runs
   }
 
   return {

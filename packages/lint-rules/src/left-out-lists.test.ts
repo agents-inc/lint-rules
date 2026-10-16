@@ -7,7 +7,7 @@ import {
   buildConsumerLintRulesWithoutEditorRulesets,
   EMPTY_TSCONFIG_ROOT_DIR,
 } from './__tests__/factories/lint-rules-factories.ts'
-import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
+import { createProjectListingOxlint } from './__tests__/factories/package-json-factories.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 
@@ -22,7 +22,7 @@ type Rulesets = LintRules['agentRulesets']
 type SetLeavingListsOut = { readonly leftOut: string; readonly set: Partial<Rulesets> }
 
 const tempProjects = setUpTempProjects()
-const PROJECT_WITH_OXLINT = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) } })
+const PROJECT_WITH_OXLINT = createProjectListingOxlint(tempProjects)
 
 const PROJECTS = [
   { project: 'whose package.json lists oxlint', projectDir: PROJECT_WITH_OXLINT },

@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { defineLintRules } from '../index.ts'
 import { buildConsumerLintRules } from './factories/lint-rules-factories.ts'
 import { buildOxlintFinding } from './factories/oxlint-finding-factories.ts'
-import { buildPackageJsonListingOxlint, packageJsonText } from './factories/package-json-factories.ts'
+import { createProjectListingOxlint } from './factories/package-json-factories.ts'
 import { buildTeamOxlintConfig } from './factories/team-config-factories.ts'
 import { ownerOfOxlintFindings, oxlintFindingsOwed, type TeamConfigsRead } from './oxlint-findings-owed.ts'
 import { setUpTempProjects } from './temp-projects.ts'
 
-const PROJECT_WITH_OXLINT = setUpTempProjects().create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) } })
+const PROJECT_WITH_OXLINT = createProjectListingOxlint(setUpTempProjects())
 
 const JSX_KEY = 'react(jsx-key)'
 const NO_UNUSED_VARS = 'eslint(no-unused-vars)'

@@ -27,6 +27,12 @@ const PAIR = 2
 const TRIPLE = 3
 const PICK_SEPARATOR = '|'
 const POSITION_SEPARATOR = ':'
+const SHAPE_NAME_SEPARATOR = '; '
+
+/** A shape's name, for a test's title: its values' names, in order. */
+export function shapeNameOf(shape: Shape<{ readonly name: string }>): string {
+  return shape.map(({ name }) => name).join(SHAPE_NAME_SEPARATOR)
+}
 
 /**
  * Shapes in which every two values of two dimensions meet, the seeds first: the values of one seed

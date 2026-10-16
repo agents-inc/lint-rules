@@ -1,5 +1,6 @@
 import type { OxlintConfig } from 'oxlint'
 import { describe, expect, it } from 'vitest'
+import { oxlintPartOf } from './__tests__/agent-configs.ts'
 import { buildConsumerLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildTeamOxlintConfig } from './__tests__/factories/team-config-factories.ts'
@@ -19,12 +20,11 @@ const SVELTE_GLOBAL = '$$props'
 const TEAM_SETTING = 'writable'
 
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) }, linkedPackages: [INSTALLED_OXLINT] })
-const { oxlint } = defineLintRules(buildConsumerLintRules(projectDir, {})).editorRulesets
+const ourParts = defineLintRules(buildConsumerLintRules(projectDir, {})).editorRulesets
 
 /** The merged config with ours merged into the team's config given. */
 function mergedInto(team: OxlintConfig): OxlintConfig {
-  if (oxlint === undefined) throw new Error('the project lists oxlint, so it has an oxlint part')
-  return mergeOxlintConfig(team, oxlint, NO_TEAM_ESLINT_CONFIG)
+  return mergeOxlintConfig(team, oxlintPartOf(ourParts), NO_TEAM_ESLINT_CONFIG)
 }
 
 /** The global's setting among those given, as a list: none where they leave it out. */

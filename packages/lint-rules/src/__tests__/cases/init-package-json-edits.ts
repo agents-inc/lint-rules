@@ -112,6 +112,12 @@ export type PackageJsonTextEdit = { readonly kind: string; readonly before: stri
 
 const A_VALUE_WITH_ESCAPES = 'says "hi", and \\ goes on'
 const WITH_ARRAYS: PackageJsonObject = { name: 'consumer-project', files: { writtenAsIs: '["dist"]' }, workspaces: { writtenAsIs: '[]' } }
+const A_VALUE_WITH_JSON_PUNCTUATION = 'a {b} [c], d: e'
+const A_KEY_WITH_AN_ESCAPED_QUOTE = 'say "hi"'
+const WITH_NESTED_VALUES: PackageJsonObject = {
+  name: 'consumer-project',
+  config: { port: { writtenAsIs: '-1.5e+3' }, flags: { writtenAsIs: '[{"on": true, "off": null}, [1, [2]]]' }, nested: { deeper: { writtenAsIs: '{}' } } },
+}
 const ON_ONE_LINE = '"name":"consumer-project","version":"1.0.0","private":true'
 const OUR_ENTRY = `${JSON.stringify(OUR_PACKAGE)}: ${JSON.stringify(OUR_RANGE)}`
 
@@ -130,6 +136,26 @@ export const PACKAGE_JSON_TEXT_EDITS: readonly PackageJsonTextEdit[] = [
     kind: 'an array of one value and an empty one',
     before: packageJsonTextIn({ ...WITH_ARRAYS, devDependencies: { eslint: '^10.0.0' } }, TWO_SPACES_LF),
     after: packageJsonTextIn({ ...WITH_ARRAYS, devDependencies: { ...OURS, eslint: '^10.0.0' } }, TWO_SPACES_LF),
+  },
+  {
+    kind: 'a string holding braces, brackets, a comma and a colon',
+    before: packageJsonTextIn({ name: 'consumer-project', description: A_VALUE_WITH_JSON_PUNCTUATION, devDependencies: { eslint: '^10.0.0' } }, TWO_SPACES_LF),
+    after: packageJsonTextIn({ name: 'consumer-project', description: A_VALUE_WITH_JSON_PUNCTUATION, devDependencies: { ...OURS, eslint: '^10.0.0' } }, TWO_SPACES_LF),
+  },
+  {
+    kind: 'a key holding an escaped quote',
+    before: packageJsonTextIn({ name: 'consumer-project', [A_KEY_WITH_AN_ESCAPED_QUOTE]: 'x', devDependencies: { eslint: '^10.0.0' } }, TWO_SPACES_LF),
+    after: packageJsonTextIn({ name: 'consumer-project', [A_KEY_WITH_AN_ESCAPED_QUOTE]: 'x', devDependencies: { ...OURS, eslint: '^10.0.0' } }, TWO_SPACES_LF),
+  },
+  {
+    kind: 'objects and arrays nested in values, a number, true and null, then no devDependencies',
+    before: packageJsonTextIn(WITH_NESTED_VALUES, TWO_SPACES_LF),
+    after: packageJsonTextIn({ ...WITH_NESTED_VALUES, devDependencies: OURS }, TWO_SPACES_LF),
+  },
+  {
+    kind: 'no devDependencies, an array the last key',
+    before: packageJsonTextIn(WITH_ARRAYS, TWO_SPACES_LF),
+    after: packageJsonTextIn({ ...WITH_ARRAYS, devDependencies: OURS }, TWO_SPACES_LF),
   },
   {
     kind: 'no devDependencies, all on one line',

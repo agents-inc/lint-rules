@@ -171,6 +171,15 @@ export function buildConsumerLintRulesFrom(tsconfigRootDir: string, pieces: read
   return buildConsumerLintRules(tsconfigRootDir, {}, { rules, fileOverrides })
 }
 
+/** One quality ruleset, listed in both the agent and the editor set. */
+function qualityRulesetInBothSets(ruleset: NonNullable<Rulesets['quality']>[number]): RulesetSets {
+  return { agentRulesets: { quality: [ruleset] }, editorRulesets: { quality: [ruleset] } }
+}
+
+export const MODULES_IN_BOTH_SETS = qualityRulesetInBothSets('modules')
+export const CORRECTNESS_IN_BOTH_SETS = qualityRulesetInBothSets('correctness')
+export const REDUNDANCY_IN_BOTH_SETS = qualityRulesetInBothSets('redundancy')
+
 /** Every ruleset listed in both sets, as `init` writes the file. */
 export function buildEveryRulesetLintRules(tsconfigRootDir: string, fields: SharedFields = {}): LintRules {
   return { tsconfigRootDir, agentRulesets: EVERY_RULESET, editorRulesets: EVERY_RULESET, ...fields }

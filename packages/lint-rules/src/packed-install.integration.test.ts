@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { describeFinding, type EslintCliResult, eslintFindingsIn, type OxlintCliReport, oxlintFindingsIn } from './__tests__/engine-clis.ts'
+import { jsonFileText } from './__tests__/factories/team-config-file-factories.ts'
 import { buildTsconfig } from './__tests__/factories/tsconfig-factories.ts'
 import { packagesNpmOverridesAPeerFor } from './__tests__/npm-install-output.ts'
 import { isRecord } from './core/is-record.ts'
@@ -69,7 +70,7 @@ function tarballPacked({ exitCode, stdout, output }: ProcessRun): string {
 }
 
 function projectPackageJson(tarball: string): string {
-  return `${JSON.stringify({ name: 'packed-install-project', private: true, type: 'module', devDependencies: { '@agents-inc/lint-rules': `file:${tarball}`, ...PEERS } }, null, 2)}\n`
+  return jsonFileText({ name: 'packed-install-project', private: true, type: 'module', devDependencies: { '@agents-inc/lint-rules': `file:${tarball}`, ...PEERS } })
 }
 
 describe("this package, packed and installed by npm into a fresh project beside ESLint, oxlint and TypeScript, linted through plan.md's files", () => {

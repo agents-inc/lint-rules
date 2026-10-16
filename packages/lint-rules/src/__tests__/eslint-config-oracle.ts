@@ -1,9 +1,11 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, relative, sep } from 'node:path'
+import { join } from 'node:path'
 import { ESLint, type Linter } from 'eslint'
 import { afterAll, beforeAll } from 'vitest'
+import { isRecord } from '../core/is-record.ts'
 import { severityOfCalculatedEntry } from './calculated-rule-severity.ts'
+import { projectPathOf } from './project-paths.ts'
 
 /** One message ESLint reports: `ruleId` null for ESLint's own, a parse error or a directive warning. */
 export type ReportedMessage = { readonly ruleId: string | null; readonly message: string }
@@ -24,6 +26,12 @@ export type RuleIdsReportedByFile = Readonly<Record<string, readonly (string | n
 export type EslintConfigOracle = {
   /** ESLint's merged config for the file, or undefined when ESLint would not lint it at all. */
   calculatedConfigFor: (config: Linter.Config[], file: string) => Promise<Linter.Config | undefined>
+  /** As `calculatedConfigFor`, for a file ESLint lints: throws where it does not. */
+  lintedConfigFor: (config: Linter.Config[], file: string) => Promise<Linter.Config>
+  /** The settings ESLint calculates for the file: throws where it gives none, as no config holding our base block does. */
+  settingsFor: (config: Linter.Config[], file: string) => Promise<Readonly<Record<string, unknown>>>
+  /** The linterOptions ESLint calculates for the file: it leaves noInlineConfig out when no block sets it. Throws where it gives none. */
+  linterOptionsFor: (config: Linter.Config[], file: string) => Promise<Linter.LinterOptions>
   /** As `calculatedConfigFor`, with ESLint run from the project directory given, as in `ruleSeverityInProjectFor`. */
   calculatedConfigInProjectFor: (projectDir: string, config: Linter.Config[], file: string) => Promise<Linter.Config | undefined>
   /** Each file's calculated rule entries, read by one ESLint: none where no block sets a rule, NOT_LINTED where ESLint lints no such file. */
@@ -72,7 +80,6 @@ type SerializableConfig = { readonly plugins: Readonly<Record<string, unknown>>;
 
 const TEMP_DIR_PREFIX = 'lint-rules-eslint-oracle-'
 const NAMESPACE_SEPARATOR = ':'
-const GLOB_SEPARATOR = '/'
 
 /**
  * ESLint's own merge of a config for one file, so a spec asserts what applies there rather than how
@@ -162,7 +169,7 @@ export function setUpEslintConfigOracle(): EslintConfigOracle {
     const results = await eslintFor(config, projectDir).lintFiles(['.'])
     return Object.fromEntries(
       results.map((result): [string, (string | null)[]] => [
-        relative(projectDir, result.filePath).split(sep).join(GLOB_SEPARATOR),
+        projectPathOf(result.filePath, projectDir),
         result.messages.map(({ ruleId }) => ruleId),
       ]),
     )
@@ -170,6 +177,17 @@ export function setUpEslintConfigOracle(): EslintConfigOracle {
 
   return {
     calculatedConfigFor,
+    lintedConfigFor,
+    settingsFor: async (config, file) => {
+      const { settings } = await lintedConfigFor(config, file)
+      if (settings === undefined) throw new Error(`ESLint gives ${file} no settings`)
+      return settings
+    },
+    linterOptionsFor: async (config, file) => {
+      const { linterOptions } = await lintedConfigFor(config, file)
+      if (linterOptions === undefined) throw new Error(`ESLint calculated no linterOptions for ${file}`)
+      return linterOptions
+    },
     calculatedConfigInProjectFor: async (projectDir, config, file) => eslintFor(config, projectDir).calculateConfigForFile(file),
     calculatedRulesOfEach,
     ruleEntryFor,
@@ -192,10 +210,6 @@ export function setUpEslintConfigOracle(): EslintConfigOracle {
     messagesReportedOn,
     ruleIdsReportedInProjectByFile,
   }
-}
-
-function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === 'object' && value !== null
 }
 
 function isSerializableConfig(value: unknown): value is SerializableConfig {

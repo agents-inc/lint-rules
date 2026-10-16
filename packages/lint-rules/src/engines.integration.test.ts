@@ -3,15 +3,16 @@ import { relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { catalog } from '@workspace/rule-data'
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
-import type { ESLint } from 'eslint'
 import { describe, expect, it } from 'vitest'
 import { suppressionOfARuleNobodyDefines } from './__tests__/cases/suppression-comments.ts'
 import { setUpEngineRun } from './__tests__/engine-run.ts'
+import { pluginRegisteredUnder } from './__tests__/eslint-config-reads.ts'
 import { buildEditorBuild } from './__tests__/factories/engine-build-factories.ts'
 import { buildEslintError } from './__tests__/factories/engine-error-factories.ts'
 import { buildConsumerLintRules, buildEveryRulesetLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildTeamEslintBlock } from './__tests__/factories/team-config-factories.ts'
+import { canonicalIdOfOxlintName } from './__tests__/rules-on-engines.ts'
 import { defineLintRules } from './index.ts'
 
 const FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/engines', import.meta.url))
@@ -59,12 +60,6 @@ function emittedOxlintRules(): Record<string, unknown> {
   return rules
 }
 
-function canonicalIdOfOxlintName(oxlintName: string): string {
-  const rule = [...catalog.rules.values()].find((candidate) => candidate.oxlintName === oxlintName)
-  if (rule === undefined) throw new Error(`no catalog rule has the oxlint name ${oxlintName}`)
-  return rule.id
-}
-
 function canonicalIdsOfRulesOn(rules: Record<string, unknown>): string[] {
   return Object.entries(rules)
     .filter(([, entry]) => {
@@ -79,12 +74,6 @@ function routeOf(ruleId: string) {
   const rule = catalog.rules.get(ruleId)
   if (rule === undefined) throw new Error(`${ruleId} is not in the catalog`)
   return rule
-}
-
-function registeredEslintPlugin(prefix: string): ESLint.Plugin {
-  const plugin = eslintPlugins[prefix]
-  if (plugin === undefined) throw new Error(`no ESLint plugin is registered under ${prefix}`)
-  return plugin
 }
 
 describe('oxlint, given the full config', () => {
@@ -237,7 +226,7 @@ describe('a suppression comment in ESLint, in a team config registering react me
       'package.json': packageJsonText(buildPackageJsonListingOxlint()),
       [SUPPRESSES_A_RULE_NOBODY_DEFINES_FILE]: suppressionOfARuleNobodyDefines,
     },
-    buildEditorBuild({ teamEslintConfig: [buildTeamEslintBlock('team-react', { plugins: { react: registeredEslintPlugin('react') } })] }),
+    buildEditorBuild({ teamEslintConfig: [buildTeamEslintBlock('team-react', { plugins: { react: pluginRegisteredUnder(eslintPlugins, 'react') } })] }),
   )
 
   it('is loaded by ESLint without a fatal message on any file', () => {

@@ -1,6 +1,6 @@
 import type { Catalog } from '@workspace/rule-data'
 import type { Linter } from 'eslint'
-import { type ChangedLines, isOnChangedLines } from './changed-lines.ts'
+import { type ChangedLines, isOnChangedLines, WHOLE_FILE_LINE } from './changed-lines.ts'
 import { type OxlintDiagnostic, ruleIdOfOxlintCode } from './oxlint-output.ts'
 import type { CheckFinding } from './report.ts'
 import { PARSE_ERROR_LABEL, UNUSED_SUPPRESSION_LABEL, unusedSuppressionMessage } from './texts.ts'
@@ -25,8 +25,6 @@ const OXLINT_WARNING = 'warning'
 // oxlint's own TypeScript syntax checks report under TypeScript's error code, which names no rule:
 // `TS(1036)` for a statement in a `.d.ts` file (measured, 1.87). Its other syntax errors have no code.
 const TYPESCRIPT_SYNTAX_CODE = /^TS\(\d+\)$/u
-// A finding no span places is about the whole file.
-const WHOLE_FILE_LINE = 0
 
 /**
  * The findings in one file that are the change's (q-c9): each rule's on a changed line; one parse

@@ -2,6 +2,7 @@ import type { Catalog, OxlintRule } from '@workspace/rule-data'
 import type { OxlintConfig } from 'oxlint'
 import type { EditorParts } from '../core/editor-parts.ts'
 import { type RuleLayers, ruleSettingsOfEveryLayer } from '../core/resolve-rule-layers.ts'
+import { oxlintPartOf } from './agent-configs.ts'
 import type { OxlintFinding } from './engine-clis.ts'
 import { eslintNamesOf, typescriptEslintTwinsOf } from './other-eslint-names.ts'
 import { oxlintCodeOfRule } from './oxlint-codes.ts'
@@ -38,12 +39,11 @@ const OFF = 'off'
  * - the team's elsewhere, where neither reports it, and for a code no rule of oxlint's has, a JS
  *   plugin's.
  */
-export function ownerOfOxlintFindings({ oxlint, eslint }: EditorParts, team: TeamConfigsRead, catalog: Catalog): OwnerOfFindings {
-  if (oxlint === undefined) throw new Error('there is no oxlint part: the project lists no oxlint')
-  const ourPartAlone = oxlintPartAlone(oxlint, catalog)
+export function ownerOfOxlintFindings(parts: EditorParts, team: TeamConfigsRead, catalog: Catalog): OwnerOfFindings {
+  const ourPartAlone = oxlintPartAlone(oxlintPartOf(parts), catalog)
   const ruleByCode = new Map(catalog.oxlintRules.map((rule): [string, OxlintRule] => [oxlintCodeOfRule(rule), rule]))
   const namesTheTeamSets = eslintNamesSetBy(team, catalog)
-  const ourEslintPartRuns = ruleIdsTurnedOnIn(eslint.layers)
+  const ourEslintPartRuns = ruleIdsTurnedOnIn(parts.eslint.layers)
   return (file, code) => {
     const rule = ruleByCode.get(code)
     if (rule === undefined || isSetByTheTeam(rule.id, namesTheTeamSets, catalog)) return 'the team'

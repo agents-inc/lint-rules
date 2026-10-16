@@ -22,7 +22,9 @@ const tempProjects = setUpTempProjects()
 
 describe('projectUsesOxlint', () => {
   it('answers yes when the package.json in tsconfigRootDir lists oxlint under devDependencies', () => {
-    const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) } })
+    const projectDir = tempProjects.create({
+      files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint('devDependencies')) },
+    })
 
     expect(projectUsesOxlint(projectDir)).toBe(true)
   })

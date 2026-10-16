@@ -1,4 +1,5 @@
-import type { EngineFinding, FindingsByFileAndRule, RuleByItsNames } from '../findings-beside-the-team.ts'
+import type { EngineFinding } from '../engine-clis.ts'
+import type { FindingsByFileAndRule, RuleByItsNames } from '../findings-beside-the-team.ts'
 
 const A_MESSAGE = 'a finding'
 

@@ -3,9 +3,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { findingsIn } from './__tests__/check-output.ts'
-import { setUpRunsBeforeTheSuite } from './__tests__/consumer-cli-runs.ts'
-import { checkedPackageFiles, DEBUGGER_STATEMENT, exportedConstant, moduleText } from './__tests__/factories/check-factories.ts'
-import { CLI_FILE, createGitProject, EXIT, runCheck } from './__tests__/git-projects.ts'
+import { CLI_FILE, EXIT, setUpCheckAfterTheAgent } from './__tests__/cli-runs.ts'
+import { checkedPackageFiles, DEBUGGER_STATEMENT, exportedConstant, moduleText, REDUNDANCY } from './__tests__/factories/check-factories.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 
 // spec-cli.md "M: the bin entry" (q-c1): the package gives one executable, `agents-inc-lint`, the
@@ -37,10 +36,8 @@ describe('the bin entry', () => {
 })
 
 describe('the bin entry and the package entry a config imports (K-21)', () => {
-  const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles({ quality: ['redundancy'] }) })
+  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY), (project) => {
     project.write('src/a.ts', moduleText(exportedConstant('a'), DEBUGGER_STATEMENT))
-    return runCheck(project.dir)
   })
 
   // agents-inc.lint.mts imports dist/index.mjs, whose defineLintRules records the agent settings; the

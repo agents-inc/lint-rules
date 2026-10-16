@@ -1,7 +1,15 @@
 import type { Linter } from 'eslint'
 import type { OxlintConfig } from 'oxlint'
 import type { LintRules } from '../../index.ts'
-import type { TeamEslintConfigPath, TeamOxlintConfigPath } from '../team-configs-of-the-other-engine.ts'
+import {
+  NO_TEAM_OXLINT_CONFIG,
+  TEAM_OXLINT_CONFIG_SETTING_NO_RULE,
+  type TeamEslintConfigPath,
+  type TeamOxlintConfigPath,
+  teamOxlintConfigSettingNoRuleFiles,
+} from '../team-configs-of-the-other-engine.ts'
+import type { ProjectFiles } from '../temp-projects.ts'
+import { jsonFileText } from './team-config-file-factories.ts'
 
 // The files a consumer writes to use the built package, as `init` lays them out: agents-inc.lint.mts
 // exporting both parts, and an engine config merging one of them into a team's own config.
@@ -235,6 +243,37 @@ export function projectNamingEachConfigText(settings: Omit<LintRules, 'tsconfigR
   return {
     ...eslintFiles,
     [oxlint]: mergedOxlintConfigText(lintRules, team.oxlint, { eslintConfig: eslint }),
-    [teamAloneOxlint]: `${JSON.stringify(team.oxlint, null, 2)}\n`,
+    [teamAloneOxlint]: jsonFileText(team.oxlint),
+  }
+}
+
+/** A team's ESLint config module: its file, and its text. */
+export type TeamEslintModuleFile = { readonly file: string; readonly text: string }
+
+/** A team ESLint config module exporting no block, under a name of its own. */
+export const EMPTY_TEAM_ESLINT_MODULE_FILE: TeamEslintModuleFile = { file: 'empty-team.eslint.mjs', text: emptyTeamEslintModuleText() }
+
+/** A project whose eslint.config.mjs merges our ESLint part: our settings, the team's module, and the team's oxlint config the merge names. */
+export type OurEslintPartMerged = {
+  readonly settings: Omit<LintRules, 'tsconfigRootDir'>
+  readonly team: TeamEslintModuleFile
+  /** One setting no rule, written into the project; or none, the project having no oxlint config. */
+  readonly teamOxlint: 'setting no rule' | 'none'
+}
+
+/**
+ * agents-inc.lint.mts holding the settings given, rooted at its folder; the team's ESLint module; an
+ * eslint.config.mjs merging our ESLint part into it and naming the team's oxlint config; and that
+ * config, where the project has one.
+ */
+export function projectMergingOurEslintPartText({ settings, team, teamOxlint }: OurEslintPartMerged): ProjectFiles {
+  const { lintRules, eslint } = CONSUMER_CONFIG_FILES
+  const teamOxlintConfig = teamOxlint === 'none' ? NO_TEAM_OXLINT_CONFIG : TEAM_OXLINT_CONFIG_SETTING_NO_RULE
+  const teamOxlintFiles = teamOxlint === 'none' ? {} : teamOxlintConfigSettingNoRuleFiles
+  return {
+    [lintRules]: agentsIncLintModuleTextRootedAtItsFolder(settings),
+    [eslint]: mergedEslintConfigText(lintRules, team.file, teamOxlintConfig),
+    ...teamOxlintFiles,
+    [team.file]: team.text,
   }
 }

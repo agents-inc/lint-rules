@@ -1,6 +1,6 @@
 import {
-  blockDisable,
   blockEnable,
+  blockPairAround,
   DEBUGGER_STATEMENT,
   exportedConstant,
   exportedString,
@@ -216,7 +216,7 @@ export const ENABLES_CLOSING_NOTHING_ABOVE_A_DEBUGGER = [
  * disable comment (measured, oxlint 1.87, ESLint 10.12).
  */
 export function noDebuggerPairAround(form: SuppressionForm, between: string): string[] {
-  return [blockDisable(form, 'no-debugger'), between, blockEnable({ form, ruleName: 'no-debugger' })]
+  return blockPairAround(form, 'no-debugger', between)
 }
 
 /** The rule aSuppressionPartlyUnused names that reports nothing below it: nothing there calls `console`. */

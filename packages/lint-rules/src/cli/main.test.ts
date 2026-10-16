@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { CHECK_INTERRUPTED } from '../__tests__/factories/check-factories.ts'
 import { EXIT_FINDINGS, EXIT_INTERRUPTED } from './exit-codes.ts'
 import { runCommand } from './main.ts'
 import type { Outcome } from './outcome.ts'
@@ -83,6 +84,6 @@ describe('the outcome of a run', () => {
       return FINDINGS_LEFT
     })
 
-    expect(await checkRun()).toStrictEqual({ stdout: '', stderr: 'check: interrupted\n', exitCode: EXIT_INTERRUPTED })
+    expect(await checkRun()).toStrictEqual({ stdout: '', stderr: CHECK_INTERRUPTED, exitCode: EXIT_INTERRUPTED })
   })
 })

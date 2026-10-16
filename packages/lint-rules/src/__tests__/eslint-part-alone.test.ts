@@ -4,10 +4,10 @@ import type { EslintPart } from '../core/editor-parts.ts'
 import { eslintPluginRegistry } from '../eslint-plugin-registry.ts'
 import { defineLintRules, type LintRules } from '../index.ts'
 import { NOT_LINTED, setUpEslintConfigOracle } from './eslint-config-oracle.ts'
-import { ABSENT, type CalculatedEntry, calculatedEntryOf } from './eslint-entries-owed.ts'
+import { ABSENT, type CalculatedEntry, entriesOfEachFileIn } from './eslint-entries-owed.ts'
 import { eslintPartAlone } from './eslint-part-alone.ts'
 import { buildConsumerLintRules } from './factories/lint-rules-factories.ts'
-import { buildPackageJsonListingOthers, buildPackageJsonListingOxlint, packageJsonText } from './factories/package-json-factories.ts'
+import { buildPackageJsonListingOthers, createProjectListingOxlint, packageJsonText } from './factories/package-json-factories.ts'
 import { setUpTempProjects } from './temp-projects.ts'
 
 // The ESLint differential's "ours alone": an oracle built by the merge would agree with the merge
@@ -20,7 +20,7 @@ const MAX_PARAMS = 'max-params'
 const MAX_PARAMS_TWIN = '@typescript-eslint/max-params'
 
 const tempProjects = setUpTempProjects()
-const PROJECT_WITH_OXLINT = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) } })
+const PROJECT_WITH_OXLINT = createProjectListingOxlint(tempProjects)
 const PROJECT_WITHOUT_OXLINT = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOthers()) } })
 
 const { calculatedRulesOfEach } = setUpEslintConfigOracle()
@@ -35,14 +35,7 @@ async function entriesIn(
   files: readonly string[],
   ruleIds: readonly string[],
 ): Promise<Record<string, Record<string, CalculatedEntry> | typeof NOT_LINTED>> {
-  const byFile = await calculatedRulesOfEach(eslintPartAlone(part, catalog, eslintPluginRegistry), files)
-  return Object.fromEntries(
-    files.map((file): [string, Record<string, CalculatedEntry> | typeof NOT_LINTED] => {
-      const rules = byFile[file]
-      if (rules === undefined) throw new Error(`ESLint calculated nothing for ${file}`)
-      return [file, rules === NOT_LINTED ? NOT_LINTED : Object.fromEntries(ruleIds.map((id) => [id, calculatedEntryOf(rules, id)]))]
-    }),
-  )
+  return entriesOfEachFileIn(await calculatedRulesOfEach(eslintPartAlone(part, catalog, eslintPluginRegistry), files), ruleIds, files)
 }
 
 describe('eslintPartAlone', () => {

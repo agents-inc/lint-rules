@@ -22,7 +22,7 @@ import {
   type EslintMergeShape,
   type EslintMergeShapeValue,
 } from './__tests__/factories/eslint-merge-factories.ts'
-import { coverageOf, pairsMetInNoShape, pairwiseShapes, type Shape } from './__tests__/pairwise-shapes.ts'
+import { coverageOf, pairsMetInNoShape, pairwiseShapes, type Shape, shapeNameOf } from './__tests__/pairwise-shapes.ts'
 import { writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { editorPartsOf } from './core/editor-parts.ts'
@@ -58,7 +58,6 @@ type ShapeRun = {
 
 const SHAPES = pairwiseShapes(ESLINT_MERGE_DIMENSIONS, ESLINT_MERGE_SEEDS)
 const COVERAGE = coverageOf(ESLINT_MERGE_DIMENSIONS, SHAPES)
-const SHAPE_SEPARATOR = '; '
 
 const PROJECT = setUpTempProjects().create({})
 // The parts are built for each mode directly, so the project needs no package.json.
@@ -68,10 +67,6 @@ const MODES = [
 ]
 
 const { calculatedRulesOfEach } = setUpEslintConfigOracle()
-
-function nameOf(shape: Shape<EslintMergeShapeValue>): string {
-  return shape.map(({ name }) => name).join(SHAPE_SEPARATOR)
-}
 
 /** The three configs of the shape, each read in every file: merged, the team's alone, and ours alone. */
 async function runOf(shape: Shape<EslintMergeShapeValue>, usesOxlint: boolean): Promise<ShapeRun> {
@@ -184,7 +179,7 @@ describe('the ESLint merge shapes', () => {
 // Each shape's name in full in its title, which it.each's $-interpolation would cut short.
 describe.each(MODES)('mergeEslintConfig $mode, against ESLint calculating each file', ({ usesOxlint }) => {
   SHAPES.forEach((shape, index) => {
-    it(`shape ${String(index)} gives every name of the rule and its twins, in every file, the entry the contract owes: ${nameOf(shape)}`, async () => {
+    it(`shape ${String(index)} gives every name of the rule and its twins, in every file, the entry the contract owes: ${shapeNameOf(shape)}`, async () => {
       const { merged, owed } = entriesOwedIn(await runOf(shape, usesOxlint))
 
       expect(merged).toStrictEqual(owed)
@@ -192,7 +187,7 @@ describe.each(MODES)('mergeEslintConfig $mode, against ESLint calculating each f
   })
 
   SHAPES.forEach((shape, index) => {
-    it(`shape ${String(index)} adds no name of a rule to a file beyond those the team's config alone runs there: ${nameOf(shape)}`, async () => {
+    it(`shape ${String(index)} adds no name of a rule to a file beyond those the team's config alone runs there: ${shapeNameOf(shape)}`, async () => {
       expect(namesOnBeyondTheTeamsIn(await runOf(shape, usesOxlint))).toStrictEqual([])
     })
   })

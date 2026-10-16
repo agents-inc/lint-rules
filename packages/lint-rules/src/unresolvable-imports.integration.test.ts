@@ -1,6 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { type BothEnginesRuns, setUpBothEnginesRuns } from './__tests__/both-engines-runs.ts'
-import type { OurRulesets } from './__tests__/cases/both-engines-corpus.ts'
 import {
   NO_EXTRANEOUS_IMPORT,
   NO_UNPUBLISHED_REQUIRE,
@@ -14,12 +13,13 @@ import {
 } from './__tests__/cases/unresolvable-imports.ts'
 import { NO_UNPUBLISHED_IMPORT } from './__tests__/cases/workspace-package-imports.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, setUpConsumerEslintCliRun } from './__tests__/consumer-cli-runs.ts'
-import { agentsIncLintModuleTextRootedAtItsFolder, emptyTeamEslintModuleText, mergedEslintConfigText } from './__tests__/factories/consumer-project-factories.ts'
-import { buildConsumerSettings } from './__tests__/factories/lint-rules-factories.ts'
+import type { EngineFinding } from './__tests__/engine-clis.ts'
+import { EMPTY_TEAM_ESLINT_MODULE_FILE, projectMergingOurEslintPartText } from './__tests__/factories/consumer-project-factories.ts'
+import { buildConsumerSettings, MODULES_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
-import { type EngineFinding, type FindingsByFileAndRule, findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
+import { type FindingsByFileAndRule, findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { EMPTY_TEAM_OXLINT_CONFIG, TEAM_OXLINT_CONFIG_SETTING_NO_RULE, teamOxlintConfigSettingNoRuleFiles } from './__tests__/team-configs-of-the-other-engine.ts'
+import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 
 // n/no-unpublished-import on imports eslint-plugin-n cannot resolve, run outside the package as from a
 // monorepo's root (decisions.md, 2026-10-14 "fix round 4 closed" and "fix round 5 review"). Fix round
@@ -41,13 +41,9 @@ allowEveryTestForParallelLoad()
 /** What the ESLint CLI reported: every finding, and every fatal message. */
 type EslintCliReading = { readonly findings: readonly EngineFinding[]; readonly fatalMessages: readonly string[] }
 
-// The ruleset that ships n/no-unpublished-import, in both sets.
-const MODULES: OurRulesets = { agentRulesets: { quality: ['modules'] }, editorRulesets: { quality: ['modules'] } }
 const RULES = [NO_UNPUBLISHED_IMPORT]
 const RULES_RESOLVING_IMPORTS = [NO_EXTRANEOUS_IMPORT, NO_UNPUBLISHED_IMPORT]
 const REQUIRE_RULES = [NO_UNPUBLISHED_REQUIRE]
-const LINT_RULES_MODULE = 'agents-inc.lint.mts'
-const EMPTY_TEAM_ESLINT_MODULE = 'empty-team.eslint.mjs'
 
 /** The findings of the files the owed findings name, by file and rule, to compare with them. */
 function owedIn(findings: readonly EngineFinding[], owed: FindingsByFileAndRule): FindingsByFileAndRule {
@@ -67,7 +63,7 @@ function owedOfBothIn(findings: readonly EngineFinding[], owed: FindingsByFileAn
 describe("imports eslint-plugin-n cannot resolve, in a monorepo's packages, our modules ruleset on, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: unresolvableImportFiles,
-    ourRulesets: MODULES,
+    ourRulesets: MODULES_IN_BOTH_SETS,
     ours: {},
     teamEslintRules: {},
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
@@ -139,10 +135,11 @@ describe("imports eslint-plugin-n cannot resolve, in a monorepo's packages, our 
 describe("imports eslint-plugin-n cannot resolve, in a monorepo's packages, our modules ruleset on, in a project whose package.json lists no oxlint, linted by the ESLint CLI from the monorepo's root through the built package", () => {
   const run = setUpConsumerEslintCliRun({
     'package.json': packageJsonText(buildPackageJson()),
-    [LINT_RULES_MODULE]: agentsIncLintModuleTextRootedAtItsFolder(buildConsumerSettings(MODULES)),
-    'eslint.config.mjs': mergedEslintConfigText(LINT_RULES_MODULE, EMPTY_TEAM_ESLINT_MODULE, TEAM_OXLINT_CONFIG_SETTING_NO_RULE),
-    ...teamOxlintConfigSettingNoRuleFiles,
-    [EMPTY_TEAM_ESLINT_MODULE]: emptyTeamEslintModuleText(),
+    ...projectMergingOurEslintPartText({
+      settings: buildConsumerSettings(MODULES_IN_BOTH_SETS),
+      team: EMPTY_TEAM_ESLINT_MODULE_FILE,
+      teamOxlint: 'setting no rule',
+    }),
     ...unresolvableImportFiles,
   })
   // As above: the run and what ESLint reported are read before the tests, so only the assertion

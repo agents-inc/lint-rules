@@ -1,12 +1,18 @@
 import { writeFileSync } from 'node:fs'
-import { join, relative, sep } from 'node:path'
+import { join } from 'node:path'
 import { ESLint, type Linter } from 'eslint'
 import type { OxlintConfig } from 'oxlint'
-import { beforeAll } from 'vitest'
 import { defineLintRules, type LintRules } from '../index.ts'
 import { agentConfigsOf } from './agent-configs.ts'
 import type { OurFields } from './cases/both-engines-grid.ts'
-import { type OxlintCliReport, oxlintCliOutcomeOf, writeOxlintConfigFile } from './engine-clis.ts'
+import {
+  type EngineFinding,
+  eslintEngineFindingsIn,
+  fatalMessagesIn,
+  oxlintCliOutcomeOf,
+  oxlintEngineFindingsIn,
+  writeOxlintConfigFile,
+} from './engine-clis.ts'
 import {
   agentsIncLintModuleText,
   emptyTeamEslintModuleText,
@@ -19,9 +25,10 @@ import {
 } from './factories/consumer-project-factories.ts'
 import { buildConsumerLintRules } from './factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOxlint, packageJsonText } from './factories/package-json-factories.ts'
-import type { EngineFinding } from './findings-beside-the-team.ts'
+import { projectPathOf } from './project-paths.ts'
+import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG } from './team-configs-of-the-other-engine.ts'
-import { INSTALLED_OXLINT, installedPackage, type ProjectFiles, setUpTempProjects, THIS_PACKAGE, type TempProjects } from './temp-projects.ts'
+import { INSTALLED_OXLINT, installedPackage, type ProjectFiles, THIS_PACKAGE, type TempProjects } from './temp-projects.ts'
 
 /** The rulesets our part lists, by set: none unless given. */
 type OurRulesets = Parameters<typeof buildConsumerLintRules>[1]
@@ -85,18 +92,8 @@ type BuildRun = {
   readonly oxlintRefusals: readonly string[]
 }
 
-/**
- * The runs made before the suite. A run an engine could not make is kept as its error, so each test
- * reports it as its own failure: vitest reports a test whose beforeAll threw as skipped.
- */
-type RunsBeforeTheSuite =
-  | { readonly outcome: 'not made' }
-  | { readonly outcome: 'completed'; readonly runs: BothEnginesRuns }
-  | { readonly outcome: 'failed'; readonly error: unknown }
-
 const LINKED_PACKAGES = [THIS_PACKAGE, INSTALLED_OXLINT, installedPackage('typescript-eslint')]
-const BOTH_ENGINES_RUNS_TIMEOUT_MS = 480_000
-const GLOB_SEPARATOR = '/'
+const BOTH_ENGINES_RUNS: RunsBeforeTheSuiteOptions = { timeoutMs: 480_000, whatFailed: 'the engines could not lint the project before the suite' }
 const EVERYTHING = '.'
 const LINT_RULES_MODULE = 'agents-inc.lint.mts'
 const TEAM_ESLINT_MODULE = 'team.eslint.mjs'
@@ -115,24 +112,7 @@ const TEAM_ALONE = { name: "the team's configs alone", eslint: 'eslint.team-alon
  * hooks.
  */
 export function setUpBothEnginesRuns(project: BothEnginesProject): () => BothEnginesRuns {
-  const tempProjects = setUpTempProjects()
-  let runsBeforeTheSuite: RunsBeforeTheSuite = { outcome: 'not made' }
-
-  beforeAll(async () => {
-    try {
-      runsBeforeTheSuite = { outcome: 'completed', runs: await bothEnginesRunsOf(tempProjects, project) }
-    } catch (error) {
-      runsBeforeTheSuite = { outcome: 'failed', error }
-    }
-  }, BOTH_ENGINES_RUNS_TIMEOUT_MS)
-
-  return () => {
-    if (runsBeforeTheSuite.outcome === 'failed') {
-      throw new Error('the engines could not lint the project before the suite', { cause: runsBeforeTheSuite.error })
-    }
-    if (runsBeforeTheSuite.outcome === 'not made') throw new Error('the runs were read outside the suite that made them')
-    return runsBeforeTheSuite.runs
-  }
+  return setUpRunsBeforeTheSuite((tempProjects) => bothEnginesRunsOf(tempProjects, project), BOTH_ENGINES_RUNS)
 }
 
 async function bothEnginesRunsOf(tempProjects: TempProjects, project: BothEnginesProject): Promise<BothEnginesRuns> {
@@ -221,8 +201,8 @@ async function runOf(projectDir: string, { name, eslint, oxlintConfigFile }: Bui
   const linting = oxlintCliOutcomeOf(projectDir, oxlintConfigFile, oxlintRuns.paths)
   if (linting.outcome === 'refused' && !oxlintRuns.keepsRefusals) throw new Error(`oxlint could not lint with ${oxlintConfigFile}: ${linting.output}`)
   return {
-    findings: [...eslintFindingsIn(results, projectDir), ...(linting.outcome === 'linted' ? oxlintFindingsIn(linting.run.report) : [])],
-    eslintFatalMessages: eslintFatalMessagesIn(results, projectDir).map((message) => `${name}, ${message}`),
+    findings: [...eslintEngineFindingsIn(results, projectDir), ...(linting.outcome === 'linted' ? oxlintEngineFindingsIn(linting.run.report) : [])],
+    eslintFatalMessages: fatalMessagesIn(results, projectDir).map((message) => `${name}, ${message}`),
     eslintLintedFiles: results.map((result) => projectPathOf(result.filePath, projectDir)).toSorted(),
     oxlintRefusals: linting.outcome === 'refused' ? [`${name}: ${linting.output}`] : [],
   }
@@ -234,30 +214,3 @@ function eslintFor(projectDir: string, eslint: string | Linter.Config[]): ESLint
   return new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: eslint })
 }
 
-function eslintFindingsIn(results: readonly ESLint.LintResult[], projectDir: string): EngineFinding[] {
-  return results.flatMap((result) =>
-    result.messages.flatMap(({ ruleId, line, message }): EngineFinding[] =>
-      ruleId === null ? [] : [{ engine: 'eslint', file: projectPathOf(result.filePath, projectDir), rule: ruleId, line, message }],
-    ),
-  )
-}
-
-function eslintFatalMessagesIn(results: readonly ESLint.LintResult[], projectDir: string): string[] {
-  return results.flatMap((result) =>
-    result.messages.filter(({ fatal }) => fatal === true).map(({ message }) => `${projectPathOf(result.filePath, projectDir)}: ${message}`),
-  )
-}
-
-function oxlintFindingsIn({ diagnostics }: OxlintCliReport): EngineFinding[] {
-  return diagnostics.map(({ code, filename, message, labels: [firstLabel] }) => ({
-    engine: 'oxlint',
-    file: filename,
-    rule: code,
-    line: firstLabel === undefined ? null : firstLabel.span.line,
-    message,
-  }))
-}
-
-function projectPathOf(filePath: string, projectDir: string): string {
-  return relative(projectDir, filePath).split(sep).join(GLOB_SEPARATOR)
-}

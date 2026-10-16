@@ -1,4 +1,4 @@
-import { catalog, type RuleRoute } from '@workspace/rule-data'
+import { catalog } from '@workspace/rule-data'
 import { describe, expect, it } from 'vitest'
 import { agentConfigsOf } from './__tests__/agent-configs.ts'
 import {
@@ -15,6 +15,7 @@ import {
   sortedById,
   uniqueById,
 } from './__tests__/rules-on-engines.ts'
+import { isCoveredByAShippedRule } from './__tests__/shipped-covers.ts'
 import { defineLintRules } from './index.ts'
 
 // With every ruleset listed in the agent set and nothing overridden, the agent build's two configs
@@ -60,14 +61,6 @@ function shippedRulesBesidesTheSuppressionRules(): RuleOnEngine[] {
       ? []
       : [{ id: rule.id, engine: rule.engine, options: rule.shipped.options }],
   )
-}
-
-/** Whether the catalog records a shipped rule covering the rule: none before this round's data lands. */
-function isCoveredByAShippedRule({ shipped }: RuleRoute): boolean {
-  if (shipped === null || typeof shipped.coveredBy !== 'string') return false
-  const cover = catalog.rules.get(shipped.coveredBy)
-  if (cover === undefined) throw new Error(`${shipped.coveredBy}: a cover the catalog does not hold`)
-  return cover.shipped !== null
 }
 
 describe.each([

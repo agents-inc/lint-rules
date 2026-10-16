@@ -5,13 +5,12 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { eslintStderrOf, setUpConsumerEslintCliRun } from './__tests__/consumer-cli-runs.ts'
 import { type EngineRun, setUpEngineRun } from './__tests__/engine-run.ts'
-import { agentsIncLintModuleTextRootedAtItsFolder, emptyTeamEslintModuleText, mergedEslintConfigText } from './__tests__/factories/consumer-project-factories.ts'
+import { emptyTeamEslintModuleText, projectMergingOurEslintPartText } from './__tests__/factories/consumer-project-factories.ts'
 import { buildEditorBuild } from './__tests__/factories/engine-build-factories.ts'
-import { buildConsumerLintRules, buildConsumerSettings } from './__tests__/factories/lint-rules-factories.ts'
+import { buildConsumerLintRules, buildConsumerSettings, MODULES_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildTsconfig } from './__tests__/factories/tsconfig-factories.ts'
 import { relativeImportSpecifiersIn } from './__tests__/import-specifiers.ts'
-import { NO_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 import { THIS_PACKAGE } from './__tests__/temp-projects.ts'
 import { defineLintRules } from './index.ts'
 
@@ -30,8 +29,6 @@ const PACKAGE_ALIAS_FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/impor
 const NO_TSCONFIG_FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/import-x-ts-no-tsconfig', import.meta.url))
 const FALLBACK_FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/eslint-fallback', import.meta.url))
 const IMPORT_X = 'import-x/'
-// The ruleset shipping every import-x rule here.
-const MODULES = { quality: ['modules'] } as const
 const TS_EXTENSION = '.ts'
 const WRITTEN_WITH_AN_EXTENSION = /\.[cm]?[jt]sx?$/u
 
@@ -52,7 +49,6 @@ const BROKEN_TSCONFIG_IN_NODE_MODULES = { 'node_modules/broken/tsconfig.json': '
 const MULTIPLE_PROJECTS_WARNING =
   'Multiple projects found, consider using a single `tsconfig` with `references` to speed up, or use `noWarnOnMultipleProjects` to suppress this warning'
 const TSCONFIG_OF_EACH_PACKAGE = ['packages/a/tsconfig.json', 'packages/b/tsconfig.json']
-const LINT_RULES_MODULE = 'agents-inc.lint.mts'
 const EMPTY_TEAM_ESLINT_MODULE = 'team.eslint.mjs'
 const RESOLVER_GIVEN_PROJECTS = "import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript'\ncreateTypeScriptImportResolver({ project: JSON.parse(process.argv[1]) })\n"
 
@@ -84,7 +80,7 @@ const OWED_WITHOUT_OXLINT: Readonly<Record<string, readonly string[]>> = {
 }
 
 function definedWithModules(projectDir: string): ReturnType<typeof defineLintRules> {
-  return defineLintRules(buildConsumerLintRules(projectDir, { agentRulesets: MODULES, editorRulesets: MODULES }))
+  return defineLintRules(buildConsumerLintRules(projectDir, MODULES_IN_BOTH_SETS))
 }
 
 /** Each file's import-x rules ESLint reports, once each, sorted. */
@@ -140,9 +136,11 @@ describe('an import of a TS module written without its extension, in a project w
 describe('a project with a tsconfig in each of two packages, whose package.json lists no oxlint, linted by the ESLint CLI through the built package', () => {
   const run = setUpConsumerEslintCliRun({
     'package.json': packageJsonText(buildPackageJson()),
-    [LINT_RULES_MODULE]: agentsIncLintModuleTextRootedAtItsFolder(buildConsumerSettings({ agentRulesets: MODULES, editorRulesets: MODULES })),
-    'eslint.config.mjs': mergedEslintConfigText(LINT_RULES_MODULE, EMPTY_TEAM_ESLINT_MODULE, NO_TEAM_OXLINT_CONFIG),
-    [EMPTY_TEAM_ESLINT_MODULE]: emptyTeamEslintModuleText(),
+    ...projectMergingOurEslintPartText({
+      settings: buildConsumerSettings(MODULES_IN_BOTH_SETS),
+      team: { file: EMPTY_TEAM_ESLINT_MODULE, text: emptyTeamEslintModuleText() },
+      teamOxlint: 'none',
+    }),
     ...Object.fromEntries(TSCONFIG_OF_EACH_PACKAGE.map((file) => [file, JSON.stringify(buildTsconfig({ include: ['src'] }))])),
     'packages/a/src/a.ts': 'export const a = 1\n',
     'packages/b/src/b.ts': 'export const b = 2\n',

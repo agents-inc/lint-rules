@@ -45,6 +45,7 @@ import {
   unusedParameterSourceFiles,
 } from './__tests__/cases/twin-pairs-both-named.ts'
 import { setUpCorpusRuns } from './__tests__/corpus-runs.ts'
+import { REDUNDANCY_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
 import {
   type FindingsByFileAndRule,
   filesReportingIn,
@@ -64,7 +65,6 @@ import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-
 allowEveryTestForParallelLoad()
 
 const COMPLEXITY: OurRulesets = { agentRulesets: { quality: ['complexity'] }, editorRulesets: { quality: ['complexity'] } }
-const REDUNDANCY: OurRulesets = { agentRulesets: { quality: ['redundancy'] }, editorRulesets: { quality: ['redundancy'] } }
 
 /** A corpus case of twins, and what the agent build owes in its files. */
 type TwinCase = CorpusCase & { readonly agentBuildOwes: FindingsByFileAndRule }
@@ -72,7 +72,7 @@ type TwinCase = CorpusCase & { readonly agentBuildOwes: FindingsByFileAndRule }
 const TWIN_CASES: readonly TwinCase[] = [
   {
     how: "the redundancy ruleset ships no-unused-vars, which its own ignores keep out of stories, and our rules turn typescript-eslint's on",
-    ourRulesets: REDUNDANCY,
+    ourRulesets: REDUNDANCY_IN_BOTH_SETS,
     ours: {
       rules: {
         eqeqeq: 'error',
@@ -603,7 +603,7 @@ describe("max-params at max 3 and typescript-eslint's at max 2 in our top level,
 describe("no-unused-vars under args none and typescript-eslint's under args all in our top level, over the redundancy ruleset, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: unusedParameterSourceFiles,
-    ourRulesets: REDUNDANCY,
+    ourRulesets: REDUNDANCY_IN_BOTH_SETS,
     ours: OURS_STATING_BOTH_NO_UNUSED_VARS_NAMES,
     teamEslintRules: {},
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,

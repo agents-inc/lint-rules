@@ -2,17 +2,10 @@ import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { satisfies } from 'semver'
 import { describe, expect, it } from 'vitest'
+import { idOfAnEndedProcess, nodeBelowTheFloor, tempConfigNameOf, tempConfigPatternOf, tempConfigsIn } from './cli-runs.ts'
 import { exportedConstant, moduleText } from './factories/check-factories.ts'
-import {
-  createGitProject,
-  gitStatusOf,
-  idOfAnEndedProcess,
-  nodeBelowTheFloor,
-  tempConfigNameOf,
-  tempConfigPatternOf,
-  tempConfigsIn,
-  watchFolder,
-} from './git-projects.ts'
+import { watchFolder } from './folder-watch.ts'
+import { createGitProject, gitStatusOf } from './git-projects.ts'
 import { setUpTempProjects } from './temp-projects.ts'
 
 const tempProjects = setUpTempProjects()

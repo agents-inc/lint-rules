@@ -2,10 +2,12 @@ import { chmodSync, mkdirSync, renameSync, symlinkSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { findingsIn } from './__tests__/check-output.ts'
-import { setUpRunsBeforeTheSuite } from './__tests__/consumer-cli-runs.ts'
-import { checkedPackageFiles, DEBUGGER_STATEMENT, exportedConstant, moduleText } from './__tests__/factories/check-factories.ts'
-import { createGitProject, entriesUnder, EXIT, runCheck, setUpEmptyFolders } from './__tests__/git-projects.ts'
+import { EXIT, runCheck } from './__tests__/cli-runs.ts'
+import { checkedPackageFiles, DEBUGGER_STATEMENT, exportedConstant, moduleText, REDUNDANCY } from './__tests__/factories/check-factories.ts'
+import { createGitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
+import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
+import { entriesUnder, setUpEmptyFolders } from './__tests__/temp-projects.ts'
 
 // spec-cli.md "K: check", steps 6 to 8: check reads the changed files and lines from git, through a
 // scratch index in the OS temp folder, and lints those that are files on disk its ignores leave in.
@@ -13,7 +15,6 @@ import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 
 allowEveryTestForParallelLoad()
 
-const REDUNDANCY = { quality: ['redundancy'] } as const
 const NOTHING_TO_CHECK = 'check: no changed JS or TS files.\n'
 // Read and list only: what a folder holding the OS temp folder, such as `/`, lets its user do.
 const READ_ONLY = 0o555

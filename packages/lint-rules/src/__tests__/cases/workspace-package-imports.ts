@@ -1,3 +1,4 @@
+import { jsonFileText } from '../factories/team-config-file-factories.ts'
 import { buildTsconfig } from '../factories/tsconfig-factories.ts'
 import type { RuleByItsNames } from '../findings-beside-the-team.ts'
 import type { ProjectFiles } from '../temp-projects.ts'
@@ -65,8 +66,8 @@ const STORY_TITLE_SCRIPT = `export const storyTitle = 'Button'
 
 /** The package's files, under packages/ui of the project's root. */
 export const workspacePackageFiles: ProjectFiles = {
-  'packages/ui/package.json': `${JSON.stringify(PACKAGE_JSON, null, 2)}\n`,
-  'packages/ui/tsconfig.json': `${JSON.stringify(TSCONFIG, null, 2)}\n`,
+  'packages/ui/package.json': jsonFileText(PACKAGE_JSON),
+  'packages/ui/tsconfig.json': jsonFileText(TSCONFIG),
   'packages/ui/src/internal/story/story.tsx': STORY_HELPER,
   [STORY_FILE]: STORY,
   'packages/ui/scripts/build-story.ts': BUILD_STORY_SCRIPT,
@@ -139,8 +140,8 @@ export const all = [both]
 
 /** The two packages' files, under packages/ui and packages/conf of the project's root. */
 export const aliasedFilesOfEachExtension: ProjectFiles = {
-  'packages/ui/package.json': `${JSON.stringify(PUBLISHING_SRC, null, 2)}\n`,
-  'packages/ui/tsconfig.json': `${JSON.stringify(ALIAS_TSCONFIG, null, 2)}\n`,
+  'packages/ui/package.json': jsonFileText(PUBLISHING_SRC),
+  'packages/ui/tsconfig.json': jsonFileText(ALIAS_TSCONFIG),
   'packages/ui/src/a.ts': 'export const a = 1\n',
   'packages/ui/src/b.tsx': 'export const b = <i />\n',
   'packages/ui/src/c.jsx': 'export const c = <i />\n',
@@ -151,8 +152,8 @@ export const aliasedFilesOfEachExtension: ProjectFiles = {
   'packages/ui/src/h.cjs': 'module.exports = { h: 1 }\n',
   'packages/ui/src/data.json': '{ "data": 1 }\n',
   [EVERY_EXTENSION_MODULE]: EVERY_EXTENSION,
-  'packages/conf/package.json': `${JSON.stringify(PUBLISHING_BOTH_JSON_ALONE, null, 2)}\n`,
-  'packages/conf/tsconfig.json': `${JSON.stringify(ALIAS_TSCONFIG, null, 2)}\n`,
+  'packages/conf/package.json': jsonFileText(PUBLISHING_BOTH_JSON_ALONE),
+  'packages/conf/tsconfig.json': jsonFileText(ALIAS_TSCONFIG),
   'packages/conf/src/both.json': '{ "both": 1 }\n',
   'packages/conf/src/both.ts': 'const both = 1\nexport default both\n',
   [BOTH_MODULE]: USES_BOTH,

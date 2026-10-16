@@ -1,8 +1,8 @@
 // The command line `agents-inc-lint` accepts (q-c16), and its Node floor (#59). The bin entry
-// imports this before it knows the Node is new enough, so it imports nothing.
+// imports this before it knows the Node is new enough, so it imports only command-lines.ts, which
+// imports nothing.
 
-/** A call the bin runs: the command alone, with no flag or argument after it. */
-export type Command = 'check' | 'init'
+import { type Command, couldNotRunLine } from './command-lines.ts'
 
 export const USAGE = `usage: agents-inc-lint <command>
   init   add @agents-inc/lint-rules and agents-inc.lint.mts to the package in this folder
@@ -32,5 +32,6 @@ export function isBelowTheNodeFloor(version: string): boolean {
 
 /** Why the command could not run on this Node, on stderr. */
 export function belowTheNodeFloorLine(command: Command, version: string): string {
-  return `${command}: could not run: Node ${String(NODE_FLOOR.major)}.${String(NODE_FLOOR.minor)} or later is needed; this is Node ${version}.\n`
+  const reason = `Node ${String(NODE_FLOOR.major)}.${String(NODE_FLOOR.minor)} or later is needed; this is Node ${version}.`
+  return `${couldNotRunLine(command, reason)}\n`
 }

@@ -1,6 +1,6 @@
-import type { Linter } from 'eslint'
 import { describe, expect, it } from 'vitest'
 import type { Catalog, ShippedRule } from '@workspace/rule-data'
+import { blockNamed } from '../__tests__/eslint-config-reads.ts'
 import {
   buildAlwaysOnShippedRule,
   buildCatalog,
@@ -73,12 +73,6 @@ const pluginRegistry = buildPluginRegistry({
   storybook: ['default-exports'],
   unicorn: ['prefer-dom-node-append'],
 })
-
-function blockNamed(config: readonly Linter.Config[], name: string): Linter.Config {
-  const block = config.find((candidate) => candidate.name === name)
-  if (block === undefined) throw new Error(`no block named ${name}`)
-  return block
-}
 
 describe('resolveRuleLayers', () => {
   describe('the base', () => {

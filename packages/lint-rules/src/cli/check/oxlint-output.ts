@@ -1,5 +1,6 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
 import { isRecord } from '../../core/is-record.ts'
+import { NOT_FOUND } from '../not-found.ts'
 import { printedTextOf } from '../printed-lines.ts'
 import { OXLINT_PRINTED_NOTHING, oxlintFailed } from './texts.ts'
 
@@ -34,7 +35,6 @@ type RawOxlintReport = { readonly diagnostics: readonly RawOxlintDiagnostic[] }
 type ReportRead = { readonly report: RawOxlintReport } | { readonly unreadable: unknown }
 
 const PLUGIN_SEPARATOR = '/'
-const NOT_FOUND = -1
 
 const ruleIdsByCodeOf = new WeakMap<Catalog, ReadonlyMap<string, string>>()
 

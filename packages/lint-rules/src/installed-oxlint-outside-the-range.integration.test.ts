@@ -1,11 +1,11 @@
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { setUpRunsBeforeTheSuite } from './__tests__/consumer-cli-runs.ts'
 import { describeFinding, eslintCliOutcomeOf, fatalMessagesIn, oxlintCliOutcomeOf, oxlintFindingsIn } from './__tests__/engine-clis.ts'
 import { installedOxlintSchemaTextLacking } from './__tests__/factories/package-json-factories.ts'
 import { buildTsconfig } from './__tests__/factories/tsconfig-factories.ts'
 import { installOxlintReporting } from './__tests__/oxlint-reporting-another-version.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
+import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { THIS_PACKAGE } from './__tests__/temp-projects.ts'
 
 // #56 (owner): an installed oxlint outside our peer range is checked against its own rule list, its

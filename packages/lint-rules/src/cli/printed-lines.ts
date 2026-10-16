@@ -1,5 +1,6 @@
+import { linesOf } from './text-lines.ts'
+
 const LINE_END = '\n'
-const ANY_LINE_END = /\r?\n/u
 
 /** The lines as printed text, each ending in a newline. */
 export function textOfLines(lines: readonly string[]): string {
@@ -20,7 +21,7 @@ export function printedTextOf(outputs: readonly string[], whenNone: string): str
 /** The first line with text in the outputs, taken in order, trimmed: `whenNone` where no line has any. */
 export function firstPrintedLineOf(outputs: readonly string[], whenNone: string): string {
   const first = outputs
-    .flatMap((output) => output.split(ANY_LINE_END))
+    .flatMap(linesOf)
     .map((line) => line.trim())
     .find((line) => line !== '')
   return first === undefined ? whenNone : first

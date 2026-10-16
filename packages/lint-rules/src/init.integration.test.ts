@@ -5,9 +5,17 @@ import { A_LITERAL_THROWN, AN_IMPORT_BELOW_CODE, AN_IMPORT_OF_OUR_PACKAGE, NAMED
 import { ESLINT_CONFIG_TEXT, OXLINT_CONFIG_TEXT } from './__tests__/cases/consumer-files-as-plan-md-shows.ts'
 import { PACKAGE_JSON_EDITS, PACKAGE_JSON_LISTING_US } from './__tests__/cases/init-package-json-edits.ts'
 import { autofixedFilesIn, findingsIn, findingsInFile } from './__tests__/check-output.ts'
+import { EXIT, runCheck, runInit } from './__tests__/cli-runs.ts'
 import { importInNode, INSTALLED_TYPES_NODE, typeCheck } from './__tests__/config-file-loads.ts'
-import { setUpRunsBeforeTheSuite } from './__tests__/consumer-cli-runs.ts'
-import { checkConfigText, CONFIG_FILE, DEBUGGER_STATEMENT, exportedConstant, moduleText, PACKAGE_JSON_FILE } from './__tests__/factories/check-factories.ts'
+import {
+  checkConfigText,
+  CONFIG_FILE,
+  DEBUGGER_STATEMENT,
+  exportedConstant,
+  moduleText,
+  NESTED_PACKAGE,
+  PACKAGE_JSON_FILE,
+} from './__tests__/factories/check-factories.ts'
 import {
   BUN,
   buildInitPackageJson,
@@ -29,9 +37,10 @@ import {
 } from './__tests__/factories/init-factories.ts'
 import { EVERY_RULESET } from './__tests__/factories/lint-rules-factories.ts'
 import { buildTsconfig } from './__tests__/factories/tsconfig-factories.ts'
-import { createGitProject, entriesUnder, EXIT, gitStatusOf, runCheck, runInit, setUpEmptyFolders } from './__tests__/git-projects.ts'
+import { createGitProject, gitStatusOf } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { INSTALLED_OXLINT, type TempProjects, THIS_PACKAGE } from './__tests__/temp-projects.ts'
+import { runMadeFor, setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
+import { CONSUMER_INSTALL, entriesUnder, setUpEmptyFolders, type TempProjects } from './__tests__/temp-projects.ts'
 
 // spec-cli.md "I: init": `agents-inc-lint init` writes agents-inc.lint.mts and adds
 // @agents-inc/lint-rules to devDependencies, and changes nothing else (q-i1 to q-i9, q30a). Each
@@ -42,7 +51,6 @@ allowEveryTestForParallelLoad()
 const A_PACKAGE = buildInitPackageJson()
 const A_PACKAGE_WITH_TYPES = buildInitPackageJson({ devDependencies: TYPES_NODE_ENTRY })
 const PACKAGE_JSON_WITH_TYPES = npmPackageJsonText(A_PACKAGE_WITH_TYPES)
-const CONSUMER_INSTALL = [THIS_PACKAGE, INSTALLED_OXLINT]
 const NO_UNPUBLISHED_IMPORT = 'n/no-unpublished-import'
 const USES_DEV_FILE = 'src/uses-dev.ts'
 
@@ -83,14 +91,8 @@ describe('the package.json edit (I-1, I-7, q-i4)', () => {
     }),
   )
 
-  function runFor(kind: string): ReturnType<typeof runs>[number] {
-    const found = runs().find((made) => made.kind === kind)
-    if (found === undefined) throw new Error(`no init run was made for ${kind}`)
-    return found
-  }
-
   it.each(EDITS)('edits the text alone, every other byte kept: $kind', ({ kind, layout, after, entry }) => {
-    const { result, packageJson, configWritten } = runFor(kind)
+    const { result, packageJson, configWritten } = runMadeFor(runs(), kind)
 
     expect({ exitCode: result.exitCode, firstLine: result.stdout.split('\n')[0], packageJson, configWritten }).toStrictEqual({
       exitCode: EXIT.clean,
@@ -185,8 +187,7 @@ describe('check right after init, the config untracked (I-4, X6)', () => {
   )
 
   function checkAfterInit(kind: string): { readonly init: number | null; readonly check: number | null; readonly findings: readonly string[] } {
-    const made = runs().find((variant) => variant.kind === kind)
-    if (made === undefined) throw new Error(`no run was made for ${kind}`)
+    const made = runMadeFor(runs(), kind)
     return { init: made.init.exitCode, check: made.check.exitCode, findings: findingsIn(made.check.stdout) }
   }
 
@@ -396,7 +397,6 @@ describe('init outside a git repo (I-8, q-i8)', () => {
 })
 
 describe('the package manager init names (I-10, q-i5)', () => {
-  const NESTED = 'packages/a'
   const CASES = [
     { kind: 'bun.lock', lockfiles: ['bun.lock'], above: [], nested: false, repo: 'committed', expected: BUN },
     { kind: 'bun.lockb', lockfiles: ['bun.lockb'], above: [], nested: false, repo: 'committed', expected: BUN },
@@ -406,7 +406,7 @@ describe('the package manager init names (I-10, q-i5)', () => {
     { kind: 'no lockfile', lockfiles: [], above: [], nested: false, repo: 'committed', expected: NPM },
     { kind: 'yarn.lock and package-lock.json in one folder, yarn first in order', lockfiles: ['package-lock.json', 'yarn.lock'], above: [], nested: false, repo: 'committed', expected: YARN },
     { kind: 'a lockfile at the repo root, above the package', lockfiles: ['pnpm-lock.yaml'], above: [], nested: true, repo: 'committed', expected: PNPM },
-    { kind: 'a lockfile in the package beside one at the repo root: the nearer wins', lockfiles: ['bun.lock', `${NESTED}/package-lock.json`], above: [], nested: true, repo: 'committed', expected: NPM },
+    { kind: 'a lockfile in the package beside one at the repo root: the nearer wins', lockfiles: ['bun.lock', `${NESTED_PACKAGE}/package-lock.json`], above: [], nested: true, repo: 'committed', expected: NPM },
     { kind: 'a lockfile above the git top level, which it does not read', lockfiles: [], above: ['yarn.lock'], nested: false, repo: 'committed', expected: NPM },
     { kind: 'outside git, a lockfile in the folder', lockfiles: ['yarn.lock'], above: [], nested: false, repo: 'not a repo', expected: YARN },
     { kind: 'outside git, a lockfile only in the folder above', lockfiles: [], above: ['yarn.lock'], nested: false, repo: 'not a repo', expected: NPM },
@@ -414,7 +414,7 @@ describe('the package manager init names (I-10, q-i5)', () => {
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) =>
     CASES.map(({ kind, lockfiles, above, nested, repo }) => {
-      const folder = nested ? `${NESTED}/` : ''
+      const folder = nested ? `${NESTED_PACKAGE}/` : ''
       const project = createGitProject(tempProjects, {
         repo,
         files: {
@@ -428,15 +428,13 @@ describe('the package manager init names (I-10, q-i5)', () => {
   )
 
   it.each(CASES)('prints "$expected.install" and the $expected.runner runner: $kind', ({ kind, expected }) => {
-    const made = runs().find((run) => run.kind === kind)
-    if (made === undefined) throw new Error(`no init run was made for ${kind}`)
+    const made = runMadeFor(runs(), kind)
 
     expect({ exitCode: made.result.exitCode, stdout: made.result.stdout }).toStrictEqual({ exitCode: EXIT.clean, stdout: initStdout('added', expected) })
   })
 })
 
 describe('the @types/node note (I-11, q-i9)', () => {
-  const NESTED = 'packages/a'
   const CASES = [
     { kind: 'the package lists it under devDependencies', root: null, packageJson: A_PACKAGE_WITH_TYPES, above: null, nested: false, noted: false },
     { kind: 'the package lists it under dependencies', root: null, packageJson: buildInitPackageJson({ dependencies: TYPES_NODE_ENTRY }), above: null, nested: false, noted: false },
@@ -447,7 +445,7 @@ describe('the @types/node note (I-11, q-i9)', () => {
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) =>
     CASES.map(({ kind, root, packageJson, above, nested }) => {
-      const folder = nested ? `${NESTED}/` : ''
+      const folder = nested ? `${NESTED_PACKAGE}/` : ''
       const project = createGitProject(tempProjects, {
         repo: 'committed',
         files: {
@@ -461,8 +459,7 @@ describe('the @types/node note (I-11, q-i9)', () => {
   )
 
   it.each(CASES)('notes it is missing only where none from the folder up to the git top level lists it: $kind', ({ kind, noted }) => {
-    const made = runs().find((run) => run.kind === kind)
-    if (made === undefined) throw new Error(`no init run was made for ${kind}`)
+    const made = runMadeFor(runs(), kind)
 
     expect({ exitCode: made.result.exitCode, stderr: made.result.stderr }).toStrictEqual({ exitCode: EXIT.clean, stderr: noted ? TYPES_NODE_NOTE : '' })
   })
@@ -551,21 +548,20 @@ describe('the ignores init writes, in check (I-12, q-i7, q77)', () => {
 })
 
 describe('init where what it prints cannot be worked out, before it writes anything (spec-cli.md "I: init", step 4)', () => {
-  const NESTED = 'packages/a'
   const emptyFolder = setUpEmptyFolders()
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
     const brokenRoot = createGitProject(tempProjects, {
       repo: 'committed',
-      files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_LEFT_MID_MERGE, [`${NESTED}/${PACKAGE_JSON_FILE}`]: npmPackageJsonText(A_PACKAGE) },
+      files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_LEFT_MID_MERGE, [`${NESTED_PACKAGE}/${PACKAGE_JSON_FILE}`]: npmPackageJsonText(A_PACKAGE) },
     })
     const noGit = createGitProject(tempProjects, { repo: 'not a repo', files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_WITH_TYPES } })
     return {
       brokenRoot: {
         rootPackageJson: brokenRoot.pathOf(PACKAGE_JSON_FILE),
-        result: runInit(brokenRoot.pathOf(NESTED)),
-        entries: entriesUnder(brokenRoot.pathOf(NESTED)),
-        packageJson: brokenRoot.read(`${NESTED}/${PACKAGE_JSON_FILE}`),
+        result: runInit(brokenRoot.pathOf(NESTED_PACKAGE)),
+        entries: entriesUnder(brokenRoot.pathOf(NESTED_PACKAGE)),
+        packageJson: brokenRoot.read(`${NESTED_PACKAGE}/${PACKAGE_JSON_FILE}`),
       },
       noGit: { dir: noGit.dir, result: runInit(noGit.dir, { env: { PATH: emptyFolder() } }), entries: entriesUnder(noGit.dir) },
     }

@@ -1,7 +1,4 @@
-import { describeFinding, type Finding } from './engine-clis.ts'
-
-/** A finding either engine reports, under the engine's own name for the rule, and its message. */
-export type EngineFinding = Finding & { readonly engine: 'eslint' | 'oxlint'; readonly message: string }
+import { describeFinding, type EngineFinding } from './engine-clis.ts'
 
 /** A rule of ours, and every name either engine reports it under. */
 export type RuleByItsNames = { readonly rule: string; readonly names: readonly string[] }

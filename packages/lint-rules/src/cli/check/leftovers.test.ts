@@ -1,7 +1,6 @@
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { entriesUnder } from '../../__tests__/git-projects.ts'
-import { setUpTempProjects } from '../../__tests__/temp-projects.ts'
+import { entriesUnder, setUpTempProjects } from '../../__tests__/temp-projects.ts'
 import { removeLeftover } from './leftovers.ts'
 
 // K-11 (spec-cli.md "Signals and leftovers"): check removes what it wrote for itself, and the

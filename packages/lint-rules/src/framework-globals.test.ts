@@ -8,13 +8,12 @@ import {
   SVELTE_COMPONENT_GLOBALS,
   VUE_SCRIPT_SETUP_MACROS,
 } from './__tests__/cases/framework-components.ts'
+import { ourEditorEslintPartMergedInto } from './__tests__/editor-merges-read-by-eslint.ts'
 import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
 import { namesDefinedIn } from './__tests__/eslint-globals.ts'
-import { buildConsumerLintRules, EMPTY_TSCONFIG_ROOT_DIR } from './__tests__/factories/lint-rules-factories.ts'
-import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
-import { writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
+import { buildConsumerLintRules, CORRECTNESS_IN_BOTH_SETS, EMPTY_TSCONFIG_ROOT_DIR } from './__tests__/factories/lint-rules-factories.ts'
+import { createProjectListingOxlint } from './__tests__/factories/package-json-factories.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
-import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 
 // Framework globals reach a framework's own component files alone (decisions.md, 2026-10-14 "fix
@@ -24,20 +23,19 @@ import { defineLintRules, type LintRules } from './index.ts'
 
 const { calculatedConfigFor, globalsFor } = setUpEslintConfigOracle()
 const tempProjects = setUpTempProjects()
-const projectListingOxlint = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) } })
+const projectListingOxlint = createProjectListingOxlint(tempProjects)
 
 const EVERY_FRAMEWORK_GLOBAL = [...VUE_SCRIPT_SETUP_MACROS, ...ASTRO_GLOBALS, ...SVELTE_COMPONENT_GLOBALS]
 const COMPONENTS = [FRAMEWORK_FILES.vueComponent, FRAMEWORK_FILES.astroPage, FRAMEWORK_FILES.svelteLegacyComponent]
 
 /** Our settings with the ruleset that ships no-undef in both sets, rooted where given. */
 function correctnessIn(tsconfigRootDir: string): LintRules {
-  return buildConsumerLintRules(tsconfigRootDir, { agentRulesets: { quality: ['correctness'] }, editorRulesets: { quality: ['correctness'] } })
+  return buildConsumerLintRules(tsconfigRootDir, CORRECTNESS_IN_BOTH_SETS)
 }
 
 /** The editor ESLint part merged into a team config with no block. */
 function mergedIntoAnEmptyTeamConfig(tsconfigRootDir: string): Linter.Config[] {
-  const { eslint } = defineLintRules(correctnessIn(tsconfigRootDir)).editorRulesets
-  return mergeEslintConfig([], eslint, writeTeamOxlintConfigSettingNoRule(eslint))
+  return ourEditorEslintPartMergedInto([], correctnessIn(tsconfigRootDir))
 }
 
 // The config's name in full in its title, which $-interpolation would cut short.

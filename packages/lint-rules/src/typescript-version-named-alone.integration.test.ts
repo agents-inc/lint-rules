@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { setUpBothEnginesRuns } from './__tests__/both-engines-runs.ts'
-import type { OurRulesets } from './__tests__/cases/both-engines-corpus.ts'
 import { FILES_WITH_AN_UNUSED_VARIABLE, NO_UNUSED_VARS, UNUSED_VARS_SETTING, unusedVariableFiles } from './__tests__/cases/unused-variables-in-js-and-ts-files.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, setUpConsumerEslintCliRun } from './__tests__/consumer-cli-runs.ts'
-import { agentsIncLintModuleTextRootedAtItsFolder, emptyTeamEslintModuleText, mergedEslintConfigText } from './__tests__/factories/consumer-project-factories.ts'
-import { buildConsumerSettings } from './__tests__/factories/lint-rules-factories.ts'
+import { EMPTY_TEAM_ESLINT_MODULE_FILE, projectMergingOurEslintPartText } from './__tests__/factories/consumer-project-factories.ts'
+import { buildConsumerSettings, REDUNDANCY_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { EMPTY_TEAM_OXLINT_CONFIG, TEAM_OXLINT_CONFIG_SETTING_NO_RULE, teamOxlintConfigSettingNoRuleFiles } from './__tests__/team-configs-of-the-other-engine.ts'
+import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 import type { LintRules } from './index.ts'
 
 // q61 (owner): where a consumer's `rules` name typescript-eslint's version of a rule and not the
@@ -19,10 +18,6 @@ import type { LintRules } from './index.ts'
 
 allowEveryTestForParallelLoad()
 
-// The ruleset that ships no-unused-vars, in both sets.
-const REDUNDANCY: OurRulesets = { agentRulesets: { quality: ['redundancy'] }, editorRulesets: { quality: ['redundancy'] } }
-const LINT_RULES_MODULE = 'agents-inc.lint.mts'
-const EMPTY_TEAM_ESLINT_MODULE = 'empty-team.eslint.mjs'
 const PLAIN_RULE = 'no-unused-vars'
 const TYPESCRIPT_VERSION = '@typescript-eslint/no-unused-vars'
 const OXLINT_CODE = 'eslint(no-unused-vars)'
@@ -31,10 +26,11 @@ const OXLINT_CODE = 'eslint(no-unused-vars)'
 function projectWithoutOxlintFiles(rules: NonNullable<LintRules['rules']>): Readonly<Record<string, string>> {
   return {
     'package.json': packageJsonText(buildPackageJson()),
-    [LINT_RULES_MODULE]: agentsIncLintModuleTextRootedAtItsFolder(buildConsumerSettings(REDUNDANCY, { rules })),
-    'eslint.config.mjs': mergedEslintConfigText(LINT_RULES_MODULE, EMPTY_TEAM_ESLINT_MODULE, TEAM_OXLINT_CONFIG_SETTING_NO_RULE),
-    ...teamOxlintConfigSettingNoRuleFiles,
-    [EMPTY_TEAM_ESLINT_MODULE]: emptyTeamEslintModuleText(),
+    ...projectMergingOurEslintPartText({
+      settings: buildConsumerSettings(REDUNDANCY_IN_BOTH_SETS, { rules }),
+      team: EMPTY_TEAM_ESLINT_MODULE_FILE,
+      teamOxlint: 'setting no rule',
+    }),
     ...unusedVariableFiles,
   }
 }
@@ -81,7 +77,7 @@ describe('the same files, our rules naming the plain no-unused-vars, in a projec
 describe("the same files, our rules naming typescript-eslint's no-unused-vars alone, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: unusedVariableFiles,
-    ourRulesets: REDUNDANCY,
+    ourRulesets: REDUNDANCY_IN_BOTH_SETS,
     ours: { rules: { [TYPESCRIPT_VERSION]: UNUSED_VARS_SETTING } },
     teamEslintRules: {},
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { setUpBothEnginesRuns } from './__tests__/both-engines-runs.ts'
-import type { OurRulesets } from './__tests__/cases/both-engines-corpus.ts'
 import {
   frameworkSourceFiles,
   OWED_BY_ESLINT_IN_FRAMEWORK_FILES,
@@ -12,12 +11,12 @@ import {
 } from './__tests__/cases/framework-components.ts'
 import { NO_GLOBAL_ASSIGN, NO_UNDEF } from './__tests__/cases/svelte-components.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, eslintLintedFilesOf, setUpConsumerEslintCliRun } from './__tests__/consumer-cli-runs.ts'
-import { agentsIncLintModuleTextRootedAtItsFolder, emptyTeamEslintModuleText, mergedEslintConfigText } from './__tests__/factories/consumer-project-factories.ts'
-import { buildConsumerSettings } from './__tests__/factories/lint-rules-factories.ts'
+import { EMPTY_TEAM_ESLINT_MODULE_FILE, projectMergingOurEslintPartText } from './__tests__/factories/consumer-project-factories.ts'
+import { buildConsumerSettings, CORRECTNESS_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { EMPTY_TEAM_OXLINT_CONFIG, TEAM_OXLINT_CONFIG_SETTING_NO_RULE, teamOxlintConfigSettingNoRuleFiles } from './__tests__/team-configs-of-the-other-engine.ts'
+import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 
 // Framework globals, the same class as Svelte's runes, in both engines and both builds (decisions.md,
 // 2026-10-14 "fix round 4 closed"): Vue's `<script setup>` compiler macros in .vue files, Astro's
@@ -32,18 +31,14 @@ import { EMPTY_TEAM_OXLINT_CONFIG, TEAM_OXLINT_CONFIG_SETTING_NO_RULE, teamOxlin
 
 allowEveryTestForParallelLoad()
 
-// The ruleset that ships no-undef, in both sets.
-const CORRECTNESS: OurRulesets = { agentRulesets: { quality: ['correctness'] }, editorRulesets: { quality: ['correctness'] } }
 const RULES = [NO_UNDEF]
 const WRITE_RULES = [NO_GLOBAL_ASSIGN]
 const COMPONENT = /\.(?:vue|astro|svelte)$/u
-const LINT_RULES_MODULE = 'agents-inc.lint.mts'
-const EMPTY_TEAM_ESLINT_MODULE = 'empty-team.eslint.mjs'
 
 describe('Vue, Astro and Svelte components, and JS files using their globals, our correctness ruleset on, in a project whose package.json lists oxlint', () => {
   const runs = setUpBothEnginesRuns({
     sources: frameworkSourceFiles,
-    ourRulesets: CORRECTNESS,
+    ourRulesets: CORRECTNESS_IN_BOTH_SETS,
     ours: {},
     teamEslintRules: {},
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
@@ -106,7 +101,7 @@ describe('Vue, Astro and Svelte components, and JS files using their globals, ou
 describe("Vue, Astro and Svelte components, and JS files using their globals, our correctness ruleset on, beside a team oxlint config whose root turns Svelte's $$props off, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: frameworkSourceFiles,
-    ourRulesets: CORRECTNESS,
+    ourRulesets: CORRECTNESS_IN_BOTH_SETS,
     ours: {},
     teamEslintRules: {},
     teamOxlintConfig: TEAM_OXLINT_CONFIG_TURNING_SVELTE_PROPS_OFF,
@@ -122,10 +117,11 @@ describe("Vue, Astro and Svelte components, and JS files using their globals, ou
 describe('Vue, Astro and Svelte components, and JS files using their globals, our correctness ruleset on, in a project whose package.json lists no oxlint, linted by the ESLint CLI through the built package', () => {
   const run = setUpConsumerEslintCliRun({
     'package.json': packageJsonText(buildPackageJson()),
-    [LINT_RULES_MODULE]: agentsIncLintModuleTextRootedAtItsFolder(buildConsumerSettings(CORRECTNESS)),
-    'eslint.config.mjs': mergedEslintConfigText(LINT_RULES_MODULE, EMPTY_TEAM_ESLINT_MODULE, TEAM_OXLINT_CONFIG_SETTING_NO_RULE),
-    ...teamOxlintConfigSettingNoRuleFiles,
-    [EMPTY_TEAM_ESLINT_MODULE]: emptyTeamEslintModuleText(),
+    ...projectMergingOurEslintPartText({
+      settings: buildConsumerSettings(CORRECTNESS_IN_BOTH_SETS),
+      team: EMPTY_TEAM_ESLINT_MODULE_FILE,
+      teamOxlint: 'setting no rule',
+    }),
     ...frameworkSourceFiles,
   })
 

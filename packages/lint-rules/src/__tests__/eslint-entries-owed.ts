@@ -1,5 +1,5 @@
 import type { Catalog } from '@workspace/rule-data'
-import type { CalculatedRules } from './eslint-config-oracle.ts'
+import { type CalculatedRules, type CalculatedRulesOrNotLinted, NOT_LINTED } from './eslint-config-oracle.ts'
 import { eslintNamesOf, typescriptEslintTwinsOf, withTheTeamsPrefixes } from './other-eslint-names.ts'
 
 // The ESLint merge's precedence contract (decisions.md, "Owner 2026-10-14"; spec-merge-model.md,
@@ -72,6 +72,21 @@ export function calculatedEntryOf(rules: CalculatedRules, name: string): Calcula
   if (entry === undefined) return ABSENT
   if (!Array.isArray(entry)) throw new Error(`ESLint calculates a rule entry as [severity, ...options], not ${JSON.stringify(entry)}`)
   return entry
+}
+
+/** Each file's calculated entry of each rule given, by rule ID, read from each file's calculated rules: NOT_LINTED where ESLint lints no such file. */
+export function entriesOfEachFileIn(
+  rulesByFile: Readonly<Record<string, CalculatedRulesOrNotLinted>>,
+  ruleIds: readonly string[],
+  files: readonly string[],
+): Record<string, Record<string, CalculatedEntry> | typeof NOT_LINTED> {
+  return Object.fromEntries(
+    files.map((file): [string, Record<string, CalculatedEntry> | typeof NOT_LINTED] => {
+      const rules = rulesByFile[file]
+      if (rules === undefined) throw new Error(`ESLint calculated nothing for ${file}`)
+      return [file, rules === NOT_LINTED ? NOT_LINTED : Object.fromEntries(ruleIds.map((id) => [id, calculatedEntryOf(rules, id)]))]
+    }),
+  )
 }
 
 /** Every name of every rule in play, sorted: the names the merge is checked over. */

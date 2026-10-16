@@ -2,16 +2,17 @@ import { catalog } from '@workspace/rule-data'
 import { describe, expect, it } from 'vitest'
 import { defineLintRules } from '../index.ts'
 import type { OxlintPart } from '../core/editor-parts.ts'
+import { oxlintPartOf } from './agent-configs.ts'
 import { buildConsumerLintRules } from './factories/lint-rules-factories.ts'
-import { buildPackageJsonListingOxlint, packageJsonText } from './factories/package-json-factories.ts'
+import { createProjectListingOxlint } from './factories/package-json-factories.ts'
 import { oxlintSeverityFor } from './oxlint-config-oracle.ts'
 import { oxlintPartAlone } from './oxlint-part-alone.ts'
 import { setUpTempProjects } from './temp-projects.ts'
 
-const PROJECT_WITH_OXLINT = setUpTempProjects().create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) } })
+const PROJECT_WITH_OXLINT = createProjectListingOxlint(setUpTempProjects())
 
 function ourOxlintPart(): OxlintPart {
-  const { oxlint } = defineLintRules(
+  const parts = defineLintRules(
     buildConsumerLintRules(
       PROJECT_WITH_OXLINT,
       {},
@@ -21,8 +22,7 @@ function ourOxlintPart(): OxlintPart {
       },
     ),
   ).editorRulesets
-  if (oxlint === undefined) throw new Error('a project listing oxlint has an oxlint part')
-  return oxlint
+  return oxlintPartOf(parts)
 }
 
 describe('oxlintPartAlone', () => {

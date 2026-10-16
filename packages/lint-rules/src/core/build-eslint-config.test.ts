@@ -4,6 +4,7 @@ import type { ESLint, Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
 import { SVELTE_RUNES_ESLINT_BLOCK_NAME, TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME } from '../__tests__/cases/svelte-components.ts'
+import { blockNamed, pluginRegisteredUnder } from '../__tests__/eslint-config-reads.ts'
 import {
   buildCatalog,
   buildEslintRoute,
@@ -37,6 +38,12 @@ const STORYBOOK_DIRECTORY_GLOB = '**/.storybook/**'
 const NON_JS_FILES_IN_THE_STORYBOOK_DIRECTORY = ['.storybook/x.test.json', '.storybook/x.test.md']
 
 const A_TYPED_RULE = '@typescript-eslint/no-floating-promises'
+// A core rule oxlint runs, an option of whose extension oxlint refuses (rule-data's
+// data/oxlint-refused-options.json), and that extension, typed in a catalog of the test's own.
+const CORE_RULE_WITH_A_TYPED_EXTENSION = 'no-redeclare'
+const TYPED_EXTENSION_NAME = 'no-redeclare'
+const TYPED_EXTENSION = `@typescript-eslint/${TYPED_EXTENSION_NAME}`
+const AN_OPTION_OXLINT_REFUSES = { ignoreDeclarationMerge: true }
 const CONSUMER_CONFIG_FILES = [
   'agents-inc.lint.mts',
   'oxlint.config.mts',
@@ -189,26 +196,13 @@ const {
   calculatedConfigFor,
   globalsFor,
   isPathIgnored,
+  linterOptionsFor,
   messagesReportedOn,
   parserOptionsFor,
   ruleEntryFor,
   ruleIdsReportedOn,
   ruleSeverityFor,
 } = setUpEslintConfigOracle()
-
-/** ESLint's calculated linterOptions for the file; it leaves noInlineConfig out when no block sets it. */
-async function linterOptionsFor(config: Linter.Config[], file: string): Promise<Linter.LinterOptions> {
-  const calculated = await calculatedConfigFor(config, file)
-  if (calculated === undefined) throw new Error(`ESLint does not lint ${file}`)
-  if (calculated.linterOptions === undefined) throw new Error(`ESLint calculated no linterOptions for ${file}`)
-  return calculated.linterOptions
-}
-
-function blockNamed(config: readonly Linter.Config[], name: string): Linter.Config {
-  const block = config.find((candidate) => candidate.name === name)
-  if (block === undefined) throw new Error(`no block named ${name}`)
-  return block
-}
 
 function pluginsOf(block: Linter.Config): Record<string, ESLint.Plugin> {
   if (block.plugins === undefined) throw new Error(`block ${block.name} registers no plugins`)
@@ -229,12 +223,6 @@ function registeredPlugin(prefix: string): ESLint.Plugin {
 function ruleNamesOf(plugin: ESLint.Plugin | undefined): string[] {
   if (plugin?.rules === undefined) throw new Error('plugin has no rules')
   return Object.keys(plugin.rules)
-}
-
-function pluginUnder(plugins: Readonly<Record<string, ESLint.Plugin>>, prefix: string): ESLint.Plugin {
-  const plugin = plugins[prefix]
-  if (plugin === undefined) throw new Error(`no plugin is registered under ${prefix}`)
-  return plugin
 }
 
 function rulesOf(plugin: ESLint.Plugin): NonNullable<ESLint.Plugin['rules']> {
@@ -576,6 +564,37 @@ describe('buildEslintConfig', () => {
         expect(severities).toStrictEqual(TS_FILES_OUTSIDE_EVERY_TSCONFIG.map((file) => ({ file, severity: 'error' })))
       })
     })
+
+    // Beside oxlint, a layer stating both names of a twin pair gives typescript-eslint's extension
+    // its TS files alone (D9, `tsFileRules`), and drops it from the layer's other rules; where the
+    // extension's setting carries an option oxlint refuses, oxlint's core rule is off there and ESLint
+    // runs the extension (D11). Where that extension is typed and the layer turns no other typed rule
+    // on, the project service must still parse those files: a typed rule without it is a fatal parse
+    // error.
+    describe('where the only typed rule is a typed extension the top level runs on its TS files alone', () => {
+      const catalogWithATypedExtension = buildCatalog({
+        rulesets: [buildQualityRuleset('correctness')],
+        rules: [
+          buildOxlintRoute(CORE_RULE_WITH_A_TYPED_EXTENSION, { oxlintName: CORE_RULE_WITH_A_TYPED_EXTENSION, oxlintPlugin: 'eslint', shipped: null }),
+          buildEslintRoute(TYPED_EXTENSION, { typed: true, shipped: null }),
+        ],
+        coreRuleExtensions: new Map([[CORE_RULE_WITH_A_TYPED_EXTENSION, [TYPED_EXTENSION]]]),
+      })
+      const statingBothNames = buildLintRules(
+        {},
+        { tsconfigRootDir: TSCONFIG_ROOT_DIR, rules: { [CORE_RULE_WITH_A_TYPED_EXTENSION]: 'error', [TYPED_EXTENSION]: ['error', AN_OPTION_OXLINT_REFUSES] } },
+      )
+      const registryWithTheExtension = buildPluginRegistry({ '@typescript-eslint': [TYPED_EXTENSION_NAME] })
+
+      it('parses a TS file through the project service and runs the extension there', async () => {
+        const config = buildEslintConfig(statingBothNames, catalogWithATypedExtension, registryWithTheExtension, buildProjectFacts())
+
+        expect({
+          projectService: (await parserOptionsFor(config, ORDINARY_MTS_FILE))['projectService'],
+          entry: await ruleEntryFor(config, ORDINARY_MTS_FILE, TYPED_EXTENSION),
+        }).toStrictEqual({ projectService: true, entry: [ERROR, AN_OPTION_OXLINT_REFUSES] })
+      })
+    })
   })
 
   describe('built-in scopes', () => {
@@ -899,7 +918,7 @@ describe('buildEslintConfig', () => {
     }
 
     it('is registered as a copy holding each of its own rules and a stub per oxlint-only name it lacks', () => {
-      expect(ruleProvenanceOf(pluginUnder(basePlugins(), 'react'), reactPlugin)).toStrictEqual({
+      expect(ruleProvenanceOf(pluginRegisteredUnder(basePlugins(), 'react'), reactPlugin)).toStrictEqual({
         'jsx-key': 'own',
         'no-clone-element': 'stub',
         'no-danger': 'own',
@@ -907,7 +926,7 @@ describe('buildEslintConfig', () => {
     })
 
     it('is copied rather than changed: the registry still holds the same plugin, with only its own rules', () => {
-      const registered = pluginUnder(basePlugins(), 'react')
+      const registered = pluginRegisteredUnder(basePlugins(), 'react')
 
       expect({ registeredIsTheOriginal: registered === reactPlugin, originalRuleNames: ruleNamesOf(reactPlugin) }).toStrictEqual({
         registeredIsTheOriginal: false,
@@ -916,7 +935,7 @@ describe('buildEslintConfig', () => {
     })
 
     it('keeps the original plugin\'s meta on the copy', () => {
-      expect(pluginUnder(basePlugins(), 'react').meta).toBe(reactPlugin.meta)
+      expect(pluginRegisteredUnder(basePlugins(), 'react').meta).toBe(reactPlugin.meta)
     })
 
     it('lets a suppression of the oxlint-only name load in ESLint', async () => {
@@ -962,7 +981,7 @@ describe('buildEslintConfig', () => {
     }
 
     it("gets a stub for its oxlint name under its ID's prefix where the plugin lacks that name, and none where the plugin has it", () => {
-      expect(ruleProvenanceOf(pluginUnder(basePlugins(), 'unicorn'), unicornPlugin)).toStrictEqual({
+      expect(ruleProvenanceOf(pluginRegisteredUnder(basePlugins(), 'unicorn'), unicornPlugin)).toStrictEqual({
         'dom-node-dataset': 'own',
         'no-array-for-each': 'stub',
         'no-for-each': 'own',
@@ -973,7 +992,7 @@ describe('buildEslintConfig', () => {
     it("gets none where its oxlint name differs from its ID's in the prefix alone", () => {
       const plugins = basePlugins()
 
-      expect({ prefixes: Object.keys(plugins).toSorted(), typescriptEslint: ruleProvenanceOf(pluginUnder(plugins, '@typescript-eslint'), typescriptEslintPlugin) }).toStrictEqual({
+      expect({ prefixes: Object.keys(plugins).toSorted(), typescriptEslint: ruleProvenanceOf(pluginRegisteredUnder(plugins, '@typescript-eslint'), typescriptEslintPlugin) }).toStrictEqual({
         prefixes: ['@typescript-eslint', 'unicorn'],
         typescriptEslint: { 'no-explicit-any': 'own' },
       })
@@ -1054,7 +1073,7 @@ describe('buildEslintConfig', () => {
       ]),
     })
     // The real typescript-eslint plugin, whose rules refuse options they do not take.
-    const twinPlugins: ReadonlyMap<string, ESLint.Plugin> = new Map([['@typescript-eslint', registeredRealPlugin('@typescript-eslint')]])
+    const twinPlugins: ReadonlyMap<string, ESLint.Plugin> = new Map([['@typescript-eslint', pluginRegisteredUnder(eslintPlugins, '@typescript-eslint')]])
     const ourTypeInformation: TypeInformation = {
       from: 'ours',
       tsconfigRootDir: TSCONFIG_ROOT_DIR,
@@ -1063,12 +1082,6 @@ describe('buildEslintConfig', () => {
     const teamTypeInformation: TypeInformation = {
       from: 'the team',
       blocks: [{ switches: 'on', files: ['packages/typed/**'], ignores: [] }],
-    }
-
-    function registeredRealPlugin(prefix: string): ESLint.Plugin {
-      const plugin = eslintPlugins[prefix]
-      if (plugin === undefined) throw new Error(`no ESLint plugin is registered under ${prefix}`)
-      return plugin
     }
 
     /** Our blocks before the off-switch, in order, for a project whose package.json lists no oxlint unless `besideOxlint`. */
@@ -1117,7 +1130,7 @@ describe('buildEslintConfig', () => {
 
     /** The real typescript-eslint plugin, but its max-params declaring a schema ESLint cannot compile: an unknown format. */
     function typescriptEslintWithAnUncompilableMaxParamsSchema(): ESLint.Plugin {
-      const real = registeredRealPlugin('@typescript-eslint')
+      const real = pluginRegisteredUnder(eslintPlugins, '@typescript-eslint')
       const maxParams = real.rules?.['max-params']
       if (maxParams === undefined) throw new Error('typescript-eslint has no max-params')
       const schema = [{ type: 'object', properties: { max: { type: 'integer', format: 'no-such-format' } } }] as const

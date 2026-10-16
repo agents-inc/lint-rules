@@ -9,19 +9,24 @@ type ObjectInText = { readonly open: number; readonly close: number; readonly me
 /** How the file is laid out: one level of indentation, and its line end. */
 type Layout = { readonly indent: string; readonly eol: string }
 
+/** A JSON token in the text: a string, a punctuator or a literal, and where it starts and ends. */
+type Token = { readonly text: string; readonly start: number; readonly end: number }
+
+/** The tokens of a text, in order. */
+type Tokens = ArrayIterator<Token>
+
 const DEV_DEPENDENCIES = 'devDependencies'
 const DEFAULT_INDENT = '  '
 const CRLF = '\r\n'
 const LF = '\n'
-const QUOTE = '"'
-const BACKSLASH = '\\'
 const OPEN_OBJECT = '{'
 const CLOSE_OBJECT = '}'
 const OPEN_ARRAY = '['
 const CLOSE_ARRAY = ']'
 const COMMA = ','
-const JSON_WHITESPACE = new Set([' ', '\t', '\n', '\r'])
-const LITERAL_ENDS = new Set([COMMA, CLOSE_OBJECT, CLOSE_ARRAY, ...JSON_WHITESPACE])
+// A string, its escapes included; a punctuator; or a literal: a number, true, false or null. Only
+// whitespace lies between the tokens of text JSON.parse accepted.
+const JSON_TOKEN = /"(?:[^"\\]|\\.)*"|[{}[\],:]|[^ \t\n\r{}[\],:"]+/gu
 const TOP_LEVEL_DEPTH = 1
 const DEPENDENCY_DEPTH = 2
 
@@ -32,7 +37,7 @@ const DEPENDENCY_DEPTH = 2
  * they are. `text` is valid JSON, read already; `path` names it in an error.
  */
 export function withDevDependency(text: string, path: string, name: string, range: string): string {
-  const top = objectAt(text, afterWhitespace(text, 0))
+  const top = objectAt(text, 0)
   const layout = layoutOf(text, top)
   const entry = memberText(name, JSON.stringify(range))
   const devDependencies = top.members.find(({ key }) => key === DEV_DEPENDENCIES)
@@ -83,54 +88,67 @@ function spliced(text: string, start: number, end: number, insert: string): stri
   return `${text.slice(0, start)}${insert}${text.slice(end)}`
 }
 
-// A scanner over text JSON.parse has accepted, so it reads well-formed JSON only.
+// A reader of text JSON.parse has accepted, so it reads well-formed JSON only. Each reader takes the
+// tokens of what it reads from one iterator over an array, and leaves the rest: an array's iterator
+// has no `return`, so a for…of that stops part way leaves it where it stopped.
 
+/** The object whose opening brace is at `open` in the text. */
 function objectAt(text: string, open: number): ObjectInText {
+  const tokens = tokensFrom(text, open)
+  return objectOpenedBy(nextTokenIn(tokens), tokens)
+}
+
+/** The tokens of the text from `start` on, each where it is in the whole text. */
+function tokensFrom(text: string, start: number): Tokens {
+  return Array.from(text.slice(start).matchAll(JSON_TOKEN), (match) => tokenOf(match, start)).values()
+}
+
+/** The match as a token of the whole text, the match's own text having started at `offset`. */
+function tokenOf({ 0: token, index }: RegExpExecArray, offset: number): Token {
+  const start = offset + index
+  return { text: token, start, end: start + token.length }
+}
+
+/** The object the brace opens, read up to its closing brace. */
+function objectOpenedBy(open: Token, tokens: Tokens): ObjectInText {
   const members: Member[] = []
-  let next = afterWhitespace(text, open + 1)
-  while (text.charAt(next) !== CLOSE_OBJECT) {
-    const keyEnd = stringEndAt(text, next)
-    // Parse boundary: a key of text JSON.parse accepted.
-    const key = String(JSON.parse(text.slice(next, keyEnd)))
-    const valueStart = afterWhitespace(text, afterWhitespace(text, keyEnd) + 1)
-    const valueEnd = valueEndAt(text, valueStart)
-    members.push({ key, keyStart: next, valueStart, valueEnd })
-    next = afterSeparator(text, valueEnd)
+  for (const token of tokens) {
+    if (token.text === CLOSE_OBJECT) return { open: open.start, close: token.start, members }
+    if (token.text !== COMMA) members.push(memberKeyedBy(token, tokens))
   }
-  return { open, close: next, members }
+  throw new Error(`an object with no closing brace at ${String(open.start)}`)
 }
 
-function arrayEndAt(text: string, open: number): number {
-  let next = afterWhitespace(text, open + 1)
-  while (text.charAt(next) !== CLOSE_ARRAY) next = afterSeparator(text, valueEndAt(text, next))
-  return next + 1
+/** The member the key starts, read through its value. */
+function memberKeyedBy(key: Token, tokens: Tokens): Member {
+  const value = valueAfterTheColon(tokens)
+  // Parse boundary: a key of text JSON.parse accepted.
+  return { key: String(JSON.parse(key.text)), keyStart: key.start, valueStart: value.start, valueEnd: readValueStartedBy(value, tokens) }
 }
 
-function valueEndAt(text: string, start: number): number {
-  const first = text.charAt(start)
-  if (first === QUOTE) return stringEndAt(text, start)
-  if (first === OPEN_OBJECT) return objectAt(text, start).close + 1
-  if (first === OPEN_ARRAY) return arrayEndAt(text, start)
-  let end = start
-  while (end < text.length && !LITERAL_ENDS.has(text.charAt(end))) end += 1
-  return end
+/** The first token of a member's value: the one after the colon that follows its key. */
+function valueAfterTheColon(tokens: Tokens): Token {
+  nextTokenIn(tokens)
+  return nextTokenIn(tokens)
 }
 
-/** The index after a string's closing quote, given its opening one. */
-function stringEndAt(text: string, open: number): number {
-  let next = open + 1
-  while (next < text.length && text.charAt(next) !== QUOTE) next += text.charAt(next) === BACKSLASH ? 2 : 1
-  return next + 1
+/** Reads the value the token starts, and gives where it ends: past its closing bracket, where it opens an object or an array. */
+function readValueStartedBy(first: Token, tokens: Tokens): number {
+  if (first.text === OPEN_OBJECT) return objectOpenedBy(first, tokens).close + 1
+  if (first.text === OPEN_ARRAY) return endOfArrayOpenedBy(first, tokens)
+  return first.end
 }
 
-/** After a value: past the comma and whitespace to the next member, or at the closing bracket. */
-function afterSeparator(text: string, valueEnd: number): number {
-  const next = afterWhitespace(text, valueEnd)
-  return text.charAt(next) === COMMA ? afterWhitespace(text, next + 1) : next
+function endOfArrayOpenedBy(open: Token, tokens: Tokens): number {
+  for (const token of tokens) {
+    if (token.text === CLOSE_ARRAY) return token.end
+    if (token.text !== COMMA) readValueStartedBy(token, tokens)
+  }
+  throw new Error(`an array with no closing bracket at ${String(open.start)}`)
 }
 
-function afterWhitespace(text: string, from: number): number {
-  let next = from
-  while (JSON_WHITESPACE.has(text.charAt(next))) next += 1
-  return next
+function nextTokenIn(tokens: Tokens): Token {
+  const next = tokens.next()
+  if (next.done === true) throw new Error('JSON text that ends part way through a value')
+  return next.value
 }

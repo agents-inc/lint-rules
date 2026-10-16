@@ -8,12 +8,12 @@ import {
   SVELTE_SOURCE_FILES,
   TEST_FILES_OF_NO_RUNE_MODULE,
 } from './__tests__/cases/svelte-components.ts'
+import { ourEditorEslintPartMergedInto } from './__tests__/editor-merges-read-by-eslint.ts'
 import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
-import { buildConsumerLintRules, EMPTY_TSCONFIG_ROOT_DIR } from './__tests__/factories/lint-rules-factories.ts'
-import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
-import { writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
+import { namesDefinedIn } from './__tests__/eslint-globals.ts'
+import { buildConsumerLintRules, CORRECTNESS_IN_BOTH_SETS, EMPTY_TSCONFIG_ROOT_DIR } from './__tests__/factories/lint-rules-factories.ts'
+import { createProjectListingOxlint } from './__tests__/factories/package-json-factories.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
-import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 
 // Svelte 5's runes are globals in .svelte.js and .svelte.ts modules in ESLint too, in every config
@@ -23,30 +23,23 @@ import { defineLintRules, type LintRules } from './index.ts'
 
 const { globalsFor } = setUpEslintConfigOracle()
 const tempProjects = setUpTempProjects()
-const projectListingOxlint = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) } })
+const projectListingOxlint = createProjectListingOxlint(tempProjects)
 
 const RUNE_MODULES = [SVELTE_SOURCE_FILES.jsModule, SVELTE_SOURCE_FILES.tsModule]
 const NO_SVELTE_FILES = [SVELTE_SOURCE_FILES.notARuneModule, SVELTE_SOURCE_FILES.tsFileWritingToARune]
 
 /** Our settings with the ruleset that ships no-undef and no-global-assign in both sets, rooted where given. */
 function correctnessIn(tsconfigRootDir: string): LintRules {
-  return buildConsumerLintRules(tsconfigRootDir, { agentRulesets: { quality: ['correctness'] }, editorRulesets: { quality: ['correctness'] } })
+  return buildConsumerLintRules(tsconfigRootDir, CORRECTNESS_IN_BOTH_SETS)
 }
 
 /** The editor ESLint part merged into a team config with no block. */
 function mergedIntoAnEmptyTeamConfig(tsconfigRootDir: string): Linter.Config[] {
-  const { eslint } = defineLintRules(correctnessIn(tsconfigRootDir)).editorRulesets
-  return mergeEslintConfig([], eslint, writeTeamOxlintConfigSettingNoRule(eslint))
-}
-
-/** Whether ESLint reads the name as a global: set, and not turned off. */
-function isDefinedGlobal(value: unknown): boolean {
-  return value !== undefined && value !== 'off'
+  return ourEditorEslintPartMergedInto([], correctnessIn(tsconfigRootDir))
 }
 
 async function runesDefinedIn(config: Linter.Config[], file: string, runes: readonly string[]): Promise<string[]> {
-  const globals = await globalsFor(config, file)
-  return runes.filter((rune) => isDefinedGlobal(globals[rune]))
+  return namesDefinedIn(await globalsFor(config, file), runes)
 }
 
 // The config's name in full in its title, which $-interpolation would cut short.

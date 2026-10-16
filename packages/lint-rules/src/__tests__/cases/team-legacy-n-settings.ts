@@ -1,6 +1,8 @@
 import type { Linter } from 'eslint'
 import { teamBlockSourceOf, teamEslintModuleOfBlockSourcesText } from '../factories/consumer-project-factories.ts'
-import { buildTsconfig } from '../factories/tsconfig-factories.ts'
+import { buildPublishedPackageJson, fileInPackage, filesUnderPackage, packageDirOf } from '../factories/monorepo-package-factories.ts'
+import { jsonFileText } from '../factories/team-config-file-factories.ts'
+import { buildBundlerTsconfig } from '../factories/tsconfig-factories.ts'
 import type { RuleByItsNames } from '../findings-beside-the-team.ts'
 import type { ProjectFiles } from '../temp-projects.ts'
 
@@ -39,38 +41,25 @@ const PACKAGES = {
   teamSetsNMap: 'team-sets-n-map',
 } as const
 
-const PACKAGES_DIR = 'packages'
 const IMPORTER = 'src/a.ts'
 const PRESERVING_TSCONFIG = 'tsconfig.preserve.json'
-
-const COMPILER_OPTIONS = { target: 'ES2022', module: 'esnext', moduleResolution: 'bundler', strict: true, noEmit: true, skipLibCheck: true }
 
 const IMPORTS_THE_JSX_NAME = `import Comp from './Comp.jsx'
 
 export const all = [Comp]
 `
 
-function packageDirOf(packageName: string): string {
-  return `${PACKAGES_DIR}/${packageName}`
-}
-
-function jsonText(value: unknown): string {
-  return `${JSON.stringify(value, null, 2)}\n`
-}
-
 /** The tsconfig the team's tsconfigPath names, by its path from the project's root, which ESLint runs from: eslint-plugin-n resolves it against the process's folder (lib/util/get-tsconfig.js). */
-export const PRESERVING_TSCONFIG_PATH = `${packageDirOf(PACKAGES.teamSetsLegacyTsconfigPath)}/${PRESERVING_TSCONFIG}`
+export const PRESERVING_TSCONFIG_PATH = fileInPackage(PACKAGES.teamSetsLegacyTsconfigPath, PRESERVING_TSCONFIG)
 
 /** The package's files, by their paths in the project: its package.json, its tsconfig.json, a tsconfig preserving JSX, Comp.tsx and a.ts. */
 function filesOfPackage(packageName: string): [string, string][] {
-  const packageDir = packageDirOf(packageName)
-  const manifest = { name: `@repo/${packageName}`, version: '0.0.0', files: ['src'] }
-  return Object.entries({
-    [`${packageDir}/package.json`]: jsonText(manifest),
-    [`${packageDir}/tsconfig.json`]: jsonText(buildTsconfig({ compilerOptions: { ...COMPILER_OPTIONS, jsx: 'react-jsx' }, include: ['src'] })),
-    [`${packageDir}/${PRESERVING_TSCONFIG}`]: jsonText(buildTsconfig({ compilerOptions: { ...COMPILER_OPTIONS, jsx: PRESERVE }, include: ['src'] })),
-    [`${packageDir}/src/Comp.tsx`]: 'const Comp = 1\nexport default Comp\n',
-    [`${packageDir}/${IMPORTER}`]: IMPORTS_THE_JSX_NAME,
+  return filesUnderPackage(packageName, {
+    'package.json': jsonFileText(buildPublishedPackageJson(packageName)),
+    'tsconfig.json': jsonFileText(buildBundlerTsconfig({ jsx: 'react-jsx' })),
+    [PRESERVING_TSCONFIG]: jsonFileText(buildBundlerTsconfig({ jsx: PRESERVE })),
+    'src/Comp.tsx': 'const Comp = 1\nexport default Comp\n',
+    [IMPORTER]: IMPORTS_THE_JSX_NAME,
   })
 }
 
@@ -78,7 +67,7 @@ function filesOfPackage(packageName: string): [string, string][] {
 export const legacyNSettingsPackageFiles: ProjectFiles = Object.fromEntries(Object.values(PACKAGES).flatMap(filesOfPackage))
 
 function importerIn(packageName: string): string {
-  return `${packageDirOf(packageName)}/${IMPORTER}`
+  return fileInPackage(packageName, IMPORTER)
 }
 
 /** The module importing `./Comp.jsx` in each package, by its path in the project. */

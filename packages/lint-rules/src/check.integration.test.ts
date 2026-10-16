@@ -34,9 +34,27 @@ import {
   A_PAIR_BELOW_A_STRING_HOLDING_NO_COMMENT,
 } from './__tests__/cases/suppression-pairs.ts'
 import { findingMessagesIn, findingsIn, findingsInFile, lastLineOf } from './__tests__/check-output.ts'
-import { setUpRunsBeforeTheSuite } from './__tests__/consumer-cli-runs.ts'
+import {
+  anotherWriterAsOxlintsLintRunEnds,
+  type BackgroundRun,
+  checkInTheBackground,
+  checkSignalledOnceItsConfigAppears,
+  EXIT,
+  idOfAnEndedProcess,
+  nodeBelowTheFloor,
+  runCheck,
+  runCli,
+  runInit,
+  RUNS_IN_THE_BACKGROUND,
+  setUpCheckAfterTheAgent,
+  tempConfigNameOf,
+  tempConfigPatternOf,
+  tempConfigsIn,
+} from './__tests__/cli-runs.ts'
 import {
   blockDisable,
+  CHECK_ESLINT_FAILED,
+  CHECK_INTERRUPTED,
   checkConfigText,
   checkConfigTextHanding,
   checkedPackageFiles,
@@ -45,34 +63,19 @@ import {
   ERRORS_SUMMARY_TAIL,
   exportedConstant,
   moduleText,
+  NESTED_PACKAGE,
   PACKAGE_JSON_FILE,
+  REDUNDANCY,
   type SuppressionForm,
+  SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED,
+  unusedSuppressionMessageOf,
 } from './__tests__/factories/check-factories.ts'
 import { buildPackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
-import {
-  anotherWriterAsOxlintsLintRunEnds,
-  type BackgroundRun,
-  checkInTheBackground,
-  checkSignalledOnceItsConfigAppears,
-  createGitProject,
-  entriesUnder,
-  EXIT,
-  type FolderWatch,
-  gitStatusOf,
-  idOfAnEndedProcess,
-  nodeBelowTheFloor,
-  runCheck,
-  runCli,
-  runInit,
-  setUpAsyncRunsBeforeTheSuite,
-  setUpEmptyFolders,
-  tempConfigNameOf,
-  tempConfigPatternOf,
-  tempConfigsIn,
-  watchFolder,
-} from './__tests__/git-projects.ts'
+import { type FolderWatch, watchFolder } from './__tests__/folder-watch.ts'
+import { createGitProject, gitStatusOf } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { INSTALLED_OXLINT, THIS_PACKAGE } from './__tests__/temp-projects.ts'
+import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
+import { entriesUnder, INSTALLED_OXLINT, setUpEmptyFolders, THIS_PACKAGE } from './__tests__/temp-projects.ts'
 import { validateLintRules } from './core/validate-lint-rules.ts'
 
 // spec-cli.md "K: check": `agents-inc-lint check` lints the JS and TS lines changed since the last
@@ -84,7 +87,6 @@ import { validateLintRules } from './core/validate-lint-rules.ts'
 
 allowEveryTestForParallelLoad()
 
-const REDUNDANCY = { quality: ['redundancy'] } as const
 const REDUNDANCY_AND_TESTS = { quality: ['redundancy', 'tests'] } as const
 const REDUNDANCY_AND_MODERN_JS = { quality: ['redundancy', 'modern-js'] } as const
 const CORRECTNESS_AND_REACT = { quality: ['correctness'], libs: { ui: ['react'] } } as const
@@ -95,8 +97,6 @@ const USAGE = `usage: agents-inc-lint <command>
   init   add @agents-inc/lint-rules and agents-inc.lint.mts to the package in this folder
   check  lint the JS and TS lines changed since the last commit
 `
-const INTERRUPTED = 'check: interrupted\n'
-const ESLINT_FAILED = 'check: could not run: ESLint failed: '
 // typescript-eslint 8.71's message for `export const = 2`; oxlint reports the same line as "Unexpected token".
 const ESLINT_PARSE_ERROR_MESSAGE = 'Parsing error: Variable declaration expected.'
 
@@ -104,32 +104,30 @@ describe('check on the files and lines changed since the last commit', () => {
   const EXTENSIONS = ['js', 'mjs', 'cjs', 'jsx', 'ts', 'mts', 'cts', 'tsx']
   const NOT_JS_OR_TS = { 'src/ext/a.json': '{ "debugger": true }\n', 'src/ext/a.md': moduleText(DEBUGGER_STATEMENT), 'src/ext/a.css': 'a { color: red; }\n' }
 
-  const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, {
-      repo: 'committed',
-      files: {
-        ...checkedPackageFiles(REDUNDANCY, { ignores: ['src/generated/**'] }),
-        'eslint.config.mjs': THROWING_ESLINT_CONFIG,
-        '.oxlintrc.json': OXLINT_CONFIG_TURNING_NO_DEBUGGER_OFF,
-        'src/.oxlintrc.json': OXLINT_CONFIG_TURNING_NO_DEBUGGER_OFF,
-        'src/partly.ts': moduleText(exportedConstant('partly'), DEBUGGER_STATEMENT),
-        'src/staged-only.ts': moduleText(exportedConstant('stagedOnly')),
-        'src/unstaged-only.ts': moduleText(exportedConstant('unstagedOnly')),
-      },
-    })
-    project.append('src/partly.ts', moduleText(DEBUGGER_STATEMENT))
-    project.append('src/staged-only.ts', moduleText(DEBUGGER_STATEMENT))
-    project.git('add', 'src/staged-only.ts')
-    project.append('src/unstaged-only.ts', moduleText(DEBUGGER_STATEMENT))
-    project.write('src/new-untracked.ts', moduleText(exportedConstant('fresh'), DEBUGGER_STATEMENT, DEBUGGER_STATEMENT))
-    project.write('src/with space.ts', moduleText(exportedConstant('spaced'), DEBUGGER_STATEMENT))
-    project.write('src/ünïcode.ts', moduleText(exportedConstant('accented'), DEBUGGER_STATEMENT))
-    EXTENSIONS.forEach((extension) => project.write(`src/ext/a.${extension}`, moduleText(DEBUGGER_STATEMENT)))
-    Object.entries(NOT_JS_OR_TS).forEach(([file, content]) => project.write(file, content))
-    project.write('src/generated/gen.ts', moduleText(DEBUGGER_STATEMENT))
-    project.write('src/broken.ts', moduleText(...A_SYNTAX_ERROR))
-    return runCheck(project.dir)
-  })
+  const runs = setUpCheckAfterTheAgent(
+    {
+      ...checkedPackageFiles(REDUNDANCY, { ignores: ['src/generated/**'] }),
+      'eslint.config.mjs': THROWING_ESLINT_CONFIG,
+      '.oxlintrc.json': OXLINT_CONFIG_TURNING_NO_DEBUGGER_OFF,
+      'src/.oxlintrc.json': OXLINT_CONFIG_TURNING_NO_DEBUGGER_OFF,
+      'src/partly.ts': moduleText(exportedConstant('partly'), DEBUGGER_STATEMENT),
+      'src/staged-only.ts': moduleText(exportedConstant('stagedOnly')),
+      'src/unstaged-only.ts': moduleText(exportedConstant('unstagedOnly')),
+    },
+    (project) => {
+      project.append('src/partly.ts', moduleText(DEBUGGER_STATEMENT))
+      project.append('src/staged-only.ts', moduleText(DEBUGGER_STATEMENT))
+      project.git('add', 'src/staged-only.ts')
+      project.append('src/unstaged-only.ts', moduleText(DEBUGGER_STATEMENT))
+      project.write('src/new-untracked.ts', moduleText(exportedConstant('fresh'), DEBUGGER_STATEMENT, DEBUGGER_STATEMENT))
+      project.write('src/with space.ts', moduleText(exportedConstant('spaced'), DEBUGGER_STATEMENT))
+      project.write('src/ünïcode.ts', moduleText(exportedConstant('accented'), DEBUGGER_STATEMENT))
+      EXTENSIONS.forEach((extension) => project.write(`src/ext/a.${extension}`, moduleText(DEBUGGER_STATEMENT)))
+      Object.entries(NOT_JS_OR_TS).forEach(([file, content]) => project.write(file, content))
+      project.write('src/generated/gen.ts', moduleText(DEBUGGER_STATEMENT))
+      project.write('src/broken.ts', moduleText(...A_SYNTAX_ERROR))
+    },
+  )
 
   it('reports every line of an untracked file (K-2)', () => {
     expect(findingsInFile(runs().stdout, 'src/new-untracked.ts')).toStrictEqual(['src/new-untracked.ts:2 no-debugger', 'src/new-untracked.ts:3 no-debugger'])
@@ -256,21 +254,19 @@ describe('check on moved files (K-4, q-c7)', () => {
 })
 
 describe('check on deleted files (K-6)', () => {
-  const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, {
-      repo: 'committed',
-      files: {
-        ...checkedPackageFiles(REDUNDANCY),
-        'src/deleted-from-disk.ts': moduleText(exportedConstant('deletedFromDisk'), DEBUGGER_STATEMENT),
-        'src/deleted-by-git.ts': moduleText(exportedConstant('deletedByGit'), DEBUGGER_STATEMENT),
-        'src/kept.ts': moduleText(exportedConstant('kept')),
-      },
-    })
-    project.remove('src/deleted-from-disk.ts')
-    project.git('rm', '--quiet', 'src/deleted-by-git.ts')
-    project.append('src/kept.ts', moduleText(DEBUGGER_STATEMENT))
-    return runCheck(project.dir)
-  })
+  const run = setUpCheckAfterTheAgent(
+    {
+      ...checkedPackageFiles(REDUNDANCY),
+      'src/deleted-from-disk.ts': moduleText(exportedConstant('deletedFromDisk'), DEBUGGER_STATEMENT),
+      'src/deleted-by-git.ts': moduleText(exportedConstant('deletedByGit'), DEBUGGER_STATEMENT),
+      'src/kept.ts': moduleText(exportedConstant('kept')),
+    },
+    (project) => {
+      project.remove('src/deleted-from-disk.ts')
+      project.git('rm', '--quiet', 'src/deleted-by-git.ts')
+      project.append('src/kept.ts', moduleText(DEBUGGER_STATEMENT))
+    },
+  )
 
   it('never reports or counts a deleted file, whether git or the disk deleted it', () => {
     const { exitCode, stdout } = run()
@@ -311,7 +307,7 @@ describe('check in a repo with no commits (K-7, q-c8)', () => {
 })
 
 describe('check with no changed JS or TS file, then with only the config changed (K-1, K-24, K-25, q-c14, q-c17)', () => {
-  const runs = setUpAsyncRunsBeforeTheSuite(async (tempProjects) => {
+  const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const project = createGitProject(tempProjects, {
       repo: 'committed',
       files: { ...checkedPackageFiles(REDUNDANCY), 'README.md': '# A project\n', 'src/a.ts': moduleText(exportedConstant('a')) },
@@ -327,7 +323,7 @@ describe('check with no changed JS or TS file, then with only the config changed
     project.append(CONFIG_FILE, '// A line an agent added.\n')
     const configChanged = runCheck(project.dir)
     return { nothingToCheck, namesSeen, statusBefore, entriesBefore, ...afterNothingToCheck, configChanged }
-  })
+  }, RUNS_IN_THE_BACKGROUND)
 
   it('says there is nothing to check and exits 0 when only a file that is not JS or TS changed (K-1)', () => {
     const { nothingToCheck } = runs()
@@ -372,7 +368,7 @@ describe('what check leaves behind (K-11, K-20)', () => {
     readonly outside: readonly string[]
   }
 
-  const runs = setUpAsyncRunsBeforeTheSuite(async (tempProjects) => {
+  const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const project = createGitProject(tempProjects, {
       repo: 'committed',
       files: { ...checkedPackageFiles(REDUNDANCY, {}, `${APP}/`), [`${APP}/src/committed.ts`]: moduleText(exportedConstant('committed')) },
@@ -420,7 +416,7 @@ describe('what check leaves behind (K-11, K-20)', () => {
     const afterTheSweep = tempConfigsIn(configFolder)
 
     return { clean, findings, interrupted, terminated, engineFailure, sweep, fromALiveProcess, afterTheSweep }
-  })
+  }, RUNS_IN_THE_BACKGROUND)
 
   it.each([
     { kind: 'a clean run', exitCode: EXIT.clean, ran: () => runs().clean },
@@ -436,7 +432,7 @@ describe('what check leaves behind (K-11, K-20)', () => {
 
     expect({
       exitCode: run.exitCode,
-      couldNotRun: run.stderr.startsWith(ESLINT_FAILED),
+      couldNotRun: run.stderr.startsWith(CHECK_ESLINT_FAILED),
       tempConfigSeenInTheConfigFolder,
       leftovers,
     }).toStrictEqual({ exitCode: EXIT.couldNotRun, couldNotRun: true, tempConfigSeenInTheConfigFolder: true, leftovers: [] })
@@ -448,7 +444,7 @@ describe('what check leaves behind (K-11, K-20)', () => {
   ])('exits $exitCode on $signal, says it was interrupted, and leaves no temporary config behind (K-11)', ({ exitCode, ran }) => {
     const { signalled, run, leftovers } = ran()
 
-    expect({ signalled, exitCode: run.exitCode, stderr: run.stderr, leftovers }).toStrictEqual({ signalled: true, exitCode, stderr: INTERRUPTED, leftovers: [] })
+    expect({ signalled, exitCode: run.exitCode, stderr: run.stderr, leftovers }).toStrictEqual({ signalled: true, exitCode, stderr: CHECK_INTERRUPTED, leftovers: [] })
   })
 
   // check-fixes.integration.test.ts covers a signal after check fixed files, which it names.
@@ -481,12 +477,12 @@ describe('what check leaves behind (K-11, K-20)', () => {
 })
 
 describe('two checks started together in one project (K-12)', () => {
-  const runs = setUpAsyncRunsBeforeTheSuite(async (tempProjects) => {
+  const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY) })
     project.write('src/a.ts', moduleText(exportedConstant('a'), DEBUGGER_STATEMENT))
     const both = await Promise.all([checkInTheBackground(project.dir), checkInTheBackground(project.dir)])
     return { both, leftovers: tempConfigsIn(project.dir) }
-  })
+  }, RUNS_IN_THE_BACKGROUND)
 
   it('each exit 1 with the same findings, and leave no temporary config behind', () => {
     const { both, leftovers } = runs()
@@ -641,10 +637,8 @@ describe('check where it cannot run (K-16, q-c2)', () => {
 })
 
 describe('check on a React file in a project that does not install React (K-18, X5)', () => {
-  const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(CORRECTNESS_AND_REACT) })
+  const run = setUpCheckAfterTheAgent(checkedPackageFiles(CORRECTNESS_AND_REACT), (project) => {
     project.write('src/hello.tsx', moduleText(...A_CLEAN_COMPONENT))
-    return runCheck(project.dir)
   })
 
   it('exits 0 with no findings', () => {
@@ -693,17 +687,15 @@ describe('a wrong call (K-19, q-c16)', () => {
 })
 
 describe('check in a monorepo package (K-22, q-c6)', () => {
-  const PACKAGE = 'packages/a'
-
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, {}, `${PACKAGE}/`) })
-    project.write(`${PACKAGE}/src/in-the-package.ts`, moduleText(exportedConstant('inThePackage'), DEBUGGER_STATEMENT))
+    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, {}, `${NESTED_PACKAGE}/`) })
+    project.write(`${NESTED_PACKAGE}/src/in-the-package.ts`, moduleText(exportedConstant('inThePackage'), DEBUGGER_STATEMENT))
     project.write('packages/b/src/in-another-package.ts', moduleText(exportedConstant('inAnotherPackage'), DEBUGGER_STATEMENT))
     project.write('scripts/at-the-root.ts', moduleText(exportedConstant('atTheRoot'), DEBUGGER_STATEMENT))
     return {
-      packageDir: project.pathOf(PACKAGE),
-      fromThePackage: runCheck(project.pathOf(PACKAGE)),
-      fromBelowIt: runCheck(project.pathOf(`${PACKAGE}/src`)),
+      packageDir: project.pathOf(NESTED_PACKAGE),
+      fromThePackage: runCheck(project.pathOf(NESTED_PACKAGE)),
+      fromBelowIt: runCheck(project.pathOf(`${NESTED_PACKAGE}/src`)),
     }
   })
 
@@ -755,15 +747,10 @@ describe('check in a package whose folder, at the repo root, and a changed file 
 })
 
 describe('check on suppression comments (K-14, K-23, q-c15)', () => {
-  const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, {
-      repo: 'committed',
-      files: checkedPackageFiles(REDUNDANCY_AND_MODERN_JS, { fileOverrides: [{ files: ['src/allowed/**'], allowSuppressions: true }] }),
-    })
+  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY_AND_MODERN_JS, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
     project.write('src/allowed/unused.ts', moduleText(...SUPPRESSIONS_TWO_UNUSED))
     project.write('src/banned-unused.ts', moduleText(...A_SUPPRESSION_OF_NOTHING))
     project.write('src/banned-over-a-finding.ts', moduleText(...A_SUPPRESSION_OVER_A_FINDING))
-    return runCheck(project.dir)
   })
 
   it('reports an unused suppression of an ESLint-run rule and of an oxlint-run rule, each once, where suppressions are allowed, and not one that suppressed a finding (K-23)', () => {
@@ -775,7 +762,7 @@ describe('check on suppression comments (K-14, K-23, q-c15)', () => {
       messages: ['src/allowed/unused.ts:2 unused suppression', 'src/allowed/unused.ts:4 unused suppression'].map((finding) => messages.get(finding)),
     }).toStrictEqual({
       findings: ['src/allowed/unused.ts:2 unused suppression', 'src/allowed/unused.ts:4 unused suppression'],
-      messages: ['suppresses no-var, which reported nothing here', 'suppresses no-debugger, which reported nothing here'],
+      messages: [unusedSuppressionMessageOf('no-var'), unusedSuppressionMessageOf('no-debugger')],
     })
   })
 
@@ -789,22 +776,20 @@ describe('check on suppression comments (K-14, K-23, q-c15)', () => {
 })
 
 describe('check on findings spanning lines, and on findings about a whole file (K-26, q-c9)', () => {
-  const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, {
-      repo: 'committed',
-      files: {
-        ...checkedPackageFiles(REDUNDANCY_AND_TESTS),
-        'src/catch-start.ts': moduleText(...GUARDED_BY_FINALLY),
-        'src/catch-inside.ts': moduleText(...RETHROWN_BY_A_USELESS_CATCH),
-        'src/old.test.ts': moduleText(exportedConstant('before'), exportedConstant('unchanged')),
-      },
-    })
-    project.write('src/catch-start.ts', moduleText(...GUARDED_BY_A_USELESS_CATCH))
-    project.write('src/catch-inside.ts', moduleText(...RETHROWN_WITH_A_COMMENT_ADDED))
-    project.write('src/old.test.ts', moduleText(exportedConstant('after'), exportedConstant('unchanged')))
-    project.write('src/fresh.test.ts', moduleText(exportedConstant('nothing')))
-    return runCheck(project.dir)
-  })
+  const run = setUpCheckAfterTheAgent(
+    {
+      ...checkedPackageFiles(REDUNDANCY_AND_TESTS),
+      'src/catch-start.ts': moduleText(...GUARDED_BY_FINALLY),
+      'src/catch-inside.ts': moduleText(...RETHROWN_BY_A_USELESS_CATCH),
+      'src/old.test.ts': moduleText(exportedConstant('before'), exportedConstant('unchanged')),
+    },
+    (project) => {
+      project.write('src/catch-start.ts', moduleText(...GUARDED_BY_A_USELESS_CATCH))
+      project.write('src/catch-inside.ts', moduleText(...RETHROWN_WITH_A_COMMENT_ADDED))
+      project.write('src/old.test.ts', moduleText(exportedConstant('after'), exportedConstant('unchanged')))
+      project.write('src/fresh.test.ts', moduleText(exportedConstant('nothing')))
+    },
+  )
 
   it('keeps a finding spanning several lines whose first line changed', () => {
     expect(findingsInFile(run().stdout, 'src/catch-start.ts')).toStrictEqual(['src/catch-start.ts:4 no-useless-catch'])
@@ -843,19 +828,17 @@ describe('check on findings spanning lines, and on findings about a whole file (
 describe('check on findings oxlint gives at several places, an agent having added the later one (q-c9)', () => {
   // import-x/no-duplicates has a fix, which would rewrite the older import's line: the guard drops
   // it in both files, so the fix step changes nothing here either.
-  const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, {
-      repo: 'committed',
-      files: {
-        ...checkedPackageFiles(CORRECTNESS_AND_MODULES),
-        'src/table.ts': moduleText(...A_TABLE),
-        'src/old-duplicates.ts': moduleText(...A_TABLE_WITH_DUPLICATES_ADDED),
-      },
-    })
-    project.write('src/table.ts', moduleText(...A_TABLE_WITH_DUPLICATES_ADDED))
-    project.append('src/old-duplicates.ts', moduleText(exportedConstant('added')))
-    return runCheck(project.dir)
-  })
+  const run = setUpCheckAfterTheAgent(
+    {
+      ...checkedPackageFiles(CORRECTNESS_AND_MODULES),
+      'src/table.ts': moduleText(...A_TABLE),
+      'src/old-duplicates.ts': moduleText(...A_TABLE_WITH_DUPLICATES_ADDED),
+    },
+    (project) => {
+      project.write('src/table.ts', moduleText(...A_TABLE_WITH_DUPLICATES_ADDED))
+      project.append('src/old-duplicates.ts', moduleText(exportedConstant('added')))
+    },
+  )
 
   it("reports a second import, a duplicate key and a duplicate case an agent added beside the code they repeat, each at the agent's line, and exits 1", () => {
     const { exitCode, stdout } = run()
@@ -872,13 +855,8 @@ describe('check on findings oxlint gives at several places, an agent having adde
 })
 
 describe("check where oxlint refuses an option the team gave a rule (K-16, read-q64)", () => {
-  const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, {
-      repo: 'committed',
-      files: checkedPackageFiles(REDUNDANCY, { rules: { 'no-console': ['error', NO_CONSOLE_OPTION_OXLINT_REFUSES] } }),
-    })
+  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY, { rules: { 'no-console': ['error', NO_CONSOLE_OPTION_OXLINT_REFUSES] } }), (project) => {
     project.write('src/a.ts', moduleText(exportedConstant('a')))
-    return runCheck(project.dir)
   })
 
   it('exits 2 quoting all oxlint printed, the reason included', () => {
@@ -892,14 +870,9 @@ describe("check where oxlint refuses an option the team gave a rule (K-16, read-
 })
 
 describe("check on suppression comments in oxlint's own form (K-23, q-c15)", () => {
-  const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, {
-      repo: 'committed',
-      files: checkedPackageFiles(REDUNDANCY, { fileOverrides: [{ files: ['src/allowed/**'], allowSuppressions: true }] }),
-    })
+  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
     project.write('src/allowed/oxlint-form.ts', moduleText(...OXLINT_FORM_SUPPRESSIONS_ONE_UNUSED))
     project.write('src/banned-oxlint-form.ts', moduleText(...OXLINT_FORM_SUPPRESSIONS_ONE_UNUSED))
-    return runCheck(project.dir)
   })
 
   it('reports the one that suppresses nothing, once, and not the one over a finding, where suppressions are allowed', () => {
@@ -910,7 +883,7 @@ describe("check on suppression comments in oxlint's own form (K-23, q-c15)", () 
       message: findingMessagesIn(stdout).get('src/allowed/oxlint-form.ts:2 unused suppression'),
     }).toStrictEqual({
       findings: ['src/allowed/oxlint-form.ts:2 unused suppression'],
-      message: 'suppresses no-debugger, which reported nothing here',
+      message: unusedSuppressionMessageOf('no-debugger'),
     })
   })
 
@@ -923,14 +896,12 @@ describe("check on suppression comments in oxlint's own form (K-23, q-c15)", () 
 })
 
 describe('check counting the changed files outside its config folder (K-22, q-c6)', () => {
-  const PACKAGE = 'packages/a'
-
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, {}, `${PACKAGE}/`) })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, {}, `${NESTED_PACKAGE}/`) })
     project.write('README.md', moduleText(DEBUGGER_STATEMENT))
     project.write('packages/b/settings.json', `${JSON.stringify({ debugger: true })}\n`)
     project.write('scripts/at-the-root.ts', moduleText(exportedConstant('atTheRoot')))
-    return { packageDir: project.pathOf(PACKAGE), result: runCheck(project.pathOf(PACKAGE)) }
+    return { packageDir: project.pathOf(NESTED_PACKAGE), result: runCheck(project.pathOf(NESTED_PACKAGE)) }
   })
 
   it('notes the JS and TS files among them alone, and has nothing to check in its folder', () => {
@@ -946,21 +917,13 @@ describe('check counting the changed files outside its config folder (K-22, q-c6
 })
 
 describe('check on block suppression comments, and on enable comments that turn back on nothing (K-23, q-c10, q-c15)', () => {
-  const ALLOWED = { fileOverrides: [{ files: ['src/allowed/**'], allowSuppressions: true }] }
-  const UNUSED_NO_DEBUGGER = 'suppresses no-debugger, which reported nothing here'
-
-  const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, {
-      repo: 'committed',
-      files: { ...checkedPackageFiles(REDUNDANCY, ALLOWED), 'src/legacy.ts': moduleText(...AN_ENABLE_CLOSING_NOTHING) },
-    })
+  const run = setUpCheckAfterTheAgent({ ...checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), 'src/legacy.ts': moduleText(...AN_ENABLE_CLOSING_NOTHING) }, (project) => {
     project.write('src/legacy.ts', moduleText(...AN_ENABLE_CLOSING_NOTHING_WITH_A_DEBUGGER_ADDED))
     project.write('src/allowed/stray-enables.ts', moduleText(...ENABLES_CLOSING_NOTHING_ABOVE_A_DEBUGGER))
     project.write('src/allowed/eslint-open.ts', moduleText(blockDisable('eslint', 'no-debugger'), exportedConstant('open')))
     project.write('src/allowed/eslint-pair.ts', moduleText(...noDebuggerPairAround('eslint', exportedConstant('eslintPair'))))
     project.write('src/allowed/oxlint-pair.ts', moduleText(...noDebuggerPairAround('oxlint', exportedConstant('oxlintPair'))))
     project.write('src/allowed/pair-over-a-finding.ts', moduleText(...noDebuggerPairAround('eslint', DEBUGGER_STATEMENT)))
-    return runCheck(project.dir)
   })
 
   it('reports the finding an agent added below a committed enable comment that turns back on nothing, and no parse error, where suppressions are banned', () => {
@@ -982,7 +945,7 @@ describe('check on block suppression comments, and on enable comments that turn 
       findings: ['src/allowed/eslint-open.ts', 'src/allowed/eslint-pair.ts', 'src/allowed/oxlint-pair.ts'].flatMap((file) => findingsInFile(stdout, file)),
       messages: unused.map((finding) => messages.get(finding)),
       overAFinding: findingsInFile(stdout, 'src/allowed/pair-over-a-finding.ts'),
-    }).toStrictEqual({ findings: unused, messages: unused.map(() => UNUSED_NO_DEBUGGER), overAFinding: [] })
+    }).toStrictEqual({ findings: unused, messages: unused.map(() => unusedSuppressionMessageOf('no-debugger')), overAFinding: [] })
   })
 })
 
@@ -990,16 +953,13 @@ describe('check on unused pairs beside comment-like text in a string or a templa
   // Text that looks like a comment inside a string is no comment (cli review, r14). Read as one, it
   // made check refuse the whole run (exit 2), hiding the finding in src/other.ts, or report a pair
   // at the string's line, where ESLint does not, so that it went unreported.
-  const ALLOWED = { fileOverrides: [{ files: ['src/allowed/**'], allowSuppressions: true }] }
 
-  const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, ALLOWED) })
+  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
     project.write('src/allowed/string.ts', moduleText(...A_PAIR_AROUND_A_STRING_HOLDING_AN_ENABLE))
     project.write('src/allowed/template.ts', moduleText(...A_PAIR_AROUND_A_TEMPLATE_HOLDING_AN_ENABLE))
     project.write('src/allowed/string-before.ts', moduleText(...A_PAIR_BELOW_A_STRING_HOLDING_A_DISABLE))
     project.write('src/allowed/no-string.ts', moduleText(...A_PAIR_BELOW_A_STRING_HOLDING_NO_COMMENT))
     project.write('src/other.ts', moduleText(exportedConstant('other'), DEBUGGER_STATEMENT))
-    return runCheck(project.dir)
   })
 
   it('reports each pair once, at its disable comment, as it does the pair below a string with no comment text, beside the finding in another file, and exits 1', () => {
@@ -1026,7 +986,6 @@ describe('check where another writer moves a partly unused suppression comment d
   // the whole run (exit 2), hiding the finding in src/other.ts. The pairing never refuses the run
   // (decided 2026-10-15): the moved comment goes unreported in this run, in either form, and the next
   // run reports it where it is now. Here the writer writes as oxlint's lint run ends, every time.
-  const ALLOWED = { fileOverrides: [{ files: ['src/allowed/**'], allowSuppressions: true }] }
   const MOVED = [
     { file: 'src/allowed/eslint-moved.ts', form: 'eslint' },
     { file: 'src/allowed/oxlint-moved.ts', form: 'oxlint' },
@@ -1035,14 +994,13 @@ describe('check where another writer moves a partly unused suppression comment d
     { file: 'src/allowed/eslint-in-place.ts', form: 'eslint' },
     { file: 'src/allowed/oxlint-in-place.ts', form: 'oxlint' },
   ] as const
-  const UNUSED_NO_CONSOLE = 'suppresses no-console, which reported nothing here'
 
   function writersTextOf(form: SuppressionForm): string {
     return moduleText(...movedDownByAnotherWriter(aSuppressionPartlyUnused(form)))
   }
 
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, ALLOWED) })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED) })
     const partlyUnused = [...MOVED, ...IN_PLACE]
     partlyUnused.forEach(({ file, form }) => project.write(file, moduleText(...aSuppressionPartlyUnused(form))))
     project.write('src/other.ts', moduleText(exportedConstant('other'), DEBUGGER_STATEMENT))
@@ -1064,7 +1022,7 @@ describe('check where another writer moves a partly unused suppression comment d
       exitCode: EXIT.findings,
       stderr: '',
       findings: ['src/allowed/eslint-in-place.ts:2 unused suppression', 'src/allowed/oxlint-in-place.ts:2 unused suppression', 'src/other.ts:2 no-debugger'],
-      inPlaceMessages: [UNUSED_NO_CONSOLE, UNUSED_NO_CONSOLE],
+      inPlaceMessages: [unusedSuppressionMessageOf('no-console'), unusedSuppressionMessageOf('no-console')],
       movedNow: MOVED.map(({ form }) => writersTextOf(form)),
     })
   })

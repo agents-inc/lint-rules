@@ -4,8 +4,7 @@
 // ESLint part into an empty team config. Prints `{ "mergeMs": … }` as JSON.
 //
 //   node merge-timing-process.ts <dist dir> <lint rules JSON>
-import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { builtEntry } from './built-entries.ts'
 
 const [distDir, lintRulesJson] = process.argv.slice(2)
 if (distDir === undefined || lintRulesJson === undefined) throw new Error('usage: merge-timing-process.ts <dist dir> <lint rules JSON>')
@@ -18,7 +17,3 @@ const start = performance.now()
 // The project lists no oxlint, so it has no oxlint config to name.
 eslintEntry.mergeEslintConfig([], eslint, { oxlintConfig: null })
 process.stdout.write(JSON.stringify({ mergeMs: Math.round(performance.now() - start) }))
-
-function builtEntry(dist: string, file: string): string {
-  return pathToFileURL(join(dist, file)).href
-}

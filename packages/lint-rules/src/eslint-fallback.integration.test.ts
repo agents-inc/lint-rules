@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { catalog, pluginPrefixOf, type RuleRoute } from '@workspace/rule-data'
+import { catalog, pluginPrefixOf, routeOf, type RuleRoute } from '@workspace/rule-data'
+import { ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON } from '@workspace/rule-data/test-support/routed-to-eslint-for-a-reason'
 import type { OxlintConfig } from 'oxlint'
 import { describe, expect, it } from 'vitest'
-import { ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON } from '../../rule-data/src/__tests__/cases/routed-to-eslint-for-a-reason.ts'
 import { agentConfigsOf } from './__tests__/agent-configs.ts'
 import { type EngineRun, setUpEngineRun } from './__tests__/engine-run.ts'
 import {
@@ -19,7 +19,6 @@ import { buildEditorBuild } from './__tests__/factories/engine-build-factories.t
 import { buildEveryRulesetLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
-import { routeOf } from './core/catalog-lookups.ts'
 import { defineLintRules } from './index.ts'
 
 // Without oxlint, the ESLint part takes over each shipped oxlint-run rule ESLint has a version

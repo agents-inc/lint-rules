@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { oxlintPartOf } from './__tests__/agent-configs.ts'
 import {
   buildConsumerLintRulesWithoutAgentRulesets,
   buildConsumerLintRulesWithoutEditorRulesets,
@@ -7,7 +8,7 @@ import {
   buildEveryRulesetLintRules,
   EMPTY_TSCONFIG_ROOT_DIR,
 } from './__tests__/factories/lint-rules-factories.ts'
-import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
+import { buildPackageJsonListingOxlint, createProjectListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildTeamOxlintConfig } from './__tests__/factories/team-config-factories.ts'
 import { NO_TEAM_ESLINT_CONFIG, NO_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
@@ -73,7 +74,7 @@ describe('an error in agents-inc.lint.mts', () => {
 // problem (fix round 3's review, break V2-1).
 describe('tsconfigRootDir in agents-inc.lint.mts', () => {
   const tempProjects = setUpTempProjects()
-  const projectDir = tempProjects.create({ files: { [PACKAGE_JSON]: packageJsonText(buildPackageJsonListingOxlint()) } })
+  const projectDir = createProjectListingOxlint(tempProjects)
   const refusedValues = [
     { value: '.', refused: 'as a relative path to a folder', reason: 'is not an absolute path' },
     { value: join(projectDir, 'no-such-folder'), refused: 'as an absolute path to nothing', reason: 'does not exist' },
@@ -167,9 +168,8 @@ describe("a part handed to the other engine's merge", () => {
 
   /** Both parts of a project whose package.json lists oxlint, the oxlint one checked present. */
   function bothParts() {
-    const { eslint, oxlint } = defineLintRules(buildEveryRulesetLintRules(projectWithOxlint)).editorRulesets
-    if (oxlint === undefined) throw new Error('a project whose package.json lists oxlint got no oxlint part')
-    return { eslint, oxlint }
+    const parts = defineLintRules(buildEveryRulesetLintRules(projectWithOxlint)).editorRulesets
+    return { eslint: parts.eslint, oxlint: oxlintPartOf(parts) }
   }
 
   it('is refused by mergeEslintConfig when it is the oxlint part, the error naming eslint.config.mjs', () => {

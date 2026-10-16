@@ -97,7 +97,7 @@ const ALLOWED_WITHOUT_OXLINT: SuppressionSettings = { ...ALLOWED, hooksSuppressi
 
 const NO_RULESETS = { quality: [], libs: {}, runtimes: [] }
 
-const { calculatedConfigFor } = setUpEslintConfigOracle()
+const { lintedConfigFor } = setUpEslintConfigOracle()
 const tempProjects = setUpTempProjects()
 
 /** A project whose package.json lists oxlint, with the installed oxlint resolving from it. */
@@ -120,7 +120,7 @@ function editorConfigsFor(lintRules: LintRules, teamEslintConfig: Linter.Config[
 }
 
 async function suppressionSettingsFor(configs: BuiltConfigs, file: string): Promise<SuppressionSettings> {
-  const calculated = await eslintCalculatedConfigFor(configs.eslint, file)
+  const calculated = await lintedConfigFor(configs.eslint, file)
   return {
     suppressionBan: calculatedSeverityOf(calculated, 'house/no-suppressions'),
     eslintReadsDirectives: readsDirectives(calculated),
@@ -159,12 +159,6 @@ function routeOf(ruleId: string): RuleRoute {
   const route = catalog.rules.get(ruleId)
   if (route === undefined) throw new Error(`${ruleId} is not in the catalog`)
   return route
-}
-
-async function eslintCalculatedConfigFor(config: Linter.Config[], file: string): Promise<Linter.Config> {
-  const calculated = await calculatedConfigFor(config, file)
-  if (calculated === undefined) throw new Error(`ESLint does not lint ${file}`)
-  return calculated
 }
 
 function calculatedEntryOf({ rules }: Linter.Config, ruleId: string): unknown {

@@ -24,6 +24,14 @@ export function buildTsconfigListingNodeTypes(fields: Partial<Omit<Tsconfig, 'co
   return { compilerOptions: { ...CONSUMER_COMPILER_OPTIONS, types: ['node'] }, ...fields }
 }
 
+// As a monorepo package built by a bundler writes it: imports name no extension.
+const BUNDLER_COMPILER_OPTIONS = { target: 'ES2022', module: 'esnext', moduleResolution: 'bundler', strict: true, noEmit: true, skipLibCheck: true }
+
+/** A monorepo package's tsconfig.json, built by a bundler, with the compiler options given after the bundler's and the folders given: src unless given. */
+export function buildBundlerTsconfig(compilerOptions: Readonly<Record<string, unknown>> = {}, include: readonly string[] = ['src']): Tsconfig {
+  return buildTsconfig({ compilerOptions: { ...BUNDLER_COMPILER_OPTIONS, ...compilerOptions }, include })
+}
+
 /** A tsconfig.json extending shared configs, by one path or several (TypeScript 5.0+). */
 type TsconfigExtending = Partial<Tsconfig> & { readonly extends: string | readonly string[] }
 

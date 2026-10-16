@@ -1,5 +1,7 @@
+import { buildPublishedPackageJson } from '../factories/monorepo-package-factories.ts'
+import { jsonFileText } from '../factories/team-config-file-factories.ts'
 import type { RuleByItsNames } from '../findings-beside-the-team.ts'
-import { buildTsconfig } from '../factories/tsconfig-factories.ts'
+import { buildBundlerTsconfig } from '../factories/tsconfig-factories.ts'
 import type { ProjectFiles } from '../temp-projects.ts'
 
 // Imports eslint-plugin-n 18.4.1 cannot resolve, in publishable packages of a monorepo (decisions.md,
@@ -33,15 +35,10 @@ import type { ProjectFiles } from '../temp-projects.ts'
 /** Every package's devDependency the rule must report, as packages/ui's `@repo/api-mocks` was in real run 3. */
 const DEV_DEPENDENCY = '@repo/api-mocks'
 
-function manifestText(name: string): string {
-  return `${JSON.stringify({ name, version: '0.0.0', files: ['src'], devDependencies: { [DEV_DEPENDENCY]: '*' } }, null, 2)}\n`
+/** The package's package.json: published, and listing DEV_DEPENDENCY under devDependencies. */
+function manifestText(packageName: string): string {
+  return jsonFileText({ ...buildPublishedPackageJson(packageName), devDependencies: { [DEV_DEPENDENCY]: '*' } })
 }
-
-function jsonText(value: unknown): string {
-  return `${JSON.stringify(value, null, 2)}\n`
-}
-
-const COMPILER_OPTIONS = { target: 'ES2022', module: 'esnext', moduleResolution: 'bundler', strict: true, noEmit: true, skipLibCheck: true }
 
 // The alias to the published src (1), the alias to the unpublished scripts folder (2), the devDependency (3).
 const USES_THE_ALIAS_FROM_JS = `import { util } from '@/util'
@@ -118,41 +115,41 @@ const IMPORTERS_OF_ALIASES_NAMED_LIKE_PACKAGES = {
 
 /** The seven packages' files, under packages/ of the project's root. */
 export const unresolvableImportFiles: ProjectFiles = {
-  'packages/js-in-ts/package.json': manifestText('@repo/js-in-ts'),
-  'packages/js-in-ts/tsconfig.json': jsonText(
-    buildTsconfig({ compilerOptions: { ...COMPILER_OPTIONS, allowJs: true, paths: { '@/*': ['./src/*'], '#scripts/*': ['./scripts/*'] } }, include: ['src', 'scripts'] }),
+  'packages/js-in-ts/package.json': manifestText('js-in-ts'),
+  'packages/js-in-ts/tsconfig.json': jsonFileText(
+    buildBundlerTsconfig({ allowJs: true, paths: { '@/*': ['./src/*'], '#scripts/*': ['./scripts/*'] } }, ['src', 'scripts']),
   ),
   'packages/js-in-ts/src/util.js': 'export const util = 1\n',
   'packages/js-in-ts/scripts/build.js': 'export const build = 1\n',
   [UNRESOLVABLE_IMPORTERS.jsFileThroughTsconfigAlias]: USES_THE_ALIAS_FROM_JS,
-  'packages/vite-app/package.json': manifestText('@repo/vite-app'),
-  'packages/vite-app/tsconfig.json': jsonText({ files: [], references: [{ path: './tsconfig.app.json' }, { path: './tsconfig.node.json' }] }),
-  'packages/vite-app/tsconfig.app.json': jsonText(buildTsconfig({ compilerOptions: { ...COMPILER_OPTIONS, paths: { '@/*': ['./src/*'] } }, include: ['src'] })),
-  'packages/vite-app/tsconfig.node.json': jsonText(buildTsconfig({ compilerOptions: COMPILER_OPTIONS, include: ['vite.config.ts'] })),
+  'packages/vite-app/package.json': manifestText('vite-app'),
+  'packages/vite-app/tsconfig.json': jsonFileText({ files: [], references: [{ path: './tsconfig.app.json' }, { path: './tsconfig.node.json' }] }),
+  'packages/vite-app/tsconfig.app.json': jsonFileText(buildBundlerTsconfig({ paths: { '@/*': ['./src/*'] } })),
+  'packages/vite-app/tsconfig.node.json': jsonFileText(buildBundlerTsconfig({}, ['vite.config.ts'])),
   'packages/vite-app/src/story.ts': 'export const story = 1\n',
   [UNRESOLVABLE_IMPORTERS.tsFileThroughAppTsconfigAlias]: USES_THE_APP_ALIAS,
-  'packages/js-only/package.json': manifestText('@repo/js-only'),
-  'packages/js-only/jsconfig.json': jsonText({ compilerOptions: { paths: { '@/*': ['./src/*'] } }, include: ['src'] }),
+  'packages/js-only/package.json': manifestText('js-only'),
+  'packages/js-only/jsconfig.json': jsonFileText({ compilerOptions: { paths: { '@/*': ['./src/*'] } }, include: ['src'] }),
   'packages/js-only/src/util.js': 'export const util = 1\n',
   [UNRESOLVABLE_IMPORTERS.jsFileThroughJsconfigAlias]: USES_THE_JSCONFIG_ALIAS,
-  'packages/kit-app/package.json': manifestText('@repo/kit-app'),
+  'packages/kit-app/package.json': manifestText('kit-app'),
   [UNRESOLVABLE_IMPORTERS.kitVirtualModule]: USES_A_KIT_MODULE,
   [UNRESOLVABLE_IMPORTERS.virtualPrefix]: USES_A_VIRTUAL_PREFIX,
-  'packages/cjs-in-ts/package.json': manifestText('@repo/cjs-in-ts'),
-  'packages/cjs-in-ts/tsconfig.json': jsonText(buildTsconfig({ compilerOptions: { ...COMPILER_OPTIONS, allowJs: true, paths: { '@/*': ['./src/*'] } }, include: ['src', 'scripts'] })),
+  'packages/cjs-in-ts/package.json': manifestText('cjs-in-ts'),
+  'packages/cjs-in-ts/tsconfig.json': jsonFileText(buildBundlerTsconfig({ allowJs: true, paths: { '@/*': ['./src/*'] } }, ['src', 'scripts'])),
   'packages/cjs-in-ts/src/util.cjs': 'module.exports = { util: 1 }\n',
   'packages/cjs-in-ts/scripts/build.cjs': 'module.exports = { build: 1 }\n',
   [UNRESOLVABLE_IMPORTERS.cjsFileThroughTsconfigAlias]: REQUIRES_THROUGH_THE_ALIAS,
-  'packages/js-tilde/package.json': manifestText('@repo/js-tilde'),
-  'packages/js-tilde/tsconfig.json': jsonText(
-    buildTsconfig({ compilerOptions: { ...COMPILER_OPTIONS, allowJs: true, paths: { '~/*': ['./src/*'], 'components/*': ['./src/components/*'] } }, include: ['src'] }),
+  'packages/js-tilde/package.json': manifestText('js-tilde'),
+  'packages/js-tilde/tsconfig.json': jsonFileText(
+    buildBundlerTsconfig({ allowJs: true, paths: { '~/*': ['./src/*'], 'components/*': ['./src/components/*'] } }),
   ),
   'packages/js-tilde/src/util.js': 'export const util = 1\n',
   'packages/js-tilde/src/components/button.js': 'export const button = 1\n',
   [IMPORTERS_OF_ALIASES_NAMED_LIKE_PACKAGES.jsFileThroughTsconfigAliases]: USES_ALIASES_NAMED_LIKE_PACKAGES,
-  'packages/ts-base-url/package.json': manifestText('@repo/ts-base-url'),
+  'packages/ts-base-url/package.json': manifestText('ts-base-url'),
   // TypeScript 6 refuses baseUrl as deprecated unless told to ignore it, as a project still using it is.
-  'packages/ts-base-url/tsconfig.json': jsonText(buildTsconfig({ compilerOptions: { ...COMPILER_OPTIONS, baseUrl: 'src', ignoreDeprecations: '6.0' }, include: ['src'] })),
+  'packages/ts-base-url/tsconfig.json': jsonFileText(buildBundlerTsconfig({ baseUrl: 'src', ignoreDeprecations: '6.0' })),
   'packages/ts-base-url/src/utils/format.ts': 'export const format = 1\n',
   [IMPORTERS_OF_ALIASES_NAMED_LIKE_PACKAGES.tsFileThroughBaseUrl]: USES_THE_BASE_URL,
 }

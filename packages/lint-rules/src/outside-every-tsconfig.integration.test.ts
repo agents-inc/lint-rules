@@ -8,7 +8,7 @@ import { buildEditorBuild } from './__tests__/factories/engine-build-factories.t
 import { buildEveryRulesetLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOthers, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildTsconfig, type Tsconfig } from './__tests__/factories/tsconfig-factories.ts'
-import { type ProjectFiles, setUpTempProjects } from './__tests__/temp-projects.ts'
+import { BUILT_DIST_DIR, type ProjectFiles, setUpTempProjects } from './__tests__/temp-projects.ts'
 import { defineLintRules } from './index.ts'
 
 // Spec C3, criterion C-5: a TS file no tsconfig takes in gets no typed rule, so it gets no fatal
@@ -31,7 +31,6 @@ type StrayLayout = { readonly layout: string; readonly tsconfig: Tsconfig; reado
 /** The merge in a process of its own: how long it took, or null where it was stopped at the ceiling. */
 type MergeTiming = { readonly mergeMs: number | null }
 
-const DIST_DIR = fileURLToPath(new URL('../dist', import.meta.url))
 const MERGE_TIMING_PROCESS = fileURLToPath(new URL('./__tests__/merge-timing-process.ts', import.meta.url))
 const STRAY_COUNT = 1000
 // The target is a merge under 2 s at a thousand such files (review, Must fix 2). The ceiling is ten
@@ -143,7 +142,7 @@ describe('mergeEslintConfig, without oxlint, in a project with a thousand TS fil
 
   function timedMerge(projectDir: string): MergeTiming {
     const lintRulesJson = JSON.stringify(buildEveryRulesetLintRules(projectDir))
-    const { status, stdout, stderr, signal } = spawnSync(process.execPath, [MERGE_TIMING_PROCESS, DIST_DIR, lintRulesJson], {
+    const { status, stdout, stderr, signal } = spawnSync(process.execPath, [MERGE_TIMING_PROCESS, BUILT_DIST_DIR, lintRulesJson], {
       encoding: 'utf8',
       timeout: PROCESS_CEILING_MS,
     })

@@ -1,7 +1,7 @@
 import { type Catalog, pluginPrefixOf, type RuleRoute } from '@workspace/rule-data'
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
+import { typescriptEslintExtensions } from '@workspace/rule-data/test-support/typescript-eslint-extensions'
 import { builtinRules } from 'eslint/use-at-your-own-risk'
-import { typescriptEslintExtensions } from '../../../rule-data/src/__tests__/typescript-eslint-extensions.ts'
 
 /** A rule an editor part states and a twin of it, which a team's config may run beside it. */
 export type TwinPair = { readonly ours: string; readonly theirs: string }

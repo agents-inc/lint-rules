@@ -1,11 +1,11 @@
-import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { OxlintConfig } from 'oxlint'
 import { isRecord } from '../core/is-record.ts'
-import { setUpRunsBeforeTheSuite } from './consumer-cli-runs.ts'
 import { CONSUMER_CONFIG_FILES } from './factories/consumer-project-factories.ts'
-import { INSTALLED_OXLINT, type LinkedPackage, type ProjectFiles, THIS_PACKAGE } from './temp-projects.ts'
+import { runNodeScript } from './node-process.ts'
+import { setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
+import { BUILT_DIST_DIR, INSTALLED_OXLINT, type LinkedPackage, type ProjectFiles, THIS_PACKAGE } from './temp-projects.ts'
 
 /** What the merges in one process gave: each merged config, in order, or the message of the first that threw. */
 export type OxlintMergesOutcome = { readonly merged: readonly OxlintConfig[] } | { readonly refused: string }
@@ -17,7 +17,6 @@ export type OxlintMerges = { readonly theirs: OxlintConfig; readonly eslintConfi
 export type OxlintMergesRun = { readonly projectDir: string; readonly outcome: OxlintMergesOutcome }
 
 const MERGES_PROCESS = fileURLToPath(new URL('./oxlint-merges-process.ts', import.meta.url))
-const DIST_DIR = fileURLToPath(new URL('../../dist', import.meta.url))
 
 /**
  * Makes the project before the suite, with the built package, oxlint and each package the team's
@@ -45,11 +44,10 @@ export function mergedConfigsOf({ projectDir, outcome }: OxlintMergesRun): reado
 
 function oxlintMergesIn(projectDir: string, { theirs, eslintConfig, times }: OxlintMerges): OxlintMergesOutcome {
   const lintRulesModule = join(projectDir, CONSUMER_CONFIG_FILES.lintRules)
-  const { status, stdout, stderr } = spawnSync(process.execPath, [MERGES_PROCESS, DIST_DIR, lintRulesModule, JSON.stringify(theirs), eslintConfig, String(times)], {
+  const stdout = runNodeScript(MERGES_PROCESS, [BUILT_DIST_DIR, lintRulesModule, JSON.stringify(theirs), eslintConfig, String(times)], {
     cwd: projectDir,
-    encoding: 'utf8',
+    whatFailed: `the merges process failed in ${projectDir}`,
   })
-  if (status !== 0) throw new Error(`the merges process failed in ${projectDir} (exit ${String(status)}): ${stderr}`)
   return outcomePrinted(JSON.parse(stdout))
 }
 

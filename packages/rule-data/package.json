@@ -10,11 +10,15 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./collections": "./src/collections.ts",
     "./consumer-config-files": "./src/consumer-config-files.ts",
     "./eslint-plugins": "./src/eslint-plugins.ts",
+    "./generated/inventory.json": "./src/generated/inventory.json",
     "./oxlint-file-types": "./src/oxlint-file-types.ts",
     "./oxlint-refused-options": "./src/oxlint-refused-options.ts",
-    "./rule-id-parts": "./src/rule-id-parts.ts"
+    "./rule-id-parts": "./src/rule-id-parts.ts",
+    "./test-support/routed-to-eslint-for-a-reason": "./src/__tests__/cases/routed-to-eslint-for-a-reason.ts",
+    "./test-support/typescript-eslint-extensions": "./src/__tests__/typescript-eslint-extensions.ts"
   },
   "dependencies": {
     "@eslint-react/eslint-plugin": "5.26.5",

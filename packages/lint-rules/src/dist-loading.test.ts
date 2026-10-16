@@ -1,12 +1,12 @@
-import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { buildEveryRulesetLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
+import { runNodeScript } from './__tests__/node-process.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
+import { BUILT_DIST_DIR, INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
 
 // The parts are data, so a team's oxlint config, which imports agents-inc.lint.mts and our
 // oxlint merge, loads nothing of ESLint's side; only importing the ESLint merge entry loads the
@@ -17,7 +17,6 @@ allowEveryTestForParallelLoad()
 
 type Step = 'oxlint-side' | 'eslint-entry'
 
-const DIST_DIR = fileURLToPath(new URL('../dist', import.meta.url))
 const RECORDER = fileURLToPath(new URL('./__tests__/record-resolved-modules.ts', import.meta.url))
 const RECORD_FILE = 'resolved-modules.json'
 const ESLINT_SIDE_PACKAGE =
@@ -46,10 +45,7 @@ function modulesResolvedBy(step: Step): string[] {
   const recordDir = tempProjects.create({})
   const recordFile = join(recordDir, RECORD_FILE)
   const lintRulesJson = JSON.stringify(buildEveryRulesetLintRules(PROJECT_WITH_OXLINT))
-  const { status, stderr } = spawnSync(process.execPath, [RECORDER, recordFile, DIST_DIR, step, lintRulesJson], {
-    encoding: 'utf8',
-  })
-  if (status !== 0) throw new Error(`the recorder failed at ${step} (exit ${String(status)}): ${stderr}`)
+  runNodeScript(RECORDER, [recordFile, BUILT_DIST_DIR, step, lintRulesJson], { whatFailed: `the recorder failed at ${step}` })
   // Parse boundary: the recorder's own output.
   return JSON.parse(readFileSync(recordFile, 'utf8')) as string[]
 }

@@ -1,4 +1,4 @@
-// Imported into every Node process a check run starts, never by a test: git-projects.ts's
+// Imported into every Node process a check run starts, never by a test: cli-runs.ts's
 // oxlintHoldingOnAfterAStop puts it in NODE_OPTIONS, as another-writer-as-oxlint-lint-run-ends.mjs is
 // put there. In oxlint's fix run (its arguments hold `--fix`), it holds the process open for a while
 // once oxlint is done, and has the SIGTERM check's stop sends mark a file instead of ending the
@@ -7,7 +7,7 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-// Set by git-projects.ts, under the same name there: JSON, `{ holding, askedToStop }`, two paths.
+// Set by cli-runs.ts, under the same name there: JSON, `{ holding, askedToStop }`, two paths.
 const MARKERS_VARIABLE = 'AGENTS_INC_TEST_OXLINT_HOLDING_ON'
 const OXLINT_BIN = join('oxlint', 'bin', 'oxlint')
 const FIX_FLAG = '--fix'

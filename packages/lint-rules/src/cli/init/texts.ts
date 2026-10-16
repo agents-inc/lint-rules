@@ -1,10 +1,8 @@
 // Every line `init` prints (spec-cli.md "I: init", "Output"; q-i3, q-i5, q-i8, q-i9, P7).
 
-const COMMAND = 'init'
-const COULD_NOT_RUN = `${COMMAND}: could not run: `
-const NOTE = `${COMMAND}: note: `
+import { noteLine } from '../command-lines.ts'
 
-export const INTERRUPTED = `${COMMAND}: interrupted`
+const COMMAND = 'init'
 
 /** The runner and install command of a package manager (q-i5). */
 export type PackageManagerCommands = { readonly install: string; readonly runner: string }
@@ -28,12 +26,15 @@ export function initStdoutLines(entry: EntryWritten, packageName: string, config
 
 /** q-i8: init still writes outside git, and says check will need it. */
 export function outsideGitNote(folder: string): string {
-  return `${NOTE}${folder} is not in a git repository, and check needs one.`
+  return noteLine(COMMAND, `${folder} is not in a git repository, and check needs one.`)
 }
 
 /** q-i9: the file reads import.meta.dirname, which TypeScript types only with @types/node. */
 export function typesNodeNote(configFile: string): string {
-  return `${NOTE}${configFile} reads import.meta.dirname, which TypeScript knows only from @types/node. If your tsconfig includes the file, add @types/node to devDependencies.`
+  return noteLine(
+    COMMAND,
+    `${configFile} reads import.meta.dirname, which TypeScript knows only from @types/node. If your tsconfig includes the file, add @types/node to devDependencies.`,
+  )
 }
 
 /** q-i1: exit 1, and nothing changed. */
@@ -52,9 +53,4 @@ export function notAnObject(path: string, field: string): string {
 /** A write failed and init put back what it wrote before it. */
 export function nothingWritten(reason: string): string {
   return `${reason}. Nothing was changed.`
-}
-
-/** Why init could not run, on stderr: its exit code is EXIT_COULD_NOT_RUN. */
-export function couldNotRun(reason: string): string {
-  return `${COULD_NOT_RUN}${reason}`
 }

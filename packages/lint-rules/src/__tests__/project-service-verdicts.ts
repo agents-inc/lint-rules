@@ -1,7 +1,7 @@
-import { spawnSync } from 'node:child_process'
 import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { runNodeScript } from './node-process.ts'
 
 const VERDICTS_PROCESS = fileURLToPath(new URL('project-service-verdicts-process.ts', import.meta.url))
 const TS_FILE = /\.(?:ts|mts|cts|tsx)$/u
@@ -24,12 +24,11 @@ export function tsFilesUnder(root: string): string[] {
  * The real service decides, in a process of its own, so this is what a lint run sees.
  */
 export function tsFilesTheProjectServiceFindsNoProjectFor(tsconfigRootDir: string): string[] {
-  const { status, stdout, stderr } = spawnSync(process.execPath, [VERDICTS_PROCESS, tsconfigRootDir, ...tsFilesUnder(tsconfigRootDir)], {
+  const stdout = runNodeScript(VERDICTS_PROCESS, [tsconfigRootDir, ...tsFilesUnder(tsconfigRootDir)], {
     cwd: tsconfigRootDir,
-    encoding: 'utf8',
-    timeout: VERDICTS_TIMEOUT_MS,
+    timeoutMs: VERDICTS_TIMEOUT_MS,
+    whatFailed: `the project service verdicts for ${tsconfigRootDir} failed`,
   })
-  if (status !== 0) throw new Error(`the project service verdicts for ${tsconfigRootDir} failed (exit ${String(status)}): ${stderr}`)
   // Parse boundary: the verdicts process prints a JSON array of paths.
   return (JSON.parse(stdout) as string[]).toSorted()
 }

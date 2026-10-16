@@ -1,7 +1,12 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { initConfigText } from '../../cli/init/config-text.ts'
+import type { FileWrite } from '../../cli/init/write-all-or-none.ts'
 import type { LintRules } from '../../index.ts'
+import { entriesUnder } from '../temp-projects.ts'
+import { CONFIG_FILE, exportedConstant, moduleText, PACKAGE_JSON_FILE } from './check-factories.ts'
 import { EVERY_RULESET } from './lint-rules-factories.ts'
-import { lintRulesPackageVersion } from './package-json-factories.ts'
+import { buildPackageJson, lintRulesPackageVersion, packageJsonText } from './package-json-factories.ts'
 
 /** A ruleset definition as init reads it: rule-data's, with whether it is opt-in (X1). */
 export type InitRulesetDefinition = Parameters<typeof initConfigText>[0][number]
@@ -38,6 +43,18 @@ export type PackageJsonObject = { readonly [key: string]: PackageJsonValue }
 export const OUR_PACKAGE = '@agents-inc/lint-rules'
 export const OUR_RANGE = `^${lintRulesPackageVersion()}`
 
+/** package.json before init's edit, and after it. */
+export const PACKAGE_JSON_BEFORE_INIT = packageJsonText(buildPackageJson())
+export const PACKAGE_JSON_AFTER_INIT = packageJsonText(buildPackageJson({ devDependencies: { [OUR_PACKAGE]: OUR_RANGE } }))
+/** A config file as init writes it, for a test of how init writes, not of what. */
+export const CONFIG_INIT_WRITES = moduleText(exportedConstant('writtenByInit'))
+
+/** Which of init's two writes comes first. */
+export type InitWriteOrder = 'package.json first' | 'config first'
+
+/** What a project holds once init's writes ended: its entries, and package.json's text. */
+export type InitFilesState = { readonly entries: readonly string[]; readonly packageJson: string }
+
 /** The `ignores` init writes (q-i7, q77, P6): the gate's list and common generated files, in the `**\/` form. */
 export const INIT_IGNORES = [
   '**/build/**',
@@ -55,7 +72,6 @@ export const INIT_IGNORES = [
 export const SORTING_RULESETS: readonly string[] = ['import-order', 'ordering']
 
 const NO_OPT_IN: readonly string[] = []
-const LINE_END = '\n'
 /** What init's comment says after the opt-in rulesets that sort code (owner, 2026-10-15). */
 const FORMATTER_WARNING =
   "each sorts code, so it conflicts with a formatter that sorts the same code (Biome, oxfmt's sortImports, a Prettier sort plugin): use one or the other."
@@ -91,7 +107,7 @@ export function initListsOfTheCatalog(): InitLists {
  * as the spec lays it out: two-space indent, single quotes, trailing commas, no semicolons.
  */
 export function initConfigTextListing({ quality, libs, runtimes, languages }: InitLists): string {
-  return linesOf([
+  return moduleText(
     "import { defineLintRules } from '@agents-inc/lint-rules'",
     '',
     'const config = defineLintRules({',
@@ -123,7 +139,7 @@ export function initConfigTextListing({ quality, libs, runtimes, languages }: In
     '})',
     '',
     'export const { eslint, oxlint } = config.editorRulesets',
-  ])
+  )
 }
 
 /** A package.json's text, laid out as given, each value as JSON.stringify writes it but a value written as is. */
@@ -157,10 +173,6 @@ function quoted(name: string): string {
   return `'${name}'`
 }
 
-function linesOf(lines: readonly string[]): string {
-  return lines.map((line) => `${line}${LINE_END}`).join('')
-}
-
 function objectText(object: PackageJsonObject, depth: number, layout: JsonLayout): string {
   const entries = Object.entries(object)
   if (entries.length === 0) return '{}'
@@ -179,6 +191,17 @@ function isWrittenAsIs(value: WrittenAsIs | PackageJsonObject): value is Written
   return typeof value['writtenAsIs'] === 'string' && Object.keys(value).length === 1
 }
 
+/** init's two writes into the project, in the order given: package.json's edit, and the config. */
+export function initWritesIn(projectDir: string, order: InitWriteOrder): FileWrite[] {
+  const packageJson = { path: join(projectDir, PACKAGE_JSON_FILE), text: PACKAGE_JSON_AFTER_INIT }
+  const config = { path: join(projectDir, CONFIG_FILE), text: CONFIG_INIT_WRITES }
+  return order === 'package.json first' ? [packageJson, config] : [config, packageJson]
+}
+
+export function filesStateOf(projectDir: string): InitFilesState {
+  return { entries: entriesUnder(projectDir), packageJson: readFileSync(join(projectDir, PACKAGE_JSON_FILE), 'utf8') }
+}
+
 /** Which runner and install command init prints for a package manager (q-i3, q-i5). */
 export type PackageManagerLines = { readonly install: string; readonly runner: string }
 
@@ -193,13 +216,13 @@ export function initStdout(entry: 'added' | 'kept', { install, runner }: Package
     entry === 'added'
       ? `init: wrote agents-inc.lint.mts and added ${OUR_PACKAGE} ${OUR_RANGE} to devDependencies in package.json.`
       : `init: wrote agents-inc.lint.mts and kept the existing ${OUR_PACKAGE} entry in package.json.`
-  return linesOf([
+  return moduleText(
     firstLine,
     `Next: run "${install}".`,
     "Then add these lines to your agents' instructions:",
     '',
     `After changing code, run \`${runner} agents-inc-lint check\` with no arguments. Exit 0: done. Exit 1: fix every finding in code you wrote, then run it again; when only findings in code you did not write remain, you are done. Exit 2: stop and report its output. Never add a suppression comment, and never edit agents-inc.lint.mts.`,
-  ])
+  )
 }
 
 /** init's note where the folder is in no git repo (q-i8). */
@@ -228,7 +251,7 @@ export function buildInitPackageJson({ published = false, ...dependencyLists }: 
 }
 
 /** A package.json a merge left its conflict markers in: not valid JSON. */
-export const PACKAGE_JSON_LEFT_MID_MERGE = linesOf(['{', '<<<<<<< HEAD', '  "name": "root"', '}'])
+export const PACKAGE_JSON_LEFT_MID_MERGE = moduleText('{', '<<<<<<< HEAD', '  "name": "root"', '}')
 
 /** A package.json laid out as npm writes it, two-space indent and a final newline, with the fields given in their order. */
 export function npmPackageJsonText(fields: PackageJsonObject): string {

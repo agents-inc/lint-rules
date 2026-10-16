@@ -4,9 +4,8 @@ import { readdirSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { text } from 'node:stream/consumers'
-import type { Catalog } from '@workspace/rule-data'
+import { type Catalog, isOxlintRoute, routeOf } from '@workspace/rule-data'
 import type { DummyRule, OxlintConfig } from 'oxlint'
-import { isOxlintRoute, routeOf } from '../../core/catalog-lookups.ts'
 import { hasErrorCode } from '../caught-errors.ts'
 import { leftoverToRemove, removeLeftover } from './leftovers.ts'
 import { type OxlintReport, oxlintReportFrom } from './oxlint-output.ts'
@@ -85,7 +84,8 @@ function tempConfigNameOfThisRun(): string {
   return `${TEMP_CONFIG_PREFIX}${String(process.pid)}-${randomBytes(RANDOM_BYTES).toString('hex')}${TEMP_CONFIG_SUFFIX}`
 }
 
-function oxlintBin(): string {
+/** The bin of the oxlint this package resolves, for `node` to run. */
+export function oxlintBin(): string {
   return join(dirname(createRequire(import.meta.url).resolve(OXLINT_MANIFEST)), OXLINT_BIN)
 }
 

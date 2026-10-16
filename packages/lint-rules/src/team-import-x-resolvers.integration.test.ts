@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import type { OurRulesets } from './__tests__/cases/both-engines-corpus.ts'
 import {
   importXResolverPackageFiles,
   NO_UNRESOLVED,
@@ -8,12 +7,11 @@ import {
   TEAMS_IMPORT_X_MODULE_TEXT,
 } from './__tests__/cases/team-import-x-resolvers.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, type MergedAndTeamAloneEslintCliRuns, setUpMergedAndTeamAloneEslintCliRuns } from './__tests__/consumer-cli-runs.ts'
-import { agentsIncLintModuleTextRootedAtItsFolder, mergedEslintConfigText, teamAloneEslintConfigText } from './__tests__/factories/consumer-project-factories.ts'
-import { buildConsumerSettings } from './__tests__/factories/lint-rules-factories.ts'
+import { projectMergingOurEslintPartText, teamAloneEslintConfigText } from './__tests__/factories/consumer-project-factories.ts'
+import { buildConsumerSettings, MODULES_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJson, buildPackageJsonListingOxlint, type PackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { type FindingsByFileAndRule, findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { TEAM_OXLINT_CONFIG_SETTING_NO_RULE, teamOxlintConfigSettingNoRuleFiles } from './__tests__/team-configs-of-the-other-engine.ts'
 import { installedPackage, type ProjectFiles } from './__tests__/temp-projects.ts'
 
 // Our import-x/resolver-next stays out of every file where a team block sets import-x/resolver or
@@ -25,22 +23,20 @@ import { installedPackage, type ProjectFiles } from './__tests__/temp-projects.t
 
 allowEveryTestForParallelLoad()
 
-const LINT_RULES_MODULE = 'agents-inc.lint.mts'
 const TEAM_ESLINT_MODULE = 'team.eslint.mjs'
 const TEAM_ALONE_CONFIG = 'eslint.team-alone.mjs'
-// The ruleset that ships import-x's rules, in both sets.
-const MODULES: OurRulesets = { agentRulesets: { quality: ['modules'] }, editorRulesets: { quality: ['modules'] } }
 const PLUGIN_THE_TEAM_IMPORTS = installedPackage('eslint-plugin-import-x')
 
 /** The monorepo with the packages, its package.json given, an eslint.config.mjs merging our ESLint part into the team's config, and one holding the team's alone. */
 function monorepoFiles(packageJson: PackageJson): ProjectFiles {
   return {
     'package.json': packageJsonText(packageJson),
-    [LINT_RULES_MODULE]: agentsIncLintModuleTextRootedAtItsFolder(buildConsumerSettings(MODULES)),
-    'eslint.config.mjs': mergedEslintConfigText(LINT_RULES_MODULE, TEAM_ESLINT_MODULE, TEAM_OXLINT_CONFIG_SETTING_NO_RULE),
-    ...teamOxlintConfigSettingNoRuleFiles,
+    ...projectMergingOurEslintPartText({
+      settings: buildConsumerSettings(MODULES_IN_BOTH_SETS),
+      team: { file: TEAM_ESLINT_MODULE, text: TEAMS_IMPORT_X_MODULE_TEXT },
+      teamOxlint: 'setting no rule',
+    }),
     [TEAM_ALONE_CONFIG]: teamAloneEslintConfigText(TEAM_ESLINT_MODULE),
-    [TEAM_ESLINT_MODULE]: TEAMS_IMPORT_X_MODULE_TEXT,
     ...importXResolverPackageFiles,
   }
 }

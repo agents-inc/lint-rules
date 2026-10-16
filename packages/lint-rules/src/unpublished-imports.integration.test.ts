@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { setUpBothEnginesRuns } from './__tests__/both-engines-runs.ts'
-import type { OurRulesets } from './__tests__/cases/both-engines-corpus.ts'
 import {
   aliasedFilesOfEachExtension,
   BOTH_MODULE,
@@ -12,12 +11,12 @@ import {
   workspacePackageFiles,
 } from './__tests__/cases/workspace-package-imports.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, setUpConsumerEslintCliRun } from './__tests__/consumer-cli-runs.ts'
-import { agentsIncLintModuleTextRootedAtItsFolder, emptyTeamEslintModuleText, mergedEslintConfigText } from './__tests__/factories/consumer-project-factories.ts'
-import { buildConsumerSettings } from './__tests__/factories/lint-rules-factories.ts'
+import { EMPTY_TEAM_ESLINT_MODULE_FILE, projectMergingOurEslintPartText } from './__tests__/factories/consumer-project-factories.ts'
+import { buildConsumerSettings, MODULES_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { EMPTY_TEAM_OXLINT_CONFIG, TEAM_OXLINT_CONFIG_SETTING_NO_RULE, teamOxlintConfigSettingNoRuleFiles } from './__tests__/team-configs-of-the-other-engine.ts'
+import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 
 // n/no-unpublished-import reads a path a project's tsconfig maps (`@/…`) as the file it names, not
 // as a package (decisions.md, 2026-10-14 "real run 3, scale lane"). Real run 3, case R-ALL-6: in
@@ -29,15 +28,11 @@ import { EMPTY_TEAM_OXLINT_CONFIG, TEAM_OXLINT_CONFIG_SETTING_NO_RULE, teamOxlin
 
 allowEveryTestForParallelLoad()
 
-// The ruleset that ships n/no-unpublished-import, in both sets.
-const MODULES: OurRulesets = { agentRulesets: { quality: ['modules'] }, editorRulesets: { quality: ['modules'] } }
-const LINT_RULES_MODULE = 'agents-inc.lint.mts'
-const EMPTY_TEAM_ESLINT_MODULE = 'empty-team.eslint.mjs'
 
 describe("imports in a monorepo package's story, through its tsconfig's alias to what it publishes and to what it does not, our modules ruleset on, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: workspacePackageFiles,
-    ourRulesets: MODULES,
+    ourRulesets: MODULES_IN_BOTH_SETS,
     ours: {},
     teamEslintRules: {},
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
@@ -59,10 +54,11 @@ describe("imports in a monorepo package's story, through its tsconfig's alias to
 describe("imports in a monorepo package's story, through its tsconfig's alias to what it publishes and to what it does not, our modules ruleset on, in a project whose package.json lists no oxlint, linted by the ESLint CLI from the monorepo's root through the built package", () => {
   const run = setUpConsumerEslintCliRun({
     'package.json': packageJsonText(buildPackageJson()),
-    [LINT_RULES_MODULE]: agentsIncLintModuleTextRootedAtItsFolder(buildConsumerSettings(MODULES)),
-    'eslint.config.mjs': mergedEslintConfigText(LINT_RULES_MODULE, EMPTY_TEAM_ESLINT_MODULE, TEAM_OXLINT_CONFIG_SETTING_NO_RULE),
-    ...teamOxlintConfigSettingNoRuleFiles,
-    [EMPTY_TEAM_ESLINT_MODULE]: emptyTeamEslintModuleText(),
+    ...projectMergingOurEslintPartText({
+      settings: buildConsumerSettings(MODULES_IN_BOTH_SETS),
+      team: EMPTY_TEAM_ESLINT_MODULE_FILE,
+      teamOxlint: 'setting no rule',
+    }),
     ...workspacePackageFiles,
   })
 
@@ -83,7 +79,7 @@ describe("imports in a monorepo package's story, through its tsconfig's alias to
 describe("imports through a monorepo package's tsconfig alias to a published file of each extension we lint and to a JSON file, and to a name both a published JSON file and an unpublished TS file hold, our modules ruleset on, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: aliasedFilesOfEachExtension,
-    ourRulesets: MODULES,
+    ourRulesets: MODULES_IN_BOTH_SETS,
     ours: {},
     teamEslintRules: {},
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,

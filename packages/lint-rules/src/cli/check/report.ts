@@ -1,4 +1,5 @@
 import { EXIT_CLEAN, EXIT_FINDINGS } from '../exit-codes.ts'
+import { NOT_FOUND } from '../not-found.ts'
 import { printedLengthOf, textOfLines } from '../printed-lines.ts'
 import { autofixedLine, cutLine, MESSAGE_SEPARATOR, summaryLine, WARNING_MARK } from './texts.ts'
 
@@ -30,7 +31,6 @@ type CutFindings = { readonly printed: readonly CheckFinding[]; readonly cut: re
 const PRINTED_FINDINGS_CAP = 8000
 // A first finding longer than the cap still prints, whole.
 const AT_LEAST_ONE = 1
-const NOT_FOUND = -1
 
 /** stdout and the exit code for the findings left: errors first, then warnings, each by path then line; a cut; the summary last. */
 export function checkReport({ findings, changedFileCount, autofixedFiles }: CheckReportInput): CheckReport {

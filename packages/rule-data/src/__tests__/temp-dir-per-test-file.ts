@@ -16,7 +16,8 @@ const TEMP_DIR_VARIABLE = 'TMPDIR'
  * It needs a worker for each test file, vitest's default: with `--no-isolate` the next file in a
  * worker is collected in the dir just removed, and fails to load.
  *
- * The package's vitest config names this module: vitest loads a runner by its default export.
+ * This package's and lint-rules' vitest configs name this module: vitest loads a runner by its
+ * default export.
  */
 export default class TempDirPerTestFileRunner extends TestRunner {
   #testFileTempDir: string | undefined
