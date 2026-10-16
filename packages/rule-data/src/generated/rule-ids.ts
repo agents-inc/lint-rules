@@ -1512,6 +1512,7 @@ export type RuleId =
   | "unicorn/no-prevent-default-in-passive-listener"
   | "unicorn/no-process-exit"
   | "unicorn/no-redundant-comparison"
+  | "unicorn/no-repeated-call-wrappers"
   | "unicorn/no-return-array-push"
   | "unicorn/no-selector-as-dom-name"
   | "unicorn/no-shorthand-property-overrides"
@@ -1532,6 +1533,7 @@ export type RuleId =
   | "unicorn/no-unnecessary-array-splice-count"
   | "unicorn/no-unnecessary-await"
   | "unicorn/no-unnecessary-boolean-comparison"
+  | "unicorn/no-unnecessary-default-arguments"
   | "unicorn/no-unnecessary-fetch-options"
   | "unicorn/no-unnecessary-global-this"
   | "unicorn/no-unnecessary-nested-ternary"
@@ -1879,4 +1881,5 @@ export type RuleId =
 export type SuppressionRuleId =
   | "@typescript-eslint/ban-ts-comment"
   | "house/no-suppressions"
+  | "react-hooks/rule-suppression"
   | "unicorn/no-abusive-eslint-disable"

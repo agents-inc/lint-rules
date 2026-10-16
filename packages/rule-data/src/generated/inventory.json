@@ -3,14 +3,14 @@
     "oxlint": "1.87.0",
     "eslint": "10.12.0",
     "eslintPlugins": {
-      "@eslint-react": "5.24.10",
+      "@eslint-react": "5.26.5",
       "@typescript-eslint": "8.71.1",
       "check-file": "3.3.2",
       "css-modules": "2.12.0",
       "functional": "10.0.1",
       "house": "0.0.0",
       "import-x": "4.17.1",
-      "jsx-a11y": "6.10.2",
+      "jsx-a11y": "0.2.0",
       "n": "18.4.1",
       "no-secrets": "2.3.3",
       "perfectionist": "5.12.1",
@@ -24,7 +24,7 @@
       "sonarjs": "4.2.2",
       "storybook": "10.6.1",
       "testing-library": "7.16.2",
-      "unicorn": "77.0.0",
+      "unicorn": "78.0.0",
       "vitest": "1.6.27"
     }
   },
@@ -5955,14 +5955,6 @@
       "eslint": null
     },
     {
-      "id": "jsx-a11y/accessible-emoji",
-      "oxlint": null,
-      "eslint": {
-        "deprecated": true,
-        "typed": false
-      }
-    },
-    {
       "id": "jsx-a11y/alt-text",
       "oxlint": {
         "oxlintName": "jsx_a11y/alt-text",
@@ -6215,14 +6207,6 @@
       }
     },
     {
-      "id": "jsx-a11y/label-has-for",
-      "oxlint": null,
-      "eslint": {
-        "deprecated": true,
-        "typed": false
-      }
-    },
-    {
       "id": "jsx-a11y/lang",
       "oxlint": {
         "oxlintName": "jsx_a11y/lang",
@@ -6373,14 +6357,6 @@
       },
       "eslint": {
         "deprecated": false,
-        "typed": false
-      }
-    },
-    {
-      "id": "jsx-a11y/no-onchange",
-      "oxlint": null,
-      "eslint": {
-        "deprecated": true,
         "typed": false
       }
     },
@@ -17138,6 +17114,14 @@
       }
     },
     {
+      "id": "unicorn/no-repeated-call-wrappers",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
       "id": "unicorn/no-return-array-push",
       "oxlint": null,
       "eslint": {
@@ -17355,6 +17339,14 @@
     },
     {
       "id": "unicorn/no-unnecessary-boolean-comparison",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "unicorn/no-unnecessary-default-arguments",
       "oxlint": null,
       "eslint": {
         "deprecated": false,

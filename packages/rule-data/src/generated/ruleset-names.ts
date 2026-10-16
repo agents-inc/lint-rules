@@ -23,7 +23,7 @@ export type LibsRulesets = {
   readonly "ui"?: readonly ("react")[]
   readonly "testing"?: readonly ("vitest" | "testing-library" | "storybook")[]
   readonly "forms"?: readonly ("react-hook-form")[]
-  readonly "styling"?: readonly ("css-modules")[]
+  readonly "styling"?: readonly ("css-modules" | "class-names")[]
 }
 
 export type RuntimeRulesetName =
