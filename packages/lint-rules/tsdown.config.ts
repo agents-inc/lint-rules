@@ -5,6 +5,7 @@ export default defineConfig({
     index: 'src/index.ts',
     oxlint: 'src/oxlint.ts',
     eslint: 'src/eslint.ts',
+    cli: 'src/cli.ts',
   },
   format: ['esm'],
   platform: 'node',
