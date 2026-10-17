@@ -61,15 +61,10 @@ import { installedPackage, type ProjectFiles, setUpTempProjects } from './__test
 import { mergeEslintConfig } from './eslint.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// Each merge takes the path of the team's other engine config, so it can see the rules set only
-// there (decisions.md, "Owner 2026-10-14"; spec-merge-model.md, 1.3): mergeEslintConfig(theirs,
-// eslint, { oxlintConfig }) and mergeOxlintConfig(theirs, oxlint, { eslintConfig }), each a path
-// relative to tsconfigRootDir, or null where the project has none. Each failure names the config file
-// to fix, the underlying error as its cause; each sits beside the call that is accepted, and its
-// message is pinned in full. A config that calls no merge of ours is read as its default export; a
-// JSON oxlint config is parsed, comments and paths it extends included. A config that calls our merge
-// for its own engine is read as what it hands that merge, which only the built package, loaded once
-// in a process of its own, shows (the last describe).
+// Each merge takes the path of the team's other engine config, relative to tsconfigRootDir or null, to
+// see the rules set only there. A config calling no merge of ours is read as its default export; one
+// calling our merge for its own engine as what it hands that merge, which only the built package,
+// loaded in a process of its own, shows (the last describe).
 
 const tempProjects = setUpTempProjects()
 const { ruleSeverityInProjectFor } = setUpEslintConfigOracle()
@@ -261,16 +256,9 @@ describe("mergeOxlintConfig's third argument", () => {
   })
 })
 
-// A path naming a file that is no config of the other engine (the review of the merge rework, FAIL
-// 1; spec-merge-model.md, 1.3, "its default export is not a config"): the project's package.json or
-// tsconfig.json, or the team's config for the merge's own engine. Each is judged by its keys: one
-// holding any key no config of that engine holds is refused, the error listing those keys in the
-// order the file gives them; so a config module holding rules, which both engines' configs hold,
-// beside one such key is refused too, as is a package.json, whose name an ESLint block holds too, as
-// an ESLint config. A tsconfig.json extending shared configs is judged by its keys before what it
-// extends is read: an oxlint config holds `extends` and ESLint's defineConfig takes it, so the error
-// lists the others. An ESLint config is judged block by block: one block of several holding such a
-// key refuses it. A config holding every key that engine's config can hold is read.
+// A file that is no config of the other engine is refused by its keys: any key no config of that
+// engine holds refuses it, the error listing those keys in the file's order. A tsconfig.json is judged
+// before what it extends is read, an ESLint config block by block.
 describe("a file named as the team's oxlint config, read by mergeEslintConfig", () => {
   const projectDir = projectListingOxlintIn(tempProjects, { ...filesOf(FILES_THAT_ARE_NO_OXLINT_CONFIG), ...filesOf(OXLINT_CONFIGS_HOLDING_EVERY_KEY) })
   const { eslint } = ourPartsIn(projectDir, OURS_RUN_BY_ESLINT)
@@ -314,12 +302,9 @@ describe("a file named as the team's ESLint config, read by mergeOxlintConfig", 
   })
 })
 
-// Only what the team's oxlint config writes counts (decisions.md, "Owner 2026-10-14 (questions on the
-// merge rework spec", point 1). Beside oxlint, null says the project has no oxlint config, which
-// writes nothing, so it sets no rule, as a config writing no category does; oxlint's own correctness:
-// warn, which runs there, sets none. A config writing correctness on sets each rule of that category
-// of oxlint's default plugins. ESLint runs no-this-alias for us (3.2); oxlint's is in that category,
-// under typescript, a default plugin.
+// Only what the team's oxlint config writes counts: null, a config writing no category, and oxlint's
+// default correctness: warn set no rule; correctness written on sets each rule of that category of
+// oxlint's default plugins. oxlint's no-this-alias is in it, under typescript.
 describe('mergeEslintConfig, in a project whose package.json lists oxlint, given an oxlint config that writes no category, or writes correctness on', () => {
   const projectDir = projectListingOxlintIn(tempProjects, teamOxlintrcsBesideOxlintsOwnCorrectnessFiles)
   const { eslint } = ourPartsIn(projectDir, OURS_NO_THIS_ALIAS)
@@ -340,11 +325,9 @@ describe('mergeEslintConfig, in a project whose package.json lists oxlint, given
   })
 })
 
-// Where oxlint's own correctness: warn would run its copy of a rule our ESLint part runs, the oxlint
-// merge switches that copy off, in every file, so the rule is reported once, by ESLint (decisions.md,
-// "Owner 2026-10-14 (questions on the merge rework spec", point 1). Where the team writes correctness
-// on, the rule is the team's: nothing of ours states it. The project's ESLint config sets no rule,
-// and calls no merge of ours: which rules our ESLint part runs is read from our parts.
+// Where oxlint's default correctness: warn would run its copy of a rule our ESLint part runs, the oxlint
+// merge switches that copy off in every file; where the team writes correctness on, the rule is the
+// team's. Which rules our ESLint part runs is read from our parts.
 describe("mergeOxlintConfig, beside our ESLint part running no-this-alias, whose oxlint version is in oxlint's correctness category", () => {
   const oxlint = ourOxlintPartIn(projectListingOxlintIn(tempProjects, teamEslintConfigSettingNoRuleFiles), OURS_NO_THIS_ALIAS)
   const files = [SOURCE_FILE, JS_FILE_ELSEWHERE]
@@ -365,8 +348,8 @@ describe("mergeOxlintConfig, beside our ESLint part running no-this-alias, whose
   })
 })
 
-// oxlint itself refuses a path in `extends` of a JS or TS config (#43, round 6): the merge refuses it
-// first, naming what to do instead (the spec's recommended answer to its open point 3).
+// oxlint itself refuses a path in `extends` of a JS or TS config, so the merge refuses it first,
+// naming what to do instead.
 describe('a team oxlint config handed to mergeOxlintConfig', () => {
   const oxlint = ourOxlintPartIn(projectListingOxlintIn(tempProjects))
 
@@ -410,9 +393,8 @@ describe('a team JSON oxlint config, read by mergeEslintConfig', () => {
   })
 })
 
-// The invariant (spec-merge-model.md, 1.1): both merges read the same set of rules the team sets
-// from the same pair of configs. Each config sets one rule each engine runs for us, in legacy/**
-// alone; each merge must drop the rules the other config sets as well as its own, in every file.
+// Both merges read the same set of rules the team sets from the same pair of configs: each must drop
+// the rules the other config sets as well as its own, in every file.
 describe('both merges, given one pair of team configs, each naming the other', () => {
   const projectDir = projectListingOxlintIn(tempProjects, teamConfigsSettingRulesInLegacyFiles)
   const { eslint } = ourPartsIn(projectDir, OURS_BESIDE_THE_LEGACY_CONFIGS)
@@ -434,13 +416,9 @@ describe('both merges, given one pair of team configs, each naming the other', (
   })
 })
 
-// A config that calls our merge for its own engine is read as what it hands that merge (spec-merge-
-// model.md, 1.3, reading mode): with the plugins we register, by which a prefix the team registers
-// one of ours under names a rule of ours; and, on a later read in the same process, which Node serves
-// from the module it cached without calling the merge again, as what it handed over the first time.
-// Here our oxlint part is merged in a process of its own that loads the built package, as a team's
-// oxlint run does (__tests__/oxlint-merges-process.ts), naming the team's eslint.config.mjs, which
-// merges our ESLint part into a team block turning ts/no-explicit-any off.
+// A config calling our merge for its own engine is read as what it hands that merge, with the plugins
+// we register; on a later read in the same process, Node serves the cached module without calling the
+// merge again. Our oxlint part is merged in a process loading the built package, as a team's oxlint run does.
 describe('mergeOxlintConfig, reading a team ESLint config that calls mergeEslintConfig', () => {
   const settings = buildConsumerSettings({}, { rules: OURS_NO_EXPLICIT_ANY_AND_DEBUGGER })
   const projectFiles: ProjectFiles = {

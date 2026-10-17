@@ -7,8 +7,7 @@ import { CLI_FILE, EXIT, setUpCheckAfterTheAgent } from './__tests__/cli-runs.ts
 import { checkedPackageFiles, DEBUGGER_STATEMENT, exportedConstant, moduleText, REDUNDANCY } from './__tests__/factories/check-factories.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 
-// spec-cli.md "M: the bin entry" (q-c1): the package gives one executable, `agents-inc-lint`, the
-// built dist/cli.mjs. Reads the build output, so `turbo test` builds this package first.
+// Reads the build output, so `turbo test` builds this package first.
 
 allowEveryTestForParallelLoad()
 

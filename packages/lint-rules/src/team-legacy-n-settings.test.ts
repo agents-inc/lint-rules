@@ -9,11 +9,8 @@ import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { isRecord } from './core/is-record.ts'
 
 // eslint-plugin-n reads typescriptExtensionMap and tsconfigPath from settings.n wherever it is set,
-// else from settings.node, as one object, so our settings.n stays out of every file where a team
-// block sets settings.node's tryExtensions, which we set under n, or either of those two keys, and
-// stays where it sets another key of settings.node alone (decisions.md, 2026-10-14 "fix round 5
-// review"; O8). Read from ESLint's own merge for a module in each package of
-// team-legacy-n-settings.ts. team-legacy-n-settings.integration.test.ts runs the team's rule.
+// else from settings.node, so our settings.n stays out of every file where a team block sets
+// settings.node's tryExtensions or either of those keys, and stays where it sets another key alone.
 
 const { settingsFor } = setUpEslintConfigOracle()
 const tempProjects = setUpTempProjects()

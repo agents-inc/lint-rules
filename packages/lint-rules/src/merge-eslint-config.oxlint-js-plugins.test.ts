@@ -18,11 +18,9 @@ import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.t
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// What the ESLint merge reads in a team's oxlint config (oxlint-config-reading.ts): a key under the
-// prefix of a JS plugin the config loads sets the rule of ours that key is an ESLint name of; the
-// prefix is the name the config gives the plugin, or its package's name as oxlint cuts it, and a
-// plugin loaded from a path names itself, which no reading of the config gives. A config listing a
-// plugin oxlint has no plugin of, which oxlint refuses, is refused, naming it.
+// A key under the prefix of a JS plugin a team's oxlint config loads sets our rule of that ESLint name.
+// The prefix is the name the config gives the plugin, or its package name as oxlint cuts it; a plugin
+// loaded from a path names itself, which no reading of the config gives. A plugin oxlint lacks is refused.
 
 const tempProjects = setUpTempProjects()
 const { ruleSeverityInProjectFor } = setUpEslintConfigOracle()

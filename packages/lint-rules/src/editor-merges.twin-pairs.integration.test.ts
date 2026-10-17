@@ -55,12 +55,9 @@ import {
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 
-// Twin pairs beside oxlint (decisions.md, D9, D10 and D11), in the agent build and the editor merges
-// through the built package, linted by the real ESLint and oxlint. The highest layer stating either
-// name decides the pair's setting; oxlint runs the core rule where our oxlint part runs it, and our
-// ESLint copies are off there (D10); each file reports the pair once. The agent build's reports are
-// owed outright, since the same decision makes both builds; the editor merges owe the agent build's
-// merged into empty team configs, and beside a team setting the pair, the team's alone, as on the grid.
+// The highest layer stating either twin decides the pair; oxlint runs the core rule where our oxlint
+// part runs it, our ESLint copies off there; each file reports the pair once. The editor merges owe
+// the agent build's reports merged into empty team configs, and the team's alone beside a team setting the pair.
 
 allowEveryTestForParallelLoad()
 
@@ -118,8 +115,7 @@ const TWIN_CASES: readonly TwinCase[] = [
     ours: { rules: { ...OUR_CORPUS_RULES, '@typescript-eslint/max-params': ['error', { max: 2 }] }, ignores: ['legacy/'] },
     files: ['src/legacy/a.ts', 'legacy/a.ts', 'src/a.ts'],
     rules: [MAX_PARAMS],
-    // Both engines leave out every folder named legacy, as a .gitignore line does (questions.md #62):
-    // neither engine's copy reports the pair in src/legacy/a.ts.
+    // Both engines leave out every folder named legacy, as a .gitignore line does.
     agentBuildOwes: {
       'src/legacy/a.ts': { 'max-params': [] },
       'legacy/a.ts': { 'max-params': [] },
@@ -158,12 +154,9 @@ TWIN_CASES.forEach((twinCase) => {
   })
 })
 
-// Fix round 2, defect 1, under D11 (decisions.md, 2026-10-12 "fix round 2, after its developer"): no
-// config we write gives oxlint options its rule refuses. The entry decides the pair in legacy/**
-// with an option only typescript-eslint's no-redeclare has, so ESLint runs that setting on the TS
-// files there and oxlint's copy is off; on the JS files there the core rule keeps the top level's
-// setting (D9's refusal clause), which oxlint runs. Each file reports the pair once: under the
-// entry's ignoreDeclarationMerge, the interface declared twice in legacy/a.ts is no finding.
+// No config we write gives oxlint options its rule refuses: the entry's option exists only in
+// typescript-eslint's no-redeclare, so ESLint runs it on the TS files in legacy/** and oxlint's copy is
+// off there; the JS files keep the top level's setting, which oxlint runs.
 describe("no-redeclare in every file, and typescript-eslint's in legacy/** with an option oxlint's refuses, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: redeclaringSourceFiles,
@@ -193,9 +186,8 @@ describe("no-redeclare in every file, and typescript-eslint's in legacy/** with 
   })
 })
 
-// A twin pair is one rule (D9's reading): the team turns the core rule of each pair on in oxlint, and
-// its typescript-eslint twin in ESLint, so the pair is the team's in every file, reported once as the
-// team's configs alone report it (decisions.md, "Owner 2026-10-14").
+// A twin pair is one rule: the team turns the core rule on in oxlint and the twin in ESLint, so the pair
+// is the team's in every file.
 TWIN_CASES.forEach((twinCase) => {
   describe(`a twin pair in the corpus, beside a team oxlint config turning its core rule on, where ${twinCase.how}`, () => {
     const runs = setUpCorpusRuns({ ...twinCase, teamOxlintConfig: TEAM_CORPUS_OXLINT_CONFIG_TURNING_TWIN_CORE_RULES_ON })
@@ -215,10 +207,7 @@ TWIN_CASES.forEach((twinCase) => {
   })
 })
 
-// A core rule the catalog routes to ESLint (the review of fix round 2, Must fix 1): with
-// typescript-eslint's default-param-last ours, our ESLint part runs it in JS and TS files alike
-// (measured). The team turns the core rule on in oxlint, so the pair is the team's in every file
-// (decisions.md, "Owner 2026-10-14").
+// With typescript-eslint's default-param-last ours, our ESLint part runs it in JS and TS files alike (measured).
 describe("typescript-eslint's default-param-last, set in our rules beside ignores naming legacy/, and a team oxlint config turning default-param-last on, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: defaultParamFirstSourceFiles,
@@ -250,9 +239,6 @@ describe("typescript-eslint's default-param-last, set in our rules beside ignore
   })
 })
 
-// Under D11, in legacy/a.ts our ESLint part runs typescript-eslint's no-redeclare, with an option
-// oxlint's copy refuses. The team turns no-redeclare on in both engines, so the pair is the team's in
-// every file (decisions.md, "Owner 2026-10-14").
 describe("no-redeclare in every file, and typescript-eslint's in legacy/** with an option oxlint's refuses, beside a team turning no-redeclare on in both engines", () => {
   const runs = setUpBothEnginesRuns({
     sources: redeclaringSourceFiles,
@@ -271,11 +257,8 @@ describe("no-redeclare in every file, and typescript-eslint's in legacy/** with 
   })
 })
 
-// Both names of a twin pair in one layer, with different settings (decisions.md, 2026-10-14 "real
-// run 3 ... triage", from D9 and D10): TS files keep typescript-eslint's version's setting and JS
-// files the core rule's, oxlint running the core rule where our oxlint part runs it (D10). Real run
-// 3, case O2d: oxlint ran max-params at max 3 on every file, so the three-parameter TS function went
-// unreported. Each file reports the pair once, in the agent build and merged into empty team configs.
+// TS files take typescript-eslint's setting and JS files the core rule's; max 3 on every file would
+// miss the three-parameter TS function.
 describe("max-params at max 3 and typescript-eslint's at max 2 in our top level, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: maxParamsSourceFiles,
@@ -303,8 +286,8 @@ describe("max-params at max 3 and typescript-eslint's at max 2 in our top level,
   })
 })
 
-// The same in an entry, beside an entry stating each name alone, which decides the pair in every file
-// of its own (D9): only where both are named do the TS and JS files differ.
+// Beside an entry stating each name alone, which decides the pair in its own files: only where both are
+// named do the TS and JS files differ.
 describe("max-params and typescript-eslint's in an entry of ours, beside an entry stating each alone, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: maxParamsSourceFilesUnderEachEntry,
@@ -385,9 +368,8 @@ describe("max-params and typescript-eslint's in an entry over ./src/*.ts, in a p
   })
 })
 
-// Both names in our top level, typescript-eslint's with an option oxlint's copy refuses (D11): ESLint
-// runs that setting on the TS files, where under ignoreDeclarationMerge the interface declared twice
-// is no finding, and oxlint's copy is off there; oxlint runs the core rule's setting on the JS files.
+// ESLint runs typescript-eslint's setting on the TS files, where under ignoreDeclarationMerge the
+// twice-declared interface is no finding; oxlint runs the core rule's setting on the JS files.
 describe("no-redeclare and typescript-eslint's in our top level, typescript-eslint's with an option oxlint's refuses, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: redeclaringSourceFiles,
@@ -417,11 +399,8 @@ describe("no-redeclare and typescript-eslint's in our top level, typescript-esli
   })
 })
 
-// Both names of two twin pairs in our top level (D9, real run 3's triage): each pair takes
-// typescript-eslint's setting on the TS file, max-params' max of 2 and no-empty-function's off, and
-// the core rule's on the JS file, max 3 and on, oxlint running both core rules (D10). Beside the
-// team's ESLint config turning both core rules on, each pair is the team's in every file (decisions.md,
-// "Owner 2026-10-14").
+// Each pair takes typescript-eslint's setting on the TS file and the core rule's on the JS file, oxlint
+// running both core rules.
 describe("max-params at max 3 and typescript-eslint's at max 2, and no-empty-function on and typescript-eslint's off, in our top level, beside a team ESLint config turning both core rules on, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: maxParamsAndEmptyFunctionSourceFiles,
@@ -458,12 +437,8 @@ describe("max-params at max 3 and typescript-eslint's at max 2, and no-empty-fun
   })
 })
 
-// Our top level turning max-params off and typescript-eslint's on, over the complexity ruleset's
-// max-params (D9): the TS file takes typescript-eslint's max of 2, which oxlint runs as max-params,
-// ESLint's copy off there (D10), so the file reports the pair once; the JS file takes the core rule's
-// off, so neither engine reports it there (fix round 3's review: ESLint ran typescript-eslint's
-// there). Beside the team's ESLint config turning max-params on, the pair is the team's in every file
-// (decisions.md, "Owner 2026-10-14").
+// The TS file takes typescript-eslint's max of 2, which oxlint runs as max-params, so it reports the
+// pair once; the JS file takes the core rule's off, so neither engine reports it there.
 describe("max-params off and typescript-eslint's at max 2 in our top level, over the complexity ruleset, beside a team ESLint config turning max-params on, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: maxParamsSourceFiles,
@@ -504,10 +479,8 @@ describe("max-params off and typescript-eslint's at max 2 in our top level, over
   })
 })
 
-// The same in an entry of ours on legacy/**, no ruleset listed: the entry's TS file takes
-// typescript-eslint's max of 2, which oxlint runs as max-params, ESLint's copy off there, so it
-// reports the pair once, and its JS file the core rule's off; outside the entry nothing of ours
-// turns the pair on, and the team's max-params stands there alone.
+// The entry's TS file takes typescript-eslint's max of 2, run by oxlint as max-params, and its JS file
+// the core rule's off; outside the entry the team's max-params stands alone.
 describe("max-params off and typescript-eslint's at max 2 in an entry of ours on legacy/**, no ruleset listed, beside a team ESLint config turning max-params on, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: maxParamsSourceFilesInLegacyAndSrc,
@@ -555,10 +528,8 @@ describe("max-params off and typescript-eslint's at max 2 in an entry of ours on
   })
 })
 
-// Both max-params names in our top level, and an entry of ours on legacy/** turning max-params off
-// (D9): the entry is the highest layer stating either name there, so the pair is off in its TS file
-// too; outside it the TS file takes typescript-eslint's max of 2 and the JS file max-params' 3. Beside
-// the team's ESLint config turning max-params on, the pair is the team's in every file.
+// The entry is the highest layer stating either name in legacy/**, so the pair is off in its TS file
+// too; outside it the TS file takes max 2 and the JS file max 3.
 describe("max-params at max 3 and typescript-eslint's at max 2 in our top level, and an entry of ours on legacy/** turning max-params off, beside a team ESLint config turning max-params on, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: maxParamsSourceFilesInLegacyAndSrc,
@@ -596,10 +567,8 @@ describe("max-params at max 3 and typescript-eslint's at max 2 in our top level,
   })
 })
 
-// Both no-unused-vars names in our top level, over the redundancy ruleset, which ships no-unused-vars
-// with ignores leaving scripts/ out: on TS files oxlint runs no-unused-vars at typescript-eslint's
-// args all, within the core rule's own ignores, as everywhere else. Which engine reports the pair in
-// scripts/ is left open here (fix round 3's developer, open items): these tests pin oxlint's part.
+// On TS files oxlint runs no-unused-vars at typescript-eslint's args all, within the core rule's own
+// ignores. Which engine reports the pair in scripts/ is left open: these tests pin oxlint's part.
 describe("no-unused-vars under args none and typescript-eslint's under args all in our top level, over the redundancy ruleset, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: unusedParameterSourceFiles,
@@ -623,10 +592,7 @@ describe("no-unused-vars under args none and typescript-eslint's under args all 
   })
 })
 
-// Our top level turning no-redeclare off and typescript-eslint's on, with an option oxlint's copy
-// refuses (D9, D11): ESLint runs typescript-eslint's on the TS files alone, and no rule of ours runs
-// on the JS files. Beside a team turning no-redeclare on in both engines, the pair is the team's in
-// every file (decisions.md, "Owner 2026-10-14").
+// ESLint runs typescript-eslint's on the TS files alone, and no rule of ours runs on the JS files.
 describe("no-redeclare off and typescript-eslint's on in our top level, typescript-eslint's with an option oxlint's refuses, beside a team turning no-redeclare on in both engines, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: redeclaringSourceFiles,
@@ -659,9 +625,7 @@ describe("no-redeclare off and typescript-eslint's on in our top level, typescri
   })
 })
 
-// The same in an entry of ours on legacy/**, no rule of ours outside it: ESLint runs
-// typescript-eslint's on the entry's TS file alone. Beside a team turning no-redeclare on in both
-// engines, the pair is the team's in every file.
+// ESLint runs typescript-eslint's on the entry's TS file alone.
 describe("no-redeclare off and typescript-eslint's on in an entry of ours on legacy/**, typescript-eslint's with an option oxlint's refuses, beside a team turning no-redeclare on in both engines, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: redeclaringSourceFiles,
@@ -693,11 +657,8 @@ describe("no-redeclare off and typescript-eslint's on in an entry of ours on leg
   })
 })
 
-// Our top level turning no-redeclare off and typescript-eslint's on, and an entry of ours on
-// legacy/** stating typescript-eslint's alone, with an option oxlint's copy honours (D10): our top
-// level runs no-redeclare nowhere, its TS files included, so oxlint's copy takes no setting in the
-// entry, and ESLint runs typescript-eslint's on every file there, its JS file included, where under
-// its default ignoreDeclarationMerge the interface declared twice is no finding.
+// Our top level runs no-redeclare nowhere, so oxlint's copy takes no setting in the entry, and ESLint
+// runs typescript-eslint's on every file there, JS included.
 describe("no-redeclare off and typescript-eslint's on in our top level, and an entry of ours on legacy/** stating typescript-eslint's alone, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: redeclaringSourceFiles,

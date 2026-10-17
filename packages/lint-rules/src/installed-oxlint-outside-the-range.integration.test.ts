@@ -8,11 +8,9 @@ import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { THIS_PACKAGE } from './__tests__/temp-projects.ts'
 
-// #56 (owner): an installed oxlint outside our peer range is checked against its own rule list, its
-// schema, rather than refused for its version. A team's own configs, as test-fixtures/consumer-files
-// holds them, loaded by the real engines with the built package installed, beside an oxlint whose
-// package.json reports 2.0.0: once with the schema this repo's oxlint ships, which holds every name
-// the merge writes, and once with that schema less no-debugger, a rule the merge writes.
+// An installed oxlint outside our peer range is checked against its own schema, not refused for its
+// version: an oxlint reporting 2.0.0, with this repo's schema, and with it less no-debugger, a rule the
+// merge writes.
 
 allowEveryTestForParallelLoad()
 

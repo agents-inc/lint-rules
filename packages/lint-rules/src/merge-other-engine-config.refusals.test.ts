@@ -31,13 +31,9 @@ import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// What each merge says when the team's other config cannot be read, beside merge-other-engine-
-// config.test.ts: the error names the config file calling the merge and describes what it was
-// given, an array, null, an object or a primitive, each in its own words; a config module failing
-// as it loads gives its own reason, whatever code its error carries, and a string thrown is the
-// reason itself. An ESLint config is judged by every block, at any depth of nested arrays, as ESLint's
-// defineConfig reads them; and a JSON oxlint config by every config it extends by path, each before
-// what that one extends is read. Each refusal sits beside a case that is read.
+// The error names the config file calling the merge and describes what it was given, each kind in its
+// own words; a module failing as it loads gives its own reason. An ESLint config is judged by every
+// block at any depth, and a JSON oxlint config by every config it extends by path.
 
 const tempProjects = setUpTempProjects()
 const { ruleSeverityInProjectFor } = setUpEslintConfigOracle()
@@ -101,10 +97,8 @@ describe("a file named as the team's oxlint config that holds no config object, 
   })
 })
 
-// A config read while another loads that awaits at its top level is refused in words of our own
-// (merge-other-engine-config.test.ts); any other failure gives its own reason. Each merge reads files
-// of its own project: Node 23 answers a second require() of a module that threw with an internal
-// error of its own (measured, Node 23.10; Node 22.23 throws the module's error again).
+// Each merge reads files of its own project: Node 23 answers a second require() of a module that threw
+// with an internal error of its own (measured, Node 23.10; Node 22.23 rethrows the module's error).
 describe("a config module that fails as it loads, named as the team's other config", () => {
   const eslintProjectDir = projectListingOxlintIn(tempProjects, filesOf(MODULES_FAILING_AS_THEY_LOAD))
   const oxlintProjectDir = projectListingOxlintIn(tempProjects, filesOf(MODULES_FAILING_AS_THEY_LOAD))

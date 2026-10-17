@@ -21,16 +21,8 @@ import { setUpCorpusRuns } from './__tests__/corpus-runs.ts'
 import { filesReportingIn, findingsByFileAndRule, owedBesideTheTeam } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 
-// Our ignores, each engine reading them its own way (decisions.md, fix round 1 review: ESLint as
-// global ignores, oxlint as ignorePatterns, negated lines taking files back), in the editor merges
-// through the built package, linted by the real ESLint and oxlint. The agent build hands our ignores
-// to each engine as our layers hold them, so where it reports a rule is where our part for that
-// engine runs it.
-// Owed in every file, as on the grid (editor-merges.both-engines.integration.test.ts): merged into
-// empty team configs, our rules report where the agent build reports them, per engine; beside the
-// team, which sets every rule here, the team's alone in every file, never from both engines.
-// The ignores and files are the developer's break corpus (fix round 2): each shape here is one a
-// break of either engine's reading changes, the files those the break moves.
+// Our ignores as each engine reads them: ESLint as global ignores, oxlint as ignorePatterns, negated
+// lines taking files back. Each shape here is one a break of either engine's reading changes.
 
 allowEveryTestForParallelLoad()
 
@@ -142,11 +134,8 @@ READING_CASES.forEach((corpusCase) => {
   })
 })
 
-// Fix round 2, defect 4 (decisions.md, 2026-10-12 "fix round 2, after its developer"): ESLint takes
-// keep/legacy/a.js back from **/legacy/** with !**/keep/**, as it lies in a keep folder, so our
-// ESLint part runs our rules there. The shared ESLint reading of our ignores leaves the file out,
-// so the editor merge does not: the bug is to be fixed in that reading, checked against the real
-// ESLint, as here.
+// ESLint takes keep/legacy/a.js back from **/legacy/** with !**/keep/**, so our ESLint part runs our
+// rules there; the shared ESLint reading of our ignores must agree.
 describe('our rules in the corpus, where our ignores name every file in a legacy folder and take back every file in a keep folder, in a legacy folder inside a keep folder', () => {
   const corpusCase: CorpusCase = {
     how: 'every file in a legacy folder, less every file in a keep folder',
@@ -174,9 +163,8 @@ describe('our rules in the corpus, where our ignores name every file in a legacy
 })
 
 /**
- * Ignores oxlint's reading takes more files back from than oxlint does, and the files it takes back
- * that oxlint leaves out: measured, the developer's reading-parity probe (fix round 2), and
- * src/keep/legacy/x.js, a file that probe did not hold, measured here.
+ * Ignores oxlint's reading takes more files back from than oxlint does, and the files only the reading
+ * takes back (measured).
  */
 type OxlintReadingLimit = { readonly ignores: readonly string[]; readonly takenBackByTheReadingOnly: readonly string[] }
 
@@ -211,8 +199,7 @@ const OXLINT_READING_LIMITS: readonly OxlintReadingLimit[] = [
 OXLINT_READING_LIMITS.forEach(({ ignores, takenBackByTheReadingOnly }) => {
   describe(`prefer-const, which our oxlint part runs, where our ignores are ${JSON.stringify(ignores)}`, () => {
     const runs = setUpCorpusRuns({ how: JSON.stringify(ignores), ourRulesets: NO_RULESETS, ours: oursWithIgnores(ignores), files: LIMIT_FILES, rules: [PREFER_CONST] })
-    // The runs are read before the tests, so a run the engines cannot make fails the file: inside
-    // it.fails it would pass as the failure expected. Only the assertion fails inside it.fails.
+    // Read before the tests, so only the assertion can fail inside it.fails.
     let made: BothEnginesRuns | undefined
 
     beforeAll(() => {
@@ -224,11 +211,8 @@ OXLINT_READING_LIMITS.forEach(({ ignores, takenBackByTheReadingOnly }) => {
       return made
     }
 
-    // KNOWN GAP (decisions.md, 2026-10-12 "fix round 2, after its developer": a limit, pinned). Where
-    // a negated line takes back a folder, oxlint decides a file under a folder of the left-out name
-    // below it by that deeper folder, which the globs of an override cannot tell: the merge's
-    // reading of our ignores takes the file back, so our oxlint rules run there in the editor and
-    // not in the agent build.
+    // KNOWN GAP: under a negated folder line, oxlint decides a file by a deeper left-out folder, which
+    // override globs cannot tell, so our oxlint rules run there in the editor but not in the agent build.
     it.fails('reports it, merged into empty team configs, in exactly the files the agent build reports it in', () => {
       const { agent, mergedIntoEmptyTeamConfigs } = theRuns()
 
@@ -248,14 +232,9 @@ OXLINT_READING_LIMITS.forEach(({ ignores, takenBackByTheReadingOnly }) => {
   })
 })
 
-// Our ignores taking one package back from ESLint's default ignores, as ESLint documents it. The
-// agent build gives ESLint our ignores as global ignores, so its ESLint lints node_modules/mylib and
-// reports our no-var there. In the editor our ignores are not global (D-a), so ESLint's default
-// ignores hold there whatever our negated lines say: our ESLint part never lints node_modules
-// (decisions.md, 2026-10-12 "fix round 2, after its second review"). Our oxlint part runs nowhere in
-// node_modules: the agent build's own `**/node_modules/**` matches each file there, which a negated
-// folder line cannot take back. The team sets both rules, so beside it each is the team's in every
-// file (decisions.md, "Owner 2026-10-14").
+// The agent build gives ESLint our ignores as global ignores, so it reports our no-var in
+// node_modules/mylib; in the editor they are not global, so our ESLint part never lints node_modules.
+// Our oxlint part runs nowhere there: a negated folder line cannot take back **/node_modules/**.
 describe("our rules, where our ignores take node_modules/mylib back from ESLint's default ignores: !node_modules/, node_modules/*, !node_modules/mylib/", () => {
   const runs = setUpBothEnginesRuns({
     sources: packageTakenBackSourceFiles,
@@ -265,8 +244,7 @@ describe("our rules, where our ignores take node_modules/mylib back from ESLint'
   })
   const files = Object.keys(packageTakenBackSourceFiles)
   const rules = [NO_VAR, NO_UNUSED_VARS]
-  // The runs are read before the tests, so a run the engines cannot make fails the file: inside
-  // it.fails it would pass as the failure expected. Only the assertion fails inside it.fails.
+  // Read before the tests, so only the assertion can fail inside it.fails.
   let made: BothEnginesRuns | undefined
 
   beforeAll(() => {
@@ -290,9 +268,8 @@ describe("our rules, where our ignores take node_modules/mylib back from ESLint'
     })
   })
 
-  // KNOWN GAP (decisions.md, 2026-10-12 "fix round 2, after its second review": a limit, pinned).
-  // The agent build's ESLint reports our no-var in node_modules/mylib/a.js, which no editor merge can
-  // lint for us while ESLint's default ignores hold there.
+  // KNOWN GAP: the agent build's ESLint reports our no-var in node_modules/mylib/a.js, which no editor
+  // merge can lint while ESLint's default ignores hold there.
   it.fails('report, merged into empty team configs, in exactly the files the agent build reports them in, per engine', () => {
     const { agent, mergedIntoEmptyTeamConfigs } = theRuns()
 

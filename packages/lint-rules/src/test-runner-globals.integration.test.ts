@@ -9,12 +9,9 @@ import { findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 
-// q76 (spec-core.md C10): Vitest's and Jest's globals, read-only, in test files, whatever rulesets
-// are listed, as the framework globals are given (call 5): oxlint's `vitest` and `jest` envs, and
-// the `globals` package's in a block of ESLint's that names JS and TS files alone. The test files
-// are the shapes the shipped test-file ignores use: `*.test.*` and `*.spec.*`, and any file under
-// `__tests__`. Beside oxlint, oxlint runs no-undef in JS files, in the agent build and the editor
-// merges; without it, ESLint does.
+// Vitest's and Jest's globals, read-only, in test files whatever rulesets are listed: oxlint's `vitest`
+// and `jest` envs, and the `globals` package's in an ESLint block naming JS and TS files alone. Test
+// files take the shipped test-file ignores' shapes: `*.test.*`, `*.spec.*`, and any file under `__tests__`.
 
 allowEveryTestForParallelLoad()
 

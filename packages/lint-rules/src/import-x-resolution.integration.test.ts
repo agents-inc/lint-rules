@@ -14,15 +14,9 @@ import { relativeImportSpecifiersIn } from './__tests__/import-specifiers.ts'
 import { THIS_PACKAGE } from './__tests__/temp-projects.ts'
 import { defineLintRules } from './index.ts'
 
-// #33, fix C (spec-core.md C1; spec-next-batch E-1, E-2): ESLint's import-x rules resolve
-// TypeScript imports as the project does, through eslint-import-resolver-typescript given every
-// tsconfig.json and jsconfig.json of the project outside node_modules and .git, and import-x's
-// extensions holding the TS ones: an import written without its extension, one written with .js
-// that names a TS module, the tsconfig's path aliases, a package's own aliases where the root has
-// no tsconfig, and a package that ships types alone. Each probe in test-fixtures/import-x-ts fires
-// only where import-x resolves the module it imports. The agent build runs the six import-x rules
-// ESLint runs beside oxlint; without oxlint, ESLint runs the four oxlint-run ones q-r3 takes off the
-// skip list too. A broken tsconfig.json inside node_modules is never read (E-2).
+// import-x resolves TypeScript imports as the project does, through eslint-import-resolver-typescript
+// given every tsconfig.json and jsconfig.json outside node_modules and .git. Each probe in
+// test-fixtures/import-x-ts fires only where import-x resolves the module it imports.
 
 const FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/import-x-ts', import.meta.url))
 const PACKAGE_ALIAS_FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/import-x-ts-package-alias', import.meta.url))
@@ -69,7 +63,7 @@ const OWED_IN_THE_AGENT_BUILD: Readonly<Record<string, readonly string[]>> = {
   'src/b.ts': [],
 }
 
-/** Without oxlint, ESLint also runs the four oxlint-run rules q-r3 takes off the skip list. */
+/** Without oxlint, ESLint also runs the four oxlint-run rules taken off the skip list. */
 const OWED_WITHOUT_OXLINT: Readonly<Record<string, readonly string[]>> = {
   ...OWED_IN_THE_AGENT_BUILD,
   'src/cycle-a.ts': ['import-x/no-cycle'],
@@ -165,9 +159,8 @@ function warningsOfMultipleProjectsIn(stderr: string): string[] {
   return stderr.split('\n').filter((line) => line === MULTIPLE_PROJECTS_WARNING)
 }
 
-// The guard #33 asked for: a fixture of an import-x rule that imports a module of the fixtures
-// imports a TS one, written without its extension, so a resolver that cannot read TypeScript leaves
-// the rule silent rather than passing by an import any resolver reads.
+// A fixture importing a module of the fixtures must import a TS one without its extension, so a
+// resolver that cannot read TypeScript leaves the rule silent.
 describe('the ESLint-fallback fixtures of the import-x rules', () => {
   // Parse boundary: the fixture index, rule ID to fixture file.
   const fixtureFileById = JSON.parse(readFileSync(join(FALLBACK_FIXTURES_DIR, 'fixtures.json'), 'utf8')) as Readonly<Record<string, string>>

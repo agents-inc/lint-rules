@@ -4,14 +4,8 @@ import { setUpCorpusRuns } from './__tests__/corpus-runs.ts'
 import { findingsByFileAndRule, owedBesideTheTeam } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 
-// An entry of ours alone turning a rule on in files given by negated globs and file types, in the
-// editor merges through the built package, linted by the real ESLint and oxlint. These cases once
-// pinned the ESLint merge's cross-engine off of the team's copy of eqeqeq, which the owner's
-// 2026-10-14 model removed, and which ESLint now runs for us (spec-merge-model.md, 3.2): here
-// prefer-const, which oxlint runs for us and the team sets in its ESLint config, so beside it the
-// rule is the team's in every file. Owed in every file, as on the grid: merged into empty team configs, our rules report where
-// the agent build reports them; beside the team, the team's alone, never from both engines, and
-// never lost.
+// Our entry alone turns prefer-const on in files given by negated globs and file types. oxlint runs it
+// for us and the team sets it in ESLint, so beside the team it is the team's in every file.
 
 allowEveryTestForParallelLoad()
 
@@ -23,8 +17,8 @@ const OFF_BLOCK_CASES: readonly CorpusCase[] = [
     files: ['a.js', 'keep/a.js', 'src/a.js', 'src/a.ts', 'src/b.mjs', 'src/c.vue'],
     rules: [PREFER_CONST],
   },
-  // Two globs, one negated: the off block cannot say both entries in one list of ignores, as one
-  // asks a negated glob, so each gets a block of its own (found by breaking that decision, fix round 2).
+  // Two globs, one negated: one ignores list cannot say both entries, as one asks a negated glob, so each
+  // gets a block of its own.
   {
     how: 'an entry of ours turns prefer-const on in every file but src/**, and in src/keep/**, written as a negated glob and a glob: !src/**, src/keep/**',
     ourRulesets: NO_RULESETS,

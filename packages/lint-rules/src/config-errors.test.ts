@@ -16,7 +16,6 @@ import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// A consumer meets these errors when an engine or `check` loads its config: each names the file to fix first.
 const validLintRules = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR)
 const PACKAGE_JSON = 'package.json'
 
@@ -65,13 +64,8 @@ describe('an error in agents-inc.lint.mts', () => {
   })
 })
 
-// tsconfigRootDir is checked when the config is defined: required, an absolute path, an existing
-// folder (decisions.md, 2026-10-14 "real run 3 ... triage"). Real run 3 met each refusal below as
-// something else: left out, a raw TypeError (case E16); '.', a parse error on every TS file that
-// blamed parserOptions (E18); a missing folder, an error blaming package.json, or ESLint silently
-// running without oxlint (E17). Each value below fails one condition alone, beside one passing all,
-// and each message names the condition it fails: a wrong reason sends the consumer after the wrong
-// problem (fix round 3's review, break V2-1).
+// Each value fails one condition alone, beside one passing all; each message names the condition it
+// fails, as a wrong reason sends the consumer after the wrong problem.
 describe('tsconfigRootDir in agents-inc.lint.mts', () => {
   const tempProjects = setUpTempProjects()
   const projectDir = createProjectListingOxlint(tempProjects)
@@ -106,8 +100,7 @@ describe('tsconfigRootDir in agents-inc.lint.mts', () => {
   })
 })
 
-// Owner, 2026-10-10: allowSuppressions is the one place that decides the suppression rules, so
-// setting one in rules is refused, naming the key that does. Each call is refused by the types too.
+// allowSuppressions alone decides the suppression rules, so setting one in rules is refused.
 describe('a suppression rule set in agents-inc.lint.mts', () => {
   it('is refused in rules when it is house/no-suppressions, naming allowSuppressions', () => {
     // @ts-expect-error house/no-suppressions is set by allowSuppressions

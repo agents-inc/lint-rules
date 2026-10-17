@@ -20,13 +20,9 @@ import { setUpCorpusRuns } from './__tests__/corpus-runs.ts'
 import { findingsByFileAndRule, owedBesideTheTeam } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 
-// The file types oxlint runs each rule in (rule-data's data/oxlint-file-types.json), in the editor
-// merges through the built package, linted by the real ESLint and oxlint. Our ESLint part lints JS
-// and TS files only, and our oxlint part runs each rule in the file types oxlint runs it in. Owed in
-// every file, as on the grid: merged into empty team configs, our rules report where the agent build
-// reports them, per engine; beside the team, which sets every corpus rule, the team's alone in every
-// file, never from both engines (decisions.md, "Owner 2026-10-14"). The team lints .mjs, .cjs and
-// .tsx files too, and its .vue, .svelte and .astro files through a parser of its own.
+// Our ESLint part lints JS and TS files only; our oxlint part runs each rule in the file types oxlint
+// runs it in (data/oxlint-file-types.json). The team lints .mjs, .cjs and .tsx files too, and its
+// .vue, .svelte and .astro files through a parser of its own.
 
 allowEveryTestForParallelLoad()
 
@@ -104,11 +100,8 @@ FILE_TYPE_CASES.forEach((corpusCase) => {
   })
 })
 
-// Fix round 2, defect 2 (decisions.md, 2026-10-12 "fix round 2, after its developer"): no block we
-// write makes ESLint lint a file it would not lint without our part. Our eqeqeq is on only in an
-// entry for **/*.ts and **/*.vue; a block written with `files` for two globs of different
-// extensions once handed ESLint the .vue files, which it cannot parse without a parser of the
-// team's.
+// No block we write may make ESLint lint a file it would not lint without our part: one block with
+// `files` over both globs would hand ESLint the .vue files, which it cannot parse.
 describe('our eqeqeq, on only in an entry of ours for **/*.ts and **/*.vue, beside .vue files', () => {
   const runs = setUpCorpusRuns({
     how: 'eqeqeq only in an entry for TS and .vue files',
@@ -139,8 +132,7 @@ describe("our rules in the corpus, beside a .vue file with a plain script and th
   const files = ['src/d.vue']
   const rules = [BAN_TS_COMMENT, GETTER_RETURN]
   const runs = setUpCorpusRuns({ how: 'a .vue file with a plain script', ourRulesets: NO_RULESETS, ours: { rules: OUR_CORPUS_RULES }, files: ['src/c.vue', ...files], rules })
-  // The runs are read before the test, so a run the engines cannot make fails the file: inside
-  // it.fails it would pass as the failure expected. Only the assertion fails inside it.fails.
+  // Read before the tests, so only the assertion can fail inside it.fails.
   let made: BothEnginesRuns | undefined
 
   beforeAll(() => {
@@ -152,11 +144,8 @@ describe("our rules in the corpus, beside a .vue file with a plain script and th
     return made
   }
 
-  // Once a known gap (questions.md #63): no glob can tell a .vue file's script language, and the
-  // ESLint merge turned the team's copy of ban-ts-comment off in every .vue file, where oxlint's,
-  // TS only, reports nothing for a plain script; and left the team's getter-return on beside
-  // oxlint's. The team sets both rules, so both are the team's there, and nothing turns either off
-  // (decisions.md, "Owner 2026-10-14").
+  // No glob can tell a .vue file's script language. The team sets both rules, so both are the team's
+  // there and nothing turns either off.
   it("reports, merged into the team's configs, each rule once, as the team's configs alone report it", () => {
     const { agent, teamAlone, mergedIntoTheTeamsConfigs } = theRuns()
 

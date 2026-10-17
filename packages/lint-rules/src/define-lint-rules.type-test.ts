@@ -1,6 +1,5 @@
-// Checked by `tsc` through the package's typecheck and never run. Each `@ts-expect-error` must meet
-// a type error on the line below it, so a refusal the types stop making turns typecheck red; the
-// allowed call beside each one must compile.
+// Never run: typecheck fails when an `@ts-expect-error` below stops meeting a type error, or an
+// allowed call beside it stops compiling.
 import {
   buildConsumerLintRulesWithoutAgentRulesets,
   buildConsumerLintRulesWithoutEditorRulesets,
@@ -32,12 +31,11 @@ defineLintRules(buildConsumerLintRulesWithoutEditorRulesets(EMPTY_TSCONFIG_ROOT_
 
 defineLintRules({
   ...allowed,
-  // @ts-expect-error rulesets is no longer a key of the config: it is agentRulesets and editorRulesets
+  // @ts-expect-error rulesets is not a key of the config: it is agentRulesets and editorRulesets
   rulesets: allowed.agentRulesets,
 })
 
-// A list left out of a top-level set is empty, as in a file override (decisions.md, 2026-10-14 "real
-// run 3 ... triage"): plan.md shows `init` writing `editorRulesets: {}`.
+// A list left out of a top-level set is empty, as in a file override.
 defineLintRules({ ...allowed, agentRulesets: { quality: ['correctness'], libs: {} } })
 
 defineLintRules({ ...allowed, editorRulesets: { quality: ['correctness'], libs: {} } })
@@ -134,8 +132,7 @@ defineLintRules({
   },
 })
 
-// Owner, 2026-10-10: allowSuppressions is the one place that decides the suppression rules,
-// everywhere or for some files, so none of them can be set in rules.
+// allowSuppressions alone decides the suppression rules, so none of them can be set in rules.
 defineLintRules({ ...allowed, allowSuppressions: false })
 
 defineLintRules({
@@ -251,7 +248,7 @@ defineLintRules({
 defineLintRules({
   ...allowed,
   fileOverrides: [
-    // @ts-expect-error rulesets is no longer a key of an entry: it is agentRulesets and editorRulesets
+    // @ts-expect-error rulesets is not a key of an entry: it is agentRulesets and editorRulesets
     { files: ['apps/api/**'], rulesets: { runtimes: ['node'] } },
   ],
 })

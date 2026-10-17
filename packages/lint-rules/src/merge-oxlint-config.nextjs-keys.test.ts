@@ -10,12 +10,10 @@ import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.t
 import { defineLintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// In a rule key, oxlint reads `@next`, `@next/next` and the package name `@next/eslint-plugin-next`
-// as nextjs (oxlint-config-reading.ts, builtinPluginOfRulePrefix; unalias_plugin_name, rules.rs;
-// measured, oxlint 1.87 in merge-oxlint-config.differential.integration.test.ts). A team override
-// stating nextjs rules under those keys, where nextjs is listed for no file it applies to, is ignored
-// by oxlint for the team, so the merge, which lists every plugin at its root, drops the statements;
-// where the team's root lists nextjs, they count, and stay.
+// oxlint reads `@next`, `@next/next` and `@next/eslint-plugin-next` in a rule key as nextjs (measured,
+// oxlint 1.87). A team override stating nextjs rules where nextjs is listed for no file it applies to is
+// ignored by oxlint, so the merge, which lists every plugin at its root, drops the statements; where
+// the team's root lists nextjs, they stay.
 
 const tempProjects = setUpTempProjects()
 

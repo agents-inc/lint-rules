@@ -18,17 +18,10 @@ import { buildErrorOnItsRoutedEngine, buildEslintError } from './__tests__/facto
 import { buildConsumerLintRules, buildEveryRulesetLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { defineLintRules } from './index.ts'
 
-// Owner, 2026-10-10: suppression comments are banned unless allowSuppressions is true, top level
-// or for a file override's files. house/no-suppressions (ESLint) reports every eslint-* and
-// oxlint-* suppression; @typescript-eslint/ban-ts-comment, on the engine the catalog routes it to,
-// every @ts- one. allowSuppressions
-// is the only way to change either: neither can be set in rules.
-//
-// Measured (ESLint 10.12): with inline config read, a file-level /* eslint-disable */, an
-// eslint-disable naming the ban, an eslint-disable-line naming it on its own line, and
-// /* eslint house/no-suppressions: off */ each silence the ban. So wherever the ban is on, ESLint
-// must read no inline config at all (linterOptions.noInlineConfig): each directive then draws the
-// ban's error, plus ESLint's own warning that the comment has no effect.
+// Measured (ESLint 10.12): with inline config read, a file-level /* eslint-disable */, a disable comment
+// naming the ban, a disable-line comment on its own line, and /* eslint house/no-suppressions: off */
+// each silence the ban. So wherever the ban is on, ESLint reads no inline config (noInlineConfig):
+// each directive then draws the ban's error, plus ESLint's warning that it has no effect.
 
 // errorsOn and eslintMessagesOn include fatal messages (rule ID null), so a file asserted silent
 // cannot pass because it failed to parse. Where ESLint reads inline config, the fixture's
@@ -48,9 +41,8 @@ const BAN_REPORT_ON_LINE_1 = [buildEslintError(THE_BAN, 1)]
 const BLANKET_DISABLE_ON_LINE_1 = [buildErrorOnItsRoutedEngine(BLANKET_DISABLE_RULE, 1)]
 const BAN_AND_LOOP = [buildEslintError(THE_BAN, 1), buildEslintError(THE_LOOP_RULE, CLASSIC_LOOP_LINE)]
 
-// One file per form, in test-fixtures/suppression-ban/forms; each comment opens a line of clean code.
-// A bare /* eslint-disable */ draws the ban alone: unicorn/no-abusive-eslint-disable is off while
-// suppressions are banned, so the comment is not reported twice.
+// One file per form in test-fixtures/suppression-ban/forms. A bare /* eslint-disable */ draws the ban
+// alone: unicorn/no-abusive-eslint-disable is off while suppressions are banned.
 const ONE_ERROR_PER_SUPPRESSION_COMMENT = [
   { file: 'forms/eslint-disable.ts', errors: BAN_REPORT_ON_LINE_1 },
   { file: 'forms/eslint-disable-line-comment.ts', errors: BAN_REPORT_ON_LINE_1 },
@@ -161,9 +153,8 @@ describe('the ban, on as shipped, against comments that would silence it', () =>
   })
 })
 
-// Owner, 2026-10-10: allowSuppressions: true turns the ban off, so ESLint reads directives again,
-// and turns unicorn/no-abusive-eslint-disable on, so a blanket disable still draws one error: from
-// oxlint, which runs it (owner, q-r1).
+// allowSuppressions: true turns the ban off, so ESLint reads directives again, and turns
+// unicorn/no-abusive-eslint-disable on, so a blanket disable still draws one error, from oxlint.
 // @ts-ignore and @ts-nocheck stay banned; @ts-expect-error passes with a description.
 describe('suppressions allowed by allowSuppressions: true', () => {
   const allowed = setUpEngineRun(
@@ -207,8 +198,8 @@ describe('suppressions allowed by allowSuppressions: true', () => {
     expect(allowed.errorsOn(file)).toStrictEqual(errors)
   })
 
-  // The blanket disable's report is oxlint's (q-r1), so ESLint reports nothing on the file: not the
-  // loop the directive silences, and no warning that the directive has no effect.
+  // The blanket disable's report is oxlint's, so ESLint reports nothing on the file: not the loop the
+  // directive silences, and no warning that it has no effect.
   it('adds no warning of its own to a blanket /* eslint-disable */: ESLint reads the directive', () => {
     expect(allowed.eslintMessagesOn('src/disable-over-a-loop.ts')).toStrictEqual([])
   })

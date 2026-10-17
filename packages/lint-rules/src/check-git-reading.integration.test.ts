@@ -9,10 +9,6 @@ import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { entriesUnder, setUpEmptyFolders } from './__tests__/temp-projects.ts'
 
-// spec-cli.md "K: check", steps 6 to 8: check reads the changed files and lines from git, through a
-// scratch index in the OS temp folder, and lints those that are files on disk its ignores leave in.
-// Each suite runs the built bin (dist/cli.mjs) in a temp project.
-
 allowEveryTestForParallelLoad()
 
 const NOTHING_TO_CHECK = 'check: no changed JS or TS files.\n'

@@ -18,16 +18,9 @@ import { findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 
-// Framework globals, the same class as Svelte's runes, in both engines and both builds (decisions.md,
-// 2026-10-14 "fix round 4 closed"): Vue's `<script setup>` compiler macros in .vue files, Astro's
-// `Astro` in .astro files, and Svelte's `$$props`, `$$restProps` and `$$slots` in .svelte files.
-// Fix round 4's developer measured oxlint's no-undef reporting each of them. Beside oxlint, oxlint
-// runs no-undef in every one of these files but Svelte's components, where it is off and Svelte's own
-// checker reports an undeclared name (owner, q79), in the agent build and the editor merges through
-// the built package; without it, ESLint runs it in the JS and TS files it lints, which no component
-// is. The name nobody declares in each Vue and Astro component stays reported, and each framework
-// global in a JS file that does not have it. Each framework global is read-only, so a write to one
-// is reported; and a team's root globals stand where they set one, as its root env does (Q-E).
+// Vue's `<script setup>` macros, Astro's `Astro` and Svelte's `$$props`, `$$restProps` and
+// `$$slots`, in their component files. With oxlint, no-undef runs in each but Svelte components, where
+// Svelte's own checker reports undeclared names; without it, ESLint lints no component.
 
 allowEveryTestForParallelLoad()
 
@@ -83,9 +76,8 @@ describe('Vue, Astro and Svelte components, and JS files using their globals, ou
     )
   })
 
-  // A Svelte component subscribes to a store it imports as `$` and the store's name, any name, so no
-  // list of globals holds them all: no-undef is off in .svelte files (owner, q79), where Svelte's own
-  // checker reports an undeclared name.
+  // A Svelte component subscribes to any imported store as `$` plus its name, so no globals list holds
+  // them all: no-undef is off in .svelte files, where Svelte's own checker reports undeclared names.
   it("report no store subscription in a Svelte component by the agent build, where Svelte declares `$count` from the store's import", () => {
     expect(findingsByFileAndRule(runs().agent, Object.keys(OWED_IN_THE_STORE_COMPONENT), RULES)).toStrictEqual(OWED_IN_THE_STORE_COMPONENT)
   })

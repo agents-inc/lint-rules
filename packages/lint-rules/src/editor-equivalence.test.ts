@@ -26,10 +26,8 @@ import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// The editor parts of a config listing every ruleset in its editor set, merged into empty team
-// configs, read the way gate-equivalence reads the agent build. The team's oxlint config turns every
-// category off, so the team sets no rule. The editor parts always allow suppressions, whatever
-// allowSuppressions says (owner, 2026-10-11).
+// The team's oxlint config turns every category off, so the team sets no rule. The editor parts always
+// allow suppressions.
 
 type MergedEditorConfigs = { readonly eslint: Linter.Config[]; readonly oxlint: OxlintConfig | null }
 
@@ -72,16 +70,12 @@ function routeOf(id: string): RuleRoute {
   return route
 }
 
-/**
- * Every shipped rule allowSuppressions does not decide, as the catalog ships it, as every ruleset
- * listed runs them: but each rule covered by another, which every ruleset listed turns on (S;
- * spec-core.md C2).
- */
+/** Every shipped rule allowSuppressions does not decide, except each one another rule covers. */
 function shippedRoutesBesidesTheSuppressionRules(): RuleRoute[] {
   return [...catalog.rules.values()].filter((route) => route.shipped !== null && !SUPPRESSION_RULE_IDS.has(route.id) && !isCoveredByAShippedRule(route))
 }
 
-/** The rule standing in, without oxlint, for each shipped oxlint-only rule, which every ruleset listed turns on (spec-core.md C4). */
+/** The rule standing in, without oxlint, for each shipped oxlint-only rule. */
 function standInsOfShippedRules(): string[] {
   return [...catalog.eslintStandIns].flatMap(([oxlintRule, standIn]) => (routeOf(oxlintRule).shipped === null ? [] : [standIn]))
 }
@@ -112,8 +106,6 @@ describe('the editor parts of a project whose package.json lists oxlint, merged 
     expect(uniqueById(rulesOnInOxlint(oxlintConfigOf(configs))).filter((rule) => eslintIds.has(rule.id))).toStrictEqual([])
   })
 
-  // Nothing is turned off across engines (decisions.md, "Owner 2026-10-14"): ESLint states no rule
-  // oxlint runs for us, under its ID or an alias.
   it('state in ESLint no oxlint-routed rule, under its ID or an alias', () => {
     const { eslint } = merged()
     const oxlintRoutedNames = new Set(
@@ -131,10 +123,7 @@ describe('the editor ESLint part of a project whose package.json lists no oxlint
     expect(merged().oxlint).toBeNull()
   })
 
-  // Each moved core rule a current typescript-eslint rule extends is no longer skipped: it runs on JS
-  // files, and its twin on TS files in its place, with the core rule's options (questions.md #39).
-  // Twins are read from the installed typescript-eslint. A core rule another rule covers, which every
-  // ruleset listed turns on, is left out, and so is its twin (S; spec-core.md C2).
+  // Twins are read from the installed typescript-eslint. A covered core rule is left out, and so is its twin.
   it("runs every ESLint-routed rule and every moved rule not skipped, with its options, suppressions allowed, typescript-eslint's twin of each moved core rule with the core rule's options, and the stand-in of each oxlint-only rule with none", () => {
     const provenMovedIds = new Set(provenMovedRules().map((route) => route.id))
     const twinned = twinnedMovedRules().filter(({ core }) => !isCoveredByAShippedRule(routeOf(core)))

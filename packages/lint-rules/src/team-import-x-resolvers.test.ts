@@ -15,11 +15,8 @@ import { buildConsumerLintRules, MODULES_IN_BOTH_SETS } from './__tests__/factor
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
 
 // Our import-x/resolver-next stays out of every file where a team block sets import-x/resolver,
-// import-x/resolver-next, import-x/resolver-legacy or import-x/resolve, and stays where it sets another
-// key of import-x's alone (decisions.md, 2026-10-14 "fix round 5 review" and "fix round 6 closed";
-// O8): import-x reads resolver-next first, so ours beat a team's legacy resolver everywhere. Read from ESLint's own merge for a module in each package of
-// team-import-x-resolvers.ts, as import-x reads it. team-import-x-resolvers.integration.test.ts
-// runs the team's rule.
+// resolver-next, resolver-legacy or resolve, and stays where it sets another key alone: import-x reads
+// resolver-next first, so ours would beat a team's legacy resolver.
 
 const { lintedConfigFor } = setUpEslintConfigOracle()
 const tempProjects = setUpTempProjects()

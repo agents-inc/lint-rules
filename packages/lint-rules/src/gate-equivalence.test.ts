@@ -18,13 +18,9 @@ import {
 import { isCoveredByAShippedRule } from './__tests__/shipped-covers.ts'
 import { defineLintRules } from './index.ts'
 
-// With every ruleset listed in the agent set and nothing overridden, the agent build's two configs
-// together must run the canonical list: each rule once, on its routed engine, with its shipped
-// options. The agent build runs oxlint whatever the project's package.json lists.
-//
-// Owner, 2026-10-10: allowSuppressions decides three rules whatever rulesets are listed, and a
-// fourth since 2026-10-14 (r2-d22), so they are stated here per setting rather than read from the
-// canonical list.
+// With every ruleset listed in the agent set, the agent build's two configs must run the canonical
+// list: each rule once, on its routed engine, with its shipped options. allowSuppressions decides the
+// suppression rules whatever is listed, so they are stated here per setting.
 const SUPPRESSION_RULE_IDS: ReadonlySet<string> = new Set([
   '@typescript-eslint/ban-ts-comment',
   'house/no-suppressions',
@@ -51,9 +47,8 @@ const SUPPRESSION_RULES_ALLOWED = [
 ]
 
 /**
- * Every shipped rule allowSuppressions does not decide, on its routed engine with its shipped
- * options, as every ruleset listed runs them: but each rule covered by another, which every ruleset
- * listed turns on (S; spec-core.md C2).
+ * Every shipped rule allowSuppressions does not decide, on its routed engine with its shipped options,
+ * except each one another rule covers.
  */
 function shippedRulesBesidesTheSuppressionRules(): RuleOnEngine[] {
   return [...catalog.rules.values()].flatMap((rule) =>

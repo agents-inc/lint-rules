@@ -78,11 +78,7 @@ import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { entriesUnder, INSTALLED_OXLINT, setUpEmptyFolders, THIS_PACKAGE } from './__tests__/temp-projects.ts'
 import { validateLintRules } from './core/validate-lint-rules.ts'
 
-// spec-cli.md "K: check": `agents-inc-lint check` lints the JS and TS lines changed since the last
-// commit with the agent build of the nearest agents-inc.lint.mts, and prints what is left. Each suite
-// makes a git project, changes it as an agent would, and runs the built bin (dist/cli.mjs) on it.
-// The engines run for real; the fixtures fire only rules that report and never fix (no-debugger,
-// no-useless-catch, sonarjs/no-empty-test-file), so the fix step changes nothing here:
+// The fixtures fire only rules that never fix, so the fix step changes nothing here:
 // check-fixes.integration.test.ts covers it.
 
 allowEveryTestForParallelLoad()
@@ -714,8 +710,7 @@ describe('check in a monorepo package (K-22, q-c6)', () => {
   })
 })
 
-// q-c6: check lints the changed files under the nearest agents-inc.lint.mts, from the folder it runs
-// in up to the git top level. A name starting with two dots, as ..pkg does, is not the folder above.
+// A name starting with two dots, as ..pkg does, is not the folder above.
 describe('check in a package whose folder, at the repo root, and a changed file in it are each named with two leading dots', () => {
   const PACKAGE = '..pkg'
 
@@ -795,13 +790,8 @@ describe('check on findings spanning lines, and on findings about a whole file (
     expect(findingsInFile(run().stdout, 'src/catch-start.ts')).toStrictEqual(['src/catch-start.ts:4 no-useless-catch'])
   })
 
-  // KNOWN GAP (an owner card): oxlint gives no-useless-catch at two places, the caught `error`
-  // (line 4) and the rethrow (line 5), not as one span from line 4 to 6 (measured, oxlint 1.87). A
-  // finding at several places now counts at any of them that changed (the cli review's Must Fix 1,
-  // so that a duplicate an agent adds below the code it repeats is reported), so check reports this
-  // one at line 5, where only a comment was added. Whether such a finding counts by its first place
-  // (q-c9 as this assertion reads it) or at any place waits on the owner. Flip to `it` if the owner
-  // keeps the first place.
+  // KNOWN GAP: oxlint reports no-useless-catch at lines 4 and 5, not as one span, and a finding counts at
+  // any changed place, so check reports it at line 5. Whether the first place decides waits on the owner.
   it.fails('drops a finding spanning several lines where only a later one of them changed, beside the one it keeps', () => {
     const { stdout } = run()
 
@@ -930,8 +920,7 @@ describe('check on block suppression comments, and on enable comments that turn 
     expect(findingsInFile(run().stdout, 'src/legacy.ts')).toStrictEqual(['src/legacy.ts:4 no-debugger'])
   })
 
-  // Whether check reports an enable comment that turns back on nothing is an owner card; until it is
-  // answered, check reports nothing on one.
+  // Undecided whether check reports an enable comment that turns nothing back on; it reports nothing for now.
   it('reports the finding below enable comments an agent added that turn back on nothing, in either form, and nothing on the comments, where suppressions are allowed', () => {
     expect(findingsInFile(run().stdout, 'src/allowed/stray-enables.ts')).toStrictEqual(['src/allowed/stray-enables.ts:6 no-debugger'])
   })
@@ -950,9 +939,8 @@ describe('check on block suppression comments, and on enable comments that turn 
 })
 
 describe('check on unused pairs beside comment-like text in a string or a template literal, where suppressions are allowed (K-23, q-c15)', () => {
-  // Text that looks like a comment inside a string is no comment (cli review, r14). Read as one, it
-  // made check refuse the whole run (exit 2), hiding the finding in src/other.ts, or report a pair
-  // at the string's line, where ESLint does not, so that it went unreported.
+  // Comment-like text inside a string is no comment: read as one, check refused the run or placed the
+  // pair where ESLint does not.
 
   const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
     project.write('src/allowed/string.ts', moduleText(...A_PAIR_AROUND_A_STRING_HOLDING_AN_ENABLE))
@@ -980,12 +968,8 @@ describe('check on unused pairs beside comment-like text in a string or a templa
 })
 
 describe('check where another writer moves a partly unused suppression comment down after oxlint read it, where suppressions are allowed (K-23, q-c15)', () => {
-  // cli review n3: another writer adds a line above a suppression comment after oxlint's last run
-  // read the file, and before check reads it to place what oxlint reported. oxlint's span on the name
-  // that silenced nothing then falls in that writer's line, which no comment holds, and check refused
-  // the whole run (exit 2), hiding the finding in src/other.ts. The pairing never refuses the run
-  // (decided 2026-10-15): the moved comment goes unreported in this run, in either form, and the next
-  // run reports it where it is now. Here the writer writes as oxlint's lint run ends, every time.
+  // Another writer adds a line above a suppression comment between oxlint's read and check's. The pairing
+  // never refuses the run: the moved comment goes unreported now and is reported next run.
   const MOVED = [
     { file: 'src/allowed/eslint-moved.ts', form: 'eslint' },
     { file: 'src/allowed/oxlint-moved.ts', form: 'oxlint' },

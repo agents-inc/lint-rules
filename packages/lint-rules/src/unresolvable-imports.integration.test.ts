@@ -21,20 +21,11 @@ import { type FindingsByFileAndRule, findingsByFileAndRule } from './__tests__/f
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 
-// n/no-unpublished-import on imports eslint-plugin-n cannot resolve, run outside the package as from a
-// monorepo's root (decisions.md, 2026-10-14 "fix round 4 closed" and "fix round 5 review"). Fix round
-// 4's review: such imports are still reported unpublished, the same class as real run 3's R-ALL-6.
-// The cause, in the plugin's code (unresolvable-imports.ts): an import it resolves to no file is
-// measured from the folder the process runs in. The `resolverConfig: { tsconfig: true }` option we
-// ship on the rule, and on n/no-unpublished-require (decisions.md, 2026-10-14 "fix round 6 closed"),
-// reaches a JS file's import or require through tsconfig.json's alias, so that is owed; it
-// reaches nothing else, so those are pinned as known gaps (questions.md #78). Beside each, what the
-// package does not publish stays reported: a package it lists in devDependencies alone, and an alias
-// to its unpublished scripts folder. Given as the plugin's setting instead, the same resolverConfig
-// reaches every rule of the plugin, and n/no-extraneous-import reported imports through aliases
-// named like packages, and through baseUrl, as extraneous (fix round 5's review), so neither rule of
-// ours may report those. The agent build and the merged runs lint in this process, outside the
-// project; the ESLint CLI runs from the project's root.
+// n/no-unpublished-import measures an import it resolves to no file from the folder the process runs
+// in. The `resolverConfig: { tsconfig: true }` we ship on it and n/no-unpublished-require reaches a JS
+// file's import or require through tsconfig.json's alias, so that is owed; it reaches nothing else,
+// pinned as known gaps. Given as the plugin's setting instead, it made n/no-extraneous-import report
+// aliases named like packages, so neither rule of ours may report those.
 
 allowEveryTestForParallelLoad()
 
@@ -68,8 +59,7 @@ describe("imports eslint-plugin-n cannot resolve, in a monorepo's packages, our 
     teamEslintRules: {},
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
   })
-  // The runs are read before the tests, so a run the engines cannot make fails the file: inside
-  // it.fails it would pass as the failure expected. Only the assertion fails inside it.fails.
+  // Read before the tests, so only the assertion can fail inside it.fails.
   let made: BothEnginesRuns | undefined
 
   beforeAll(() => {
@@ -111,10 +101,8 @@ describe("imports eslint-plugin-n cannot resolve, in a monorepo's packages, our 
     expect(owedOfBothIn(theRuns().mergedIntoEmptyTeamConfigs, OWED_THROUGH_ALIASES_NAMED_LIKE_PACKAGES)).toStrictEqual(OWED_THROUGH_ALIASES_NAMED_LIKE_PACKAGES)
   })
 
-  // KNOWN GAP (questions.md #78): the plugin reads aliases from tsconfig.json alone (get-tsconfig.js),
-  // and enhanced-resolve's `tsconfig` option, given through `resolverConfig`, appends tsconfig.json to
-  // each reference path and joins a named config file to the importing file's folder: neither finds
-  // tsconfig.app.json (measured, ESLint 10.12).
+  // KNOWN GAP: the plugin reads aliases from tsconfig.json alone, and enhanced-resolve's `tsconfig`
+  // option finds no tsconfig.app.json either (measured, ESLint 10.12).
   it.fails("report, by the agent build, the devDependency alone where Vite's layout keeps the alias in tsconfig.app.json", () => {
     expect(owedIn(theRuns().agent, OWED_THROUGH_THE_APP_TSCONFIG_ALIAS)).toStrictEqual(OWED_THROUGH_THE_APP_TSCONFIG_ALIAS)
   })
@@ -124,9 +112,8 @@ describe("imports eslint-plugin-n cannot resolve, in a monorepo's packages, our 
     expect(owedIn(theRuns().agent, OWED_THROUGH_THE_JSCONFIG_ALIAS)).toStrictEqual(OWED_THROUGH_THE_JSCONFIG_ALIAS)
   })
 
-  // KNOWN GAP: SvelteKit's `$app/…` modules exist only in its Vite plugin and its ambient types, so
-  // no resolver setting finds a file, and `allowModules` reads package names alone, which `$app`
-  // fails the pattern of.
+  // KNOWN GAP: SvelteKit's `$app/…` modules exist only in its Vite plugin and types, so no resolver
+  // finds a file, and `allowModules` reads package names alone.
   it.fails("report, by the agent build, the devDependency alone beside SvelteKit's virtual module", () => {
     expect(owedIn(theRuns().agent, OWED_BESIDE_A_KIT_MODULE)).toStrictEqual(OWED_BESIDE_A_KIT_MODULE)
   })
@@ -142,8 +129,7 @@ describe("imports eslint-plugin-n cannot resolve, in a monorepo's packages, our 
     }),
     ...unresolvableImportFiles,
   })
-  // As above: the run and what ESLint reported are read before the tests, so only the assertion
-  // fails inside it.fails.
+  // As above, read before the tests, so only the assertion can fail inside it.fails.
   let made: EslintCliReading | undefined
 
   beforeAll(() => {

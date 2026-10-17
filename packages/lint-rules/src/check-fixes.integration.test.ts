@@ -44,19 +44,10 @@ import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { type TempProjects, textsOf } from './__tests__/temp-projects.ts'
 
-// spec-cli.md "The fix step" (q-c11, P1): check applies the autofixes first, then lints, and
-// reports what is left. A fix may change only lines already changed: ESLint applies a fix only when
-// its finding is on a changed line, and a guard drops an engine's fixes in a file where they would
-// delete or modify a line nobody changed. The gate's withheld fixes stay withheld (X2).
-//
-// The fixable rules, each measured on the agent build (oxlint 1.87, ESLint 10.12):
-// - prefer-const, oxlint: `let` never reassigned becomes `const`.
-// - object-shorthand, ESLint: `{ m: m }` becomes `{ m }`.
-// - @typescript-eslint/array-type, ESLint: `Array<\n  number\n>` becomes `number[]`, deleting two lines.
-// - perfectionist/sort-arrays, ESLint: reorders a constant array; the gate withholds its fix.
-// - unicorn/prefer-optional-catch-binding, ESLint: removes an unused catch binding, after which
-//   preserve-caught-error, which has no fix, no longer reports the missing `cause` (P3).
-// - no-debugger, oxlint: reports and is never fixed by `--fix`.
+// The fixable rules here, measured on the agent build (oxlint 1.87, ESLint 10.12): prefer-const
+// (oxlint); object-shorthand, @typescript-eslint/array-type (deletes two lines), perfectionist/sort-arrays
+// (fix withheld by the gate) and unicorn/prefer-optional-catch-binding (ESLint), after whose fix
+// preserve-caught-error no longer reports the missing `cause`. no-debugger is never fixed by `--fix`.
 
 allowEveryTestForParallelLoad()
 
@@ -64,11 +55,8 @@ const FIXES = { quality: ['correctness', 'redundancy', 'modern-js', 'immutabilit
 const ORDERING_AND_MODERN_JS = { quality: ['ordering', 'modern-js'] } as const
 const IMMUTABILITY = { quality: ['immutability'] } as const
 
-// A project both engines fix, for a run a signal stops while check fixes. ESLint fixes the files
-// one at a time, in path order, once oxlint's fix run has written its fixes into all of them. So
-// once the first file holds ESLint's fix, the others hold oxlint's, and ESLint has each of them
-// still to lint: a signal sent then lands while check is fixing. The last changed file holds
-// nothing either engine fixes.
+// ESLint fixes files one at a time, in path order, after oxlint's fix run, so once the first file
+// holds ESLint's fix, a signal lands while check is still fixing. The last file holds nothing to fix.
 const OXLINT_AND_ESLINT_FIXES = { quality: ['immutability', 'modern-js'] } as const
 const FIXED_BY_ESLINT_FIRST = 'src/a-shorthand.ts'
 const FILES_OXLINT_FIXES = 30
@@ -88,7 +76,7 @@ function letFixedOfFileAt(index: number): string {
   return exportedConstFixedFromLet(`value${String(index)}`)
 }
 
-/** A committed project, and the files an agent then added to it: each but the last of which one engine or the other fixes. */
+/** A committed project, and the files an agent then added: each but the last fixed by one engine or the other. */
 function projectBothEnginesFix(tempProjects: TempProjects): GitProject {
   const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(OXLINT_AND_ESLINT_FIXES) })
   project.write(FIXED_BY_ESLINT_FIRST, moduleText(...WRAP))
@@ -296,10 +284,8 @@ describe('check fixing only what it checks (F-9)', () => {
   })
 })
 
-// An interrupted or failed check puts no file back (decided 2026-10-15): each fix it wrote is a whole
-// fix the guard kept, as `eslint --fix` leaves one, and putting files back wrote over other writers'
-// edits (cli review, r8, r12, r13). So it prints the autofixed line before it exits 130, 143 or 2,
-// naming the files it rewrote so far, for the agent to read them again (P2).
+// An interrupted check puts no file back, which would overwrite other writers' edits; it names the
+// files it rewrote so far.
 
 describe('check interrupted while ESLint fixes, after oxlint wrote its fixes (spec-cli.md "Signals and leftovers")', () => {
   const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
@@ -326,9 +312,8 @@ describe('check interrupted while ESLint fixes, after oxlint wrote its fixes (sp
 })
 
 describe('check interrupted while it fixes, after another writer rewrote a file oxlint fixed and a file with nothing to fix (spec-cli.md "Signals and leftovers", F-6)', () => {
-  // r8: another agent or an editor rewrites the last file oxlint fixed, which ESLint has still to
-  // lint, and the file neither engine fixes, between ESLint's first fix and the signal. The text it
-  // writes has nothing to fix.
+  // Another writer rewrites the last file oxlint fixed, and the file neither engine fixes, between
+  // ESLint's first fix and the signal.
   const REWRITTEN_MEANWHILE = FIXED_BY_OXLINT[FILES_OXLINT_FIXES - 1]
   const ANOTHER_WRITERS_TEXT = moduleText(exportedConstant('writtenByAnotherWriter'))
   const ANOTHER_WRITERS_TEXT_WHERE_NOTHING_WAS_FIXED = moduleText(exportedConstant('alsoWrittenByAnotherWriter'))
@@ -356,10 +341,8 @@ describe('check interrupted while it fixes, after another writer rewrote a file 
 })
 
 describe('check interrupted once ESLint fixed what another writer wrote into a file after oxlint ended (spec-cli.md "Signals and leftovers", F-6)', () => {
-  // r13: another writer adds a function ESLint fixes to a file oxlint fixed, after oxlint's run and
-  // check's read of every file after it; ESLint then reads that writer's text, fixes it and writes
-  // it, and the signal comes once it has. The file is the middle one: ESLint reaches it well after
-  // the writer writes and well before its last file.
+  // Another writer adds a function ESLint fixes to a file oxlint fixed, after check read it. The middle
+  // file: ESLint reaches it well after the write and well before its last file.
   const MIDDLE = FILES_OXLINT_FIXES / 2
   const WRITTEN_MEANWHILE = FIXED_BY_OXLINT[MIDDLE]
   const ANOTHER_WRITERS_TEXT = moduleText(letFixedOfFileAt(MIDDLE), ...WRAP)

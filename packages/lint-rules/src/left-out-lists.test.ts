@@ -11,10 +11,8 @@ import { createProjectListingOxlint } from './__tests__/factories/package-json-f
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 
-// A top-level set (agentRulesets, editorRulesets) with a list left out means that list is empty, as
-// inside a fileOverrides entry (decisions.md, 2026-10-14 "real run 3 ... triage"). plan.md's
-// `editorRulesets: {}`, what `init` writes, stopped defineLintRules with "quality is not iterable".
-// Each set leaving lists out owes what the same set giving them empty gives.
+// A top-level set with a list left out means that list is empty, as in a fileOverrides entry, and owes
+// what the same set giving the lists empty gives.
 
 type Rulesets = LintRules['agentRulesets']
 
@@ -49,8 +47,7 @@ describe.each(PROJECTS)('an editor set leaving lists out, in a project $project'
   })
 })
 
-// `check` builds the agent set: nothing reads it at load, so a list left out there passed silently in
-// real run 3 (case E28), and the agent build stopped on it.
+// Nothing reads the agent set at load, only `check`, so a list left out there would surface only then.
 describe('an agent set leaving lists out, in a project whose package.json lists oxlint', () => {
   const { calculatedRulesOfEach, globalsFor } = setUpEslintConfigOracle()
 

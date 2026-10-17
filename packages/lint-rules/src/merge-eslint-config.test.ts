@@ -74,14 +74,10 @@ import { mergeEslintConfig } from './eslint.ts'
 import { eslintPluginRegistry } from './eslint-plugin-registry.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 
-// The ESLint merge (spec §2, as spec-owner-answers.md and the owner's 2026-10-14 model amend it): one
-// plugin object per prefix both configs register, built from the team's with our rule modules for the
-// rules we run; ours first, then the team's blocks, whose setting of a rule anywhere, under any of its
-// names or a twin's, makes the rule the team's in every file, ours running nowhere; a rule we do not
-// state stays the team's. Unless a spec says otherwise, the team's oxlint config sets no rule. The real catalog and
-// plugins are ours; the team's plugins are fakes, so a spec sees whose rule module ran. Each config
-// lists no ruleset and turns on, through `rules`, exactly the rules its spec reads, so no typed rule
-// asks for a project service.
+// One plugin object per prefix both configs register, built from the team's with our rule modules;
+// ours first, then the team's blocks, whose setting of a rule anywhere, under any name or a twin's,
+// makes it the team's in every file. The team's plugins are fakes, so a spec sees whose rule module
+// ran. Each config turns on exactly the rules its spec reads, so no typed rule asks for a project service.
 
 type TeamEslintConfig = Parameters<typeof mergeEslintConfig>[0]
 type SharedFields = Partial<Omit<LintRules, 'tsconfigRootDir' | 'agentRulesets' | 'editorRulesets'>>
@@ -91,9 +87,9 @@ type EditorParts = ReturnType<typeof defineLintRules>['editorRulesets']
 type SwitchingTypesOff = { readonly how: string; readonly typedThrough: TeamTypeInformation; readonly switchingOff: Linter.Config }
 
 /**
- * typescript-eslint's extension of a core rule, and what becomes of the core rule in a project that
- * lists no oxlint: ESLint runs it for us, or, where oxlint would run it and the extension is current,
- * ESLint runs the extension on TS files and the core rule on JS files (questions.md #39).
+ * typescript-eslint's extension of a core rule, and what becomes of the core rule without oxlint: ESLint
+ * runs it, or, where oxlint would run it and the extension is current, ESLint runs the extension on
+ * TS files and the core rule on JS files.
  */
 type TwinOfACoreRule = {
   readonly twin: string
@@ -154,10 +150,8 @@ const TYPED_RULE_ON = { rules: { [FLOATING_PROMISES]: 'error' } } satisfies Shar
 // Files a team lints without type information, as a scripts folder outside its tsconfig.
 const SCRIPT_FILES = ['scripts/**']
 // typescript-eslint's extensions of core rules, which oxlint does not spell under its typescript
-// scope. The first two core rules are routed to ESLint; oxlint runs the others, and without oxlint
-// ESLint runs each one's current extension on TS files in its place (#39), require-await's included
-// (decisions.md, the build wf_ec970377-570 review). No ruleset ships require-await, but `rules` can
-// turn on any rule.
+// scope. The first two core rules are routed to ESLint; without oxlint, ESLint runs each other one's
+// current extension on TS files in its place. No ruleset ships require-await, but `rules` can.
 const TWINS_OXLINT_DOES_NOT_SPELL: readonly TwinOfACoreRule[] = [
   { twin: '@typescript-eslint/only-throw-error', coreRule: 'no-throw-literal', withoutOxlint: 'run by ESLint' },
   { twin: '@typescript-eslint/prefer-promise-reject-errors', coreRule: 'prefer-promise-reject-errors', withoutOxlint: 'run by ESLint' },
@@ -224,8 +218,7 @@ const LEGACY_FILES = ['legacy/**']
 // A file a team block naming LEGACY_FILES applies to, and one it does not: TSX, where max-lines ships.
 const A1_FILES = ['legacy/a.tsx', 'src/a.tsx']
 const LEGACY_OLD_FILES = ['legacy/old/**']
-// Measured 2026-10-11: ~3.4 s alone and ~5.3 s in the full suite in the project listing oxlint
-// (~1.4 s and ~1.5 s in the other), past vitest's 5 s default.
+// ~3.4 s alone and ~5.3 s in the full suite (measured), past vitest's 5 s default.
 const TWIN_WALK_TIMEOUT_MS = 20_000
 // A TS file a tsconfig including src takes in, and one no tsconfig does, both on disk.
 const TS_FILE_A_TSCONFIG_INCLUDES = 'src/a.ts'
@@ -320,9 +313,8 @@ function typedProjectWithoutOxlint(source: string): string {
   })
 }
 // Twins the walk must reach: each the twin of a rule we state, and not stated by us. Not
-// consistent-return or no-implied-eval, which we ship beside their typed twins (q-r6), nor
-// no-invalid-this: every ruleset listed turns functional/no-this-expressions on, which covers our
-// twin of it (r2-d77).
+// consistent-return or no-implied-eval, shipped beside their typed twins, nor no-invalid-this, whose
+// twin functional/no-this-expressions covers.
 const PROJECTS_THE_TWIN_WALK_READS = [
   {
     project: 'whose package.json lists oxlint',
@@ -540,10 +532,8 @@ describe('a team block registering, under the prefix of a rule we run, a plugin 
   })
 })
 
-// The team's setting wins wherever it sets the rule (questions.md #32 D4, reversed by the owner):
-// ours is left out of those files rather than put before the team's, since a later block giving a
-// bare severity keeps an earlier block's options, and an `off` block in between does not reset them
-// (measured).
+// Ours is left out of the team's files rather than put before the team's block: a later bare severity
+// keeps an earlier block's options, and an `off` block between does not reset them (measured).
 describe('a rule our part states, which the team sets too', () => {
   const teamRegistering = (rules: Linter.RulesRecord): Linter.Config[] => [
     buildTeamEslintBlock('team', { plugins: { '@typescript-eslint': buildFakePlugin(['array-type']) }, rules }),
@@ -572,9 +562,8 @@ describe('a rule our part states, which the team sets too', () => {
     }).toStrictEqual({ whatOursReports: [], whatTheTeamsReports: [ARRAY_TYPE] })
   })
 
-  // A key under a prefix both register names our rule by the literal key, so the rule is the team's,
-  // on the team's module (spec-merge-model.md, 1.1 and call C1): the team's reports every file, where
-  // ours, array-simple, would report the first source alone.
+  // A key under a prefix both register names our rule, so the rule is the team's, on the team's module:
+  // the team's reports every file, where our array-simple would report the first alone.
   it.each(PROJECTS)("runs on the team's own module where the team registers a plugin of its own under the prefix, in a project $project", async ({ projectDir }) => {
     const teamConfig = [buildTeamEslintBlock('team', { plugins: { [TYPESCRIPT_ESLINT_PREFIX]: buildReportingPlugin(['array-type']) }, rules: { [ARRAY_TYPE]: 'error' } })]
     const config = mergedEditorEslintConfig(projectDir, { rules: { [ARRAY_TYPE]: 'error' } }, teamConfig)
@@ -595,8 +584,8 @@ describe('a rule our part states, which the team sets too', () => {
     }).toStrictEqual({ nullCheck: [], numberCheck: ['eqeqeq'] })
   })
 
-  // The team's setting of a rule decides it in both engines (decisions.md, "Owner 2026-10-14"): no
-  // copy of ours runs in either, and nothing turns the team's off.
+  // The team's setting decides the rule in both engines: no copy of ours runs in either, and nothing
+  // turns the team's off.
   it("runs eqeqeq with the team's smart where the team gave it, in a project whose package.json lists oxlint", async () => {
     const teamConfig = [buildTeamEslintBlock('team', { rules: { eqeqeq: ['error', 'smart'] } })]
     const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, { rules: { eqeqeq: 'error' } }, teamConfig)
@@ -625,7 +614,7 @@ describe('a rule our part states, which the team sets too', () => {
     expect(await entriesOf(config, 'max-lines', files)).toStrictEqual(await teamAloneEntriesOf(teamConfig, 'max-lines', files))
   })
 
-  // Our `off` removes only ours (questions.md #42, reversed by the owner).
+  // Our `off` removes only ours.
   it.each(PROJECTS)("is the team's, options included, in every file, where our top-level rules turn it off, in a project $project", async ({ projectDir }) => {
     const teamConfig = [buildTeamEslintBlock('team', { rules: { 'max-lines': ['error', { max: 1 }] } })]
     const config = mergedEditorEslintConfig(projectDir, { rules: { 'max-lines': 'off' } }, teamConfig)
@@ -635,9 +624,8 @@ describe('a rule our part states, which the team sets too', () => {
   })
 })
 
-// The team's block sets our rule in some files only, under one of its names. In every file, those
-// outside the block's included, every name of the rule has the entry the team's config alone gives
-// it, options included, and ours does not run (decisions.md, "Owner 2026-10-14").
+// In every file, inside the block's files or out, every name of the rule has the entry the team's
+// config alone gives it, and ours does not run.
 describe('a rule our part states, which a team block sets in some files under one of its names', () => {
   const kinds: readonly NameKind[] = [
     {
@@ -705,10 +693,8 @@ describe('a rule our part states, which a team block sets in some files under on
   )
 })
 
-// Our `off`, from any layer, and our ignores remove only ours (questions.md #42, reversed by
-// the owner; D-a). The team's block sets the rule in the files they cover, so the rule is the
-// team's in every file (decisions.md, "Owner 2026-10-14"): every name of it is as the team's config
-// alone gives it, in those files and outside them, whatever our layer says.
+// The team's block sets the rule in the files our off and ignores cover, so the rule is the team's in
+// every file, whatever our layer says.
 describe("our off and our ignores, beside a team block setting the rule in the files they cover", () => {
   const teamConfig = [
     buildTeamEslintBlock('team', {
@@ -751,7 +737,7 @@ describe("our off and our ignores, beside a team block setting the rule in the f
     },
   )
 
-  // D-a: our ignores were global ignores, which silenced the team's own rules in those files too.
+  // Global ignores would silence the team's own rules in those files too.
   it.each(PROJECTS)(
     "leave a rule we do not state as the team's config gives it in the files our ignores name, ours running elsewhere, in a project $project",
     async ({ projectDir }) => {
@@ -775,9 +761,8 @@ describe('a team rule our part does not state', () => {
     expect(await severitiesOf(config, 'no-console', ['src/a.ts'])).toStrictEqual({ 'src/a.ts': 'warn' })
   })
 
-  // react/react-in-jsx-scope is routed to oxlint but not shipped; react/jsx-key our oxlint part runs.
-  // The team sets both, so both are the team's, in ESLint as its config gives them (decisions.md,
-  // "Owner 2026-10-14"): nothing turns either off.
+  // react/react-in-jsx-scope is routed to oxlint but not shipped; our oxlint part runs react/jsx-key. The
+  // team sets both, so both are the team's and nothing turns either off.
   it("keeps firing in ESLint when we route it to oxlint but do not run it, and so does one our oxlint part runs, in a project whose package.json lists oxlint", async () => {
     const teamConfig = [
       buildTeamEslintBlock('team', {
@@ -791,8 +776,8 @@ describe('a team rule our part does not state', () => {
   })
 })
 
-// oxlint runs it in the entry's files, and ESLint states nothing of it, there or elsewhere: no copy
-// of a rule is turned off across engines (decisions.md, "Owner 2026-10-14").
+// No copy of a rule is turned off across engines: oxlint runs it in the entry's files, and ESLint
+// states nothing of it.
 describe('a rule our oxlint part runs with options of an entry of ours, in a project whose package.json lists oxlint', () => {
   it("states nothing of it in ESLint, in the entry's files or elsewhere", async () => {
     const fields = { fileOverrides: [{ files: LEGACY_FILES, rules: { [NO_UNUSED_VARS]: ['error', { args: 'none' }] } }] } satisfies SharedFields
@@ -805,9 +790,8 @@ describe('a rule our oxlint part runs with options of an entry of ours, in a pro
   })
 })
 
-// A rule the team sets is the team's in both engines, in every file, whatever our layers say of it
-// (decisions.md, "Owner 2026-10-14"): our off removes only ours (#42), and where our oxlint part runs
-// it, nothing turns the team's ESLint copy off. no-warning-comments, which oxlint runs for us.
+// Our off removes only ours, and where our oxlint part runs the rule, nothing turns the team's ESLint
+// copy off.
 describe('a rule our oxlint part states, which the team sets in ESLint, in a project whose package.json lists oxlint', () => {
   const teamConfig = [buildTeamEslintBlock('team', { rules: { [NO_WARNING_COMMENTS]: ['error', { terms: ['hack'] }] } })]
   const files = ['legacy/a.ts', 'src/a.ts']
@@ -823,10 +807,8 @@ describe('a rule our oxlint part states, which the team sets in ESLint, in a pro
   })
 })
 
-// The team sets the rule, so it is the team's in every file, as its config alone gives it: in a file
-// our ignores match, one where our own settings turn the rule off, or one it ships ignoring, and in
-// one our oxlint part would run it in (decisions.md, "Owner 2026-10-14"; D-a). realRun.md's failure 2
-// was the first case.
+// The team sets the rule, so it is the team's in every file: one our ignores match, one where our
+// settings turn it off, one it ships ignoring, and one our oxlint part would run it in.
 describe('a rule our oxlint part runs in some files only, which the team sets in ESLint, in a project whose package.json lists oxlint', () => {
   const cases: readonly { readonly where: string; readonly ruleId: string; readonly teamEntry: Linter.RuleEntry; readonly fields: SharedFields; readonly file: string }[] = [
     { where: 'our ignores match', ruleId: NO_DEBUGGER, teamEntry: ['error'], fields: { rules: { [NO_DEBUGGER]: 'error' }, ignores: LEGACY_FILES }, file: 'legacy/a.ts' },
@@ -852,8 +834,7 @@ describe('a rule our oxlint part runs in some files only, which the team sets in
 })
 
 // import-x/first is oxlint's where the project lists oxlint, ESLint's without; either way the team's
-// alias of it is the team's, in ESLint as its config gives it (#32 D4; decisions.md, "Owner
-// 2026-10-14"): nothing turns it off across engines.
+// alias of it is the team's, and nothing turns it off across engines.
 describe('an alias of a rule our part runs', () => {
   it.each(PROJECTS)("is the team's where the team turns it on, in a project $project", async ({ projectDir }) => {
     const teamConfig = [
@@ -884,13 +865,9 @@ function importXUnderImport(): Linter.Config[] {
   return [buildTeamEslintBlock('team', { plugins: { import: installedEslintPlugin('import-x') }, rules: { 'import/first': ['error', 'disable-absolute-first'] } })]
 }
 
-// The class the alias above is one case of: another ESLint name of the same rule (an alias, a
-// renamed rule's old name, a deprecated extension pointing back to the core rule) would run beside
-// ours and report each finding twice. Where the team sets one, the team's setting decides the rule
-// in every file and ours runs in neither engine (#32 D4, #42, reversed by the owner; decisions.md,
-// "Owner 2026-10-14"). The names are those the catalog records, walked from it
-// (other-eslint-names.ts), never from a list kept here. A core rule and typescript-eslint's twin of
-// it count as one rule too: the team's setting of either decides both.
+// Another ESLint name of the same rule (an alias, an old name, a deprecated extension) would run beside
+// ours and report each finding twice, so the team's setting of one decides the rule. The names are
+// walked from the catalog (other-eslint-names.ts). A core rule and its typescript-eslint twin count as one.
 describe('another ESLint name of a rule either editor part states', () => {
   it.each(PROJECTS)("is the team's in every file where the team turns it on, in a project $project", async ({ projectDir }) => {
     const parts = defineLintRules(buildEveryRulesetLintRules(projectDir)).editorRulesets
@@ -904,11 +881,9 @@ describe('another ESLint name of a rule either editor part states', () => {
     }).toStrictEqual({ walked: SAME_RULE_NAMES_THE_WALK_REACHES, stillOn: sameRuleNames })
   })
 
-  // typescript-eslint's extensions of core rules that oxlint does not spell under its typescript
-  // scope, so the catalog's oxlint spellings cannot name them: each extension's own metadata
-  // (meta.docs.extendsBaseRule) names its core rule. typescript-eslint's recommendedTypeChecked
-  // turns on only-throw-error, prefer-promise-reject-errors and require-await. The team's twin is the
-  // team's, run by the team's own module, and our core rule runs in neither engine.
+  // oxlint does not spell these extensions under its typescript scope, so each one's
+  // meta.docs.extendsBaseRule names its core rule. The team's twin runs on its own module, and our core
+  // rule runs in neither engine.
   it.each(TWINS_OXLINT_DOES_NOT_SPELL)(
     "is the team's for $twin, typescript-eslint's twin of $coreRule, which our rules turn on, in a project whose package.json lists oxlint",
     async ({ twin, coreRule }) => {
@@ -929,8 +904,8 @@ describe('another ESLint name of a rule either editor part states', () => {
     },
   )
 
-  // Without the team, our part would run $twin itself on TS files and $coreRule on JS files (#39):
-  // the team's statement of the twin decides both, in every file.
+  // Without the team, our part would run $twin on TS files and $coreRule on JS files: the team's
+  // statement of the twin decides both.
   it.each(TWINS_OXLINT_DOES_NOT_SPELL.filter(({ withoutOxlint }) => withoutOxlint === 'run by ESLint, as the extension on TS files'))(
     "is the team's on TS and JS files alike, where our part would run $twin itself on TS files and $coreRule on JS files, in a project whose package.json lists no oxlint",
     async ({ twin, coreRule }) => {
@@ -945,9 +920,8 @@ describe('another ESLint name of a rule either editor part states', () => {
     },
   )
 
-  // A typed extension lints a TS file only with the type information a tsconfig of the project gives
-  // it, so the file is on disk under tsconfigRootDir and the tsconfig includes it (integration.md,
-  // item 5). The team's statement of $twin runs the team's own module of it, which reports every file.
+  // A typed extension lints a TS file only with a tsconfig's type information, so the file is on disk
+  // under tsconfigRootDir and the tsconfig includes it.
   const typedLintProject = typedProjectWithoutOxlint(cleanModule)
 
   it.each(TWINS_OXLINT_DOES_NOT_SPELL.filter(({ withoutOxlint }) => withoutOxlint === 'run by ESLint, as the extension on TS files'))(
@@ -964,7 +938,7 @@ describe('another ESLint name of a rule either editor part states', () => {
     },
   )
 
-  // Our part runs both no-throw-literal and typescript-eslint's only-throw-error (questions.md #35).
+  // Our part runs both no-throw-literal and typescript-eslint's only-throw-error.
   it.each(PROJECTS)(
     "runs where our rules turn that name on too: typescript-eslint's only-throw-error beside no-throw-literal, in a project $project",
     async ({ projectDir }) => {
@@ -994,9 +968,8 @@ describe('another ESLint name of a rule either editor part states', () => {
     expect((await ruleIdsReportedOn(config, cleanModule, 'src/a.ts')).toSorted()).toStrictEqual(['@typescript-eslint/no-unused-vars', '@typescript-eslint/team-rule'])
   })
 
-  // R3's precedence gotcha: without oxlint our part runs the core rule on JS files and
-  // typescript-eslint's no-unused-vars on TS files (#39). The team's statement of that name makes the
-  // pair the team's in every file: one report of an unused variable in either, the team's.
+  // Without oxlint our part runs the core rule on JS files and the twin on TS files; the team's statement
+  // of the twin makes the pair the team's, reported once in either.
   it("is the team's on TS and JS files alike, where our core rule would run, in a project whose package.json lists no oxlint", async () => {
     const teamConfig = [buildTeamEslintBlockTurningOn('team', [TWIN_OF_NO_UNUSED_VARS])]
     const config = mergedEditorEslintConfig(PROJECT_WITHOUT_OXLINT, { rules: { [NO_UNUSED_VARS]: 'error' } }, teamConfig)
@@ -1012,8 +985,8 @@ describe('another ESLint name of a rule either editor part states', () => {
     })
   })
 
-  // An alias is the same rule: the team's statement of it decides the rule in every file, the
-  // entry's files where ours is off and the rest alike (#32 D4; decisions.md, "Owner 2026-10-14").
+  // An alias is the same rule: the team's statement of it decides the rule in every file, inside the
+  // entry and out.
   it.each(PROJECTS.map((project) => ({ ...project, severities: { 'legacy/a.ts': 'error', 'src/a.ts': 'error' } })))(
     "is the team's for typescript-eslint's deprecated no-loop-func, the core rule's alias, where an entry turns ours off too, in a project $project",
     async ({ projectDir, severities }) => {
@@ -1071,9 +1044,8 @@ describe('another ESLint name of a rule either editor part states', () => {
     })
   })
 
-  // Where our rules turn on both no-unused-vars and typescript-eslint's twin of it, the pair runs once
-  // in each file: without oxlint ESLint runs the twin on TS files (#39); beside oxlint, oxlint runs the
-  // pair there, so ESLint's copies are off (decisions.md, D10).
+  // Where our rules turn on both no-unused-vars and its twin, the pair runs once per file: without oxlint
+  // ESLint runs the twin on TS files; beside oxlint, oxlint runs the pair there and ESLint's copies are off.
   it.each([
     { project: 'whose package.json lists oxlint, which runs the pair for us: off', projectDir: PROJECT_WITH_OXLINT, severities: { 'src/a.ts': 'off' } },
     { project: 'whose package.json lists no oxlint: ours', projectDir: PROJECT_WITHOUT_OXLINT, severities: { 'src/a.ts': 'error' } },
@@ -1089,11 +1061,8 @@ describe('another ESLint name of a rule either editor part states', () => {
 })
 
 // @eslint-react 5.24.10 binds one rule module to two names, `x-no-missing-key` and `no-missing-key`,
-// for many of its rules: one rule, so a team running the other name beside ours would report each
-// finding twice. It is a same-rule name, as an alias is: where the team sets it, the team's setting
-// decides the rule and ours does not run; our `off` removes only ours (decisions.md, round 6;
-// questions.md #32 D4 and #42, reversed by the owner). The names are walked from the installed
-// plugins (other-eslint-names.ts), never from the catalog the merge reads.
+// for many rules: a team running the other name beside ours would report each finding twice, so the
+// team's setting of it decides. The names are walked from the installed plugins (other-eslint-names.ts).
 describe('another name a plugin of ours binds to the module of a rule either editor part states', () => {
   const teamRunning = (rules: Linter.RulesRecord): Linter.Config[] => [
     buildTeamEslintBlock('team', { plugins: { [ESLINT_REACT_PREFIX]: installedEslintPlugin(ESLINT_REACT_PREFIX) }, rules }),
@@ -1147,13 +1116,9 @@ describe('another name a plugin of ours binds to the module of a rule either edi
   )
 })
 
-// typescript-eslint's version of a rule and the core rule it extends count as one rule (D9's
-// reading; decisions.md, "Owner 2026-10-14"): where the team turns the twin on, the pair is the
-// team's, in every file and in both engines, whichever of the two is ours and wherever ours would
-// run, scoped, typed, turned off or run by oxlint. So the team's twin keeps the team's setting,
-// options included, everywhere its config alone sets it. The pairs are walked from the installed
-// typescript-eslint's own metadata (other-eslint-names.ts), never from the catalog field the merge
-// reads.
+// typescript-eslint's version of a rule and the core rule it extends count as one rule: where the team
+// turns the twin on, the pair is the team's in every file and both engines, however ours would run.
+// The pairs are walked from typescript-eslint's own metadata (other-eslint-names.ts).
 describe("typescript-eslint's twin of a rule either editor part states, which the team turns on", () => {
   it.each(PROJECTS_THE_TWIN_WALK_READS)(
     "is the team's in every file, whichever side is ours, in a project $project",
@@ -1329,7 +1294,7 @@ describe("typescript-eslint's twin of a rule either editor part states, which th
     })
   })
 
-  // Stating our rule off is not running it (questions.md #42 covers only the same rule's other names).
+  // Stating our rule off is not running it.
   it.each(casesBothWays)(
     "is the team's in every file where our top-level rules turn $ours off, in a project $project: $direction",
     async ({ projectDir, ours, theirs }) => {
@@ -1350,8 +1315,7 @@ describe("typescript-eslint's twin of a rule either editor part states, which th
     },
   )
 
-  // The alias beside it is the team's too: our rule is off-only, so nothing of ours reaches across
-  // engines, and our off removes only ours (questions.md #42, reversed by the owner).
+  // The alias beside it is the team's too: our rule is off-only, so nothing of ours reaches across engines.
   it.each(PROJECTS)(
     "is the team's where our top-level rules turn our rule off, and so is the same rule's alias, in a project $project",
     async ({ projectDir }) => {
@@ -1410,7 +1374,7 @@ describe("typescript-eslint's twin of a rule either editor part states, which th
     })
   })
 
-  // Our ignores keep only ours out of their files (D-a), a folder named bare as much as a glob.
+  // Our ignores keep only ours out of their files, a folder named bare as much as a glob.
   it.each([
     { ignoresAre: 'a glob under the folder', ignores: LEGACY_FILES },
     { ignoresAre: 'the folder named bare', ignores: ['legacy'] },
@@ -1436,12 +1400,9 @@ describe("typescript-eslint's twin of a rule either editor part states, which th
   })
 })
 
-// antfu's eslint-config registers typescript-eslint under `ts` (questions.md #45). Measured: the
-// default export of @typescript-eslint/eslint-plugin, which it imports, is the very object
-// typescript-eslint exports as `plugin` and the one installed beside us, in one install; a team
-// whose own install is another version holds another object, named as ours in its meta. Either way
-// its `ts/` rules are ours under another prefix: a same rule, or a twin of one, is the team's in every
-// file where it sets it (#32 D4; decisions.md, "Owner 2026-10-14").
+// antfu's eslint-config registers typescript-eslint under `ts`. Measured: in one install, the plugin it
+// imports is the very object typescript-eslint exports as `plugin`; a team's install of another
+// version holds another object, named as ours in its meta. Either way its `ts/` rules are ours.
 describe('a plugin of ours, which the team registers under a prefix of its own', () => {
   const registrations = [
     { registers: 'the very object installed beside us', plugin: () => installedEslintPlugin(TYPESCRIPT_ESLINT_PREFIX) },
@@ -1494,8 +1455,8 @@ describe('a plugin of ours, which the team registers under a prefix of its own',
   )
 
   // oxlint runs no-explicit-any and no-loop-func for us beside it, ESLint without it; either way the
-  // team's statements of them under its prefix decide them (#32 D4): no-loop-func's typescript-eslint
-  // name is another name of the core rule.
+  // team's statements under its prefix decide them. no-loop-func's typescript-eslint name is another
+  // name of the core rule.
   it.each(PROJECTS.map((project) => ({ ...project, severity: 'error' })))(
     "is the team's in every file under its name for a rule oxlint runs for us beside it, in a project $project",
     async ({ projectDir, severity }) => {
@@ -1593,14 +1554,10 @@ describe('a plugin of ours, which the team registers under a prefix of its own',
   )
 })
 
-// antfu's eslint-config registers our @eslint-react plugin, the very object installed beside us,
-// under `react`, which our blocks register too, for eslint-plugin-react (measured, antfu 9.5.1 with
-// @eslint-react 5.24.10). Under it the team's object is the base and our module replaces its own for
-// each rule we run (spec §2). The team's `react/x` is then our `@eslint-react/x` under another
-// prefix: where the team sets it, the team's setting decides the rule and ours does not run (#32 D4,
-// #42, #45). A key under a prefix both register counts for every rule of ours it names, so the
-// team's `react/x` sets our eslint-plugin-react `react/x` too, and no statement of the team's is
-// deleted (spec-merge-model.md, 1.2, call C1); our other eslint-plugin-react rules run as before.
+// antfu's eslint-config registers our @eslint-react plugin, the very object installed beside us, under
+// `react`, which our blocks register for eslint-plugin-react (measured, antfu 9.5.1, @eslint-react
+// 5.24.10). The team's `react/x` is then our `@eslint-react/x` and, by the literal key, our
+// eslint-plugin-react `react/x`: both are the team's where it sets them.
 describe('our @eslint-react plugin, which the team registers under react, the prefix our eslint-plugin-react rules take', () => {
   const registrations = [
     { registers: 'the very object installed beside us', plugin: () => installedEslintPlugin(ESLINT_REACT_PREFIX) },
@@ -1663,10 +1620,8 @@ describe('our @eslint-react plugin, which the team registers under react, the pr
     },
   )
 
-  // Our part states both plugins' rule of one name. The team's key under `react`, where it registers
-  // @eslint-react, names both of ours: the @eslint-react rule through the team's prefix, and the
-  // eslint-plugin-react rule by the literal key. Both are the team's: its entry stands, on the team's
-  // @eslint-react module, and ours runs in neither engine (spec-merge-model.md, 1.2, call C1).
+  // The team's key under `react` names both of ours: the @eslint-react rule through the team's prefix,
+  // and the eslint-plugin-react rule by the literal key. Both are the team's, and ours runs in neither engine.
   it.each(PROJECTS)(
     "is the team's for both our rules a key of the team's under react names, the eslint-plugin-react rule and the @eslint-react one, in a project $project",
     async ({ projectDir }) => {
@@ -1684,10 +1639,9 @@ describe('our @eslint-react plugin, which the team registers under react, the pr
     },
   )
 
-  // The mirror of antfu's registration: our eslint-plugin-react under @eslint-react, the prefix of
-  // ours both now register, and the team sets no rule there. Our oxlint part runs eslint-plugin-react's
-  // jsx-no-comment-textnodes, whose name under the team's prefix is @eslint-react's rule of that name,
-  // which our blocks state: it stays ours, and ESLint states nothing of the oxlint one.
+  // The mirror of antfu's registration: our eslint-plugin-react under @eslint-react, where the team sets
+  // no rule. Our oxlint part runs eslint-plugin-react's jsx-no-comment-textnodes, whose name under that
+  // prefix is @eslint-react's rule our blocks state: it stays ours.
   it("keeps running our @eslint-react rule whose name under @eslint-react is that of an eslint-plugin-react rule our oxlint part runs, where the team registers eslint-plugin-react there, in a project whose package.json lists oxlint", async () => {
     const teamConfig = [buildTeamEslintBlock('team', { plugins: { [ESLINT_REACT_PREFIX]: ourRegisteredPlugin(REACT_PREFIX) } })]
     const fields = { rules: { [COMMENT_TEXTNODES_UNDER_REACT]: 'warn', [OUR_COMMENT_TEXTNODES]: 'warn' } } satisfies SharedFields
@@ -1711,8 +1665,7 @@ describe('our @eslint-react plugin, which the team registers under react, the pr
   )
 
   // @eslint-react binds x-no-missing-key and no-missing-key to one module, so under `react` the team's
-  // react/no-missing-key is our rule under its other name and the team's prefix (decisions.md, round 6).
-  // Which names are one rule is read from the plugin we install, whatever object the team registers.
+  // react/no-missing-key is our rule. Which names are one rule is read from the plugin we install.
   const registrationsNamingBoth = [
     { registers: 'the very object installed beside us', plugin: () => installedEslintPlugin(ESLINT_REACT_PREFIX) },
     {
@@ -1749,8 +1702,8 @@ describe('our @eslint-react plugin, which the team registers under react, the pr
     },
   )
 
-  // The allowed case beside it: under `react` the team registers eslint-plugin-react, whose rule of
-  // that name is another rule, so it stays the team's (spec §2, as before).
+  // The allowed case beside it: under `react` the team registers eslint-plugin-react, whose rule of that
+  // name is another rule, so it stays the team's.
   it.each(PROJECTS)(
     "leaves eslint-plugin-react's rule of that name as the team set it, where the team registers eslint-plugin-react under react, in a project $project",
     async ({ projectDir }) => {
@@ -1817,10 +1770,9 @@ describe('the team config, in any shape defineConfig takes', () => {
   })
 })
 
-// Ours first, then the team's blocks as defineConfig returns them, and after them only the off of
-// typescript-eslint's extensions our part runs beside oxlint running their core rule (D10;
-// spec-merge-model.md, 1.4). Our ignores go on our own blocks, so the team's rules still run in the
-// files they match (D-a): no global-ignores block of ours.
+// Ours first, then the team's blocks as defineConfig returns them, then only the off of
+// typescript-eslint's extensions our part runs where oxlint runs their core rule. Our ignores go on
+// our own blocks, so the team's rules still run in the files they match.
 describe('the merged blocks', () => {
   const teamConfig = [buildTeamEslintBlock('team-first'), buildTeamEslintBlock('team-second')]
   const fields = {
@@ -1829,9 +1781,8 @@ describe('the merged blocks', () => {
     fileOverrides: [{ files: ['legacy/**'], rules: { 'max-lines': 'off' } }],
   } satisfies SharedFields
 
-  // Beside oxlint, which runs some of these rules for us in two sets of files, nothing turns the
-  // team's copies off after its blocks (decisions.md, "Owner 2026-10-14"): only typescript-eslint's
-  // extensions our part runs ever follow them (D10), and these rules hold none.
+  // Beside oxlint, nothing turns the team's copies off after its blocks: only typescript-eslint's
+  // extensions our part runs ever follow them, and these rules hold none.
   it.each(PROJECTS.map((project) => ({ ...project, afterTheTeams: [] })))(
     "are ours, starting with the base block, then the team's in its order, and nothing after them, and no global ignores, in a project $project",
     ({ projectDir, afterTheTeams }) => {
@@ -1854,8 +1805,7 @@ describe('the merged blocks', () => {
     },
   )
 
-  // Our off removes only ours, so no other ESLint name of a rule ESLint runs for us is stated off
-  // (questions.md #42, reversed by the owner).
+  // Our off removes only ours, so no other ESLint name of a rule ESLint runs for us is stated off.
   it('hold no block turning off the other ESLint names of our rules, and end with the team\'s, in a project whose package.json lists no oxlint', () => {
     const names = mergedEditorEslintConfig(PROJECT_WITHOUT_OXLINT, { rules: { 'import-x/first': 'error' } }, teamConfig).map((block) => block.name)
 
@@ -1866,12 +1816,9 @@ describe('the merged blocks', () => {
   })
 })
 
-// ESLint applies its default ignores before any block, so where the team takes nothing back from them
-// our blocks need no copy kept out of them: our blocks keep the names they have outside any merge,
-// agents-inc/base holding the base rules, and a rule moves into a numbered copy only where our own
-// ignores keep it out of some files (decisions.md, 2026-10-12 "fix round 2,
-// after its second review": keeping our rules out of ESLint's default ignores renames and empties
-// none of our blocks).
+// ESLint applies its default ignores before any block, so where the team takes nothing back our blocks
+// keep the names they have outside a merge; a rule moves into a numbered copy only where our own
+// ignores keep it out of some files.
 describe("our blocks, beside a team config that takes nothing back from ESLint's default ignores", () => {
   // Four rules of ours: no-var and array-type in the base block, a typed rule in the typed block, and
   // no-debugger, which our oxlint part runs where the project lists oxlint, and our base block elsewhere.
@@ -1952,11 +1899,10 @@ describe("our blocks, beside a team config that takes nothing back from ESLint's
         { name: 'agents-inc/file-overrides/0/confined/0', states: ['no-var'] },
       ],
     },
-    // Three more team configs taking nothing back, each of which the merge would read as taking files
-    // back if one "and", "or", "some" or "every" in it were swapped (found by breaking them, fix round
-    // 2): global ignores from a basePath outside the project with no negated glob; global ignores
-    // whose negated glob takes back no file a default leaves out; and a negated glob in the ignores of
-    // a block holding more than ignores, which ESLint reads as no global ignores.
+    // Three more team configs taking nothing back, each read as taking files back if one "and", "or",
+    // "some" or "every" in the merge were swapped: global ignores from a basePath outside the project with
+    // no negated glob; a negated glob taking back no file a default leaves out; and a negated glob in a
+    // block holding more than ignores, which ESLint reads as no global ignores.
     {
       how: "the team's global ignores, read from a basePath outside the project, its parent, leave dist/ out and take nothing back",
       fields: { rules },
@@ -1964,8 +1910,8 @@ describe("our blocks, beside a team config that takes nothing back from ESLint's
       owedBesideOxlint: ourBlocksUnmovedBesideOxlint,
       owedWithoutOxlint: ourBlocksUnmovedWithoutOxlint,
     },
-    // spec-core.md C8: read as ESLint reads it, from the project's parent, the negated glob takes back
-    // a sibling folder's node_modules alone, which no file of the project is in.
+    // Read from the project's parent, as ESLint reads it, the negated glob takes back only a sibling
+    // folder's node_modules.
     {
       how: "the team's global ignores, read from a basePath outside the project, its parent, leave dist/ out and take back a sibling folder's node_modules alone",
       fields: { rules },
@@ -2010,10 +1956,8 @@ describe("our blocks, beside a team config that takes nothing back from ESLint's
   })
 })
 
-// The refusal beside the cases above: where the team's global ignores take every node_modules folder
-// back from ESLint's default ignores, our blocks are still split, each rule moving into a copy kept
-// out of the files our part never lints (decisions.md, 2026-10-13 "fix round 2, after its closing
-// developer": ignores on the base block would also stop our parser and plugins there).
+// Our blocks are still split here, each rule moving into a copy kept out of the files our part never
+// lints: ignores on the base block would also stop our parser and plugins there.
 describe("our blocks, beside a team config whose global ignores take every node_modules folder back from ESLint's default ignores", () => {
   const rules = { 'no-var': 'error', [NO_DEBUGGER]: 'error', [ARRAY_TYPE]: 'error', [FLOATING_PROMISES]: 'error' } satisfies SharedFields['rules']
   const takingNodeModulesBack = [
@@ -2071,8 +2015,8 @@ describe("our blocks, beside a team config whose global ignores take every node_
   })
 })
 
-// The team's blocks are defineConfig's own, in its order, no rule entry deleted: only each
-// plugin object is swapped for the one shared under its prefix, which ESLint needs (spec §2).
+// The team's blocks are defineConfig's own, in order, no rule entry deleted: only each plugin object is
+// swapped for the one shared under its prefix, which ESLint needs.
 describe("the team's blocks in the merged config", () => {
   const teamConfig: TeamEslintConfig = [
     buildTeamEslintBlock('team-a', {
@@ -2112,10 +2056,8 @@ describe("the team's blocks in the merged config", () => {
   )
 })
 
-// spec-core.md C8 (my-basepath-bug): every reading of a team block's files and ignores under a
-// basePath outside the project reads them as ESLint does, from that path, so the project's files
-// they match are the block's. ESLint's own calculated config for the team's block alone is the
-// oracle: our typed rule runs in exactly the files where that block gives types.
+// Every reading of a team block's files and ignores under a basePath outside the project reads them
+// from that path, as ESLint does. ESLint's own calculated config for the team's block alone is the oracle.
 describe('a team block giving types whose basePath lies outside the project', () => {
   const PROJECT_FOLDER = basename(PROJECT_WITH_OXLINT)
   const FILES_READ = ['src/a.ts', 'src/legacy/a.ts', 'src/legacy/keep/a.ts', 'scripts/b.ts']
@@ -2174,8 +2116,8 @@ describe('a team block giving types whose basePath lies outside the project', ()
   })
 })
 
-// The same reading for the team's settings: an import-x resolver set from the project's parent is
-// the team's in the files it reaches, so ours leaves them (O8).
+// The same reading for the team's settings: an import-x resolver set from the project's parent is the
+// team's in the files it reaches, so ours leaves them.
 describe('a team block setting an import-x resolver whose basePath lies outside the project', () => {
   const resolverSetting = { 'import-x/resolver': { node: { extensions: ['.ts', '.js'] } } }
 
@@ -2194,12 +2136,10 @@ describe('a team block setting an import-x resolver whose basePath lies outside 
   })
 })
 
-// Q-E: the team's language options, settings and linter options stand, key by key, in the
-// files of the team block that sets them; ours apply elsewhere. noInlineConfig is never ours.
-// The global probed is a Svelte rune, ours in every rune module whatever rulesets are listed: our
-// runtime globals are ours only where our own no-undef runs (#68), which beside oxlint is nowhere in
-// ESLint. The project lists no React, so our React version is the one eslint-plugin-react assumes
-// without it (spec-core.md C13).
+// The team's language options, settings and linter options stand, key by key, in the files of the team
+// block setting them; ours apply elsewhere. The probed global is a Svelte rune, ours in every rune
+// module, as beside oxlint our runtime globals are nowhere in ESLint. The project lists no React, so
+// our React version is the one eslint-plugin-react assumes.
 describe("the team's language options, settings and linter options", () => {
   const teamParser = buildTeamParser('team-parser')
   const teamConfig = [
@@ -2247,15 +2187,14 @@ describe("the team's language options, settings and linter options", () => {
   )
 })
 
-// Q-D: ESLint 10.12 accepts a function in a block's files or ignores, though its types do not, and
-// no glob of ours can match exactly the files one matches. A team's eslint.config.mjs may hold one.
+// ESLint 10.12 accepts a function in a block's files or ignores, though its types do not, and no glob
+// of ours can match exactly the files one matches.
 describe('a team block whose files are a function', () => {
   const projectDir = tempProjects.create({ files: { [TEAM_CONFIG_MODULE]: teamBlockWithFunctionFiles } })
   const fields = { rules: { 'max-lines': 'error' } } satisfies SharedFields
   let entries: { readonly merged: EntriesByFile; readonly owed: EntriesByFile; readonly teamAlone: EntriesByFile } | undefined
 
-  // The run is made before the test, so a run that throws fails the file: inside it.fails it would
-  // pass as the failure expected. Only the assertion fails inside it.fails.
+  // Made before the test, so only the assertion can fail inside it.fails.
   beforeAll(async () => {
     const teamConfig = await importedTeamConfig(projectDir, TEAM_CONFIG_MODULE)
     const merged = await entriesOf(mergedEditorEslintConfig(PROJECT_WITHOUT_OXLINT, fields, teamConfig), 'max-lines', A1_FILES)
@@ -2264,19 +2203,16 @@ describe('a team block whose files are a function', () => {
     entries = { merged, owed: { 'legacy/a.tsx': entryIn(teamAlone, 'legacy/a.tsx'), 'src/a.tsx': entryIn(oursAlone, 'src/a.tsx') }, teamAlone }
   })
 
-  // KNOWN GAP (Q-D, an open question for the owner): the team's bare warn keeps the options of any
-  // block of ours left in the files the function matches, and leaving ours out of every file loses
-  // it where the team does not set the rule.
+  // KNOWN GAP: the team's bare warn keeps the options of any block of ours left in the function's files,
+  // and leaving ours out of every file loses it where the team does not set the rule.
   it.fails("is the team's in the files the function matches, options included, and ours elsewhere", () => {
     if (entries === undefined) throw new Error('the run was not made before the test')
 
     expect(entries.merged).toStrictEqual(entries.owed)
   })
 
-  // KNOWN GAP (Q-D): of the two ways to fall short of the contract above, the merge takes the one
-  // that never lets our options leak into the team's: ours stays out of every file the function
-  // might match, which is every file, so the rule is the team's where the function matches it and
-  // has no entry where it does not. Pinned, so a change of choice is made on purpose.
+  // KNOWN GAP: of the two ways to fall short above, the merge keeps our options out of the team's: ours
+  // stays out of every file the function might match. Pinned, so a change of choice is made on purpose.
   it("leaves ours out of every file the function might match: the team's entry where it matches, and none where it does not", () => {
     if (entries === undefined) throw new Error('the run was not made before the test')
 
@@ -2307,7 +2243,7 @@ describe('a team block whose ignores hold a function', () => {
 })
 
 describe('the base block', () => {
-  // Each engine flags the other's suppressions as unused (measured 2026-10-04).
+  // Each engine flags the other's suppressions as unused (measured).
   it('stops ESLint reporting unused disable directives in a project whose package.json lists oxlint', async () => {
     const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, {}, [])
 
@@ -2342,8 +2278,8 @@ describe('the base block', () => {
     ])
   })
 
-  // Our runtime globals go only where our own no-undef runs (#68): with no oxlint, in the JS files
-  // the correctness ruleset ships it for.
+  // Our runtime globals go only where our own no-undef runs: without oxlint, in the JS files the
+  // correctness ruleset ships it for.
   it.each([
     { runtime: 'browser', defined: 'window', undefinedGlobal: 'process' },
     { runtime: 'node', defined: 'process', undefinedGlobal: 'window' },
@@ -2357,11 +2293,9 @@ describe('the base block', () => {
   })
 })
 
-// ESLint's --cache keys each file's result on its calculated config, which names each plugin by
-// its meta's name@version. An upgrade of this package must change that key for every plugin our
-// part registers, merged with a team's object or not, though some installed plugins carry no meta
-// (css-modules, promise, react, react-hook-form) and house carries no version. The core merge takes
-// our version as an argument; mergeEslintConfig passes this package's own.
+// ESLint's --cache keys each file's result on its calculated config, naming each plugin by its meta's
+// name@version, so an upgrade of this package must change that key for every plugin our part
+// registers, though some carry no meta and house carries no version.
 describe('the plugins our ESLint part registers, as ESLint names them in its cache key', () => {
   const fields = { rules: { [ARRAY_TYPE]: 'error', 'react/jsx-curly-brace-presence': 'error' } } satisfies SharedFields
 
@@ -2547,10 +2481,9 @@ describe('a typed rule of ours, beside a team that gives type information', () =
   })
 })
 
-// C3, wired at the merge: where the team gives no type information, ours gives it only to the TS
-// files a tsconfig includes. In a TS file outside every tsconfig our project service would make a
-// fatal parse error that switches off every rule in it, so no block that can run a typed rule
-// applies there, and the untyped rules still run.
+// Where the team gives no type information, ours goes only to the TS files a tsconfig includes:
+// elsewhere our project service would make a fatal parse error switching off every rule, so no block
+// that can run a typed rule applies there.
 describe('a typed rule of ours, in a project with a TS file outside every tsconfig', () => {
   const TYPED_AND_UNTYPED_RULES_ON = { rules: { [FLOATING_PROMISES]: 'error', [ARRAY_TYPE]: 'error' } } satisfies SharedFields
   const projectFiles = {
@@ -2596,8 +2529,7 @@ describe('a typed rule of ours, in a project with a TS file outside every tsconf
     },
   )
 
-  // Beside it: type information the team gives is the team's to give, a file outside every tsconfig
-  // included (spec-owner-answers.md, Lane A1, Must NOT).
+  // Beside it: type information the team gives is the team's to give, a file outside every tsconfig included.
   it.each(projectsWithAStrayFile)(
     'runs, beside a team that gives type information, in every file the team gives it to, one outside every tsconfig included, in a project $project',
     async ({ projectDir }) => {
@@ -2680,9 +2612,8 @@ describe('a typed rule of ours, beside a team block that switches type informati
     },
   )
 
-  // typescript-eslint's disableTypeChecked turns every typed rule of typescript-eslint's off: a rule
-  // the team sets anywhere, off included, is the team's in every file (decisions.md, "Owner
-  // 2026-10-14"), so ours runs nowhere, as the same block without those rules leaves it running.
+  // disableTypeChecked turns every typed typescript-eslint rule off, and a rule the team sets anywhere,
+  // off included, is the team's in every file, so ours runs nowhere.
   it("runs in no file where the team's block spreads typescript-eslint's disableTypeChecked whole, which turns it off", async () => {
     const teamConfig = [
       buildTeamTypedEslintBlock('team-typed', 'projectService', { files: ['**/*.ts'] }),
@@ -2741,8 +2672,6 @@ describe('a typed rule of ours, beside a team block that switches type informati
     })
   })
 
-  // Without oxlint, ESLint runs prefer-destructuring for us: typescript-eslint's typed extension where
-  // the team gives types, and the core rule in the files a team block takes them from again (D-f).
   it("runs typescript-eslint's typed extension of a core rule we turn on where the team gives types, and the core rule where it takes them away, in a project whose package.json lists no oxlint", async () => {
     const teamConfig = [
       buildTeamTypedEslintBlock('team-typed', 'projectService', { files: ['**/*.ts'] }),
@@ -2773,9 +2702,8 @@ describe('a typed rule of ours, beside a team block that switches type informati
     })
   })
 
-  // The earlier block only switches type information off in its parser options, so it states no
-  // typed rule off itself: typescript-eslint's disableTypeChecked would, and the team's off wins
-  // under the contract (decisions.md, the build wf_ec970377-570 review).
+  // The earlier block only switches type information off in its parser options, so it states no typed
+  // rule off itself, as typescript-eslint's disableTypeChecked would.
   it('runs where the block switching type information off comes before the block that gives it', async () => {
     const teamConfig = [
       buildTeamEslintBlockSettingParserOptions('team-untyped', { projectService: false }),
@@ -2906,9 +2834,8 @@ describe('a typed rule of ours, beside a team block that gives type information 
     expect(await severitiesOf(config, FLOATING_PROMISES, ['src/a.ts', 'scripts/b.ts'])).toStrictEqual({ 'src/a.ts': 'error', 'scripts/b.ts': 'off' })
   })
 
-  // ESLint reads a block whose basePath lies outside the project from there, so its parent's
-  // `**/*.ts` gives every TS file of the project types, and a sibling folder's none (spec-core.md C8,
-  // my-basepath-bug: before it, the merge read both as giving no file types).
+  // ESLint reads a block whose basePath lies outside the project from there, so its parent's `**/*.ts`
+  // gives every TS file of the project types, and a sibling folder's none.
   it.each([
     { basePath: '..', owed: 'error' },
     { basePath: '../elsewhere', owed: 'off' },
@@ -2968,10 +2895,8 @@ describe('a typed rule of ours, beside a team block that gives type information 
   })
 })
 
-// ESLint reads a files entry that is a negation alone as every file but those it names (measured).
-// The team's bare severity would keep the options of any block of ours before it in its files, so
-// none of ours may apply there. The team sets the rule, so it is the team's in every file
-// (decisions.md, "Owner 2026-10-14"): in the files the negation takes out, ours does not run either.
+// ESLint reads a files entry of negations alone as every file but those it names (measured). The team's
+// bare severity would keep the options of any block of ours before it, so none of ours may apply there.
 describe('a team block whose files are a negation alone, stating our rule by a bare severity', () => {
   const teamConfig = [
     buildTeamEslintBlock('team', {
@@ -2996,10 +2921,8 @@ describe('a team block whose files are a negation alone, stating our rule by a b
   )
 })
 
-// A team typed block's negated ignore takes a folder back into the block, where a team block sets
-// our rule by a bare severity: it must keep none of our options there. The team sets the rule, so it
-// is the team's in every file (decisions.md, "Owner 2026-10-14"), the rest of the files the team
-// types included.
+// A team typed block's negated ignore takes a folder back into the block, where a team block sets our
+// rule by a bare severity: none of our options may stay there.
 describe("a typed rule of ours, beside a team typed block whose negated ignore takes back a folder the team sets the rule in", () => {
   const teamConfig = [
     buildTeamTypedEslintBlock('team-typed', 'projectService', { files: ['**/*.ts'], ignores: ['legacy/**', '!legacy/keep/**'] }),
@@ -3023,9 +2946,8 @@ describe("a typed rule of ours, beside a team typed block whose negated ignore t
   })
 })
 
-// Without oxlint our part runs typescript-eslint's typed extension of a core rule we turn on, on TS
-// files (#39). The project service must be set up for it whatever else is on: a typed rule on a file
-// without type information throws and ends the whole ESLint run (measured).
+// Without oxlint our part runs a core rule's typed extension on TS files, so the project service must be
+// set up for it: a typed rule without type information throws and ends the ESLint run (measured).
 describe('a core rule whose typed extension our part runs in its place, the only rule we turn on, in a project whose package.json lists no oxlint', () => {
   const projectDir = typedProjectWithoutOxlint(propertyReadIntoAVariable)
 
@@ -3036,8 +2958,8 @@ describe('a core rule whose typed extension our part runs in its place, the only
   })
 })
 
-// Our off removes only ours (questions.md #42, reversed by the owner): it states nothing in ESLint,
-// so a team that does not set the rule has no entry of it, rather than an off with our options.
+// Our off states nothing in ESLint, so a team that does not set the rule has no entry of it, rather
+// than an off with our options.
 describe('a rule a listed ruleset ships, which our top-level rules turn off, beside a team config that does not set it', () => {
   it.each(PROJECTS)('has no entry in any file, in a project $project', async ({ projectDir }) => {
     const { eslint } = defineLintRules(
@@ -3048,10 +2970,9 @@ describe('a rule a listed ruleset ships, which our top-level rules turn off, bes
   })
 })
 
-// D9 (decisions.md, the build wf_ec970377-570 review; review Must fix 4): where our own layers state
-// a core rule ESLint takes over from oxlint and typescript-eslint's extension of it, the highest layer
-// stating either name decides the setting, our rules over a ruleset; the extension runs on TS files
-// and the core rule on JS files, never both in one file (#39, #41, q35).
+// Where our own layers state a core rule ESLint takes over from oxlint and its typescript-eslint
+// extension, the highest layer stating either name decides; the extension runs on TS files and the
+// core rule on JS files, never both in one file.
 describe("a core rule a listed ruleset ships, and typescript-eslint's extension of it our rules set, in a project whose package.json lists no oxlint", () => {
   it("runs the extension on TS files and the core rule on JS files, each with our rules' setting, never both in one file", async () => {
     const { eslint } = defineLintRules(
@@ -3099,14 +3020,11 @@ function shippedEntryOf(ruleId: string): Linter.RuleEntry {
   return ['error', ...route.shipped.options]
 }
 
-// D9, the rest of the layer rule (decisions.md): the highest layer stating either name of a twin
-// pair decides its setting, wherever in the layer it is stated. On JS files the core rule runs with
-// that setting wherever the layer reaches where the layer names the extension alone (q61, owner:
-// the ruleset's own files and ignores no longer limit it), and within its own shipped files and
-// ignores where the layer names the core rule; on a TS file without type information it runs in
-// place of a typed extension, with the setting of the layer below where it refuses the extension's
-// options. A layer turning the pair off leaves no entry of either name, where a later bare severity
-// of the team's would bring back the options of an off.
+// The highest layer stating either twin decides, wherever in the layer. On JS files the core rule runs
+// with that setting wherever the layer reaches if the layer names the extension alone, and within its
+// own shipped files and ignores if it names the core rule; on a TS file without types it replaces a
+// typed extension, with the layer below's setting where it refuses the extension's options. A layer
+// turning the pair off leaves no entry of either name: a later bare severity would bring back its options.
 describe("typescript-eslint's extension of a core rule a listed ruleset ships, set in our own layers, in a project whose package.json lists no oxlint", () => {
   // no-unused-vars ships ignoring **/scripts/** and **/*.config.{ts,js,mjs,cjs}, among others.
   it("runs the extension our rules set in every TS file, and the core rule with that setting in every JS file, those the ruleset ships it ignoring included", async () => {
@@ -3155,9 +3073,8 @@ describe("typescript-eslint's extension of a core rule a listed ruleset ships, s
     })
   })
 
-  // q61, a written limit (owner card): the core rule refuses an option only the extension takes, so
-  // it keeps the ruleset's setting within the ruleset's limit, and the JS files outside that limit
-  // get neither name.
+  // A written limit: the core rule refuses an option only the extension takes, so it keeps the ruleset's
+  // setting within the ruleset's limit, and the JS files outside it get neither name.
   it("runs the core rule with the ruleset's setting within its limit, and leaves the JS files outside it with neither name, where our rules give the extension options the core rule refuses", async () => {
     const setting = ['error', { enableAutofixRemoval: { imports: true } }] satisfies Linter.RuleEntry
     const config = mergedWithoutOxlint({ editorRulesets: { quality: ['redundancy'] } }, { rules: { [TWIN_OF_NO_UNUSED_VARS]: setting } })
@@ -3207,12 +3124,9 @@ describe("typescript-eslint's extension of a core rule a listed ruleset ships, s
   })
 })
 
-// D-a, review Must fix 3: our ignores are oxlint's ignorePatterns and ESLint's global ignores
-// (docs/plan.md), where a value naming a folder covers every file under it. The agent build writes
-// them as ESLint's global ignores, so the editor merge's ESLint part, merged into an empty team
-// config, must run our rules in exactly the files the agent build's does. Both are linted by ESLint
-// from the project directory over `.`, as `eslint .` lints it; the agent build has no config file a
-// CLI could load until the runner exists.
+// The agent build writes our ignores as ESLint global ignores, where a folder name covers every file
+// under it, so the editor part merged into an empty team config must run our rules in exactly the
+// agent build's files. Both are linted as `eslint .` lints the project.
 describe('our ignores, written as each form a folder or file is named in, beside an empty team config', () => {
   const FILES = [
     'src/index.js',
@@ -3255,9 +3169,8 @@ describe('our ignores, written as each form a folder or file is named in, beside
   )
 })
 
-// ESLint reads global ignores in order, a negated value taking back a folder an earlier value
-// leaves out (F2; measured, ESLint 10.12). The agent build writes ours as global ignores, so the
-// editor merge's ESLint part, merged into an empty team config, owes the files the agent build's does.
+// ESLint reads global ignores in order, a negated value taking back a folder an earlier value leaves
+// out (measured, ESLint 10.12); the editor part owes the agent build's files.
 describe('our ignores, a folder by its name and a negated value taking a folder within it back, beside an empty team config', () => {
   const FILES = ['src/index.js', 'legacy/index.js', 'legacy/keep/index.js', 'src/legacy/index.js', 'src/legacy/keep/index.js']
   const projectFiles = Object.fromEntries(FILES.map((file) => [file, thrownStringLiteral]))
@@ -3284,9 +3197,8 @@ describe('our ignores, a folder by its name and a negated value taking a folder 
     },
   )
 
-  // ESLint keeps a folder a negated value names inside one an earlier value names left out with the
-  // outer folder (measured, ESLint 10.12), so the editor merge owes the agent build's files there
-  // too (fix round 2, G1). legacy/ names every legacy folder (q62), src/legacy among them.
+  // ESLint keeps a negated folder inside an ignored one left out with the outer folder (measured, ESLint
+  // 10.12), so the editor merge owes the agent build's files there too. legacy/ names every legacy folder.
   it('keep our rules out of exactly the files the agent build leaves out, where the negated value names a folder inside the one legacy/ names', async () => {
     const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOthers()), ...projectFiles } })
     const owed = ['src/index.js']

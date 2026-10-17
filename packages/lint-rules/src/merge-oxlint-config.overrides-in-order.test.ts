@@ -11,12 +11,9 @@ import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.t
 import { defineLintRules, type LintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// Overrides in order, as oxlint applies them, a later one over an earlier (merge-oxlint-config.ts):
-// an entry of ours turning a rule on after one turning it off runs it in its files; and where the
-// team's overrides list plugins, the categories oxlint switches on for the team in a file stay on
-// there. The second case is the file of merge-oxlint-config.differential.integration.test.ts's G3
-// shape (questions.md #48) the gap does not reach: src/f.test.tsx, where both [react] and a [promise]
-// listing apply, so oxlint switches react's categories on for the team (correctness warns).
+// Overrides apply in order, a later one over an earlier: an entry of ours turning a rule on after one
+// turning it off runs it in its files; and the categories oxlint switches on for the team in a file
+// stay on there: src/f.test.tsx, where both [react] and a [promise] listing apply.
 
 const tempProjects = setUpTempProjects()
 

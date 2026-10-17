@@ -23,9 +23,8 @@ import { editorPartsOf } from './core/editor-parts.ts'
 import type { RuleSetting, RuleSettings } from './core/resolve-rule-layers.ts'
 import { defineLintRules } from './index.ts'
 
-// Owner, 2026-10-11: agents-inc.lint.mts ends with `export const { eslint, oxlint } = config.editorRulesets`.
-// The parts are plain data, so importing the file costs only the catalog: plugins, the parser and
-// the rest of ESLint's side load only when a team's ESLint config imports the merge.
+// The parts are plain data, so importing agents-inc.lint.mts costs only the catalog: ESLint's plugins
+// and parser load only when a team's ESLint config imports the merge.
 
 const EDITOR_PART_KEYS = ['eslint', 'oxlint']
 
@@ -70,11 +69,9 @@ describe('what defineLintRules returns', () => {
   })
 })
 
-// The parts carry nothing for turning off a rule the team's config sets (decisions.md, "Owner
-// 2026-10-14"): the ESLint part keeps the oxlint part's layers, read for the off of
-// typescript-eslint's extensions where oxlint runs their core rule (D10), and the oxlint part names
-// the rules the ESLint part turns on, read for the off of oxlint's silent copies of them (decisions.md,
-// "Owner 2026-10-14 (questions on the merge rework spec", point 1).
+// The ESLint part keeps the oxlint part's layers, read to turn off typescript-eslint's extensions where
+// oxlint runs their core rule; the oxlint part names the rules the ESLint part turns on, read to turn
+// off oxlint's silent copies of them.
 describe('the parts of a project whose package.json lists oxlint', () => {
   it("hold their engine, the project root and their layers, the ESLint part beside oxlint the oxlint part's layers too, the oxlint part the rules the ESLint part turns on, and nothing else", () => {
     const { eslint, oxlint } = defineLintRules(buildEveryRulesetLintRules(PROJECT_WITH_OXLINT)).editorRulesets
@@ -86,9 +83,8 @@ describe('the parts of a project whose package.json lists oxlint', () => {
   })
 })
 
-// ESLint stands in for oxlint-only rules without oxlint (spec-core.md C4; spec-next-batch S-3, S-4,
-// S-6): wherever the layers state the oxc rule, the ESLint part states its stand-in, with the oxc
-// rule's severity, files and ignores and none of its options, and the oxc rule not at all.
+// Without oxlint, wherever the layers state an oxc rule, the ESLint part states its stand-in with the
+// oxc rule's severity, files and ignores but none of its options, and the oxc rule not at all.
 describe('the stand-ins for oxlint-only rules', () => {
   const CHAINED_OXC = 'oxc/bad-comparison-sequence'
   const CHAINED_STAND_IN = 'unicorn/no-chained-comparison'
@@ -176,11 +172,8 @@ describe('the stand-ins for oxlint-only rules', () => {
     expect(config.filter(({ rules = {} }) => [CHAINED_STAND_IN, DOUBLE_STAND_IN].some((standIn) => Object.hasOwn(rules, standIn))).map(({ name }) => name)).toStrictEqual([])
   })
 
-  // spec-core.md 2.6, stand-ins: each oxlint-only rule is one oxlint runs and ESLint has no version
-  // of, and each stand-in a rule ESLint runs, untyped, not shipped, standing in for one rule. The
-  // data's tests guarantee it; the core still throws on a breach, where the ESLint part reads the
-  // stand-ins, naming the oxlint-only rule and its stand-in. Each breach would run a rule twice, or
-  // run the stand-in nowhere or where it cannot run.
+  // The data's tests guarantee the stand-ins; the core still throws on a breach, which would run a rule
+  // twice, or the stand-in nowhere or where it cannot run.
   describe('a breach of the data, in a project without oxlint', () => {
     const chainedOxc = buildOxlintRoute(CHAINED_OXC, { oxlintName: CHAINED_OXC, oxlintPlugin: 'oxc', shipped: buildShippedRule('correctness') })
     const doubleOxc = buildOxlintRoute(DOUBLE_OXC, { oxlintName: DOUBLE_OXC, oxlintPlugin: 'oxc', shipped: buildShippedRule('correctness') })

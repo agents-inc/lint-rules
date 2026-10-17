@@ -17,13 +17,10 @@ import { ruleIdsOnIn } from './core/resolve-rule-layers.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// The oxlint merge (spec-owner-answers.md, "oxlint merge, per file", as the owner's 2026-10-14 model
-// amends it): the team's keys kept, and a rule the team sets anywhere the team's in every file. In
-// line, first the compensations for listing every plugin at the root, then ours, on-statements only,
-// then the team's extended overrides and its own, and nothing after them; where the team extends
-// objects, the first two go in a first extended config. The team's ESLint config sets no rule here.
-// Which statement wins in the real engine is measured in merge-oxlint-config.integration.test.ts and
-// the differential tests; this spec reads the merged object.
+// In line: the compensations for listing every plugin at the root, then ours, on-statements only, then
+// the team's extended overrides and its own; where the team extends objects, the first two go in a
+// first extended config. This spec reads the merged object; the integration and differential tests
+// measure what the engine does with it.
 
 type SharedFields = Partial<Omit<LintRules, 'tsconfigRootDir' | 'agentRulesets' | 'editorRulesets'>>
 
@@ -245,15 +242,13 @@ describe('mergeOxlintConfig, given a team config setting every key', () => {
     expect([...new Set(['import', ...pluginsOfRulesOn])].filter((plugin) => !listed.includes(plugin))).toStrictEqual([])
   })
 
-  // Our ignores remove only our rules from their files (D-a): they go on our overrides.
+  // Our ignores remove only our rules from their files: they go on our overrides.
   it("keeps the team's ignore patterns exactly, adding none of ours", () => {
     expect(ignorePatternsOf(merged())).toStrictEqual(TEAM_CONFIG.ignorePatterns)
   })
 
-  // Nothing of ours follows the team's overrides (decisions.md, "Owner 2026-10-14"). Our part runs
-  // react-hooks/rule-suppression and unicorn/no-abusive-eslint-disable, as suppressions are allowed in
-  // the editor parts (r2-d22, q-r1), and the team's root lists neither plugin: the compensations for
-  // listing them come first, a part none of ours or the team's.
+  // Our part runs react-hooks/rule-suppression and unicorn/no-abusive-eslint-disable, as the editor parts
+  // allow suppressions, and the team's root lists neither plugin: the compensations for listing them come first.
   it("puts ours first in line, in a first extended config, then the team's overrides, and nothing after them", () => {
     const config = merged()
     const parts = ourEditorParts(fields)
@@ -292,7 +287,7 @@ describe('mergeOxlintConfig, given a team config setting every key', () => {
     expect(routeOf(ARRAY_TYPE).oxlintSpellings.filter((spelling) => spelling in applied)).toStrictEqual([])
   })
 
-  // Our top-level rules turning a rule off remove only ours (questions.md #42).
+  // Our top-level rules turning a rule off remove only ours.
   it("leaves the team's setting of a rule our top-level rules turn off", () => {
     const config = mergedEditorOxlintConfig(
       PROJECT_WITH_OXLINT,
@@ -343,9 +338,8 @@ describe('mergeOxlintConfig, given a team config leaving out plugins', () => {
   })
 })
 
-// The owner, 2026-10-11 and 2026-10-14: the team's setting of a rule our part states, wherever oxlint
-// counts it, makes the rule the team's in every file (R4 probes o1, o2, o4, o6); a statement oxlint
-// ignores for the team changes nothing (Q-B, O5).
+// The team's setting of a rule our part states, wherever oxlint counts it, makes the rule the team's in
+// every file; a statement oxlint ignores for the team changes nothing.
 describe('mergeOxlintConfig, given a team config stating a rule our part runs', () => {
   const ours = { rules: { [JSX_KEY]: 'error' } } satisfies SharedFields
 
@@ -370,10 +364,9 @@ describe('mergeOxlintConfig, given a team config stating a rule our part runs', 
     expect(oxlintConfigForFile(config, 'src/f.tsx').rules[JSX_KEY]).toStrictEqual(['error'])
   })
 
-  // Elsewhere, no entry of ours. Where the team lists react in the override alone, the merge lists it
-  // at the root, which runs oxlint's correctness rules of react in every file: jsx-key is turned off
-  // again where the team's config alone does not run it (#44). Without that off, oxlint reports
-  // jsx-key in src/f.tsx, which the team's config alone does not (measured, oxlint 1.87).
+  // Elsewhere, no entry of ours. Where the team lists react in the override alone, the merge lists it at
+  // the root, which runs react's correctness rules in every file, so jsx-key is turned off again where
+  // the team's config alone does not run it (measured, oxlint 1.87).
   it.each([
     {
       where: 'in an override of its own, of a plugin its root lists',
@@ -413,10 +406,9 @@ describe('mergeOxlintConfig, given a team config stating a rule our part runs', 
   })
 })
 
-// Each rule of ours is on exactly where our part alone runs it, with that part's options there,
-// through `files` and `excludeFiles`: no `off` of ours is written (spec, lane A2 Must 2; decisions.md,
-// "Owner 2026-10-14"). The team's root lists the plugin of every rule of ours and turns every
-// category off, so no compensation is written either, and no rule is the team's by category.
+// Each rule of ours is on exactly where our part alone runs it, with its options there, through
+// `files` and `excludeFiles`: no `off` of ours is written. The team's root lists every plugin of ours
+// and turns every category off, so no compensation is written either.
 describe('the overrides mergeOxlintConfig writes, beside a team config that needs no compensation', () => {
   const fields = {
     ignores: ['dist/**'],
@@ -456,9 +448,7 @@ describe('the overrides mergeOxlintConfig writes, beside a team config that need
   })
 })
 
-// The team sets the rule, so it is the team's in every file and nothing turns it off across engines
-// (decisions.md, "Owner 2026-10-14"): its entry stands where our ESLint part would run it, in our
-// ignores, and where our own settings leave it out.
+// The team sets the rule, so it is the team's in every file and nothing turns it off across engines.
 describe('mergeOxlintConfig, given a rule our ESLint part runs that oxlint has, which the team turns on at its root', () => {
   const team = buildTeamOxlintConfig({ plugins: ['typescript'], rules: { 'typescript/array-type': 'error', 'max-lines': ['error', { max: 1 }] } })
 
@@ -496,7 +486,7 @@ describe('mergeOxlintConfig, given a rule our ESLint part runs that oxlint has, 
   })
 })
 
-// Q-E: the team's options and env stand where it sets them; ours fill the rest.
+// The team's options and env stand where it sets them; ours fill the rest.
 describe('mergeOxlintConfig, given the options and env of the team', () => {
   it('keeps unused disable directives as the team reports them, where it sets that', () => {
     const config = mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, {}, buildTeamOxlintConfig({ options: { reportUnusedDisableDirectives: 'warn' } }))
@@ -511,12 +501,9 @@ describe('mergeOxlintConfig, given the options and env of the team', () => {
     expect({ browser: env['browser'], es2024: env['es2024'] }).toStrictEqual({ browser: false, es2024: true })
   })
 
-  // Where the team's root states every rule our part runs, no override of ours is left turning a
-  // rule on, so our env stands in an override of its own (found by breaking that decision, fix round 2).
-  // The env probed is es2024, which is no runtime's: a runtime's env is ours only where our own
-  // no-undef runs (#68), and here the team's root states no-undef too. The root lists the plugin of
-  // each rule, as oxlint counts a root's statement only of a plugin it lists: react's, for
-  // react-hooks/rule-suppression (r2-d22).
+  // No override of ours turns a rule on here, so our env stands in an override of its own. es2024 is
+  // probed as no runtime's: a runtime's env is ours only where our own no-undef runs. The root lists each
+  // rule's plugin, as oxlint counts a root's statement only for a listed plugin.
   it("keeps our env in every file, where the team's root states every rule our part runs", () => {
     const oxlint = oxlintPartOf(ourEditorParts({}, { editorRulesets: { runtimes: ['browser'] } }))
     const teamRootStatingEveryRuleOfOurs = Object.fromEntries(oxlintNamesOfRulesOurPartRuns(oxlint).map((oxlintName): [string, 'error'] => [oxlintName, 'error']))
@@ -532,8 +519,8 @@ describe('mergeOxlintConfig, given the options and env of the team', () => {
     }).toStrictEqual({ es2024: true, rulesTheOverridesTurnOn: [] })
   })
 
-  // Our runtime's env is ours where our own no-undef runs (#68): the correctness ruleset ships it,
-  // for JS files, so the files read are JS files.
+  // Our runtime's env is ours where our own no-undef runs: the correctness ruleset ships it for JS
+  // files, so the files read are JS files.
   it("keeps the env an override of the team's sets in its files, and ours elsewhere", () => {
     const { oxlint } = ourEditorParts({}, { editorRulesets: { quality: ['correctness'], runtimes: ['browser'] } })
     const config = mergeOxlintConfig(buildTeamOxlintConfig({ overrides: [{ files: ['**/*.test.js'], env: { browser: false } }] }), oxlint, NO_TEAM_ESLINT_CONFIG)
@@ -546,8 +533,7 @@ describe('mergeOxlintConfig, given the options and env of the team', () => {
 })
 
 // Our env, each key in the overrides of ours that give it: oxlint's builtins with our rules, our
-// runtime's in an override of its own where our no-undef runs (#68), and each framework's and the
-// test runners' in their files. The correctness ruleset ships no-undef.
+// runtime's where our no-undef runs, and each framework's and test runner's in their files.
 describe('the env of ours mergeOxlintConfig writes, beside a team config setting none', () => {
   it("gives each key once, our runtime's apart from the rest, in no override giving an empty env", () => {
     const { oxlint } = ourEditorParts({}, { editorRulesets: { quality: ['correctness'], runtimes: ['browser'] } })

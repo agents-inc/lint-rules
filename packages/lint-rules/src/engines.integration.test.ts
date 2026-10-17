@@ -25,12 +25,12 @@ const SUPPRESSES_A_RULE_NOBODY_DEFINES_FILE = 'nobody-suppression.ts'
 const FIRES_IN_OXLINT = [
   // Not shipped on: turned on through `rules`, and written `node/` in the oxlint config.
   { rule: 'n/no-exports-assign', file: 'exports-assign.cjs', code: 'node(no-exports-assign)' },
-  // Owner, 2026-10-10: shipped in correctness. A for…of whose body always returns runs once.
+  // A for…of whose body always returns runs once.
   { rule: 'no-unreachable-loop', file: 'unreachable-loop.ts', code: 'eslint(no-unreachable-loop)' },
 ]
 
 const FIRES_IN_ESLINT = [
-  // oxlint has it under react/, but refuses an option ESLint's version takes (spec-merge-model.md, 3.2).
+  // oxlint has it under react/, but refuses an option ESLint's version takes.
   { rule: 'react-hooks/rules-of-hooks', file: 'rules-of-hooks.tsx' },
   { rule: 'n/prefer-global/buffer', file: 'prefer-global-buffer.ts' },
   { rule: '@typescript-eslint/no-floating-promises', file: 'floating-promises.ts' },
@@ -41,7 +41,7 @@ const FIRES_IN_ESLINT = [
   { rule: 'storybook/default-exports', file: 'story.stories.tsx' },
 ]
 
-// functional/no-loop-statements bans for…of too, so it no longer ships (owner, 2026-10-10).
+// functional/no-loop-statements bans for…of too, so it does not ship.
 const LOOP_BANNING_RULES = ['functional/no-loop-statements', 'house/no-classic-loops']
 
 type OxlintPrintedConfig = { rules: Record<string, unknown> }
@@ -142,8 +142,7 @@ describe('each rule fires on its routed engine only, under its exact ID', () => 
   })
 })
 
-// Shipped in the class-names ruleset (owner, 2026-10-14); a consumer can also turn it on by ID. The
-// fixture's classNames(…) and buttonVariants(…) calls, which its defaults accept, stay silent.
+// The fixture's classNames(…) and buttonVariants(…) calls, which its defaults accept, stay silent.
 describe('house/require-class-helper, turned on through rules', () => {
   const classHelper = setUpEngineRun(FIXTURES_DIR, (projectDir) =>
     defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { 'house/require-class-helper': 'error' } })),
@@ -158,9 +157,8 @@ describe('house/require-class-helper, turned on through rules', () => {
   })
 })
 
-// eslint-plugin-unicorn 78 adds both rules, opt-in upstream and shipped in no ruleset here
-// (q-r2-plugin-upgrades); oxlint has neither. Each fixture holds a call each rule reports and,
-// below it, one it leaves alone: a default passed a value of its own, and a wrapper one call skips.
+// Opt-in upstream and shipped in no ruleset here; oxlint has neither. Each fixture holds a call each
+// rule reports and, below it, one it leaves alone.
 describe('the rules eslint-plugin-unicorn 78 adds, turned on through rules', () => {
   const unicorn78Rules = setUpEngineRun(FIXTURES_DIR, (projectDir) =>
     defineLintRules(
@@ -214,10 +212,9 @@ describe('a suppression comment in ESLint, with suppressions allowed', () => {
   })
 })
 
-// With oxlint, the editor ESLint part merges its plugin under each prefix the team registers with
-// the team's own object, adding a do-nothing stub for each oxlint-only name: react/no-clone-element
-// exists only in oxlint, under the react prefix eslint-plugin-react holds in ESLint. The editor
-// parts allow suppressions, so ESLint reads and looks up every directive.
+// The editor ESLint part merges its plugin with the team's under each prefix the team registers, adding
+// a do-nothing stub for each oxlint-only name. The editor parts allow suppressions, so ESLint looks up
+// every directive.
 describe('a suppression comment in ESLint, in a team config registering react merged with the editor part, with oxlint', () => {
   const teamRegistersReact = setUpEngineRun(
     FIXTURES_DIR,

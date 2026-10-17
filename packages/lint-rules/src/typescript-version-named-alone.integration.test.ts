@@ -10,11 +10,9 @@ import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 import type { LintRules } from './index.ts'
 
-// q61 (owner): where a consumer's `rules` name typescript-eslint's version of a rule and not the
-// plain rule, the plain rule runs on JS files with that setting wherever the layer reaches, our
-// ruleset's own file limit aside; each file reports once, under one name. Without oxlint, the
-// editor's ESLint part runs the plain rule on JS files itself; beside oxlint, the agent build and
-// the editor already report each file once, through ESLint's typescript-eslint version, and stay so.
+// Where a consumer's `rules` name typescript-eslint's version of a rule and not the plain rule, the
+// plain rule runs on JS files with that setting wherever the layer reaches; each file reports once.
+// Without oxlint the editor's ESLint part runs it; beside oxlint each file already reports once.
 
 allowEveryTestForParallelLoad()
 
@@ -71,9 +69,8 @@ describe('the same files, our rules naming the plain no-unused-vars, in a projec
   })
 })
 
-// The builds q61 leaves as they were (measured, oxlint 1.87): each file once, oxlint's no-unused-vars
-// with our setting where the ruleset ships it, and ESLint's typescript-eslint version in the files it
-// ships it ignoring, the JS files among them.
+// Beside oxlint each file reports once (measured, oxlint 1.87): oxlint's no-unused-vars with our
+// setting where the ruleset ships it, and typescript-eslint's version in the files it ships ignoring.
 describe("the same files, our rules naming typescript-eslint's no-unused-vars alone, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: unusedVariableFiles,

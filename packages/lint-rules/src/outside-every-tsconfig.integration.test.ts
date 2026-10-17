@@ -11,11 +11,9 @@ import { buildTsconfig, type Tsconfig } from './__tests__/factories/tsconfig-fac
 import { BUILT_DIST_DIR, type ProjectFiles, setUpTempProjects } from './__tests__/temp-projects.ts'
 import { defineLintRules } from './index.ts'
 
-// Spec C3, criterion C-5: a TS file no tsconfig takes in gets no typed rule, so it gets no fatal
-// parse error, and every untyped rule still runs on it. The fixture holds one source three times:
-// inside the tsconfig, in a directory outside it, and in a directory named with glob syntax outside
-// it. Its package.json lists no oxlint, so the editor build is ESLint's alone; the agent build runs
-// oxlint whatever the package.json lists.
+// A TS file no tsconfig takes in gets no typed rule, so no fatal parse error, and every untyped rule
+// still runs on it. The fixture holds one source inside the tsconfig, outside it, and outside it in a
+// folder named with glob syntax.
 
 const FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/outside-every-tsconfig', import.meta.url))
 const INSIDE_THE_TSCONFIG = 'src/sample.ts'
@@ -33,9 +31,8 @@ type MergeTiming = { readonly mergeMs: number | null }
 
 const MERGE_TIMING_PROCESS = fileURLToPath(new URL('./__tests__/merge-timing-process.ts', import.meta.url))
 const STRAY_COUNT = 1000
-// The target is a merge under 2 s at a thousand such files (review, Must fix 2). The ceiling is ten
-// times that, so a merge that scales passes it easily on a loaded machine; one that does not took
-// 22 s at a quarter of them and never finished at half, measured with nothing else running.
+// The target is a merge under 2 s at a thousand such files; the ceiling is ten times that, so a merge
+// that scales passes on a loaded machine. One that did not took 22 s at a quarter of them (measured).
 const MERGE_CEILING_MS = 20_000
 // The process also loads the built ESLint entry, seconds under a loaded parallel run, before it
 // times the merge.
@@ -115,16 +112,15 @@ describe('mergeEslintConfig, with a team config giving no type information, give
 
   itLintsTheFilesOutsideEveryTsconfig(run)
 
-  // verify.md, U066: a block no path can match changes nothing, and the merge should never write one.
+  // A block no path can match changes nothing, so the merge should never write one.
   it('writes no block whose files no path can match', () => {
     expect(eslintBlocksMatchingNoFile(run.emittedEslintConfig())).toStrictEqual([])
   })
 })
 
-// Review, Must fix 2: without oxlint, every TS file outside every tsconfig is left out of our typed
-// blocks, and the merge's cost grew with their number until it never finished. A generous ceiling,
-// not the target, so the assertion does not flake: the merge runs in a process of its own, stopped at
-// the process ceiling, so one that never finishes fails here rather than hanging the suite.
+// Without oxlint, every TS file outside every tsconfig is left out of our typed blocks, which must not
+// make the merge's cost grow with their number. The merge runs in a process of its own, stopped at the
+// process ceiling, so one that never finishes fails rather than hanging the suite.
 describe('mergeEslintConfig, without oxlint, in a project with a thousand TS files outside every tsconfig', () => {
   const tempProjects = setUpTempProjects()
 

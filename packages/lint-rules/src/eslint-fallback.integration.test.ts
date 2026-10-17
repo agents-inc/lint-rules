@@ -21,21 +21,10 @@ import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/fact
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 import { defineLintRules } from './index.ts'
 
-// Without oxlint, the ESLint part takes over each shipped oxlint-run rule ESLint has a version
-// of, and runs it only where its fixture fires there: a matching name is not proof (CLAUDE.md). A
-// rule that cannot be proven goes on rule-data's skip list, with its reason, and is not stated.
-//
-// test-fixtures/eslint-fallback holds the gate's fixture for each moved rule, re-keyed by canonical
-// ID in fixtures.json, with the sibling modules the import-x fixtures resolve against; its
-// package.json lists no oxlint. Where the gate's fixture is silent in ESLint (react-hooks/use-memo,
-// react-hooks/error-boundaries), it holds a shape measured to fire there instead. A moved core rule a current typescript-eslint rule extends runs on
-// JS files only, its twin on TS files (questions.md #39): fixtures.json gives it a JS fixture, and
-// twin-fixtures.json the TS fixture its twin fires on. The rules are read from the catalog and the
-// plugins, never from a list kept here.
-//
-// A moved rule another rule covers is left out wherever its cover is on, and so is its twin (S;
-// spec-core.md C2). Every ruleset listed turns each cover on, so such a rule is proven in a second
-// run whose top-level rules turn each cover off, which brings it back.
+// Without oxlint, the ESLint part takes over each shipped oxlint-run rule ESLint has a version of, and
+// runs it only where its fixture fires there; a rule that cannot be proven goes on rule-data's skip list.
+// Where the gate's fixture is silent in ESLint, test-fixtures/eslint-fallback holds a shape measured to
+// fire instead. A covered moved rule is proven in a second run that turns each cover off.
 
 const FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/eslint-fallback', import.meta.url))
 const FIXTURE_INDEX = 'fixtures.json'
@@ -61,12 +50,10 @@ const fallbackWithEveryCoverOff = setUpEngineRun(
   buildEditorBuild(),
 )
 
-/** Whether the catalog records a rule covering the rule. */
 function isCovered({ shipped }: RuleRoute): boolean {
   return shipped !== null && shipped.coveredBy !== null
 }
 
-/** Each rule covering a moved rule, turned off. */
 function everyCoverOfAMovedRuleOff(): Readonly<Record<string, 'off'>> {
   return Object.fromEntries(movedRules().flatMap(({ shipped }) => (shipped === null || shipped.coveredBy === null ? [] : [[shipped.coveredBy, 'off']])))
 }
@@ -196,9 +183,8 @@ describe('each moved core rule a current typescript-eslint rule extends, in a pr
   )
 })
 
-// Where oxlint's version of a rule is measurably worse than ESLint's, ESLint runs it beside oxlint
-// too (decisions.md, "Owner 2026-10-14"; spec-merge-model.md, 3.2): each fires on its fixture in our
-// ESLint part, and no oxlint config we write names it.
+// Where oxlint's version is measurably worse, ESLint runs the rule beside oxlint, and no oxlint config
+// we write names it.
 describe('the rules routed to ESLint for a measured reason, in a project whose package.json lists oxlint', () => {
   const besideOxlint = setUpEngineRun(
     FIXTURES_DIR,

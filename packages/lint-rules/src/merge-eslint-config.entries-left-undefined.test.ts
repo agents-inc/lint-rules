@@ -9,11 +9,9 @@ import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// A rule key whose entry a team's JS config leaves undefined states no rule (eslint-config-reading.ts,
-// rulesStatedIn), so ours stands; the same key stated off is the team's, and ours is dropped in every
-// file. ESLint refuses an undefined entry in a block that applies to the file it lints ("Expected
-// severity of ...", measured, ESLint 10.12), so the team's block here applies only to legacy/**, where
-// ESLint lints no file: it reads the block, and validates none of its entries.
+// A key whose entry a team's JS config leaves undefined states no rule, so ours stands; stated off, it
+// is the team's. ESLint refuses an undefined entry in a block applying to a file it lints (measured,
+// ESLint 10.12), so the team's block applies only to legacy/**, where ESLint lints no file.
 
 const tempProjects = setUpTempProjects()
 const { ruleSeverityInProjectFor } = setUpEslintConfigOracle()

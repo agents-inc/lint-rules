@@ -13,25 +13,14 @@ import { configFileText } from './__tests__/factories/tsconfig-layout-factories.
 import { buildTsconfig, buildTsconfigListingNodeTypes } from './__tests__/factories/tsconfig-factories.ts'
 import { INSTALLED_OXLINT, installedPackage, type ProjectFiles, THIS_PACKAGE } from './__tests__/temp-projects.ts'
 
-// typed-config-files (spec-core.md C9): where the type information is ours, agents-inc.lint.mts and
-// oxlint.config.mts at tsconfigRootDir get the typed rules through the tsconfig that takes them in,
-// with no fatal parse error whatever the tsconfig shape. oxlint.config.mts imports
-// agents-inc.lint.mts, so where a tsconfig takes in the importer alone, the project service finds
-// the imported file through it (D-h), and it gets them too.
-//
-// KNOWN GAP: where no tsconfig takes them in, the two files get no typed rule, as any other TS file
-// outside every tsconfig, though typed-config-files owes them the typed rules there too.
-// typescript-eslint's default project, which gave them the rules, is set up once per process by the
-// first config it parses: one ESLint process linting several projects, a monorepo's root run or an
-// editor's ESLint server, then failed every project whose files differed from the first's in
-// whether a tsconfig takes them in, with a fatal parse error. A tsconfig we ship as the default
-// project keeps that fatal error, in both orders, under TypeScript 6.0 and 5.9 (measured on the
-// packed package, 2026-10-15). So the default project is left out (review option (a), Must Fix 1),
-// and each test owing the typed rules there is pinned with it.fails until the owner decides.
-//
-// Each project is linted in a process of its own, by the agent build and by the ESLint merge, ESLint
-// run from tsconfigRootDir as a consumer runs it: every project in one process would share the
-// first's project service. The last suite lints two projects in one process on purpose.
+// Where the type information is ours, agents-inc.lint.mts and oxlint.config.mts get the typed rules
+// through the tsconfig taking them in, with no fatal parse error whatever its shape; the project
+// service finds an imported file through its importer.
+// KNOWN GAP: where no tsconfig takes them in, the two files get no typed rule. typescript-eslint's
+// default project, set up once per process by the first config it parses, made one process linting
+// several projects fail some with a fatal parse error, with a shipped default tsconfig too (measured).
+// Each project is linted in a process of its own, as projects in one process would share the first's
+// project service; the last suite does so on purpose.
 
 const CONSUMER_FILES_DIR = fileURLToPath(new URL('../test-fixtures/consumer-files', import.meta.url))
 const LINT_RULES_FILE = 'agents-inc.lint.mts'
@@ -154,16 +143,14 @@ describe.each(LAYOUTS)("the consumer's config files at tsconfigRootDir, in $shap
   })
 })
 
-// plan.md's files as it gives them, every ruleset listed, beside each tsconfig shape the consumer-files
-// suite reads: the typed rules run on the two TS files and find nothing, where a tsconfig takes them
-// in and @types/node is installed (spec-core.md C9).
+// plan.md's files verbatim, every ruleset listed: the typed rules run on the two TS files and find
+// nothing, where a tsconfig takes them in and @types/node is installed.
 const VERBATIM_TSCONFIGS = [
   // KNOWN GAP (see the top of the file): no typed rule runs on the two, which no tsconfig takes in.
   { includes: 'only src/, listing types: node', tsconfig: buildTsconfigListingNodeTypes({ include: ['src'] }), takesInTheTwo: false, findsNothingOn: TS_FILES_WE_HAVE_A_CONSUMER_WRITE },
   { includes: 'every TS file, listing types: node', tsconfig: buildTsconfigListingNodeTypes(), takesInTheTwo: true, findsNothingOn: TS_FILES_WE_HAVE_A_CONSUMER_WRITE },
-  // KNOWN GAP, for the owner (review Must Fix 2): TypeScript 6 loads no @types package a tsconfig
-  // does not list, so plan.md's `tsconfigRootDir: import.meta.dirname` is an error type, which
-  // no-unsafe-assignment reports; the consumer's own tsc reports TS2339 on that line too.
+  // KNOWN GAP: TypeScript 6 loads no @types package a tsconfig does not list, so `import.meta.dirname`
+  // is an error type, which no-unsafe-assignment reports.
   { includes: 'every TS file, listing no types', tsconfig: buildTsconfig(), takesInTheTwo: true, findsNothingOn: [OXLINT_CONFIG_FILE] },
 ]
 
@@ -197,10 +184,9 @@ describe.each(VERBATIM_TSCONFIGS)("plan.md's config files, beside a tsconfig tha
   })
 })
 
-// One ESLint process over two projects, as a monorepo linted once from its root, or an editor's
-// ESLint server, lints them (review Must Fix 1): each project's own eslint.config.mjs, plan.md's, its
-// own tsconfigRootDir, and a tsconfig taking its two files in or leaving them out. Neither order may
-// give a fatal parse error, and each project's typed rules still run where its tsconfig takes files in.
+// One ESLint process over two projects, as a monorepo's root run or an editor's ESLint server lints
+// them: neither order may give a fatal parse error, and each project's typed rules still run where its
+// tsconfig takes files in.
 const PROJECTS = ['packages/a', 'packages/b']
 const DIRECTIONS = [
   { direction: 'the first takes its two files in and the second leaves them out', takingThemIn: 'packages/a' },

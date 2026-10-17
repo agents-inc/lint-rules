@@ -10,12 +10,9 @@ import { packagesNpmOverridesAPeerFor } from './__tests__/npm-install-output.ts'
 import { isRecord } from './core/is-record.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
 
-// q58 (spec-core.md C11): this package, packed as npm publishes it and installed by npm into a
-// fresh project beside the ESLint, oxlint and TypeScript a consumer installs, loads in both
-// engines through plan.md's three files, verbatim, and reports what each engine owes on a source
-// file planted with one finding for each. It needs the network and the built package: it fails,
-// never skips, where it cannot install, and the install is run before the suite, so only an
-// assertion fails inside a test.
+// Packed as npm publishes it and installed by npm beside a consumer's ESLint, oxlint and TypeScript,
+// this package loads in both engines through plan.md's three files, verbatim. It needs the network and
+// fails, never skips, where it cannot install.
 
 const PACKAGE_DIR = fileURLToPath(new URL('..', import.meta.url))
 const CONSUMER_FILES_DIR = fileURLToPath(new URL('../test-fixtures/consumer-files', import.meta.url))
@@ -29,9 +26,8 @@ const REPORT_BUFFER_BYTES = 256 * 1024 * 1024
 // The versions a consumer installs beside ours, each in our peer range.
 const PEERS = { eslint: '10.12.0', oxlint: '1.87.0', typescript: '6.0.3' }
 
-// One finding for each engine, from rules this round's data leaves alone, each the only finding
-// every ruleset draws on its line (measured through the editor merges): oxlint's no-debugger (2),
-// and ESLint's @typescript-eslint/no-inferrable-types (5).
+// One finding for each engine, each the only finding every ruleset draws on its line (measured):
+// oxlint's no-debugger (2), and ESLint's @typescript-eslint/no-inferrable-types (5).
 const PLANTED_FILE = 'src/planted.ts'
 const PLANTED_SOURCE = `export function check(value: number): number {
   debugger
@@ -44,9 +40,8 @@ const OWED_BY_ESLINT = [`${PLANTED_FILE}:5 @typescript-eslint/no-inferrable-type
 // A consumer's project keeps node_modules out of git, and oxlint reads that: with no ignore file it
 // lints node_modules too (measured, oxlint 1.87).
 const GITIGNORE = 'node_modules\n'
-// The plugins we depend on whose ESLint peer range stops at 9, which npm installs beside ESLint 10
-// all the same, with a warning (plan.md, the packaging problems of questions.md #38).
-// eslint-plugin-jsx-a11y was one until its fork, which takes ESLint 10, replaced it (#54).
+// Plugins we depend on whose ESLint peer range stops at 9, which npm installs beside ESLint 10 all the
+// same, with a warning.
 const PLUGINS_NPM_OVERRIDES_A_PEER_FOR = ['eslint-plugin-react', 'eslint-plugin-react-perf']
 
 /** What a process printed, both streams, and how it exited. */

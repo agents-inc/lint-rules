@@ -8,13 +8,9 @@ import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// Whether a team's global ignores read from a basePath may take a file back from ESLint's default
-// ignores (merge-eslint-config.ts, eslintDefaultIgnoresHoldBeside; decisions.md, 2026-10-12 "fix round
-// 2, after its second review"): their globs are read from the root, as ESLint reads them from the
-// basePath, from a folder above the project too (spec-core.md C8). A negated glob taking back no file
-// a default leaves out takes nothing back, so our blocks keep the names they have outside a merge;
-// one taking back such a file moves each rule of ours into a copy of its block kept out of the files
-// our part never lints. merge-eslint-config.test.ts pins the other shapes of this decision.
+// A team's global ignores read from a basePath, even one above the project, may take a file back from
+// ESLint's default ignores. Taking none back, our blocks keep their names; taking one back moves each
+// rule of ours into a copy of its block kept out of the files our part never lints.
 
 const tempProjects = setUpTempProjects()
 const NO_VAR = 'no-var'

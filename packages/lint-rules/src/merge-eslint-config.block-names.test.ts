@@ -8,10 +8,8 @@ import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// Every block the merge adds is named under agents-inc/, as ESLint's config inspector and its errors
-// show it, and as merge-eslint-config.test.ts tells ours from the team's: those holding settings of
-// ours kept to the files where the team gives none it yields to (O8) as much as the base block. The
-// team's blocks here set settings.node in some packages, so ours of eslint-plugin-n stay out of them.
+// Every block the merge adds is named under agents-inc/, as ESLint's config inspector and errors show
+// it. The team's blocks set settings.node in some packages, so ours of eslint-plugin-n stay out of them.
 
 const tempProjects = setUpTempProjects()
 

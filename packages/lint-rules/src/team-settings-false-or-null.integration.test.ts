@@ -18,12 +18,8 @@ import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { installedPackage, type ProjectFiles } from './__tests__/temp-projects.ts'
 
 // A team block that sets a setting ours yields to has set it whatever the value, false and null
-// included, so ours stays out of its files (O8; decisions.md, 2026-10-14 "fix round 5 review").
-// Counted only where the value is truthy, ours was read in place of the team's, and the team's own
-// rules reported, merged, what its config alone does not (fix round 6's break G1: our
-// import-x/resolver-next beside the team's import-x/resolver set to false) or not what it does (its
-// break G3: our settings.n list beside the team's settings.node list set to null). Run by the ESLint
-// CLI through the built package from the monorepo's root, as merged and as the team's config alone.
+// included, so ours stays out of its files: read in place of the team's, ours changed what the team's
+// rules report. Run by the ESLint CLI from the monorepo's root, merged and with the team's config alone.
 
 allowEveryTestForParallelLoad()
 

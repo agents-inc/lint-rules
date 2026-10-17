@@ -8,11 +8,8 @@ import { tryExtensionsEslintPluginNReads } from './__tests__/eslint-plugin-n-set
 import { buildConsumerLintRules, MODULES_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
 
-// Our `settings.n.tryExtensions` is ours only where the team's config sets neither
-// `settings.n.tryExtensions` nor the older `settings.node.tryExtensions` (decisions.md, 2026-10-14
-// "fix round 4 closed"; O8). Read from ESLint's own merge for a module in each package of
-// team-try-extensions.ts, as eslint-plugin-n reads it: settings.n's list, else settings.node's.
-// team-try-extensions.integration.test.ts runs the rule.
+// Our `settings.n.tryExtensions` is ours only where the team's config sets neither it nor the older
+// `settings.node.tryExtensions`; eslint-plugin-n reads settings.n's list, else settings.node's.
 
 const { lintedConfigFor } = setUpEslintConfigOracle()
 const tempProjects = setUpTempProjects()

@@ -16,12 +16,10 @@ import { isRecord } from './core/is-record.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// A function in a team block's files or ignores, which no glob of ours can read (Q-D; merge-eslint-
-// config.ts, withGlobsOnly): among global ignores it leaves files out and takes none back, so our
-// blocks keep the names they have outside a merge; in `files` it is read as matching every file,
-// alone, or ANDed with the globs beside it, so a setting of ours the block's setting overrides
-// stays out of every file it may reach. Our settings.n here is the modules ruleset's, which yields
-// to the team's settings.node tryExtensions.
+// A function in a team block's files or ignores, which no glob of ours can read: among global ignores
+// it leaves files out and takes none back; in `files` it is read as matching every file, so a setting
+// of ours the block overrides stays out of every file it may reach. Our settings.n here yields to the
+// team's settings.node tryExtensions.
 
 const tempProjects = setUpTempProjects()
 const { calculatedConfigInProjectFor } = setUpEslintConfigOracle()

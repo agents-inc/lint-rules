@@ -9,11 +9,8 @@ import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// A team may register several of our plugins under prefixes of its own, as antfu's config does
-// (eslint-config-reading.ts, underOurPrefixes): a key under one of them names our rule of that plugin
-// alone. Here the team registers typescript-eslint under `ts` and eslint-plugin-regexp under `rx`;
-// both plugins have a prefer-regexp-exec. Stated under `rx`, it is our regexp rule, now the team's;
-// stated under `ts`, it is typescript-eslint's, and our regexp rule stays ours.
+// A key under a team's own prefix for one of our plugins names our rule of that plugin alone:
+// prefer-regexp-exec under `rx` is our regexp rule, now the team's; under `ts` it is typescript-eslint's.
 
 const tempProjects = setUpTempProjects()
 const { ruleSeverityInProjectFor } = setUpEslintConfigOracle()

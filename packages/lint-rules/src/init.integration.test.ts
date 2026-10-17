@@ -42,10 +42,6 @@ import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { runMadeFor, setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { CONSUMER_INSTALL, entriesUnder, setUpEmptyFolders, type TempProjects } from './__tests__/temp-projects.ts'
 
-// spec-cli.md "I: init": `agents-inc-lint init` writes agents-inc.lint.mts and adds
-// @agents-inc/lint-rules to devDependencies, and changes nothing else (q-i1 to q-i9, q30a). Each
-// suite runs the built bin (dist/cli.mjs) in a temp project.
-
 allowEveryTestForParallelLoad()
 
 const A_PACKAGE = buildInitPackageJson()
@@ -65,8 +61,6 @@ describe('init in a package in a git repo', () => {
     expect(run().result).toStrictEqual({ exitCode: EXIT.clean, signal: null, stdout: initStdout('added', NPM), stderr: '' })
   })
 
-  // Owner, 2026-10-15: the rulesets that sort code are opt-in, named in quality's comment with the
-  // warning that they conflict with a formatter that sorts the same code.
   it('writes the agent set with every ruleset that is not opt-in, in data order, the sorting ones named only in a comment with the formatter warning, and the editor set empty (I-2, q-i6, q30a)', () => {
     expect(run().config).toBe(initConfigTextListing(initListsOfTheCatalog()))
   })
@@ -128,11 +122,8 @@ describe('the file init writes, loaded (I-3, q-i9)', () => {
     expect({ init: init.exitCode, imported }).toStrictEqual({ init: EXIT.clean, imported: { exitCode: 0, stdout: 'eslint oxlint\n', stderr: '' } })
   })
 
-  // KNOWN GAP (an owner card, the cli review's "TypeScript 6 and the @types/node note"): TypeScript 6
-  // loads no @types package its tsconfig's `compilerOptions.types` does not list, so with @types/node
-  // installed, tsc 6.0.3 still reports TS2339 on import.meta.dirname (measured). Whether init's note
-  // also names `"types": ["node"]`, or the file init writes references the types itself, waits on
-  // the owner. Flip to `it` once that lands.
+  // KNOWN GAP: TypeScript 6 loads no @types package `compilerOptions.types` does not list, so tsc reports
+  // TS2339 on import.meta.dirname even with @types/node installed.
   it.fails('type-checks with tsc in a project that has @types/node', () => {
     const { init, typeChecked } = runs().withTypes
 
@@ -195,24 +186,19 @@ describe('check right after init, the config untracked (I-4, X6)', () => {
     expect(checkAfterInit(kind)).toStrictEqual({ init: EXIT.clean, check: EXIT.clean, findings: [] })
   })
 
-  // KNOWN GAP (an owner card: plan.md Open, "Type-aware rules on agents-inc.lint.mts"): where a
-  // tsconfig takes the config in, the typed rules read it (spec-core.md C9), and TypeScript 6 loads
-  // no @types package the tsconfig's `types` does not list, so `import.meta.dirname` is an error type:
-  // check reports `agents-inc.lint.mts:4 @typescript-eslint/no-unsafe-assignment` right after init,
-  // with @types/node installed or not (measured at the cli landing, 2026-10-15).
+  // KNOWN GAP: where a tsconfig takes the config in, TypeScript 6 types `import.meta.dirname` as an
+  // error, so check reports @typescript-eslint/no-unsafe-assignment at line 4 right after init.
   it.fails.each(PRIVATE_VARIANTS_A_TSCONFIG_TAKES_IN)('reports nothing in agents-inc.lint.mts: $kind', ({ kind }) => {
     expect(checkAfterInit(kind)).toStrictEqual({ init: EXIT.clean, check: EXIT.clean, findings: [] })
   })
 
-  // In a package npm may publish, with no `"files"` field, n/no-unpublished-import leaves our config
-  // file alone, though it imports our package, a devDependency (spec-cli.md X6).
+  // In a publishable package with no `"files"` field, n/no-unpublished-import leaves our config file
+  // alone, though it imports a devDependency.
   it.each(PUBLISHED_VARIANTS_NO_TSCONFIG_TAKES_IN)('reports nothing in agents-inc.lint.mts: $kind', ({ kind }) => {
     expect(checkAfterInit(kind)).toStrictEqual({ init: EXIT.clean, check: EXIT.clean, findings: [] })
   })
 
-  // KNOWN GAP, the one above: where a tsconfig takes the config in, check reports
-  // `agents-inc.lint.mts:4 @typescript-eslint/no-unsafe-assignment` right after init in a published
-  // package too (measured, spec-answers2.md item 4).
+  // KNOWN GAP: the one above, in a published package too.
   it.fails.each(PUBLISHED_VARIANTS_A_TSCONFIG_TAKES_IN)('reports nothing in agents-inc.lint.mts: $kind', ({ kind }) => {
     expect(checkAfterInit(kind)).toStrictEqual({ init: EXIT.clean, check: EXIT.clean, findings: [] })
   })
@@ -465,8 +451,7 @@ describe('the @types/node note (I-11, q-i9)', () => {
   })
 })
 
-// q-i5 and q-i9: init reads the lockfile and @types/node from the folder up to the git top level. A
-// name starting with two dots, as ..pkg does, is not the folder above.
+// A name starting with two dots, as ..pkg does, is not the folder above.
 describe('init in a package whose folder at the repo root is named with two leading dots: the walk up to the git top level', () => {
   const PACKAGE = '..pkg'
   const LOCKFILE = 'pnpm-lock.yaml'

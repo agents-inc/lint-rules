@@ -9,10 +9,8 @@ import { agentSettingsOf } from './agent-settings.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 
-// `check` imports agents-inc.lint.mts and sees only `eslint` and `oxlint`. The internal hook gives
-// back, for either part, the agent projection: the shared keys, with the agent set as the core's
-// single `rulesets`, in each file-override entry too. It is internal: no package.json export and
-// no declaration file names it (dist.test.ts).
+// The internal hook `check` uses: each part's agent projection, the agent set as the core's
+// `rulesets`, in each file override too.
 
 const tempProjects = setUpTempProjects()
 const PROJECT_WITH_OXLINT = createProjectListingOxlint(tempProjects)
@@ -75,8 +73,8 @@ describe('agentSettingsOf', () => {
   })
 })
 
-// The agent build is oxlint-on always, whatever the project's package.json says: `check` brings an
-// oxlint of its own. The editor part of the same config, without oxlint, runs the rule in ESLint.
+// The agent build always runs oxlint, as `check` brings its own; the editor part without oxlint runs
+// the rule in ESLint.
 describe('the agent build of a project whose package.json lists no oxlint', () => {
   const sameSetsForBoth = buildConsumerLintRules(PROJECT_WITHOUT_OXLINT, {
     agentRulesets: { quality: ['redundancy'] },

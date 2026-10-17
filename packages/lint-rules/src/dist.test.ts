@@ -13,9 +13,8 @@ const ENTRY_FILES = ['eslint.d.mts', 'eslint.mjs', 'index.d.mts', 'index.mjs', '
 const BUILT_MODULE = /\.(?:mjs|d\.mts)$/u
 const DECLARATION_FILE = /\.d\.mts$/u
 const PRIVATE_WORKSPACE_SCOPE = '@workspace/'
-// The internal lookup `check` uses: no consumer may reach it (spec §6).
+// The internal lookup `check` uses: no consumer may reach it.
 const INTERNAL_HOOK = 'agentSettingsOf'
-// Owner, 2026-10-11: the merge functions, one per engine subpath, beside defineLintRules.
 const PUBLIC_ENTRIES = [
   { entry: 'index.mjs', declarations: 'index.d.mts', exported: 'defineLintRules' },
   { entry: 'eslint.mjs', declarations: 'eslint.d.mts', exported: 'mergeEslintConfig' },
@@ -134,8 +133,8 @@ describe('the public surface of the built package', () => {
   })
 })
 
-// Spec C3: the computation of the TS files outside every tsconfig uses the TypeScript typescript-eslint
-// resolves, the consumer's own, which the package declares as a peer and never ships.
+// The TS files outside every tsconfig are computed with the consumer's TypeScript, a peer the package
+// never ships.
 describe('TypeScript, in the built package', () => {
   it("is never inlined: its compiler's text is in the TypeScript it resolves and in no built module", () => {
     expect({

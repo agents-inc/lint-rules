@@ -79,14 +79,10 @@ import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-
 import { installedPackage, type ProjectFiles } from './__tests__/temp-projects.ts'
 import type { LintRules } from './index.ts'
 
-// The owner's model (decisions.md, "Owner 2026-10-14"; spec-merge-model.md, 4.1), on the real CLIs
-// through the built package: each project's eslint.config.mjs and oxlint.config.mts merge our part
-// into the team's configs, each naming the other. A rule the team's ESLint or oxlint config sets
-// anywhere (a block or override, a preset, a category on) is the team's in every file, a core rule
-// and typescript-eslint's twin of it counting as one rule: our part runs it in neither engine, and
-// the team's findings are what its configs alone give. A rule the team sets in neither is ours,
-// reported once: by oxlint where the project lists oxlint, else by ESLint. Each case pairs the
-// team's setting with a rule it does not set, so a merge dropping everything fails too.
+// A rule the team's ESLint or oxlint config sets anywhere (a block, override, preset or category) is
+// the team's in every file, a core rule and its typescript-eslint twin counting as one. A rule the
+// team sets in neither is ours, reported once. Each case pairs the team's setting with a rule it does
+// not set, so a merge dropping everything fails too.
 
 allowEveryTestForParallelLoad()
 
@@ -265,8 +261,8 @@ describe("array-type, which ESLint runs for us, beside a team oxlint config turn
     })
   })
 
-  // The team writes the category on and lists typescript (spec-merge-model.md, 1.2): the rule is the
-  // team's, though under a root listing no plugin oxlint runs the category in no file.
+  // The team writes the category on and lists typescript: the rule is the team's, though under a root
+  // listing no plugin oxlint runs the category in no file.
   it("is the team's, and nobody's in any file, where one override alone lists typescript beside a root listing no plugin", () => {
     expect(findingsOf(listingTypescriptForLegacyBesideNoRootPlugin(), [SOURCE_FILE, LEGACY_FILE], [ARRAY_TYPE])).toStrictEqual({
       [SOURCE_FILE]: { '@typescript-eslint/array-type': [] },
@@ -353,10 +349,8 @@ describe('no-debugger, which the team sets nowhere', () => {
   })
 })
 
-// Only what the team's oxlint config writes counts (decisions.md, "Owner 2026-10-14 (questions on the
-// merge rework spec", point 1): oxlint's own correctness: warn, which runs where the config leaves
-// correctness out, sets no rule. A category written on sets the rules it runs: correctness, and
-// nursery, which runs its nursery rules (measured, oxlint 1.87).
+// Only what the team's oxlint config writes counts: oxlint's own default correctness: warn sets no
+// rule. A category written on sets the rules it runs, nursery's included (measured, oxlint 1.87).
 describe("a rule of ours oxlint runs, beside a team oxlint config that leaves its category out, or writes it on", () => {
   const leavingCategoriesOut = setUpMergedAndTeamAloneCliRuns(
     projectListingOxlint(OURS_DEBUGGER, { eslintBlockSources: [], oxlint: TEAMS_OXLINT_LEAVING_EVERY_KEY_OUT }, { [SOURCE_FILE]: DEBUGGER_SOURCE }),
@@ -417,10 +411,8 @@ describe("a rule of ours oxlint runs, beside a team oxlint config that leaves it
   })
 })
 
-// Where oxlint's own correctness: warn would run its copy of a rule ESLint runs for us, the oxlint
-// merge switches that copy off, so the rule is reported once, by ESLint (decisions.md, "Owner
-// 2026-10-14 (questions on the merge rework spec", point 1). Where the team writes correctness on,
-// the rule is the team's, and ours runs in neither engine.
+// Where oxlint's default correctness: warn would run its copy of a rule ESLint runs for us, the oxlint
+// merge switches that copy off. Where the team writes correctness on, the rule is the team's.
 describe("no-this-alias, which ESLint runs for us, whose oxlint version is in oxlint's correctness category under a default plugin", () => {
   const leavingCategoriesOut = setUpConsumerCliRuns(
     projectListingOxlint(OURS_NO_THIS_ALIAS, { eslintBlockSources: [], oxlint: TEAMS_OXLINT_LEAVING_EVERY_KEY_OUT }, { [SOURCE_FILE]: THIS_ALIAS_SOURCE }),
@@ -449,10 +441,8 @@ describe("no-this-alias, which ESLint runs for us, whose oxlint version is in ox
   })
 })
 
-// The off of oxlint's silent copies reaches the twin of each rule our ESLint part runs: oxlint has no
-// copy of typescript-eslint's no-unused-vars, but its silent correctness: warn runs the core
-// no-unused-vars, under eslint, which always runs. A silent copy of a rule we run in neither engine
-// stays the team's: no-unused-expressions, on line 3, as the team's configs alone report it.
+// oxlint has no copy of typescript-eslint's no-unused-vars, but its default correctness: warn runs the
+// core twin, which the off must reach. A silent copy of a rule we run in neither engine stays the team's.
 describe("typescript-eslint's no-unused-vars, which ESLint runs for us, whose core twin is in oxlint's correctness category, beside a team oxlint config that leaves its categories out", () => {
   const runs = setUpMergedAndTeamAloneCliRuns(
     projectListingOxlint(OURS_TYPESCRIPT_ESLINT_UNUSED_VARS, { eslintBlockSources: [], oxlint: TEAMS_OXLINT_LEAVING_EVERY_KEY_OUT }, { [SOURCE_FILE]: UNUSED_SOURCE }),
@@ -479,11 +469,8 @@ describe("typescript-eslint's no-unused-vars, which ESLint runs for us, whose co
   })
 })
 
-// Where the team's root lists plugins, an override listing typescript switches typescript's
-// categories on in its files, oxlint's silent correctness: warn included, which the merge writes back
-// for the team; the off of the silent copies of the rules our ESLint part runs comes after that, so
-// it holds in those files too. The silent copy of a rule we run in neither engine stays the team's:
-// no-duplicate-enum-values, in legacy/** alone, as the team's configs alone report it.
+// An override listing typescript switches typescript's categories on in its files, the default
+// correctness: warn included; the off of the silent copies comes after, so it holds there too.
 describe("no-this-alias, which ESLint runs for us, beside a team oxlint config whose root lists unicorn and whose override lists typescript for legacy/**, its categories left out", () => {
   const runs = setUpMergedAndTeamAloneCliRuns(
     projectListingOxlint(
@@ -521,11 +508,8 @@ describe("no-this-alias, which ESLint runs for us, beside a team oxlint config w
   })
 })
 
-// A key under a prefix where the team registers one of our plugins names two rules of ours: one
-// under the prefix we register that plugin under, and, by the literal key, the rule of the plugin we
-// register under the team's prefix. antfu's config registers @eslint-react under react, where our
-// eslint-plugin-react rules sit. Both are the team's (spec-merge-model.md, 1.2, call C1), and the
-// oxlint merge reads that from the team's ESLint config too.
+// A key under a prefix where the team registers one of our plugins names two rules of ours: antfu's
+// config registers @eslint-react under react, where our eslint-plugin-react rules sit. Both are the team's.
 describe("eslint-plugin-react's jsx-no-comment-textnodes, which oxlint runs for us, set by a team ESLint block under react, where the team registers @eslint-react", () => {
   const runs = setUpMergedAndTeamAloneCliRuns(
     projectListingOxlint(
@@ -619,8 +603,7 @@ describe("a rule a team's JSON oxlint config sets through a config it extends by
   })
 })
 
-// A documented limit (spec-merge-model.md, 1.2): each merge reads what is handed to the merge in the
-// other config, so a block a team adds to eslint.config.mjs after the merge is out of the oxlint
+// A documented limit: a block a team adds to eslint.config.mjs after the merge is out of the oxlint
 // merge's sight.
 describe("no-debugger, which the team turns off in a block its eslint.config.mjs adds after our merge, rather than handing it to the merge", () => {
   const runs = setUpConsumerCliRuns(
@@ -646,9 +629,7 @@ describe("no-debugger, which the team turns off in a block its eslint.config.mjs
     expect(eslintFatalMessagesOf(runs())).toStrictEqual([])
   })
 
-  // KNOWN GAP: the documented limit above. The team's config turns no-debugger off, so the model owes
-  // it the team's; but the oxlint merge reads only the config handed to the ESLint merge, and runs
-  // ours.
+  // KNOWN GAP: the oxlint merge reads only what was handed to the ESLint merge, so ours still runs no-debugger.
   it.fails("is the team's, which nobody reports", () => {
     expect(findings).toStrictEqual({ [SOURCE_FILE]: { 'no-debugger': [] } })
   })

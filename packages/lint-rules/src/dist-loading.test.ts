@@ -8,10 +8,8 @@ import { runNodeScript } from './__tests__/node-process.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { BUILT_DIST_DIR, INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
 
-// The parts are data, so a team's oxlint config, which imports agents-inc.lint.mts and our
-// oxlint merge, loads nothing of ESLint's side; only importing the ESLint merge entry loads the
-// plugins, which takes seconds. A child process loads the built package and records every module
-// it resolves. Reads the build output, so `turbo test` builds this package first.
+// A team's oxlint config must load nothing of ESLint's side: the ESLint merge entry loads the plugins,
+// which takes seconds. Reads the build output, so `turbo test` builds this package first.
 
 allowEveryTestForParallelLoad()
 
@@ -22,10 +20,7 @@ const RECORD_FILE = 'resolved-modules.json'
 const ESLINT_SIDE_PACKAGE =
   /\/node_modules\/(?:eslint|typescript-eslint|typescript|@typescript-eslint|eslint-plugin-[^/]+|eslint-import-resolver-[^/]+|unrs-resolver|@eslint-react|@eslint|@vitest|globals)\//u
 const AN_ESLINT_PLUGIN = '/node_modules/eslint-plugin-unicorn/'
-// @vitest/eslint-plugin is one of our ESLint plugins, and typescript is what typescript-eslint parses
-// and type-checks with; eslint-import-resolver-typescript is import-x's resolver of ours, and
-// unrs-resolver the resolver under it and under import-x's own (spec-core.md C1, E-3): all are
-// ESLint-side, so the guard names them.
+// ESLint-side packages besides the plugins: typescript, import-x's resolver and the unrs-resolver under it.
 const PACKAGES_THE_GUARD_NAMES_TOO = [
   '/node_modules/@vitest/eslint-plugin/',
   '/node_modules/typescript/',

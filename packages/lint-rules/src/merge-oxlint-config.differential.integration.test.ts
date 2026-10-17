@@ -31,18 +31,11 @@ import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.t
 import { defineLintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// The oxlint merge, checked against oxlint itself: each shape is linted three times by the real CLI,
-// with the team's config alone, with our part alone, and merged. Rule by rule, the merged config owes
-// the findings of one of them (decisions.md, "Owner 2026-10-14"; spec-merge-model.md, 1.1): the
-// team's in every file for a rule the team's config sets anywhere, by a statement oxlint counts or a
-// category it writes on; ours for every other rule, where our part alone runs it; none, elsewhere,
-// of a rule our ESLint part runs, whose copy only oxlint's own correctness: warn runs for the team
-// (decisions.md, "Owner 2026-10-14 (questions on the merge rework spec", point 1). The team has no
-// ESLint config here: one that sets no rule. Which statements and categories of the team's count is read through a model
-// of oxlint's resolution, __tests__/oxlint-rules-the-team-sets.ts, written apart from the merge. The
-// merge adds no finding and loses none (questions.md #44). Compared as members, `file:line code
-// severity`. The shapes meet every two values of two dimensions, and the seeds keep each defect
-// found so far. The shape cases are in __tests__/cases/oxlint-merge-shapes.ts.
+// Each shape is linted by the real oxlint CLI with the team's config alone, our part alone, and merged.
+// Rule by rule, the merged config owes the team's findings for a rule the team sets anywhere, ours for
+// every other rule, and none of a rule our ESLint part runs, whose copy only oxlint's default
+// correctness: warn runs. Which team statements count is read through a model of oxlint's resolution,
+// __tests__/oxlint-rules-the-team-sets.ts, written apart from the merge.
 
 /** The merged config's findings, and those the merge owes: per file and rule, the team's alone or ours alone. */
 type FindingsOwed = { readonly merged: readonly string[]; readonly owed: readonly string[] }
@@ -95,7 +88,7 @@ describe('mergeOxlintConfig, against the real oxlint CLI in shapes meeting every
     expect(pairsMetInNoShape(OXLINT_MERGE_DIMENSIONS, SHAPES)).toStrictEqual([])
   })
 
-  // verify.md, U066: an override no path can match changes nothing, and the merge should never write one.
+  // An override no path can match changes nothing, so the merge should never write one.
   it('merges into configs writing no override whose files no path can match, in any shape', () => {
     const overridesMatchingNoFile = SHAPES.flatMap((shape, index) =>
       oxlintOverridesMatchingNoFile(mergedConfigOf(shape)).map((override) => `shape ${String(index)}, ${override}`),
@@ -115,8 +108,7 @@ describe('mergeOxlintConfig, against the real oxlint CLI in shapes meeting every
 })
 
 describe('mergeOxlintConfig, against the real oxlint CLI in the two shapes it cannot reproduce', () => {
-  // The runs are made before the tests, so a run oxlint cannot make fails the file: inside it.fails
-  // it would pass as the failure expected. Only the assertion fails inside it.fails.
+  // Made before the tests, so only the assertion can fail inside it.fails.
   let runs: ReadonlyMap<OxlintMergeShapeValue, FindingsOwed> = new Map()
 
   beforeAll(() => {
@@ -134,23 +126,17 @@ describe('mergeOxlintConfig, against the real oxlint CLI in the two shapes it ca
     return run
   }
 
-  // KNOWN GAP: questions.md #48, G2. oxlint's apply_overrides (config_store.rs) switches categories
-  // on at the first override whose plugins differ from those listed for the file, putting each rule
-  // in with or_insert; an earlier override's `off` removed the rule, so or_insert puts it back and
-  // the team sees the rule in the test files. The merge lists every plugin at the root, where no
-  // override switches a category on, so it keeps the rule off and the team loses those findings.
+  // KNOWN GAP: oxlint switches categories on at the first override whose plugins differ from the file's,
+  // putting back a rule an earlier override turned off; the merge lists every plugin at the root, so it
+  // keeps the rule off and the team loses those findings.
   it.fails(`gives every rule the team's findings: ${OFF_UNDONE_BY_A_LATER_LISTING.name}`, () => {
     const { merged, owed } = runOf(OFF_UNDONE_BY_A_LATER_LISTING)
 
     expect(merged).toStrictEqual(owed)
   })
 
-  // KNOWN GAP: questions.md #48, G3. An override's `files` and `excludeFiles` are each a GlobSet
-  // that matches a file when any one of its globs does, so no override can match only the files two
-  // listings both exclude, each through excludeFiles of its own. The merge switches react's
-  // categories on in every TSX file and off where no [promise] listing applies, which cannot reach
-  // lib/m.test.tsx: both [promise] listings' files match it and both exclude it. The file gets
-  // react's findings, which the team does not see.
+  // KNOWN GAP: an override's files and excludeFiles each match on any one glob, so no override can match
+  // only the files two listings both exclude: lib/m.test.tsx gets react's findings, which the team does not see.
   it.fails(`gives every rule the team's findings: ${FILE_EXCLUDED_BY_TWO_LISTINGS.name}`, () => {
     const { merged, owed } = runOf(FILE_EXCLUDED_BY_TWO_LISTINGS)
 

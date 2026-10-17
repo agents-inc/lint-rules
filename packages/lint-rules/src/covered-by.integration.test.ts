@@ -18,19 +18,14 @@ import { mergeEslintPart } from './core/merge-eslint-config.ts'
 import { mergeOxlintPart } from './core/merge-oxlint-config.ts'
 import { eslintPluginRegistry } from './eslint-plugin-registry.ts'
 
-// "Covered by" (S; spec-core.md C2) on the real engines, one pair end to end: r2-d75's prefer-const,
-// which oxlint runs, under functional/no-let, which ESLint runs. With both rulesets listed a `let`
-// never reassigned draws functional/no-let's report alone, in the agent build and in each editor
-// merge; with the cover's ruleset unlisted it draws prefer-const's. In the editor merges S is
-// decided before the team's rules are left out (call 3), so a team setting the cover keeps both of
-// ours out. The pair is read from the real catalog.
+// prefer-const (oxlint) under its cover functional/no-let (ESLint). The editor merges decide the cover
+// before leaving out the team's rules, so a team setting the cover keeps both of ours out.
 
 const SOURCE_FILE = 'src/total.js'
 const NEVER_REASSIGNED_LET = 'let total = 1\nexport { total }\n'
 const OXLINT_CONFIG_FILE = 'covered-by.oxlintrc.json'
 const BOTH_RULESETS = { quality: ['immutability', 'declarative'] }
 const COVERED_RULESET_ALONE = { quality: ['immutability'] }
-// r2-d75: prefer-const, run by oxlint, under functional/no-let, run by ESLint, both untyped and unscoped.
 const covered = 'prefer-const'
 const cover = coverOf(covered)
 const PAIR_NAMES: ReadonlySet<string> = new Set([covered, cover, `eslint(${covered})`])
@@ -40,7 +35,6 @@ const TEAM_ESLINT_CONFIG_SETTING_THE_COVER: Linter.Config[] = [buildTeamEslintBl
 const tempProjects = setUpTempProjects()
 const PROJECT_DIR = tempProjects.create({ files: { [SOURCE_FILE]: NEVER_REASSIGNED_LET } })
 
-/** The rule the catalog records covering the rule. */
 function coverOf(rule: string): string {
   const { shipped } = routeOf(rule, catalog)
   if (shipped === null || shipped.coveredBy === null) throw new Error(`${rule}: the catalog records no rule covering it`)

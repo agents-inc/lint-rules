@@ -29,19 +29,10 @@ import { editorPartsOf } from './core/editor-parts.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { eslintPluginRegistry } from './eslint-plugin-registry.ts'
 
-// The ESLint merge, checked against ESLint's own calculated config rather than a model of how
-// ESLint reads one: in each shape, every ESLint name of the shape's rule and of typescript-eslint's
-// twins of it gets, in every file, the full entry the precedence contract owes it (decisions.md,
-// "Owner 2026-10-14"; spec-merge-model.md, 1.1), read from the team's config alone and our part
-// alone (__tests__/eslint-entries-owed.ts); and the merge turns on no name of the rule in a file
-// beyond those the team's config alone runs there. Every shape's team block states the rule, so the
-// team's config decides it in every file, whatever the block's files. Beside oxlint, the merge reads
-// a team oxlint config setting no rule. Our part
-// alone is built without the merge, laid out as the agent build lays out its config
-// (__tests__/eslint-part-alone.ts), so a defect the merge shows with an empty team config too, as
-// our ignores going unread, cannot hide on both sides. The shapes meet every two values of two
-// dimensions; their cases are in __tests__/cases/eslint-merge-shapes.ts. Each shape runs beside
-// oxlint and without it.
+// Checked against ESLint's own calculated config, not a model of it: every ESLint name of the shape's
+// rule and its twins gets, in every file, the entry owed from the team's config alone and our part
+// alone (__tests__/eslint-entries-owed.ts). Our part alone is built without the merge, so a defect the
+// merge shows with an empty team config too cannot hide on both sides.
 
 /** The shape's file entries, merged and owed, each file's names by name; a file the merged config does not lint is NOT_LINTED. */
 type EntriesOwed = {
@@ -166,7 +157,7 @@ describe('the ESLint merge shapes', () => {
     expect(notInPlay.map(shapeStating)).toStrictEqual([])
   })
 
-  // verify.md, U066: a block no path can match changes nothing, and the merge should never write one.
+  // A block no path can match changes nothing, so the merge should never write one.
   it.each(MODES)('merge into configs writing no block whose files no path can match, $mode', ({ usesOxlint }) => {
     const blocksMatchingNoFile = SHAPES.flatMap((shape, index) =>
       eslintBlocksMatchingNoFile(mergedConfigOf(shape, usesOxlint)).map((block) => `shape ${String(index)}, ${block}`),

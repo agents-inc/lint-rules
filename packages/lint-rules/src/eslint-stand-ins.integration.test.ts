@@ -13,10 +13,8 @@ import { editorPartsOf } from './core/editor-parts.ts'
 import { mergeEslintPart } from './core/merge-eslint-config.ts'
 import { eslintPluginRegistry } from './eslint-plugin-registry.ts'
 
-// spec-core.md C4 (#55, r2-d49-51; spec-next-batch S-5): in a project without oxlint, ESLint stands
-// in for five oxc rules, which ESLint has no version of, with unicorn rules: each fires on its
-// fixture through the ESLint merge. Beside oxlint, and in the agent build, oxlint runs the oxc rule
-// and no stand-in is stated. Each stand-in is read from the real catalog.
+// Without oxlint, ESLint stands in for five oxc rules with unicorn rules; beside oxlint, and in the
+// agent build, oxlint runs the oxc rule and no stand-in is stated.
 
 // The rulesets shipping the five oxc rules.
 const SHIPPING_THE_OXC_RULES = { quality: ['correctness', 'redundancy'] }
@@ -76,7 +74,6 @@ describe('the ESLint stand-ins for oxc rules, each on its fixture', () => {
   })
 })
 
-// The fixtures cover exactly the catalog's stand-ins.
 describe('the stand-in fixtures', () => {
   let standInsOfTheCatalog: string[]
 

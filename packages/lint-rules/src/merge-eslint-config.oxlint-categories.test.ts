@@ -16,11 +16,9 @@ import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.t
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// Which rules a team's oxlint config sets by the categories it writes, as the ESLint merge reads them
-// (oxlint-config-reading.ts, rulesItsCategoriesRun): each rule of a category it writes on, of a plugin
-// it lists, a type-aware one only where its options turn those on; off by any word oxlint takes for
-// it. A plugin listed by another name oxlint takes for it (measured, oxlint 1.87) counts as listed.
-// Our ESLint part runs typescript-eslint's no-this-alias and no-floating-promises.
+// Which rules a team's oxlint config sets by the categories it writes: each rule of a category written
+// on, of a plugin it lists under any name oxlint takes (measured, oxlint 1.87), a type-aware one only
+// where its options turn those on. Our ESLint part runs no-this-alias and no-floating-promises.
 
 const tempProjects = setUpTempProjects()
 const { ruleSeverityInProjectFor } = setUpEslintConfigOracle()

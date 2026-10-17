@@ -10,12 +10,10 @@ import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// spec-core.md C13 (spec-next-batch E3): where `react` does not resolve from tsconfigRootDir, our
-// settings give eslint-plugin-react the version it assumes when detection fails, 999.999.999
-// (ULTIMATE_LATEST_SEMVER in its lib/util/version.js, 7.37.5), so it behaves the same and prints
-// nothing; where React resolves, `detect`. The plugin prints its warning once per process and
-// caches the version it detected, so each case resets both first: otherwise any earlier ESLint run
-// would leave nothing to print, and a spy finding nothing would prove nothing.
+// Where `react` does not resolve from tsconfigRootDir, our settings give eslint-plugin-react the version
+// it assumes when detection fails, so it behaves the same and prints nothing. The plugin warns once per
+// process and caches the detected version, so each case resets both first, or a spy finding nothing
+// would prove nothing.
 
 /** The resets eslint-plugin-react exports beside the cache they clear. */
 type ReactVersionCache = { readonly resetWarningFlag: () => void; readonly resetDetectedVersion: () => void }

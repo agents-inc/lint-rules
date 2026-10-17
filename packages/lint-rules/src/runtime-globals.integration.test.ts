@@ -14,12 +14,10 @@ import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// #68 (spec-core.md C7, read-q68): in the editor merges our runtimes' globals are ours only in the
-// files where our own no-undef runs, in that part's engine, so they no longer silence a team's
-// no-undef. Beside oxlint, oxlint runs our no-undef, so the ESLint merge gives none; without it,
-// ESLint does, in the JS files it reaches. Where the team sets no-undef it is the team's, so ours
-// runs nowhere and gives none. The editor set lists the browser runtime alone, so a Node file's
-// `process` is reported where our no-undef runs, and `window` only where none of ours declares it.
+// In the editor merges our runtimes' globals are ours only in the files where our own no-undef runs,
+// in that part's engine, so they do not silence a team's no-undef. The editor set lists the browser
+// runtime alone, so `process` is reported where our no-undef runs, and `window` only where none of
+// ours declares it.
 
 const NODE_FILE = 'src/node.js'
 const ENTRY_FILE = 'lib/node.js'

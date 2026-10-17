@@ -10,11 +10,7 @@ import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { isRecord } from './core/is-record.ts'
 
 // A team block that sets a setting ours yields to has set it whatever the value, false and null
-// included, so ours stays out of its files (O8; decisions.md, 2026-10-14 "fix round 5 review"):
-// counted only where the value is truthy, ours was read in place of the team's (fix round 6's breaks
-// G1 and G3). Read from ESLint's own merge for a module in each package of
-// team-settings-false-or-null.ts, as each plugin reads it. team-settings-false-or-null.integration.test.ts
-// runs the team's rules.
+// included, so ours stays out of its files.
 
 const { settingsFor } = setUpEslintConfigOracle()
 const tempProjects = setUpTempProjects()

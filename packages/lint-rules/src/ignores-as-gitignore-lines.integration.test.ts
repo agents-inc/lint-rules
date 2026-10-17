@@ -15,11 +15,8 @@ import { filesReportingIn, type RuleByItsNames } from './__tests__/findings-besi
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 
-// q62 (owner): each value of our ignores means what it would mean as a .gitignore line, the same in
-// ESLint and oxlint and in every build. Through the real engines, in a project whose package.json
-// lists oxlint: our oxlint rule (no-debugger) and our ESLint rule (no-throw-literal), each file
-// holding a finding of both, in the agent build and merged into empty team configs, whose oxlint
-// config turns correctness off so oxlint's own copies report nothing.
+// Each value of our ignores means what it would as a .gitignore line, in both engines and every build.
+// The empty team oxlint config turns correctness off so oxlint's own copies report nothing.
 
 allowEveryTestForParallelLoad()
 
@@ -103,8 +100,7 @@ describe(`our ignores ${JSON.stringify(NEGATED_UNDER_A_LEFT_OUT_FOLDER.ignores)}
   const runs = setUpRunsIgnoring(files, ignores)
   const lintedByAGitignoreReading = files.filter((file) => !leftOut.includes(file))
 
-  // A written limit (q62, owner card): ESLint keeps lib/a.js out with its folder, and oxlint takes it
-  // back, in every build.
+  // A written limit: ESLint keeps lib/a.js out with its folder, and oxlint takes it back, in every build.
   it('report in the files each engine reads them to leave in: oxlint takes lib/a.js back, ESLint does not', () => {
     expect(filesReportingByBuild(runs(), files)).toStrictEqual({
       agent: { oxlint: lintedByAGitignoreReading, eslint: ['a.js'] },
@@ -112,7 +108,7 @@ describe(`our ignores ${JSON.stringify(NEGATED_UNDER_A_LEFT_OUT_FOLDER.ignores)}
     })
   })
 
-  // KNOWN GAP: the strict assertion the limit fails, kept until a reading covers it.
+  // KNOWN GAP: the limit above fails this strict assertion.
   it.fails('keep both our rules out of the files a .gitignore holding them leaves out, in both engines, in the agent build and merged', () => {
     expect(filesReportingByBuild(runs(), files)).toStrictEqual(owedInEveryBuild(lintedByAGitignoreReading))
   })

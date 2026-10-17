@@ -11,10 +11,8 @@ import { agentSettingsOf } from './agent-settings.ts'
 import { buildOxlintConfig } from './core/build-oxlint-config.ts'
 import { defineLintRules } from './index.ts'
 
-// spec-core.md C12 (spec-next-batch E4): one builder of the agent set's two configs, which `check`
-// and the tests both call. It reads the project's facts once, by the real walk of tsconfigRootDir:
-// here a package's own tsconfig, whose alias the import-x resolver must follow (C1), and a TS file
-// no tsconfig takes in, which the typed block must leave out (step 8).
+// A package's own tsconfig, whose alias the import-x resolver must follow, and a TS file no tsconfig
+// takes in, which the typed block must leave out.
 
 const PACKAGE_TSCONFIG = 'packages/app/tsconfig.json'
 const IMPORTER = 'packages/app/src/a.ts'

@@ -16,9 +16,6 @@ import {
   workspaceDirsOf,
 } from './__tests__/package-manifests.ts'
 
-// The manifest this package ships with, against what it installs, what its build inlines, and what
-// the repo's bun.lock records of it.
-
 function devDependencyNamesOf({ name, devDependencies }: Manifest): string[] {
   if (devDependencies === undefined) throw new Error(`${name}'s package.json lists no devDependencies`)
   return Object.keys(devDependencies)
@@ -36,8 +33,8 @@ const INLINED: readonly Manifest[] = devDependencyNamesOf(SHIPPED)
   .filter((name) => name.startsWith(WORKSPACE_SCOPE))
   .map((name) => readManifest(installedManifestPath(PACKAGE_DIR, name)))
 
-// Node versions at the edges of the decided engines range (decision D8, `^22.18.0 || >=24`): 22.18
-// is the first Node 22 that loads agents-inc.lint.mts without a flag, and ESLint 10 admits no Node 23.
+// Node versions at the edges of the engines range (`^22.18.0 || >=24`): 22.18 is the first Node 22
+// that loads agents-inc.lint.mts without a flag, and ESLint 10 admits no Node 23.
 const NODE_VERSIONS = ['20.19.0', '22.17.1', '22.18.0', '22.23.0', '23.0.0', '23.11.1', '24.0.0', '26.0.0']
 const NODE_VERSIONS_ADMITTED = ['22.18.0', '22.23.0', '24.0.0', '26.0.0']
 // jsdoc-type-pratt-parser 9.x, which eslint-plugin-regexp 3.3.1 depends on (^9.0.0), admits Node
@@ -53,8 +50,7 @@ function nodeRangeShipped(): string {
 describe('the Node versions @agents-inc/lint-rules admits, by its engines field', () => {
   let admittingLess: readonly string[] | undefined
 
-  // Worked out before the tests, so a walk or a range that fails fails the file: inside it.fails it
-  // would pass as the failure expected.
+  // Worked out before the tests, so only the assertion can fail inside it.fails.
   beforeAll(() => {
     admittingLess = packagesAdmittingLessNodeThan(nodeRangeShipped(), packagesInstalledFor(PACKAGE_DIR))
   })
@@ -68,9 +64,8 @@ describe('the Node versions @agents-inc/lint-rules admits, by its engines field'
     expect(nodeVersionsAdmittedBy(nodeRangeShipped(), NODE_VERSIONS)).toStrictEqual(NODE_VERSIONS_ADMITTED)
   })
 
-  // KNOWN GAP: jsdoc-type-pratt-parser alone still refuses part of the range, so npm warns
-  // EBADENGINE on Node 22.18 to 22.22.1 and 24.0 to 24.14 (an owner question: narrow the range,
-  // or keep it). The strict claim is the it.fails below; this pins the gap to that one package.
+  // KNOWN GAP: jsdoc-type-pratt-parser refuses part of the range, so npm warns EBADENGINE on Node 22.18
+  // to 22.22.1 and 24.0 to 24.14. This pins the gap to that one package; the strict claim is the it.fails below.
   it('lie within the engines range of each package installed for it, but one', () => {
     expect(packagesAdmittingLessNode()).toStrictEqual([KNOWN_GAP_NODE_RANGE])
   })

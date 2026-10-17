@@ -16,10 +16,8 @@ import { installedPackage, setUpTempProjects } from './__tests__/temp-projects.t
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// q-r7 (spec-core.md C6): the merge was measured on ESLint 10 alone, so it refuses the ESLint a
-// project installs where its major is below 10, with one clear error, read the way the oxlint merge
-// reads the project's oxlint. Where no ESLint resolves from tsconfigRootDir, the one running the
-// config is installed elsewhere, and the merge goes on (spec-core.md call 9).
+// The merge was measured on ESLint 10 alone, so it refuses an installed ESLint below 10. Where no
+// ESLint resolves from tsconfigRootDir, the one running the config is installed elsewhere: the merge goes on.
 
 const ESLINT_BELOW_10 = '9.39.1'
 const ESLINT_10 = '10.0.0'

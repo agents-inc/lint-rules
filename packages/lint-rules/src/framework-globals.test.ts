@@ -16,10 +16,8 @@ import { createProjectListingOxlint } from './__tests__/factories/package-json-f
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 
-// Framework globals reach a framework's own component files alone (decisions.md, 2026-10-14 "fix
-// round 4 closed"), and our ESLint part lints none of them: it lints JS and TS files alone, so in
-// ESLint no framework global is ours to give. Read from ESLint's own merge of each config for the
-// file; framework-globals.integration.test.ts runs the rules, oxlint's among them.
+// Our ESLint part lints JS and TS files alone, so in ESLint no framework global is ours to give.
+// framework-globals.integration.test.ts runs the rules.
 
 const { calculatedConfigFor, globalsFor } = setUpEslintConfigOracle()
 const tempProjects = setUpTempProjects()

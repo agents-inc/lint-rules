@@ -33,11 +33,9 @@ import { buildOxlintConfig } from './core/build-oxlint-config.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// The oxlint merge, run by the real oxlint CLI over a team project, against the team's config
-// alone. Where the team's config sets a rule ours states, anywhere, by a statement oxlint counts or a
-// category it turns on, the team's setting decides it in every file (decisions.md, "Owner
-// 2026-10-14"); ours decide every other rule. The team's ESLint config sets no rule here. Our part
-// turns on, through `rules`, the four rules the sources draw: no-debugger, no-undef and eqeqeq, and
+// Where the team's config sets a rule ours states, anywhere, by a statement oxlint counts or a category
+// it turns on, the team's setting decides it in every file; ours decide every other rule. Our part
+// turns on the four rules the sources draw: no-debugger, no-undef, eqeqeq, and
 // @typescript-eslint/array-type, which ESLint runs.
 
 allowEveryTestForParallelLoad()
@@ -367,9 +365,8 @@ describe('a team oxlint config, merged with our part', () => {
   })
 })
 
-// Listing a plugin turns on, for the whole config, every rule of it the team's categories hold
-// (oxlint's correctness by default). A plugin the merge lists only for a rule of ours must run that
-// rule and no other the team did not ask for (measured: react/jsx-no-duplicate-props appeared).
+// Listing a plugin turns on, for the whole config, every rule of it the team's categories hold, so a
+// plugin the merge lists only for a rule of ours must run no other the team did not ask for (measured).
 describe('a plugin the merge lists for a rule of ours, which the team config does not list', () => {
   it("runs our rule of it and no rule of it that neither config states, though the team's categories hold that rule", () => {
     const { teamAlone, merged } = findingsWithTheTeamAloneAndMerged(
@@ -383,9 +380,8 @@ describe('a plugin the merge lists for a rule of ours, which the team config doe
     })
   })
 
-  // oxlint ignores a statement of a rule where its plugin is not listed, so the team's config alone
-  // runs none of it. The merge listing the plugin for our rule must not make the statement count
-  // (questions.md #44).
+  // oxlint ignores a statement of a rule whose plugin is not listed, so the merge listing the plugin for
+  // our rule must not make the statement count.
   it("runs no rule of it that the team's config states where oxlint ignores the statement, as the team's config alone runs none", () => {
     const { teamAlone, merged } = findingsWithTheTeamAloneAndMerged(
       {
@@ -402,9 +398,8 @@ describe('a plugin the merge lists for a rule of ours, which the team config doe
   })
 })
 
-// oxlint runs its own core rules, its eslint scope, whatever `plugins` lists, so a config that
-// leaves eslint out of `plugins` still runs every core rule its categories hold. The merge lists
-// eslint for our core rules, and must not take that listing for one only it makes.
+// oxlint runs its core rules whatever `plugins` lists; the merge lists eslint for our core rules, and
+// must not take that listing for one only it makes.
 describe("oxlint's core rules, which it runs whatever a team config's plugins list", () => {
   it("keep running where the team's categories turn one on that our part does not state", () => {
     const { teamAlone, merged } = findingsWithTheTeamAloneAndMerged({
@@ -439,10 +434,9 @@ describe('a plugin the team config lists outside its root plugins, which the mer
   })
 })
 
-// An override's `plugins` turns the plugin's categories on in the override's files only. The merge
-// lists the plugin for our rule in every file, which must not spread the team's categories of it
-// to files outside that override. The category the team turns on holds our react rule, which is then
-// the team's in every file, outside that override too (decisions.md, "Owner 2026-10-14").
+// An override's `plugins` turns the plugin's categories on in its files only; the merge's listing for
+// our rule must not spread them further. The team's category holds our react rule, which is then the
+// team's in every file.
 describe('a plugin the team config lists only in an override, which the merge lists for a rule of ours too', () => {
   const team: TeamConfigFile = {
     file: 'react-override.oxlint.config.mts',
@@ -468,15 +462,10 @@ describe('a plugin the team config lists only in an override, which the merge li
   })
 })
 
-// The class the override above is one case of. A plugin the team lists in overrides only runs, in
-// each file, as those overrides order it: its categories where an override listing it matches the
-// file, and a statement of one of its rules only from an override that lists it too. A statement in
-// the root, or in an override that does not list the plugin, changes nothing (measured, 1.87); once
-// the merge lists the plugin at the root, every such statement applies. Each case reads
-// react/jsx-no-duplicate-props, a rule our part does not state, beside our react/jsx-key, in a team
-// config that lists react or turns the rule off: the merge must report it in the files the team's
-// config alone does, and in no others, a statement oxlint ignores for the team included (questions.md
-// #44). merge-oxlint-config.differential.integration.test.ts checks the class across shapes.
+// A plugin the team lists in overrides only runs as those overrides order it: its categories where a
+// listing override matches the file, and a statement of its rules only from an override listing it too
+// (measured, 1.87). Once the merge lists the plugin at the root every such statement would apply, so
+// the merge must report react/jsx-no-duplicate-props in exactly the files the team's config alone does.
 describe('a rule our part does not state, of a plugin the team config lists in overrides only, which the merge lists for a rule of ours', () => {
   const listingsInOverrides: readonly ListingInOverrides[] = [
     {
@@ -580,8 +569,8 @@ describe('a plugin the team config lists, which the merge lists for a rule of ou
   })
 })
 
-// Our runtimes set oxlint's env in our overrides, so the globals they declare reach our
-// rules in every file, as in our part alone (questions.md #47).
+// Our runtimes set oxlint's env in our overrides, so the globals they declare reach our rules in every
+// file, as in our part alone.
 describe("our runtimes, merged into a team oxlint config that sets no env", () => {
   it("declare their globals for our no-undef in every file: it reports the name nobody declares, and not the browser's window", () => {
     const { merged } = findingsWithTheTeamAloneAndMerged(
@@ -595,9 +584,8 @@ describe("our runtimes, merged into a team oxlint config that sets no env", () =
   })
 })
 
-// Our env goes on the override of ours that excludes only what our part alone excludes from it,
-// so it holds in every file our part alone gives it. An entry of ours turning the browser runtime's
-// rules off in lib/** makes the first override of ours in line exclude lib/** (questions.md #47).
+// Our env goes on the override of ours that excludes only what our part alone excludes from it. An
+// entry of ours turning the browser runtime's rules off in lib/** makes our first override exclude lib/**.
 describe("our runtimes, merged into a team oxlint config that sets no env, beside an entry of ours turning the runtime's rules off in some files", () => {
   it("declare their globals for our no-undef in those files too: it reports the name nobody declares, and not the browser's window", () => {
     const { merged } = findingsWithTheTeamAloneAndMergedWith(
@@ -614,10 +602,8 @@ describe("our runtimes, merged into a team oxlint config that sets no env, besid
   })
 })
 
-// Our runtime in an entry of ours alone, which turns every rule of the runtime off, beside a team
-// that sets no-undef: no-undef is the team's, so ours runs nowhere, and our runtime's globals are
-// ours only where our own no-undef runs (#68, which reverses #47 for a runtime's env). The team's
-// no-undef reports the browser's window in that entry's files too, as its config alone does.
+// no-undef is the team's, so ours runs nowhere, and our runtime's globals are ours only where our own
+// no-undef runs. The team's no-undef reports window in that entry's files too.
 describe("our runtimes in an entry of ours alone, which turns the runtime's rules off, merged into a team oxlint config that sets no env", () => {
   it("declare no globals for the team's no-undef: it reports the name nobody declares, and the browser's window, in that entry's files and elsewhere", () => {
     const { merged } = findingsWithTheTeamAloneAndMergedWith(
@@ -639,10 +625,8 @@ describe("our runtimes in an entry of ours alone, which turns the runtime's rule
   })
 })
 
-// The team turns the rule on, so it is the team's in every file and nothing turns it off across
-// engines (decisions.md, "Owner 2026-10-14"): where our ESLint part would run it, in our ignores, where
-// an entry of ours turns it off, and in and outside the rule's own files (max-lines ships for .tsx and
-// .jsx files but tests), the team's findings stay, as its config alone gives them.
+// The team turns the rule on, so it is the team's in every file and nothing turns it off across engines
+// (max-lines ships for .tsx and .jsx files but tests).
 describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint config that turns it on', () => {
   it.each([
     {
@@ -686,11 +670,9 @@ describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint
 const TEAM_TURNING_ARRAY_TYPE_ON = buildTeamOxlintConfig({ rules: { 'typescript/array-type': 'error' } })
 const OURS_TURNING_ARRAY_TYPE_ON = { '@typescript-eslint/array-type': 'error' } as const satisfies OurRules
 
-// Our ignores, however each engine reads them, keep only our rules out of their files (D-a): the
-// team's rule stands in every file, as its config alone gives it (decisions.md, "Owner 2026-10-14").
-// A value ending in a slash names every folder of that name in both engines (q62). ESLint's lib/**
-// leaves out the folder itself, so a negated line under it takes no file back, where oxlint's
-// .gitignore reading takes the file back (measured, ESLint 10.12 and oxlint 1.87).
+// Our ignores keep only our rules out of their files. A value ending in a slash names every folder of
+// that name in both engines. ESLint's lib/** leaves out the folder itself, so a negated line under it
+// takes no file back, where oxlint's .gitignore reading does (measured, ESLint 10.12, oxlint 1.87).
 describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint config that turns it on, beside our ignores', () => {
   it.each([
     {
@@ -721,8 +703,7 @@ describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint
   })
 })
 
-// ESLint's global ignores take lib/a.ts back from lib/**/*; either way the team's rule stands in
-// every file (fix round 2, G1; decisions.md, "Owner 2026-10-14").
+// ESLint's global ignores take lib/a.ts back from lib/**/*; either way the team's rule stands in every file.
 describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint config that turns it on, beside our ignores of lib/**/* and a negated line taking lib/a.ts back', () => {
   it("keeps the team's findings of it in every file", () => {
     const findings = findingsWithTheTeamAloneAndMergedWith(
@@ -735,9 +716,8 @@ describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint
   })
 })
 
-// Our ignores keep our rules out of exactly the files the agent build's ignorePatterns leave out
-// (F2), a negated line taking a file back included (fix round 2, G1): oxlint's .gitignore reading of
-// lib/** leaves the folder in, so !lib/a.ts takes lib/a.ts back (measured, oxlint 1.87).
+// oxlint's .gitignore reading of lib/** leaves the folder in, so !lib/a.ts takes lib/a.ts back
+// (measured, oxlint 1.87).
 describe('our rules, merged into an empty team oxlint config, beside our ignores of lib/** and a negated line taking lib/a.ts back', () => {
   it('report in exactly the files the agent build reports in, lib/a.ts among them', () => {
     const defined = defineLintRules(
@@ -762,9 +742,7 @@ describe('our rules, merged into an empty team oxlint config, beside our ignores
   })
 })
 
-// The team turns max-lines on, so it is the team's in every file, whatever an entry of ours says of
-// it, its own rules over the rulesets it lists, within the rule's own files or outside them
-// (decisions.md, "Owner 2026-10-14").
+// The team turns max-lines on, so it is the team's in every file, whatever an entry of ours says of it.
 describe('max-lines, which our ESLint part runs and oxlint has, merged into a team oxlint config that turns it on, beside an entry of ours', () => {
   const inEveryFile = [
     'lib/b.ts:2 eslint(max-lines)',
@@ -804,10 +782,9 @@ describe('max-lines, which our ESLint part runs and oxlint has, merged into a te
   )
 })
 
-// Our ignores, a folder's name or a glob, keep our rules out of exactly the files the agent build's
-// ignorePatterns leave out, which oxlint reads as .gitignore lines (review.md, Must fix 3; measured,
-// oxlint 1.87): a name with no slash but a last one matches in any folder. Our no-warning-comments,
-// which no category the empty team config leaves on holds, draws a finding in every file of the layout.
+// oxlint reads our ignores as .gitignore lines (measured, oxlint 1.87): a name with no slash but a last
+// one matches in any folder. Our no-warning-comments, in no category the empty team config leaves on,
+// draws a finding in every file.
 describe('our ignores, merged into an empty team oxlint config', () => {
   const EVERY_A_JS = FOLDER_LAYOUT_FILES.filter((file) => file === 'a.js' || file.endsWith('/a.js'))
 

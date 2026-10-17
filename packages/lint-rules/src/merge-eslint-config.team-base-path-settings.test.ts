@@ -10,11 +10,8 @@ import { isRecord } from './core/is-record.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// A setting of ours stays out of the files where a team block gives one it yields to (O8), those files
-// read from the block's basePath, as ESLint reads them (merge-eslint-config.ts, withGlobsOnly and
-// teamFilesFromTheRoot). Here a team block for packages/app gives settings.node's tryExtensions to
-// its TS files, so our settings.n (the modules ruleset's) stays out of those alone, and stands in the
-// project's other TS files.
+// A setting of ours stays out of the files where a team block gives one it yields to, those files read
+// from the block's basePath, as ESLint reads them.
 
 const tempProjects = setUpTempProjects()
 const { calculatedConfigInProjectFor } = setUpEslintConfigOracle()

@@ -15,12 +15,9 @@ import { mergeEslintPart } from './core/merge-eslint-config.ts'
 import { tsFilesOutsideEveryTsconfig } from './core/ts-files-outside-every-tsconfig.ts'
 import { eslintPluginRegistry } from './eslint-plugin-registry.ts'
 
-// "Split by types" (T; spec-core.md C3): where an untyped rule U and its typed partner T are both
-// on, U is off wherever our typed blocks run T, so a typed TS file gets T's report alone and every
-// other file, JS files and TS files outside every tsconfig, U's alone. U keeps its setting in any
-// layer where T is off. Blocks layer, so three pitfalls get a case each: an entry restating U while
-// T is on there, an entry turning T off, and the copies made where a team block takes type
-// information away. The pairs are read from the real catalog; real ESLint lints each file.
+// Where an untyped rule and its typed partner are both on, the untyped one is off wherever our typed
+// blocks run the typed one, so each file gets one report; it keeps its setting in any layer where the
+// typed one is off. Blocks layer, so three pitfalls get a case each.
 
 /** Each pair's code, one finding each, on the line given: the same lines in each file's TS and JS form. */
 const TS_SOURCE = `export function isOn(flag: boolean): boolean {
@@ -67,11 +64,11 @@ const SEVERITY_NAMES: Readonly<Record<number, string>> = { 1: 'warn', 2: 'error'
 /** An untyped rule and the typed rule it is off beside wherever that one runs with type information. */
 type SplitByTypesPair = { readonly untyped: string; readonly typed: string }
 
-/** r2-d33: both in redundancy, both run by ESLint. `flag === true` draws each, where flag is a boolean. */
+/** Both in redundancy, both run by ESLint. `flag === true` draws each, where flag is a boolean. */
 const BOOLEAN_COMPARISON_PAIR = pairSplitting('unicorn/no-unnecessary-boolean-comparison')
-/** r2-d41: the untyped rule in correctness, the typed one in redundancy. `if (true)` draws each. */
+/** The untyped rule in correctness, the typed one in redundancy. `if (true)` draws each. */
 const CONSTANT_CONDITION_PAIR = pairSplitting('no-constant-condition')
-/** q-r5: both in correctness, both run by ESLint, and typescript-eslint's extension of the core rule. `throw 'x'` draws each. */
+/** Both in correctness, both run by ESLint, and typescript-eslint's extension of the core rule. `throw 'x'` draws each. */
 const THROW_LITERAL_PAIR = pairSplitting('no-throw-literal')
 
 /** The untyped rule and the typed rule the catalog records it split by types with. */
@@ -193,7 +190,6 @@ describe('a pair split by types, in the agent build', () => {
   })
 })
 
-// r2-d41: the untyped rule ships in correctness, the typed one in redundancy.
 describe('a pair split by types across two rulesets, in the agent build', () => {
   const pair = CONSTANT_CONDITION_PAIR
 
@@ -211,7 +207,7 @@ describe('a pair split by types across two rulesets, in the agent build', () => 
   })
 })
 
-// spec-next-batch E-5: throw 'x' draws exactly one report, whichever kind of file it is in.
+// throw 'x' draws exactly one report, whichever kind of file it is in.
 describe("throw 'x', our correctness ruleset on, in the agent build", () => {
   const pair = THROW_LITERAL_PAIR
 

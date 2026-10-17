@@ -19,40 +19,19 @@ import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// Owner, 2026-10-10: allowSuppressions (default false), top level or per file override, decides
-// three rules and whether ESLint reads directives in the agent build, whatever rulesets are listed:
-// - false: house/no-suppressions on and ESLint reading no directive, @typescript-eslint/ban-ts-comment
-//   banning all three @ts- comments, and unicorn/no-abusive-eslint-disable off, so a bare
-//   /* eslint-disable */ is not reported twice.
-// - true: the ban off and directives read, @ts-expect-error allowed with a description
-//   (@ts-ignore and @ts-nocheck still banned), and unicorn/no-abusive-eslint-disable on: in oxlint
-//   wherever an oxlint config is built (owner, q-r1), in ESLint where none is.
-// Owner, 2026-10-14 (r2-d22): react-hooks/rule-suppression follows unicorn's rule, but in an editor
-// part without oxlint, where ESLint does not run it (eslint-fallback-skips.json).
-// The editor parts are always as with true, whatever allowSuppressions says: people may keep their
-// suppressions, and only sub-agents may not. The ESLint part never sets noInlineConfig, so a team's
-// own setting of it stands.
-// The real catalog decides each rule's engine; this spec reads what applies to a file in each
-// engine's own merged config, so it holds however the blocks and overrides are laid out.
+// allowSuppressions decides the suppression rules and whether ESLint reads directives in the agent
+// build; the editor parts always behave as with true. With false, unicorn/no-abusive-eslint-disable is
+// off so a bare /* eslint-disable */ is not reported twice.
 
 type SuppressionSettings = {
   /** house/no-suppressions, as ESLint runs it. */
   readonly suppressionBan: Linter.StringSeverity
   readonly eslintReadsDirectives: boolean
-  /**
-   * @typescript-eslint/ban-ts-comment: the entry applied to the file by the engine the catalog routes
-   * it to, ESLint where no oxlint config is built, its severity by name.
-   */
+  /** @typescript-eslint/ban-ts-comment's entry, from the engine the catalog routes it to. */
   readonly tsCommentBan: unknown
-  /**
-   * unicorn/no-abusive-eslint-disable: its severity in the file, by the engine the catalog routes it
-   * to, ESLint where no oxlint config is built.
-   */
+  /** unicorn/no-abusive-eslint-disable's severity, from the engine the catalog routes it to. */
   readonly blanketDisableRule: Linter.StringSeverity
-  /**
-   * react-hooks/rule-suppression: its severity in the file, by the engine the catalog routes it to,
-   * ESLint where no oxlint config is built.
-   */
+  /** react-hooks/rule-suppression's severity, from the engine the catalog routes it to. */
   readonly hooksSuppressionRule: Linter.StringSeverity
 }
 
@@ -92,7 +71,7 @@ const ALLOWED: SuppressionSettings = {
   hooksSuppressionRule: 'error',
 }
 
-/** As allowed, in an editor part without oxlint: ESLint does not run the hooks rule (eslint-fallback-skips.json). */
+/** ESLint does not run the hooks rule without oxlint (eslint-fallback-skips.json). */
 const ALLOWED_WITHOUT_OXLINT: SuppressionSettings = { ...ALLOWED, hooksSuppressionRule: 'off' }
 
 const NO_RULESETS = { quality: [], libs: {}, runtimes: [] }
@@ -100,7 +79,6 @@ const NO_RULESETS = { quality: [], libs: {}, runtimes: [] }
 const { lintedConfigFor } = setUpEslintConfigOracle()
 const tempProjects = setUpTempProjects()
 
-/** A project whose package.json lists oxlint, with the installed oxlint resolving from it. */
 const PROJECT_WITH_OXLINT = tempProjects.create({
   files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) },
   linkedPackages: [INSTALLED_OXLINT],
@@ -130,10 +108,7 @@ async function suppressionSettingsFor(configs: BuiltConfigs, file: string): Prom
   }
 }
 
-/**
- * The ban's entry in the file, from the engine the catalog routes it to: oxlint's as it applies it, or
- * ESLint's calculated entry, its numeric severity by name, so either reads the same.
- */
+/** The ban's entry from the routed engine, ESLint's numeric severity read by name so both compare alike. */
 function tsCommentBanIn({ oxlint }: BuiltConfigs, calculated: Linter.Config, file: string): unknown {
   const { engine, oxlintName } = routeOfTheTsCommentBan()
   if (oxlint !== null && engine === 'oxlint' && oxlintName !== null) return oxlintConfigForFile(oxlint, file).rules[oxlintName]
@@ -147,7 +122,6 @@ function routeOfTheTsCommentBan(): RuleRoute {
   return routeOf(TS_COMMENT_BAN)
 }
 
-/** The rule's severity in the file, from the engine the catalog routes it to: oxlint's as it applies it, or ESLint's calculated one. */
 function routedSeverityIn({ oxlint }: BuiltConfigs, calculated: Linter.Config, file: string, ruleId: string): Linter.StringSeverity {
   const { engine, oxlintName } = routeOf(ruleId)
   if (oxlint === null || engine !== 'oxlint' || oxlintName === null) return calculatedSeverityOf(calculated, ruleId)
@@ -288,7 +262,6 @@ describe('allowSuppressions in file overrides, in the agent build', () => {
   })
 })
 
-// Owner, 2026-10-11: people may keep adding suppressions; only sub-agents may not.
 describe('the editor parts, merged into a team config, beside the agent build of the same config', () => {
   const projects = [
     { project: 'whose package.json lists oxlint', projectDir: PROJECT_WITH_OXLINT, editorExpected: ALLOWED },

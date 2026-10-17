@@ -15,12 +15,8 @@ import {
 import { buildTsconfig } from './__tests__/factories/tsconfig-factories.ts'
 import { INSTALLED_OXLINT, setUpTempProjects, THIS_PACKAGE } from './__tests__/temp-projects.ts'
 
-// A team's own engine configs, as the fixture projects hold them, loaded by the real engines
-// with the built package installed: ESLint through the project's eslint.config.mjs, oxlint through
-// `-c oxlint.config.mts`. consumer-files lists oxlint in its package.json; the other lists none and
-// has no oxlint config. One sentinel per engine: a typed rule in ESLint, no-debugger in oxlint, and
-// without oxlint no-debugger moves to ESLint. Each project also holds a copy of its debugger source
-// outside its tsconfig, which our typed rules must leave alone (spec C3).
+// One sentinel per engine: a typed rule in ESLint, no-debugger in oxlint, or in ESLint without oxlint.
+// Each project's copy of its debugger source outside the tsconfig must draw no typed rule.
 
 const CONSUMER_FILES_DIR = fileURLToPath(new URL('../test-fixtures/consumer-files', import.meta.url))
 const WITHOUT_OXLINT_DIR = fileURLToPath(new URL('../test-fixtures/consumer-files-without-oxlint', import.meta.url))

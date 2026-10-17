@@ -16,10 +16,8 @@ import { createProjectListingOxlint } from './__tests__/factories/package-json-f
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 
-// Svelte 5's runes are globals in .svelte.js and .svelte.ts modules in ESLint too, in every config
-// we write (decisions.md, 2026-10-14 "real run 3, scale lane"), and in no other JS or TS file. Our
-// ESLint part lints JS and TS files alone, so no .svelte file. Read from ESLint's own merge of each
-// config for the file, as the rules there see it; svelte-runes.integration.test.ts runs the rules.
+// Svelte 5's runes are globals in .svelte.js and .svelte.ts modules, in every config we write, and in no
+// other JS or TS file. svelte-runes.integration.test.ts runs the rules.
 
 const { globalsFor } = setUpEslintConfigOracle()
 const tempProjects = setUpTempProjects()
@@ -61,9 +59,9 @@ CONFIGS.forEach(({ config, build }) => {
   })
 })
 
-// Svelte's tests of runes are rune modules too, by vite-plugin-svelte's rule (decisions.md, 2026-10-14
-// "fix round 4 closed"): `.svelte.` in the file's name, then a name ending in js or ts. A file that
-// meets one half of the rule alone, or holds `.svelte.` in a folder's name, is no rune module.
+// Svelte's tests of runes are rune modules too, by vite-plugin-svelte's rule: `.svelte.` in the file's
+// name, then a name ending in js or ts. A file meeting one half alone, or holding `.svelte.` in a
+// folder's name, is no rune module.
 CONFIGS.forEach(({ config, build }) => {
   describe(`Svelte 5's runes in ESLint, in Svelte's tests of runes and files named like them, in ${config}`, () => {
     it.each(RUNE_TEST_MODULES)('are each a global in the test %s, a rune module, every rune a module may use', async (file) => {

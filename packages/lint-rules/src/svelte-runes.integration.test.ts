@@ -18,14 +18,10 @@ import { findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 
-// Svelte 5's runes are globals in .svelte files and in .svelte.js and .svelte.ts modules, in both
-// engines and both builds (decisions.md, 2026-10-14 "real run 3, scale lane"). Real run 3, case
-// R-INT-2: oxlint's no-undef reported $state, $props, $derived, $effect and $bindable in every
-// Svelte 5 component, 30 of its 31 findings in .svelte files. Beside oxlint, oxlint runs no-undef and
-// no-global-assign, in the agent build and the editor merges through the built package; without it,
-// ESLint runs both in the JS and TS files it lints, which a .svelte file is not. The name nobody
-// declares in each rune module, and the rune in the JS file that is no Svelte file, stay reported;
-// no-undef is off in .svelte files, where Svelte's own checker reports an undeclared name (owner, q79).
+// Svelte 5's runes are globals in .svelte files and .svelte.js and .svelte.ts modules, in both engines
+// and builds. Beside oxlint, oxlint runs no-undef and no-global-assign; without it, ESLint runs both in
+// the JS and TS files it lints. no-undef is off in .svelte files, where Svelte's own checker reports
+// undeclared names.
 
 allowEveryTestForParallelLoad()
 
@@ -93,11 +89,8 @@ describe('Svelte 5 components and rune modules, our correctness ruleset on, in a
   })
 })
 
-// Svelte's tests of runes, `*.svelte.test.js` and the like, are rune modules too (decisions.md,
-// 2026-10-14 "fix round 4 closed"), by vite-plugin-svelte's own rule: `.svelte.` in the file's name,
-// then a name ending in js or ts. Fix round 4's review: oxlint's no-undef reported
-// `src/counter.svelte.test.js:3 '$state' is not defined` with the shipped globs. The name nobody
-// declares stays reported, and every rune in each file that meets only one half of the rule.
+// Svelte's tests of runes, `*.svelte.test.js` and the like, are rune modules too, by
+// vite-plugin-svelte's rule: `.svelte.` in the file's name, then a name ending in js or ts.
 describe("Svelte's tests of runes and files named like them, our correctness ruleset on, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: svelteTestFiles,

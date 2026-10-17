@@ -8,12 +8,8 @@ import { isRecord } from './core/is-record.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// The blocks of our runtimes' globals the ESLint merge writes (#68; spec-core.md C7): in a project
-// that lists no oxlint, ESLint runs our no-undef, so each layer's change to the runtime globals gets a
-// block of its own, named for the layer and numbered, kept to the files our no-undef reads them in.
-// Here the top level lists the browser runtime; one entry lists node for lib/**, which changes the
-// globals there; another turns no-undef off in legacy/**, so no block of ours gives globals there; a
-// third turns another rule off in scripts/**, where no-undef runs, and changes no global.
+// Without oxlint, ESLint runs our no-undef, so each layer's change to the runtime globals gets a block
+// of its own, kept to the files our no-undef reads them in.
 
 const tempProjects = setUpTempProjects()
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOthers()) } })

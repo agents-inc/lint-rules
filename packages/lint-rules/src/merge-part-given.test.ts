@@ -8,10 +8,8 @@ import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// A team's config is untyped JS, so it may hand a merge the other engine's part, the object holding
-// both, or anything at all (editor-parts.ts, describePartGiven): each merge refuses all but its own
-// part, naming the config file calling it, what it takes, and what it was given. Each refusal sits
-// beside the merge of the part it takes.
+// A team's config is untyped JS, so it may hand a merge anything: each merge refuses all but its own
+// part, naming the config file calling it, what it takes, and what it was given.
 
 const tempProjects = setUpTempProjects()
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) }, linkedPackages: [INSTALLED_OXLINT] })

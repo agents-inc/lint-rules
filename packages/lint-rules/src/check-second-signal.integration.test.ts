@@ -6,9 +6,7 @@ import { createGitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 
-// spec-cli.md "Signals and leftovers", q-c2: a first SIGINT or SIGTERM lets check stop what it was
-// doing and exit 130 or 143; a second exits at once, removing what check left. Here the oxlint fix
-// run that the first signal stops holds on, as a hung child would, so only the second ends check.
+// The oxlint fix run holds on after the first signal, as a hung child would, so only the second ends check.
 
 allowEveryTestForParallelLoad()
 

@@ -16,13 +16,8 @@ import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { installedPackage, type ProjectFiles } from './__tests__/temp-projects.ts'
 
 // Our settings.n stays out of every file where a team block sets, under settings.node, tryExtensions,
-// typescriptExtensionMap or tsconfigPath (decisions.md, 2026-10-14 "fix round 5 review"; O8).
-// eslint-plugin-n reads the last two from settings.n wherever it is set at all, so ours hid the
-// team's settings.node, and the team's own n/no-missing-import reported an import its config alone
-// does not (fix round 5's review, should-fix 1). Left empty rather than out, our settings.n hid them
-// as well (its break R5-4). Run by the ESLint CLI through the built package from the monorepo's root,
-// as merged and as the team's config alone, the team's rule gives in each package what it gives
-// alone.
+// typescriptExtensionMap or tsconfigPath: eslint-plugin-n reads the last two from settings.n wherever
+// it is set at all, even empty, so ours would hide the team's. Run by the ESLint CLI from the monorepo's root.
 
 allowEveryTestForParallelLoad()
 

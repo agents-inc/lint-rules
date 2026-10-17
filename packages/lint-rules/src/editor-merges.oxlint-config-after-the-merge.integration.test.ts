@@ -9,11 +9,8 @@ import { type FindingsByFileAndRule, findingsByFileAndRule } from './__tests__/f
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, installedPackage } from './__tests__/temp-projects.ts'
 
-// The oxlint side of a documented limit (spec-merge-model.md, 1.2; the ESLint side is in
-// editor-merges.team-sets-a-rule.integration.test.ts): each merge reads what is handed to the merge
-// in the other config, so a rule statement a team's oxlint.config.mts adds after our merge is out of
-// the ESLint merge's sight, on the real ESLint CLI through the built package. Our ESLint part runs
-// no-var and array-type; the team turns no-var off after the merge, and sets array-type nowhere.
+// A documented limit: a rule a team's oxlint.config.mts sets after our merge is out of the ESLint
+// merge's sight. Our ESLint part runs no-var and array-type; the team turns no-var off after the merge.
 
 const TYPESCRIPT_ESLINT = installedPackage('typescript-eslint')
 const SOURCE_FILE = 'src/a.ts'
@@ -49,9 +46,7 @@ describe('no-var, which the team turns off in rules its oxlint.config.mts adds a
     })
   })
 
-  // KNOWN GAP: the documented limit above. The team's oxlint config turns no-var off, so the model
-  // owes it the team's; but the ESLint merge reads only the config handed to the oxlint merge, and
-  // runs ours.
+  // KNOWN GAP: the ESLint merge reads only what was handed to the oxlint merge, so ours still runs no-var.
   it.fails("is the team's, which ESLint does not report", () => {
     expect(findings).toStrictEqual({ [SOURCE_FILE]: { [NO_VAR.rule]: [], [ARRAY_TYPE.rule]: ['src/a.ts:1 @typescript-eslint/array-type'] } })
   })

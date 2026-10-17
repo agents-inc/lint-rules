@@ -8,13 +8,8 @@ import {
 import { type ConsumerCliRuns, eslintFatalMessagesOf, eslintReportOf, oxlintReportOf, setUpConsumerCliRuns } from './__tests__/consumer-cli-runs.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 
-// A top-level set (agentRulesets, editorRulesets) with a list left out means that list is empty, as
-// inside a fileOverrides entry (decisions.md, 2026-10-14 "real run 3 ... triage"). Real run 3 (cases
-// C1, C1c, E26, E27) installed the built package beside the files plan.md shows `init` writing,
-// `editorRulesets: {}` among them, and both engines stopped on "quality is not iterable" before
-// linting anything. Each project here is linted by the real oxlint and ESLint CLIs, as a team runs
-// them, through the built package; a set leaving lists out owes what the same set giving them empty
-// owes, in each engine.
+// A top-level set with a list left out means that list is empty, as in a fileOverrides entry: in each
+// engine it owes what the same set giving the lists empty owes.
 
 allowEveryTestForParallelLoad()
 
@@ -87,8 +82,7 @@ describe('the editor set of agents-inc.lint.mts, linted by both engines through 
     })
   })
 
-  // A set left out is still a config error naming the file (decisions: "Config errors name the
-  // file"), beside the empty set above, which is not.
+  // A set left out altogether is still a config error naming the file, unlike the empty set above.
   it('left out altogether is refused by both engines, which name agents-inc.lint.mts and the set', () => {
     const runs = editorSetLeftOut()
 

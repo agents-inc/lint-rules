@@ -9,10 +9,8 @@ import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.t
 import { defineLintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// Q-E for globals, as merge-oxlint-config.test.ts pins it for env: a global the team's root sets
-// stands in every file, so no override of ours sets it. Our oxlint part sets Svelte's legacy
-// component globals read-only in Svelte components (framework-globals.ts), whatever rulesets are
-// listed; the team's root here makes one of them writable.
+// A global the team's root sets stands in every file, so no override of ours sets it. Our oxlint part
+// sets Svelte's legacy component globals read-only in Svelte components; the team's root makes one writable.
 
 const tempProjects = setUpTempProjects()
 

@@ -15,13 +15,9 @@ import { findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import type { ProjectFiles } from './__tests__/temp-projects.ts'
 
-// Our `settings.n.tryExtensions` is ours only where the team's config sets neither
-// `settings.n.tryExtensions` nor the older `settings.node.tryExtensions` (decisions.md, 2026-10-14
-// "fix round 4 closed"; O8). Fix round 4's review: ours reached the team's own n/* rules in the
-// editor merges and beat its legacy key, as eslint-plugin-n reads settings.n first. Where the team
-// sets neither, ours stays in force, for its own n/* rules too. Run by the ESLint CLI through the
-// built package from the monorepo's root, so an import is measured as it is there: by our copy of
-// n/no-unpublished-import, and by the team's where it turns its own on.
+// Our `settings.n.tryExtensions` is ours only where the team's config sets neither it nor the older
+// `settings.node.tryExtensions`: eslint-plugin-n reads settings.n first, so ours would beat the team's
+// legacy key. Run by the ESLint CLI from the monorepo's root.
 
 allowEveryTestForParallelLoad()
 

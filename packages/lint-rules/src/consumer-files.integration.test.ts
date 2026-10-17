@@ -7,11 +7,8 @@ import { buildEveryRulesetLintRules } from './__tests__/factories/lint-rules-fac
 import { buildTsconfig } from './__tests__/factories/tsconfig-factories.ts'
 import { INSTALLED_OXLINT } from './__tests__/temp-projects.ts'
 
-// test-fixtures/consumer-files holds the agents-inc.lint.mts, oxlint.config.mts and eslint.config.mjs
-// a consumer writes, and in src/ a copy of each under another name, a floating promise and a
-// debugger statement. Each suite writes the tsconfig.json beside them. Linted here by the agent build,
-// ESLint in a process of its own: typescript-eslint keeps one project service per process, set up by
-// the first config it parses (spec-core.md C9).
+// ESLint runs in a process of its own: typescript-eslint keeps one project service per process, set
+// up by the first config it parses.
 const CONSUMER_FILES_DIR = fileURLToPath(new URL('../test-fixtures/consumer-files', import.meta.url))
 
 const FILES_WE_HAVE_A_CONSUMER_WRITE = ['agents-inc.lint.mts', 'oxlint.config.mts', 'eslint.config.mjs']
@@ -29,22 +26,16 @@ const FLOATING_PROMISE_IN_SRC = 'src/floating-promise.ts'
 const MTS_FILE_IN_SRC = 'src/copy-of-oxlint-config.mts'
 const TSCONFIG_FILE = 'tsconfig.json'
 
-// Both flagged plan.md's own text in the real run: `export default …(…)` is a top-level side
-// effect, and the config's keys are in the order plan.md explains them rather than sorted.
+// Both fire on the templates: `export default …(…)` is a top-level side effect, and the keys follow
+// plan.md's order, unsorted.
 const RULES_THE_TEMPLATES_BREAK = ['perfectionist/sort-objects', 'unicorn/no-top-level-side-effects']
-// Those two, and n/no-unpublished-import, which reported each file's import of our package in a
-// package npm may publish (spec-answers2.md, item 4): each ships ignoring the three files. This
-// fixture's package is private, so the third reports nothing in src/ either.
+// n/no-unpublished-import reports our package's import in a publishable package. This fixture's
+// package is private, so it reports nothing in src/ either.
 const RULES_WHOSE_IGNORES_NAME_THEM = ['n/no-unpublished-import', ...RULES_THE_TEMPLATES_BREAK]
 const A_TYPED_RULE = '@typescript-eslint/no-floating-promises'
 
-// typed-config-files (spec-core.md C9): the type information is ours here, so the consumer's TS
-// files get the typed rules where the tsconfig takes them in, and neither shape may make them a
-// fatal parse error. KNOWN GAP: where the tsconfig leaves them out of the project, they get no typed
-// rule, though typed-config-files owes them the typed rules there too. typescript-eslint's default
-// project, which gave them the rules, is set up once per process, and one process linting several
-// projects then failed some with a fatal parse error (review option (a), Must Fix 1; see
-// typed-config-files.integration.test.ts). Pinned with it.fails until the owner decides.
+// KNOWN GAP: where the tsconfig leaves the consumer's TS files out, they get no typed rule:
+// typescript-eslint's default project, set up once per process, broke multi-project runs.
 const TSCONFIGS = [
   { includes: 'only src/', tsconfig: buildTsconfig({ include: ['src'] }), takesInTheTwo: false },
   { includes: 'every TS file, as TypeScript does with no include', tsconfig: buildTsconfig(), takesInTheTwo: true },

@@ -15,11 +15,8 @@ import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { installedPackage, type ProjectFiles } from './__tests__/temp-projects.ts'
 
 // Our import-x/resolver-next stays out of every file where a team block sets import-x/resolver or
-// import-x/resolver-next (decisions.md, 2026-10-14 "fix round 5 review"; O8). import-x reads
-// resolver-next first, so ours beat a team's legacy resolver everywhere, and the team's own
-// import-x/no-unresolved reported an import its config alone resolves (fix round 5's review, owner
-// item 4). Run by the ESLint CLI through the built package from the monorepo's root, as merged and as
-// the team's config alone, the team's rule gives in each package what it gives alone.
+// resolver-next: import-x reads resolver-next first, so ours would beat a team's legacy resolver. Run by
+// the ESLint CLI from the monorepo's root, merged and with the team's config alone.
 
 allowEveryTestForParallelLoad()
 
@@ -65,8 +62,8 @@ PROJECTS.forEach(({ project, files }) => {
       expect(teamsRuleFindingsIn(runs().teamAlone)).toStrictEqual(OWED_BY_THE_TEAMS_RESOLVERS)
     })
 
-    // spec-core.md call 13: where the team sets no resolver key our TypeScript resolver is the one
-    // import-x reads (O8), so the team's rule resolves `./b` there, merged, as its config alone does not.
+    // Where the team sets no resolver key our TypeScript resolver is the one import-x reads, so the team's
+    // rule resolves `./b` there, merged, as its config alone does not.
     it("is reported by the team's rule, merged, in no package: where the team sets a resolver key as by its config alone, and where it sets none resolved by ours", () => {
       expect(teamsRuleFindingsIn(runs().merged)).toStrictEqual(OWED_MERGED_BESIDE_OUR_TYPESCRIPT_RESOLVER)
     })

@@ -21,19 +21,16 @@ import type { OxlintPart } from './core/editor-parts.ts'
 import { defineLintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// The merged config names rules and plugins from the catalog, and oxlint refuses a name it does not
-// know even when it is off. So the oxlint a project installs, whatever its version, must have a
-// schema the merge can read, holding every name the merge may write (questions.md #32 Q7, spec C2;
-// #56: the owner's answer, no version check).
+// oxlint refuses a name it does not know even when off, so the installed oxlint, whatever its version,
+// must have a schema holding every name the merge may write.
 
 const THIS_PACKAGE = '@agents-inc/lint-rules'
 const NESTED_PACKAGE = 'packages/app'
 const INSTALLED_OXLINT_DIR = 'node_modules/oxlint'
 const NOT_JSON = '{ "definitions": '
 
-// The floor of our peer range is 1.86.0 (spec D-d): the oxlint differentials pass against oxlint
-// 1.86.0 as they do against 1.87. Outside the range: 1.85.x, the minor below it; 2.x, the next
-// major, at a minor above the floor's too; and a prerelease, which npm's caret range never holds.
+// The oxlint differentials pass against 1.86.0 as against 1.87. Outside the range: 1.85.x; 2.x, at a
+// minor above the floor's too; and a prerelease, which npm's caret range never holds.
 const OXLINT_FLOOR = '1.86.0'
 const OXLINT_VERSION_BELOW_THE_RANGE = '1.85.9'
 const OXLINT_VERSION_OF_THE_NEXT_MAJOR = '2.0.0'
@@ -90,7 +87,6 @@ const OUTSIDE_THE_RANGE = [
 ]
 
 describe("mergeOxlintConfig, given a project's installed oxlint", () => {
-  // #56 (owner): an oxlint outside the range is checked by its own rule list, as one inside it is.
   it.each(OUTSIDE_THE_RANGE)('accepts one $where, $version, whose schema holds every name the merge writes', ({ version }) => {
     expect(mergedInto(projectWithInstalledOxlint(version))).not.toThrow()
   })
@@ -170,8 +166,8 @@ describe('mergeOxlintConfig, given an installed oxlint inside the range whose sc
   })
 })
 
-// Spec C2: the schema is read at most once per process for each installed oxlint path, so a schema
-// that changes after the first merge goes unread, while another install's is read for itself.
+// The schema is read at most once per process for each installed oxlint path, so a schema that changes
+// after the first merge goes unread, while another install's is read for itself.
 describe('the name check, over two merges in one process', () => {
   it('reads an install\'s schema once: the second merge accepts it though the schema became unreadable since', () => {
     const projectDir = projectWithInstalledOxlint(OXLINT_VERSION_INSIDE_THE_RANGE)
@@ -191,8 +187,7 @@ describe('the name check, over two merges in one process', () => {
   })
 })
 
-// Spec C1 (#32 D1, #40): only the package.json nearest to tsconfigRootDir says whether a project uses
-// oxlint, so a monorepo package whose own package.json lists none has no oxlint part to merge.
+// Only the package.json nearest to tsconfigRootDir says whether a project uses oxlint.
 describe('mergeOxlintConfig, in a package whose nearest package.json lists no oxlint', () => {
   const monorepoRoot = tempProjects.create({
     files: {

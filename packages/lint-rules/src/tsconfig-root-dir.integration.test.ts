@@ -9,12 +9,8 @@ import { type ConsumerCliRuns, eslintFatalMessagesOf, eslintReportOf, oxlintRepo
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 
 // tsconfigRootDir is checked when the config is defined: required, an absolute path, an existing
-// folder; otherwise an error naming agents-inc.lint.mts (decisions.md, 2026-10-14 "real run 3 ...
-// triage"). Real run 3 met each value below beside the files plan.md shows: left out, a raw
-// TypeError in both engines (case E16); '.', every TS file a parse error in ESLint blaming
-// typescript-eslint's parserOptions (E18); a folder that does not exist, an oxlint error blaming
-// package.json and ESLint silently running without oxlint (E17). Each project is linted by the real
-// oxlint and ESLint CLIs, as a team runs them, through the built package.
+// folder; otherwise an error naming agents-inc.lint.mts. Unchecked, each value below failed with an
+// error blaming something else.
 
 allowEveryTestForParallelLoad()
 
@@ -35,7 +31,7 @@ describe('tsconfigRootDir in agents-inc.lint.mts, linted by both engines through
     { given: 'left out', runs: runsWithTsconfigRootDir(null) },
     { given: "'.'", runs: runsWithTsconfigRootDir("'.'") },
     { given: 'a folder that does not exist, in the project', runs: runsWithTsconfigRootDir('`${import.meta.dirname}/no-such-folder`') },
-    // Beside the project, where no package.json lies above it, as real run 3's '/no/such/dir' did.
+    // Beside the project, where no package.json lies above it.
     {
       given: 'a folder that does not exist, under no package.json',
       runs: runsWithTsconfigRootDir("new URL('../no-such-folder', import.meta.url).pathname"),

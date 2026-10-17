@@ -50,11 +50,9 @@ import { installedPackage, type ProjectFiles, type TempProjects, THIS_PACKAGE } 
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// A team's real config, with the repo's own installs of typescript-eslint and eslint-plugin-react
-// (distinct objects from ours: our react plugin goes through the compat layer and carries stubs),
-// merged with the editor part of the built package, against the team's config alone. Each run is
-// the real ESLint CLI in a process of its own, since typescript-eslint keeps one project service
-// per process. The editor set lists every ruleset, as consumer-files' agents-inc.lint.mts does.
+// The repo's own installs of typescript-eslint and eslint-plugin-react are distinct objects from ours.
+// Each run is the real ESLint CLI in its own process, as typescript-eslint keeps one project service
+// per process.
 
 type TeamProjectRuns = {
   readonly projectDir: () => string
@@ -205,10 +203,8 @@ describe('a team giving no type information, merged with the editor part', () =>
   })
 })
 
-// Owner, 2026-10-11 (questions.md #39): without oxlint, our part runs typescript-eslint's current
-// extension of a moved core rule on TS files in place of the core rule. typescript-eslint's
-// recommended config turns that extension on too, and where the team sets a rule its setting wins
-// (#32 D4): the finding is reported once, under the extension's name.
+// Without oxlint, our part runs typescript-eslint's extension of a moved core rule on TS files; the
+// team's recommended config turns it on too, so the finding is reported once, under the extension's name.
 describe("a team on typescript-eslint's recommended config, merged with the editor part, in a project whose package.json lists no oxlint", () => {
   const runs = setUpTeamProjectRuns(buildPackageJsonListingOthers(), teamOnRecommended)
 
@@ -223,10 +219,8 @@ describe("a team on typescript-eslint's recommended config, merged with the edit
   })
 })
 
-// With oxlint, oxlint would run no-unused-vars and no-unused-expressions for us; typescript-eslint's
-// recommended config turns on its own extensions of both, which makes both rules the team's
-// (decisions.md, "Owner 2026-10-14"): ESLint reports each finding once, as the team's config alone
-// does, and our part runs neither rule in either engine.
+// With oxlint, oxlint would run no-unused-vars and no-unused-expressions for us, but typescript-eslint's
+// recommended config turns on its extensions of both, making them the team's: our part runs neither.
 describe("a team on typescript-eslint's recommended config, merged with the editor part, in a project whose package.json lists oxlint", () => {
   const runs = setUpTeamProjectRuns(buildPackageJsonListingOxlint(), teamOnRecommended, {
     [UNUSED_EXPRESSION_FILE]: unusedExpression,

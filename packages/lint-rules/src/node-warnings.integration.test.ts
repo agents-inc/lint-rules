@@ -13,10 +13,9 @@ import { createGitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 
-// spec-cli.md "Output contract": stderr holds the note and why check could not run, and agents read
-// it. Node 23 warns there that type stripping is experimental as check imports agents-inc.lint.mts,
-// so check drops that one warning and prints every other as the first line of Node's own form. Here
-// the config emits Node's warning itself, as the Node the tests run on (22) emits none.
+// Node 23 warns on stderr that type stripping is experimental as check imports agents-inc.lint.mts,
+// so check drops that one warning and prints every other in Node's own form. The config here emits
+// the warning itself, as Node 22 emits none.
 
 allowEveryTestForParallelLoad()
 

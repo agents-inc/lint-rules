@@ -11,11 +11,9 @@ import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// Which plugin a team registers under a prefix of its own is ours (eslint-config-reading.ts,
-// isTheSamePlugin): the very object, or one carrying our plugin's name; a key under that prefix then
-// names our rule, which is the team's. A plugin of the team's own is not ours, whether it carries a
-// name of its own or, as eslint-plugin-promise of ours does, none: our rule of the same name stays
-// ours. merge-eslint-config.test.ts reads the team's rule in these cases; this reads ours.
+// A plugin a team registers under its own prefix is ours if it is the very object or carries our
+// plugin's name; a key under that prefix then names our rule, which is the team's. A team plugin with
+// another name, or none, is not ours, and our rule of the same name stays ours.
 
 const tempProjects = setUpTempProjects()
 const { ruleSeverityInProjectFor } = setUpEslintConfigOracle()
@@ -25,8 +23,7 @@ const OUR_PROMISE_RULE = 'promise/param-names'
 const OUR_ARRAY_TYPE = '@typescript-eslint/array-type'
 // oxlint runs it for us; in this project, whose package.json lists no oxlint, ESLint does.
 const OUR_ALT_TEXT = 'jsx-a11y/alt-text'
-// We install the fork in place of the original (questions.md #54); its docs register it under
-// jsx-a11y-x.
+// We install the fork in place of the original; its docs register it under jsx-a11y-x.
 const JSX_A11Y_FORK_NAME = 'eslint-plugin-jsx-a11y-x'
 const JSX_A11Y_FORK_PREFIX = 'jsx-a11y-x'
 const JSX_A11Y_ORIGINAL_NAME = 'eslint-plugin-jsx-a11y'
