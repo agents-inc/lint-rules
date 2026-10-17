@@ -5,23 +5,20 @@ import type { ChangedLines } from './changed-lines.ts'
 import { eslintFixFilter } from './eslint-fix-filter.ts'
 import { eslintFailed } from './texts.ts'
 
-/** ESLint, through its Node API, with the agent build alone: the project's own ESLint config is never loaded. */
+/** The project's own ESLint config is never loaded. */
 export type EslintEngine = {
   readonly isIgnored: (path: string) => Promise<boolean>
-  /** Whether the agent build allows suppression comments in the file: it has ESLint read no inline config where they are banned. */
   readonly allowsSuppressionsIn: (path: string) => Promise<boolean>
-  /** Lints the text with the fixes allowed on the changed lines given. Await each call before the next: the lines are the engine's, not the call's. */
+  /** Await each call before the next: the changed lines are the engine's, not the call's. */
   readonly fixed: (path: string, text: string, changed: ChangedLines) => Promise<ESLint.LintResult>
   readonly linted: (path: string, text: string) => Promise<ESLint.LintResult>
 }
 
-// Suppression comments that silenced nothing are reported, for check to keep the unused ones (q-c15).
 // ESLint reads comments only where suppressions are allowed, so it reports none elsewhere.
 const UNUSED_SUPPRESSIONS_REPORTED: Linter.Config = { linterOptions: { reportUnusedDisableDirectives: 'error' } }
 
 export function eslintEngineFor(folder: string, config: readonly Linter.Config[], withheld: ReadonlyMap<string, string>): EslintEngine {
-  // ESLint's fix predicate is told the message, never the file, so it reads the lines of the file
-  // being linted from here; null while a file is linted with no fix.
+  // The fix predicate is told the message, never the file, so it reads the lines from here.
   let fixableLines: ChangedLines | null = null
   const eslint = new ESLint({
     cwd: folder,

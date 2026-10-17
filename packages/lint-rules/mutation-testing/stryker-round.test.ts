@@ -12,9 +12,6 @@ import {
   type StrykerOptions,
 } from './stryker-round.ts'
 
-// scripts/mutate-changed-lines.mts runs each package's Stryker config on the lines changed in that
-// package, or the one config named first.
-
 const REPO_ROOT = fileURLToPath(new URL('../../../', import.meta.url))
 const LINT_RULES_CONFIG = 'stryker.config.json'
 const RULE_DATA_CONFIG = 'stryker.rule-data.config.mjs'

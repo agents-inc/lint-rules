@@ -5,15 +5,10 @@ import { exportedConstFixedFromLet, exportedLet, moduleText, oxlintFixRunWriting
 import { setUpTempProjects, textsOf } from '../../__tests__/temp-projects.ts'
 import { fixInPlace, textOfFileAt, writeIfStillUnchanged } from './fix-writes.ts'
 
-// spec-cli.md "The fix step": ESLint's fixed text is written only while the file still holds the
-// text ESLint read (F-6); oxlint fixes in place. A fix check wrote is never put back, however the
-// run ends (decided 2026-10-15): fix-step.test.ts covers a run a signal or a failure stops.
-
 const tempProjects = setUpTempProjects()
 
 const FIRST = 'src/first.ts'
 const SECOND = 'src/second.ts'
-// A path no file is at.
 const GONE = 'src/gone.ts'
 const FIRST_BEFORE_FIXES = moduleText(exportedLet('first'))
 const SECOND_BEFORE_FIXES = moduleText(exportedLet('second'))

@@ -1,26 +1,22 @@
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { messageOf } from '../caught-errors.ts'
 
-/** A file's whole new text, by its path. */
 export type FileWrite = { readonly path: string; readonly text: string }
 
-/** A file as it was before the writes: its text, or null where there was none. */
 type Original = { readonly path: string; readonly text: string | null }
 
 const TEMP_SUFFIX = `.agents-inc-init-${String(process.pid)}.tmp`
 
 /**
- * Writes every file or none (spec-cli.md "I: init", step 5). Each text goes to a temporary file in
- * its own folder first, and only once all are written does each replace its file by a rename. A
- * failure puts back each file replaced before it and leaves no temporary file, then throws, naming
- * the path it failed on as given.
+ * Each text goes to a temporary file first; only once all are written does each replace its file by
+ * a rename. A failure puts back what it replaced, leaves no temporary file, and throws.
  */
 export function writeAllOrNone(writes: readonly FileWrite[]): void {
   writeEachToItsTempFile(writes)
   replaceEachFileByItsTempFile(writes)
 }
 
-/** A failure removes the temporary files written before it, and its own: a write that fails part way, as on a full disk, leaves one. */
+/** A write that fails part way, as on a full disk, leaves a temporary file too. */
 function writeEachToItsTempFile(writes: readonly FileWrite[]): void {
   writes.forEach((write, index) => {
     try {

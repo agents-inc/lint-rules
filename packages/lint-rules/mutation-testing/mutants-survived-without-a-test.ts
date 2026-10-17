@@ -1,8 +1,5 @@
-// A mutant Stryker reports Survived after running no test is not a result: a test file failed to load,
-// at the start or after an earlier mutant broke something the tests share, and Stryker counts the
-// mutant as uncaught without saying why.
+// A Survived mutant that ran no test is no result: a test file failed to load, and Stryker doesn't say so.
 
-/** The parts of a mutant in Stryker's JSON report (mutation-testing-report-schema) read here. */
 export type ReportedMutant = {
   readonly mutatorName: string
   readonly status: string
@@ -21,7 +18,6 @@ export function parseMutationReport(json: string): MutationReport {
   return JSON.parse(json) as MutationReport
 }
 
-/** Each mutant reported Survived after running no test, as `<file>:<line>:<column> <mutator>`. */
 export function mutantsSurvivedWithoutATest(report: MutationReport): string[] {
   return Object.entries(report.files).flatMap(([file, { mutants }]) =>
     mutants

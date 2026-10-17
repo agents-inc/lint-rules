@@ -6,13 +6,11 @@ import type { CheckFinding } from './report.ts'
 import { PARSE_ERROR_LABEL, UNUSED_SUPPRESSION_LABEL, unusedSuppressionMessage } from './texts.ts'
 import { isAboutADirectiveComment, namesSuppressingNothing } from './unused-suppressions.ts'
 
-/** What both engines reported on one file, as it is after the fixes, and the lines of it that changed. */
 export type FileReports = {
-  /** The path check prints: relative to the config's folder, with forward slashes. */
+  /** Relative to the config's folder, with forward slashes. */
   readonly file: string
   readonly text: string
   readonly changed: ChangedLines
-  /** Whether the agent build allows suppression comments in the file (`allowSuppressions`). */
   readonly suppressionsAllowed: boolean
   readonly eslintMessages: readonly Linter.LintMessage[]
   readonly oxlintDiagnostics: readonly OxlintDiagnostic[]
@@ -22,15 +20,12 @@ type Severity = CheckFinding['severity']
 
 const ESLINT_WARNING = 1
 const OXLINT_WARNING = 'warning'
-// oxlint's own TypeScript syntax checks report under TypeScript's error code, which names no rule:
-// `TS(1036)` for a statement in a `.d.ts` file (measured, 1.87). Its other syntax errors have no code.
+// oxlint's own TypeScript syntax checks report under a TS code and no rule: `TS(1036)` (oxlint 1.87).
 const TYPESCRIPT_SYNTAX_CODE = /^TS\(\d+\)$/u
 
 /**
- * The findings in one file that are the change's (q-c9): each rule's on a changed line; one parse
- * error, wherever it is, ESLint's where both report one (q-c10); each unused suppression on a
- * changed line, where suppressions are allowed (q-c15). ESLint's other messages that name no rule
- * are its own notes, and left out.
+ * One parse error per file, ESLint's where both report one. ESLint's other messages that name no
+ * rule are its own notes, and left out.
  */
 export function findingsIn(reports: FileReports, catalog: Catalog): CheckFinding[] {
   const parseError = parseErrorIn(reports)
@@ -54,13 +49,11 @@ function ruleFindingsIn({ file, changed, eslintMessages, oxlintDiagnostics }: Fi
   ]
 }
 
-/** The ESLint message as a finding, where a rule reported it. */
 function eslintRuleFindings(file: string, { ruleId, line, severity, message }: Linter.LintMessage): CheckFinding[] {
   if (ruleId === null) return []
   return [{ file, line, label: ruleId, severity: severityOfEslint(severity), message }]
 }
 
-/** The oxlint diagnostic as a finding under the rule's ID, where a rule reported it. */
 function oxlintRuleFindings(file: string, diagnostic: OxlintDiagnostic, changed: ChangedLines, catalog: Catalog): CheckFinding[] {
   const { code, severity, message } = diagnostic
   if (code === null || isParseError(diagnostic)) return []
@@ -72,7 +65,6 @@ function unusedSuppressionsIn({ file, text, suppressionsAllowed, eslintMessages,
   return namesSuppressingNothing(eslintMessages, oxlintDiagnostics, { file, text }).map(({ line, ruleName }) => unusedSuppressionFinding(file, line, ruleName))
 }
 
-/** A diagnostic of oxlint's parser or of its own TypeScript syntax checks: not a rule's, and not one on a suppression or enable comment. */
 function isParseError({ code, message }: OxlintDiagnostic): boolean {
   return code === null ? !isAboutADirectiveComment(message) : TYPESCRIPT_SYNTAX_CODE.test(code)
 }
@@ -85,15 +77,13 @@ function unusedSuppressionFinding(file: string, line: number, ruleName: string):
   return { file, line, label: UNUSED_SUPPRESSION_LABEL, severity: 'error', message: unusedSuppressionMessage(ruleName) }
 }
 
-/** The line of the diagnostic's first place: the whole file's where it gives none. */
 function lineOf({ spans: [first] }: OxlintDiagnostic): number {
   return first === undefined ? WHOLE_FILE_LINE : first.line
 }
 
 /**
- * The line a finding is printed at: the first of its places on a changed line, else its first
- * (q-c9). oxlint gives a duplicate at the code it repeats too, the older code first, so a duplicate
- * an agent adds beside older code is the agent's, at the agent's line.
+ * oxlint reports a duplicate at the code it repeats too, older code first, so the first place on a
+ * changed line is the agent's.
  */
 function lineOfTheChange(diagnostic: OxlintDiagnostic, changed: ChangedLines): number {
   const changedPlace = diagnostic.spans.find(({ line }) => isOnChangedLines(line, changed))
@@ -104,7 +94,7 @@ function severityOfEslint(severity: Linter.LintMessage['severity']): Severity {
   return severity === ESLINT_WARNING ? 'warning' : 'error'
 }
 
-/** Anything oxlint does not call a warning counts as an error: check fails closed. */
+/** Anything oxlint does not call a warning is an error: check fails closed. */
 function severityOfOxlint(severity: string): Severity {
   return severity === OXLINT_WARNING ? 'warning' : 'error'
 }

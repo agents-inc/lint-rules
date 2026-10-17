@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readsInlineConfigUnder } from './eslint-run.ts'
 
-// The agent build has ESLint read no inline config where suppressions are banned, so the config ESLint
-// computes for a file says whether suppressions are allowed there (q-c15). It always fills in
-// `linterOptions` (measured, ESLint 10.12), so a config without it is no config ESLint gave.
+// ESLint always fills in `linterOptions` (10.12), so a config without it is no config ESLint gave.
 
 const LINTED_FILE = '/project/src/a.ts'
 

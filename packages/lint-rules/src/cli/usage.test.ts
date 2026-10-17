@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { isBelowTheNodeFloor } from './usage.ts'
 
-// #59 (owner): check and init need Node 22.18 or later, as engines in package.json gives it. The
-// bin reads `process.versions.node`, which has no leading `v`. check.integration.test.ts runs the
-// bin on an old Node where one is installed; these pin the versions on either side of the floor.
+// `process.versions.node` has no leading `v`.
 
 const THE_FLOOR = '22.18.0'
 const A_LATER_MINOR = '22.23.2'

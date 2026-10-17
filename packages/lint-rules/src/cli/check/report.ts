@@ -3,7 +3,7 @@ import { NOT_FOUND } from '../not-found.ts'
 import { printedLengthOf, textOfLines } from '../printed-lines.ts'
 import { autofixedLine, cutLine, MESSAGE_SEPARATOR, summaryLine, WARNING_MARK } from './texts.ts'
 
-/** One finding as check prints it: its path relative to the config's folder, with forward slashes. */
+/** `file` is relative to the config's folder, with forward slashes. */
 export type CheckFinding = {
   readonly file: string
   readonly line: number
@@ -16,7 +16,6 @@ export type CheckFinding = {
 export type CheckReportInput = {
   readonly findings: readonly CheckFinding[]
   readonly changedFileCount: number
-  /** The files check's fixes changed, as paths relative to the config's folder. */
   readonly autofixedFiles: readonly string[]
 }
 
@@ -24,15 +23,14 @@ export type CheckReport = { readonly stdout: string; readonly exitCode: number }
 
 type Severity = CheckFinding['severity']
 
-/** The findings in print order, split where the cap cuts them. */
 type CutFindings = { readonly printed: readonly CheckFinding[]; readonly cut: readonly CheckFinding[] }
 
-// c5-again: the finding lines printed, newlines counted, stay within this many characters.
+// The finding lines printed, newlines counted, stay within this many characters.
 const PRINTED_FINDINGS_CAP = 8000
 // A first finding longer than the cap still prints, whole.
 const AT_LEAST_ONE = 1
 
-/** stdout and the exit code for the findings left: errors first, then warnings, each by path then line; a cut; the summary last. */
+/** Errors first, then warnings, each by path then line; then the cut; the summary last. */
 export function checkReport({ findings, changedFileCount, autofixedFiles }: CheckReportInput): CheckReport {
   const unique = findingsOncePerLine(findings)
   const errors = inPrintOrder(unique, 'error')
@@ -53,7 +51,7 @@ export function checkReport({ findings, changedFileCount, autofixedFiles }: Chec
   return { stdout: textOfLines(lines), exitCode: errors.length > 0 ? EXIT_FINDINGS : EXIT_CLEAN }
 }
 
-/** stdout's autofixed line naming the files, alone: what a run a signal or a failure stops prints (P2). Nothing where it names none. */
+/** The line a stopped run prints alone. Nothing where it names no file. */
 export function autofixedStdout(autofixedFiles: readonly string[]): string {
   return textOfLines(autofixedLines(autofixedFiles))
 }
@@ -68,7 +66,6 @@ function findingsOncePerLine(findings: readonly CheckFinding[]): CheckFinding[] 
   return [...new Map(findings.map((finding) => [findingLine(finding), finding])).values()]
 }
 
-/** The findings of the severity, by path then line. */
 function inPrintOrder(findings: readonly CheckFinding[], severity: Severity): CheckFinding[] {
   return findings.filter((finding) => finding.severity === severity).toSorted(byPathThenLine)
 }
@@ -78,7 +75,7 @@ function cutAtTheCap(ordered: readonly CheckFinding[]): CutFindings {
   return { printed: ordered.slice(0, printedCount), cut: ordered.slice(printedCount) }
 }
 
-/** How many of the lines, from the first, fit within the cap: at least one, however long. */
+/** At least one line, however long. */
 function countWithinTheCap(lines: readonly string[]): number {
   const printedSoFar = runningTotalsOf(lines.map(printedLengthOf))
   const firstPastTheCap = printedSoFar.findIndex((printed) => printed > PRINTED_FINDINGS_CAP)
@@ -86,7 +83,6 @@ function countWithinTheCap(lines: readonly string[]): number {
   return Math.max(firstPastTheCap, AT_LEAST_ONE)
 }
 
-/** Each size added to every size before it. */
 function runningTotalsOf(sizes: readonly number[]): number[] {
   let total = 0
   return sizes.map((size) => {

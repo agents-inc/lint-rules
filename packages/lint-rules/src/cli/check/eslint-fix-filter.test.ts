@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { buildLintMessage, buildWithheldFixes, linesChanged, wholeFileChanged } from '../../__tests__/factories/check-factories.ts'
 import { eslintFixFilter } from './eslint-fix-filter.ts'
 
-// spec-cli.md "The fix step" (q-c11): ESLint applies a fix only when its message's line is a
-// changed line, or the whole file changed, and its rule's fix is not withheld (X2, the gate's
-// NO_AUTOFIX). A withheld rule still reports; only its fix is never applied.
-
 const A_FIXABLE_RULE = 'object-shorthand'
 const A_WITHHELD_RULE = 'perfectionist/sort-arrays'
 const NONE_WITHHELD = buildWithheldFixes()
@@ -33,7 +29,6 @@ describe("the filter on ESLint's fixes", () => {
     expect(eslintFixFilter(wholeFileChanged(), NONE_WITHHELD)(buildLintMessage({ ruleId: A_WITHHELD_RULE, line: 1 }))).toBe(true)
   })
 
-  // q-c15: check reports an unused suppression; ESLint's own fix for it, which deletes the comment, would leave nothing to report.
   it("never applies a fix of ESLint's own, which names no rule, such as removing an unused suppression, beside a rule's fix it applies", () => {
     const filter = eslintFixFilter(wholeFileChanged(), NONE_WITHHELD)
 

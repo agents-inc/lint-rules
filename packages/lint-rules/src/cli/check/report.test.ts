@@ -11,9 +11,6 @@ import {
 } from '../../__tests__/factories/check-factories.ts'
 import { type CheckFinding, checkReport } from './report.ts'
 
-// spec-cli.md "Output contract" (q-c3, q-c4, c5-again): one line per finding, errors before
-// warnings, each sorted by path then line; the cut before 8,000 characters; the summary last.
-
 function stdoutLinesOf(input: Parameters<typeof checkReport>[0]): string[] {
   return linesOf(checkReport(input).stdout)
 }

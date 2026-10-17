@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { firstPrintedLineOf } from './printed-lines.ts'
 
-// check quotes the first line git printed where git fails (K-16, q-c2): check.integration.test.ts
-// runs it on git's own output, whose first line has text and no space around it. These pin the
-// lines git's output can also start with.
+// check.integration.test.ts covers git's usual first line; these pin the others it can start with.
 
 const WHEN_NONE = 'git exited 128'
 const FIRST_LINE = 'fatal: not a git repository'

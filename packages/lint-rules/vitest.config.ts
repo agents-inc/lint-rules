@@ -7,8 +7,7 @@ export default defineConfig({
     include: ['src/**/*.test.ts', 'mutation-testing/**/*.test.ts'],
     globals: false,
     clearMocks: true,
-    // The runner lives in rule-data, which this package depends on, so turbo hashes it for both
-    // packages' tests. By its absolute path, so a config that extends this one from another root loads it too.
+    // Absolute, so a config extending this one from another root still finds it.
     runner: fileURLToPath(new URL('../rule-data/src/__tests__/temp-dir-per-test-file.ts', import.meta.url)),
   },
 })

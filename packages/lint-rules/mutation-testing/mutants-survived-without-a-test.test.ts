@@ -10,10 +10,6 @@ import {
 } from './__tests__/factories/mutation-report-factories.ts'
 import { mutantsSurvivedWithoutATest, parseMutationReport } from './mutants-survived-without-a-test.ts'
 
-// scripts/mutate-changed-lines.mts fails a run whose report holds a Survived mutant that ran no test:
-// in a 2026-10-15 run, one mutant made every later test file fail to load, and each later mutant was
-// reported that way.
-
 const FILE = 'packages/lint-rules/src/core/editor-parts.ts'
 const OTHER_FILE = 'packages/lint-rules/src/core/twin-pairs.ts'
 const LINE = 12

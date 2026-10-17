@@ -8,9 +8,6 @@ import { buildWithheldFixes } from '../../__tests__/factories/check-factories.ts
 import { setUpTempProjects } from '../../__tests__/temp-projects.ts'
 import { fixRunConfigOf, tempOxlintConfigIn } from './oxlint-run.ts'
 
-// K-11 (spec-cli.md "Signals and leftovers"): check removes the temporary oxlint configs of runs
-// whose process has ended, and only those. X2: oxlint's fix run applies no fix check withholds.
-
 const tempProjects = setUpTempProjects()
 
 describe("the sweep of other runs' temporary oxlint configs (K-11)", () => {

@@ -10,10 +10,6 @@ import {
 import { linesChanged, wholeFileChanged } from '../../__tests__/factories/check-factories.ts'
 import { addedLinesIn, isOnChangedLines } from './changed-lines.ts'
 
-// spec-cli.md "K: check", steps 7 and 15 (q-c9): a file's changed lines are the lines its
-// `git diff -U0` adds; a finding counts by its start line, and one at line 0, about the whole file,
-// only where the whole file changed.
-
 describe('addedLinesIn', () => {
   it('reads each hunk by the new side of its header: a count of 2 adds two lines, a count left out adds one, a count of 0 none', () => {
     expect(addedLinesIn(ADDS_REPLACES_AND_DELETES)).toStrictEqual([3, 4, 12])

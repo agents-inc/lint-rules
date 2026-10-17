@@ -3,9 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { entriesUnder, setUpTempProjects } from '../../__tests__/temp-projects.ts'
 import { removeLeftover } from './leftovers.ts'
 
-// K-11 (spec-cli.md "Signals and leftovers"): check removes what it wrote for itself, and the
-// temporary configs of runs that ended. Two checks in one folder sweep the same ended run's config,
-// so one of them may find it already gone.
+// Two checks in one folder sweep the same ended run's config, so one may find it already gone.
 
 const tempProjects = setUpTempProjects()
 

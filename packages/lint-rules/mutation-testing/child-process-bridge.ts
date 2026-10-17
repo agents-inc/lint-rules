@@ -1,18 +1,12 @@
-// Loaded by vitest.mutation.config.ts alone. The integration tests run the real ESLint and oxlint
-// CLIs in child processes, which load the instrumented `dist/` Stryker's buildCommand built, but
-// Stryker's vitest runner tells only the test worker which mutant is active and reads coverage only
-// from it. This file:
-// - In a mutant run, hands the active mutant to every child through __STRYKER_ACTIVE_MUTANT__,
-//   which the instrumented code reads when its own global names no mutant.
-// - In the initial run, has each child write the mutants it covered (child-coverage-hook.mjs), and
-//   credits them to the test that spawned it, or, for a child a hook spawned, to every test of the
-//   file. Mutants the file's own beforeAll and afterAll hooks cover in this process go to every test
-//   of the file too: left as "static" coverage, `ignoreStatic` would skip them.
-// - Gives Stryker's copy of the repo a `.git` folder, as the repo has. oxlint honours .gitignore
-//   up to the nearest folder holding `.git`; without one, it reads the repo's own .gitignore, which
-//   ignores the folder the copy sits in, and finds no file to lint (`oxlint --rules` exits 1).
-// Stryker puts its own setup file first, so these before-hooks run after Stryker's and these
-// after-hooks before Stryker's.
+// Integration tests run ESLint and oxlint in child processes on the instrumented `dist/`, but Stryker
+// tells only the test worker the active mutant and reads coverage only from it. This file:
+// - in a mutant run, passes the active mutant to each child through __STRYKER_ACTIVE_MUTANT__;
+// - in the initial run, credits each child's coverage (child-coverage-hook.mjs) to the test that
+//   spawned it, or to every test of the file for a hook's child. The file's own beforeAll/afterAll
+//   coverage goes to every test too, which `ignoreStatic` would otherwise skip;
+// - gives Stryker's copy a `.git` folder: without one, oxlint reads the repo's .gitignore, which
+//   ignores the copy, and finds no file to lint.
+// Stryker's setup file runs first: these before-hooks run after its own, these after-hooks before.
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -23,13 +17,11 @@ type MutantCoverage = { static: Coverage; perTest: Record<string, Coverage> }
 type StrykerNamespace = { activeMutant?: string; currentTestId?: string; mutantCoverage?: MutantCoverage }
 
 declare global {
-  // Shared by Stryker's setup file and the instrumented code.
   var __stryker__: StrykerNamespace | undefined
 }
 
 declare module 'vitest' {
   interface ProvidedContext {
-    // Provided by Stryker's vitest runner before each run.
     mode: 'dry-run' | 'mutant'
   }
 }

@@ -1,6 +1,4 @@
-// Loaded into every child process a test spawns during Stryker's initial run (child-process-bridge.ts
-// puts it in NODE_OPTIONS). At exit, it writes the mutants the child's instrumented `dist/` covered
-// into the folder the bridge reads.
+// Preloaded into each child a test spawns in Stryker's initial run (see child-process-bridge.ts).
 import { randomUUID } from 'node:crypto'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'

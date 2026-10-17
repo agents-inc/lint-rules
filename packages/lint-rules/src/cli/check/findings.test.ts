@@ -41,12 +41,7 @@ import { type FileReports, findingsIn } from './findings.ts'
 import type { OxlintDiagnostic } from './oxlint-output.ts'
 import type { CheckFinding } from './report.ts'
 
-// spec-cli.md "K: check", steps 14 and 15 (q-c9, q-c10, q-c15): of what both engines report on a
-// file, check keeps what the change made. A finding counts by the line it starts on, and oxlint
-// gives some findings at several places: a duplicate key at the first key and at its duplicate.
-
-// A committed object an agent added a duplicate key to: oxlint's no-dupe-keys gives the first key
-// (line 2) as its first place and the duplicate (line 4) as its second (measured, oxlint 1.87).
+// oxlint's no-dupe-keys gives the first key (line 2) first and the duplicate (line 4) second (1.87).
 const WITH_A_DUPLICATE_KEY = ['export const LIMITS = {', '  small: 1,', '  large: 9,', '  small: 2,', '}']
 const FIRST_KEY_LINE = 2
 const UNCHANGED_LINE = 3
@@ -58,7 +53,6 @@ const AT_BOTH_KEYS = buildOxlintDiagnostic(
   spanOfLine(DUPLICATE_KEY_TEXT, DUPLICATE_LINE),
 )
 
-/** The finding check prints for the duplicate key, at the line given. */
 function duplicateKeyAt(line: number): CheckFinding {
   return buildCheckFinding({ line, label: 'no-dupe-keys', message: OXLINT_FINDING_MESSAGE })
 }
@@ -90,8 +84,6 @@ describe('a finding oxlint gives at several places (q-c9)', () => {
 })
 
 describe('findings of a rule a team set to warn (P4)', () => {
-  // Each engine marks a finding of a rule set to warn as a warning, which check prints as one and
-  // which alone does not fail the run; every other finding is an error.
   const LINES = [exportedConstant('before'), DEBUGGER_STATEMENT]
   const TEXT = moduleText(...LINES)
 
@@ -113,7 +105,7 @@ describe('findings of a rule a team set to warn (P4)', () => {
 })
 
 describe("oxlint's own TypeScript syntax checks (step 14)", () => {
-  // `TS(1036)`: a statement in a `.d.ts` file (measured, oxlint 1.87). The code names no rule.
+  // `TS(1036)`: a statement in a `.d.ts` file (oxlint 1.87).
   const TYPESCRIPT_SYNTAX_CODE = 'TS(1036)'
   const LINES = [exportedConstant('declared'), DEBUGGER_STATEMENT]
   const TEXT = moduleText(...LINES)
@@ -138,7 +130,7 @@ describe("oxlint's own TypeScript syntax checks (step 14)", () => {
 describe('unused suppressions, where suppressions are allowed (q-c15)', () => {
   const COMMENT_LINE = 2
 
-  /** The file: a suppression comment on line 2, in the form given, of the rule named, then the line given. */
+  /** A suppression comment on line 2, in the form given, of the rule named, then `nextLine`. */
   function suppressingLines(form: SuppressionForm, ruleName: string, nextLine: string): string[] {
     return [exportedConstant('before'), suppressionOfTheNextLine(form, ruleName), nextLine]
   }
@@ -154,7 +146,7 @@ describe('unused suppressions, where suppressions are allowed (q-c15)', () => {
     expect(findingsIn(reports, catalog)).toStrictEqual([buildUnusedSuppressionFinding({ line: COMMENT_LINE, ruleName: 'no-debugger' })])
   })
 
-  // oxlint spans the whole comment, its reason included (measured, 1.87).
+  // oxlint spans the whole comment, its reason included (1.87).
   it('reads the names of an `oxlint-disable` comment oxlint calls unused up to the reason it gives after `--`', () => {
     const lines = [exportedConstant('before'), suppressionOfTheNextLineWithAReason('oxlint', 'no-debugger', A_SUPPRESSION_REASON), exportedConstant('after')]
     const reports = buildFileReports({
@@ -202,8 +194,8 @@ describe('unused suppressions, where suppressions are allowed (q-c15)', () => {
   })
 
   it("reads no rule's finding on a suppression comment as oxlint calling the comment unused", () => {
-    // no-warning-comments, oxlint-run, reports the comment's "todo"; no-debugger, which oxlint runs,
-    // used the comment; ESLint, which does not run no-debugger, calls it unused.
+    // no-warning-comments (oxlint) reports the "todo"; no-debugger (oxlint) used the comment; ESLint,
+    // which does not run no-debugger, calls it unused.
     const lines = [exportedConstant('before'), '// eslint-disable-next-line no-debugger -- todo: drop it', DEBUGGER_STATEMENT]
     const reports = buildFileReports({
       lines,
@@ -241,11 +233,8 @@ describe('unused suppressions, where suppressions are allowed (q-c15)', () => {
 })
 
 describe('enable comments oxlint calls unused (q-c10, q-c15)', () => {
-  // oxlint reports an enable comment that turns back on nothing with no code, as it reports an
-  // unused suppression (measured, 1.87). It is a report about a comment, never a parse error, so the
-  // findings in the file stand. Only a disable comment suppresses anything, so it is no unused
-  // suppression either. Whether check reports such a comment at all is an owner card: until it is
-  // answered, check reports nothing on it.
+  // oxlint reports an enable comment that turns back on nothing with no code (1.87). It is neither a
+  // parse error nor an unused suppression, so check reports nothing on it.
   const ENABLE_LINE = 2
   const DEBUGGER_LINE = 3
   const STRAY_ENABLES: readonly { readonly enable: EnableComment; readonly naming: string }[] = (['eslint', 'oxlint'] as const).flatMap((form) => [
@@ -253,7 +242,7 @@ describe('enable comments oxlint calls unused (q-c10, q-c15)', () => {
     { enable: { form, ruleName: null }, naming: `${form} form, naming no rule` },
   ])
 
-  /** The file: an enable comment on line 2 that turns back on nothing, then a `debugger`, with oxlint's report of both. */
+  /** An enable comment on line 2 that turns back on nothing, then a `debugger`, with oxlint's report of both. */
   function reportsBelowAStrayEnable(enable: EnableComment, suppressionsAllowed: boolean): FileReports {
     const lines = [exportedConstant('before'), blockEnable(enable), DEBUGGER_STATEMENT]
     const text = moduleText(...lines)
@@ -288,10 +277,8 @@ describe('enable comments oxlint calls unused (q-c10, q-c15)', () => {
 })
 
 describe('unused block pairs, where suppressions are allowed (q-c15)', () => {
-  // oxlint gives a `/* eslint-disable x */` … `/* eslint-enable x */` pair that silenced nothing at
-  // its enable comment, and ESLint at its disable comment (measured, oxlint 1.87, ESLint 10.12). The
-  // comment that suppresses is the disable one: each engine's report is read at its line, where the
-  // two then agree, and the finding is printed there.
+  // oxlint gives an unused pair at its enable comment, ESLint at its disable comment (oxlint 1.87,
+  // ESLint 10.12): check reads both at the disable comment.
   const DISABLE_LINE = 1
   const ENABLE_LINE = 3
   const SECOND_DISABLE_LINE = 4
@@ -346,9 +333,7 @@ describe('unused block pairs, where suppressions are allowed (q-c15)', () => {
 })
 
 describe('unused suppressions oxlint reports at an enable comment, read at the disable comment that turned the rule off (q-c15)', () => {
-  // A comment that holds no directive.
   const A_PLAIN_COMMENT = '// the limits below are measured'
-  // The line of aSuppressionPartlyUnused's comment.
   const PARTLY_UNUSED_LINE = 2
   // ESLint reads an `eslint-disable` comment and calls the name unused at its line; it never reads an `oxlint-disable` one.
   const MOVED_DOWN_CASES: readonly { readonly form: SuppressionForm; readonly eslintMessages: FileReports['eslintMessages'] }[] = [
@@ -356,10 +341,8 @@ describe('unused suppressions oxlint reports at an enable comment, read at the d
     { form: 'oxlint', eslintMessages: [] },
   ]
 
-  // oxlint gives a disable comment an enable comment closes at the enable comment: the whole of it,
-  // or the rule's name in it where another rule silenced something (measured, 1.87). The disable
-  // comment is the first naming the rule since the last enable comment naming it above, whatever
-  // the form of either.
+  // oxlint gives a disable comment an enable comment closes at the enable comment: all of it, or the
+  // rule's name where another rule silenced something (1.87).
   function unusedSuppressionsOf(unused: readonly UnusedAt[]): CheckFinding[] {
     return unused.map(buildUnusedSuppressionFinding)
   }
@@ -375,10 +358,8 @@ describe('unused suppressions oxlint reports at an enable comment, read at the d
     expect(findingsIn(reports, catalog)).toStrictEqual(unusedSuppressionsOf(reported))
   })
 
-  // The pairing never refuses the run (decided 2026-10-15): oxlint's report and the text check reads can
-  // disagree, as where another writer changed the file after oxlint linted it, and a refusal would
-  // hide every finding of the run. A pair whose disable comment cannot be found is reported where
-  // oxlint reports it.
+  // oxlint's report and the text can disagree after another writer's edit, and refusing would hide
+  // every finding, so a pair whose disable comment cannot be found is reported at oxlint's line.
   it("reports a name at oxlint's line where oxlint says an enable comment closes a disable comment of it, and none above names it", () => {
     const ENABLE_LINE = 3
     const lines = [blockDisable('oxlint', 'no-console'), exportedConstant('between'), blockEnable({ form: 'oxlint', ruleName: 'no-debugger' })]
@@ -387,8 +368,7 @@ describe('unused suppressions oxlint reports at an enable comment, read at the d
     expect(findingsIn(reports, catalog)).toStrictEqual(unusedSuppressionsOf([{ line: ENABLE_LINE, ruleName: 'no-debugger' }]))
   })
 
-  // The parser reads the file as the kind its path names: JSX in a `.tsx` file, which does not parse
-  // as a `.ts` one.
+  // JSX in a `.tsx` file does not parse as `.ts`.
   it('reads the comments of a `.tsx` file holding JSX, and reports its pair at the disable comment', () => {
     const TSX_FILE = 'src/view.tsx'
     const DISABLE_LINE = 1
@@ -407,8 +387,8 @@ describe('unused suppressions oxlint reports at an enable comment, read at the d
     ])
   })
 
-  // The engines may read a text check's parser cannot, as their parsers and options differ, though
-  // no such text is known: each of 4 shapes the parser refused, oxlint refused too (measured, 1.87, 8.71).
+  // No text is known that the engines read and check's parser cannot: of 4 shapes it refused, oxlint
+  // refused each too (1.87, 8.71).
   it("reports a name at oxlint's line where check's parser cannot read the text, rather than refusing the run", () => {
     const ENABLE_LINE = 5
     const lines = [blockDisable('oxlint', 'no-debugger, no-console'), DEBUGGER_STATEMENT, ...A_SYNTAX_ERROR, blockEnable({ form: 'oxlint', ruleName: 'no-debugger, no-console' })]
@@ -436,11 +416,9 @@ describe('unused suppressions oxlint reports at an enable comment, read at the d
     expect(findingsIn(reports, catalog)).toStrictEqual([])
   })
 
-  // oxlint's span on one name of a comment can fall where no comment is in the text check reads, as
-  // where another writer changed the file after oxlint read it (cli review n3). ESLint's report
-  // decides an `eslint-disable` comment's names, so the name there is read at oxlint's line; an
-  // `oxlint-disable` comment's has only oxlint's word for it, on a text the file no longer holds, so
-  // it is dropped (decided 2026-10-15). Neither refuses the run.
+  // After another writer's edit, oxlint's span on a name can fall outside any comment. ESLint's report
+  // decides an `eslint-disable` name; an `oxlint-disable` one has only oxlint's word on an old text, so
+  // it is dropped.
   it("reads a name no comment holds at oxlint's line in an `eslint-disable` comment's report: reports it where ESLint calls it unused on that line too, and nothing where ESLint does not", () => {
     const NAME_LINE = 1
     const lines = [exportedString('rule', A_RULE_REPORTING_NOTHING)]

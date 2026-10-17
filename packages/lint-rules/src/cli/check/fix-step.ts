@@ -7,50 +7,33 @@ import { keepsUnchangedLines } from './fix-guard.ts'
 import { fixInPlace, type InPlaceFixer, type Snapshots, textOfFileAt, writeIfStillUnchanged } from './fix-writes.ts'
 import { runOxlint, type TempOxlintConfig } from './oxlint-run.ts'
 
-/** A file check lints, by its absolute path, with the lines of it that changed. */
 export type CheckedFile = { readonly path: string; readonly changed: ChangedLines }
 
-/**
- * What the fix step leaves: each file's ESLint messages on its text as it now is, and the files
- * whose text differs from their text before the fixes, whoever changed it.
- */
 export type FixStepResult = {
   readonly eslintMessages: ReadonlyMap<string, readonly Linter.LintMessage[]>
   readonly textChangedIn: readonly string[]
 }
 
-/** oxlint's fix run: the temporary config it reads, and the agent build it is written with. */
 export type OxlintFixRun = { readonly config: TempOxlintConfig; readonly fixRunConfig: OxlintConfig }
 
-/** A file as oxlint's fix run left it: its text before the run, and its text after, null where it is no longer there. */
 type OxlintFixed = { readonly file: CheckedFile; readonly original: string; readonly fixed: string | null }
 
-/** One that oxlint's fixes changed. */
 type ChangedByOxlint = OxlintFixed & { readonly fixed: string }
 
-/**
- * Where the fix step records each file, by its absolute path, that a fix of its own rewrote and
- * kept: check names them in its autofixed line, however the run ends (P2).
- */
+/** Each file a kept fix rewrote: check names them however the run ends. */
 export type RewrittenFiles = { readonly record: (path: string) => void }
 
-/** The run the fix step is part of: the signal that stops it, and where it records the files it rewrites. */
 export type FixStepRun = { readonly signal: AbortSignal; readonly rewritten: RewrittenFiles }
 
 export type FixStepEngines = {
-  /** oxlint's fix run, which writes into the files: oxlintFixer's. */
   readonly oxlint: InPlaceFixer
   readonly eslint: EslintEngine
-  /** The lines of the file that changed, read again from git after a fix changed its text. */
   readonly changedLinesNow: (path: string) => ChangedLines
 }
 
 /**
- * Applies the fixes on the changed lines, oxlint's then ESLint's (q-c11): each engine's fixes in a
- * file are dropped whole where they would delete or modify a line nobody changed (P1). ESLint lints
- * every file on the way, so its messages describe the text as it is left. `beforeFixes` holds each
- * file's text as the fixes find it. A fix that stays is never undone, however the run ends
- * (decided 2026-10-15): each is recorded in the run's `rewritten` as it is kept.
+ * oxlint's fixes, then ESLint's. An engine's fixes in a file are dropped whole where they would
+ * change a line nobody changed. A kept fix is never undone, however the run ends.
  */
 export async function applyFixes(files: readonly CheckedFile[], beforeFixes: Snapshots, engines: FixStepEngines, run: FixStepRun): Promise<FixStepResult> {
   const afterOxlint = await oxlintFixes(files, beforeFixes, engines, run)
@@ -59,10 +42,8 @@ export async function applyFixes(files: readonly CheckedFile[], beforeFixes: Sna
 }
 
 /**
- * oxlint fixes in place, so a file whose fixes fail the guard is written back as it was. Every file
- * it changed is guarded, and each it keeps recorded, before anything can stop the step: the signal
- * or failure that stopped oxlint's own run is passed on only then, and git, which can fail, is read
- * only then. The files, with their lines read again where a fix stayed.
+ * oxlint fixes in place, so a file failing the guard is written back. Every file is guarded and
+ * recorded before anything can stop the step: the stop is passed on, and git read, only then.
  */
 async function oxlintFixes(
   files: readonly CheckedFile[],
@@ -97,16 +78,12 @@ function passesTheGuard({ file, original, fixed }: ChangedByOxlint): boolean {
   return keepsUnchangedLines(original, fixed, file.changed)
 }
 
-/**
- * Writes the file back as it was before oxlint's fixes, while it still holds their text (F-6). No
- * test reaches this guard: the text oxlint left is read and written back in one synchronous pass,
- * with no await between, so only another process can write in between.
- */
+/** No test reaches this guard: the read and write-back are one synchronous pass, so only another process can interleave. */
 function writeBackTheOriginal({ file, original, fixed }: ChangedByOxlint): void {
   writeIfStillUnchanged(file.path, fixed, original)
 }
 
-/** Each file's ESLint messages, by its path. One file at a time: the ESLint engine's fix predicate holds the lines of the file it is fixing. */
+/** One file at a time: the ESLint engine's fix predicate holds the lines of the file it is fixing. */
 async function eslintFixesFileByFile(
   files: readonly CheckedFile[],
   eslint: EslintEngine,
@@ -120,10 +97,7 @@ async function eslintFixesFileByFile(
   return messages
 }
 
-/**
- * ESLint's fixes are written only where they pass the guard and the file still holds the text ESLint
- * read (F-6); otherwise the file is linted as it is. Its messages on the text it leaves.
- */
+/** Writes the fixes only where they pass the guard and the file still holds the text ESLint read. */
 async function eslintFixes({ path, changed }: CheckedFile, eslint: EslintEngine, rewritten: RewrittenFiles): Promise<readonly Linter.LintMessage[]> {
   const read = readFileSync(path, 'utf8')
   const { output, messages } = await eslint.fixed(path, read, changed)
@@ -135,7 +109,6 @@ async function eslintFixes({ path, changed }: CheckedFile, eslint: EslintEngine,
   return (await eslint.linted(path, readFileSync(path, 'utf8'))).messages
 }
 
-/** The files whose text differs from the snapshot taken before the fixes. */
 function pathsChangedSince(before: Snapshots, files: readonly CheckedFile[]): string[] {
   return files.filter(({ path }) => readFileSync(path, 'utf8') !== textOf(before, path)).map(({ path }) => path)
 }

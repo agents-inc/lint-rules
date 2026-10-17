@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { linesChanged, moduleText, wholeFileChanged } from '../../__tests__/factories/check-factories.ts'
 import { keepsUnchangedLines } from './fix-guard.ts'
 
-// spec-cli.md "The fix step" (q-c11, P1): an engine's fixes in a file pass when no line that was
-// not changed before them is deleted or modified. Pure insertions pass anywhere, and in a wholly
-// changed file every fix passes. `changed` gives the lines of the text before the fixes.
-
 describe("the guard on an engine's fixes in one file", () => {
   it('passes any fix in a wholly changed file', () => {
     expect(keepsUnchangedLines(moduleText('export let a = 1', 'export let b = 2'), moduleText('export const b = 2'), wholeFileChanged())).toBe(

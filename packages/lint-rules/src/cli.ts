@@ -1,8 +1,6 @@
 #!/usr/bin/env node
-// The `agents-inc-lint` bin. It must reach its Node floor check on any Node: a static import of
-// something an old Node lacks (`findPackageJSON` from node:module, say) fails at link time, before
-// any line runs. So it imports only modules that import nothing but each other, and the rest once
-// the floor holds.
+// Static imports stay dependency-free: one an old Node lacks would fail at link time, before the
+// Node floor check runs.
 
 import { EXIT_COULD_NOT_RUN } from './cli/exit-codes.ts'
 import { belowTheNodeFloorLine, commandOf, isBelowTheNodeFloor, USAGE } from './cli/usage.ts'

@@ -17,11 +17,7 @@ import { type FileWrite, writeAllOrNone } from './write-all-or-none.ts'
 const TYPES_NODE = '@types/node'
 const CARET = '^'
 
-/**
- * `agents-inc-lint init` (spec-cli.md "I: init"): writes agents-inc.lint.mts and adds this package
- * to devDependencies in the package of the folder, and changes nothing else. It never installs.
- * `cwd` is the folder it runs in: it names the files it writes as that folder sees them.
- */
+/** Never installs. It names the files it writes as `cwd` sees them. */
 export function initIn(cwd: string, signal: AbortSignal): Outcome {
   signal.throwIfAborted()
   const packageJsonPath = join(cwd, PACKAGE_JSON)
@@ -36,10 +32,7 @@ export function initIn(cwd: string, signal: AbortSignal): Outcome {
   return printed
 }
 
-/**
- * What init prints once it has written (spec-cli.md "I: init", steps 4 and 6), worked out before
- * it writes: a package.json it cannot read on the way up refuses the run with nothing written.
- */
+/** Worked out before writing, so an unreadable package.json refuses the run with nothing written. */
 function printedOnceWritten(cwd: string, entry: EntryWritten): Outcome {
   const gitTopLevel = gitTopLevelUnlessGitIsMissing(cwd)
   const folders = gitTopLevel === null ? [cwd] : foldersUpTo(cwd, gitTopLevel)
@@ -50,18 +43,17 @@ function printedOnceWritten(cwd: string, entry: EntryWritten): Outcome {
   }
 }
 
-/** q-i1: exit 1, and nothing changed. */
 function configExistsOutcome(cwd: string): Outcome {
   return { stdout: '', stderr: textOfLines([configExists(INIT_CONFIG_FILE, cwd)]), exitCode: EXIT_FINDINGS }
 }
 
-/** Keeps an entry the package already lists, at its range (q-i4); else adds this package's version as a caret range. */
+/** Keeps a range the package already lists; else this package's version as a caret range. */
 function entryToWrite(packageJson: PackageJsonFile): EntryWritten {
   if (dependsOn(packageJson, THIS_PACKAGE)) return { kind: 'kept' }
   return { kind: 'added', range: `${CARET}${versionOf(ourPackageJsonFile())}` }
 }
 
-/** package.json where init adds the entry, then the config. */
+/** package.json first, then the config. */
 function writesFor(entry: EntryWritten, packageJsonPath: string): FileWrite[] {
   const packageJsonWrites = entry.kind === 'added' ? [packageJsonWithEntry(packageJsonPath, entry.range)] : []
   return [...packageJsonWrites, { path: INIT_CONFIG_FILE, text: initConfigText(catalog.rulesets) }]
@@ -79,7 +71,7 @@ function writeEveryFileOrSayNoneChanged(writes: readonly FileWrite[]): void {
   }
 }
 
-/** Outside git (q-i8), and @types/node listed in no package.json from the folder up to the git top level (q-i9). */
+/** Outside git, and @types/node listed in no package.json from the folder up to the git top level. */
 function notesOf(cwd: string, gitTopLevel: string | null, folders: readonly string[]): string[] {
   return [
     ...(gitTopLevel === null ? [outsideGitNote(cwd)] : []),
@@ -87,14 +79,12 @@ function notesOf(cwd: string, gitTopLevel: string | null, folders: readonly stri
   ]
 }
 
-/** Whether the folder's package.json, where it has one, lists @types/node as a dependency (q-i9). */
 function listsTypesNode(folder: string): boolean {
   const path = join(folder, PACKAGE_JSON)
   if (!existsSync(path)) return false
   return dependsOn(readPackageJsonFile(path), TYPES_NODE)
 }
 
-/** Whether the package.json lists the package in dependencies or devDependencies. */
 function dependsOn({ dependencies, devDependencies }: PackageJsonFile, packageName: string): boolean {
   return listsPackage(dependencies, packageName) || listsPackage(devDependencies, packageName)
 }

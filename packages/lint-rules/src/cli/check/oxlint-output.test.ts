@@ -13,9 +13,7 @@ import { allowEveryTestForParallelLoad } from '../../__tests__/parallel-load.ts'
 import { setUpTempProjects } from '../../__tests__/temp-projects.ts'
 import { oxlintReportFrom, ruleIdOfOxlintCode } from './oxlint-output.ts'
 
-// spec-cli.md "K: check", steps 13 and 14, K-15 and K-16: check reads oxlint's JSON report, never
-// its exit code, which is 1 for findings and for a config oxlint refuses alike; and it names each
-// finding by the RuleId oxlint's code stands for.
+// oxlint exits 1 for findings and for a refused config alike, so check reads its JSON report, never its exit code.
 
 allowEveryTestForParallelLoad()
 
@@ -23,9 +21,8 @@ const REFUSED_CONFIG = 'refused.json'
 const REFUSED_OPTION_CONFIG = 'refused-option.json'
 const ACCEPTED_CONFIG = 'accepted.json'
 const LINTED_FILE = 'src/a.ts'
-// oxlint printed its refusals on stdout alone (measured, 1.87); this stands in for anything it adds on stderr.
+// oxlint 1.87 printed its refusals on stdout alone; this stands in for anything it adds on stderr.
 const A_LINE_ON_STDERR = 'a line oxlint printed on stderr'
-// JSON that is no report: an object without the list of diagnostics, one whose diagnostics are no list, and an array.
 const JSON_HOLDING_NO_REPORT = [JSON.stringify({ number_of_files: 1 }), JSON.stringify({ diagnostics: {} }), JSON.stringify([])]
 
 const tempProjects = setUpTempProjects()

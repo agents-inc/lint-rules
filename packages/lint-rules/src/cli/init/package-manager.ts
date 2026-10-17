@@ -2,7 +2,6 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import type { PackageManagerCommands } from './texts.ts'
 
-/** A lockfile's name, and the commands of the package manager that writes it. */
 type Lockfile = { readonly name: string; readonly commands: PackageManagerCommands }
 
 const BUN: PackageManagerCommands = { install: 'bun install', runner: 'bunx' }
@@ -19,7 +18,7 @@ const LOCKFILES: readonly Lockfile[] = [
   { name: 'package-lock.json', commands: NPM },
 ]
 
-/** The package manager of the first folder, nearest first, that holds a lockfile: npm where none does (q-i5). */
+/** The nearest folder's lockfile decides; npm where none does. */
 export function packageManagerOf(folders: readonly string[]): PackageManagerCommands {
   const nearest = folders.flatMap(lockfilesIn).at(0)
   return nearest === undefined ? NPM : nearest.commands

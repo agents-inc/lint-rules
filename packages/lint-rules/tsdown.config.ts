@@ -10,10 +10,8 @@ export default defineConfig({
   format: ['esm'],
   platform: 'node',
   target: 'node22.18',
-  // Without eager, the declaration bundle fails on re-exported types from the TS-source
-  // @workspace packages (MISSING_EXPORT); with it, their types are inlined.
+  // Without eager, re-exported types from the TS-source @workspace packages fail with MISSING_EXPORT.
   dts: { eager: true },
-  // The @workspace packages are private and never published, so they must be inlined
-  // whichever dependency field lists them.
+  // The @workspace packages are never published, so they are always inlined.
   deps: { alwaysBundle: [/^@workspace\//] },
 })

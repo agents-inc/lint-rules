@@ -6,14 +6,9 @@ import { CONFIG_INIT_WRITES, filesStateOf, initWritesIn, PACKAGE_JSON_AFTER_INIT
 import { entriesUnder, setUpTempProjects } from '../../__tests__/temp-projects.ts'
 import { writeAllOrNone } from './write-all-or-none.ts'
 
-// I-14 (spec-cli.md "I: init", step 5): init writes both files or neither. Each write goes through a
-// temporary file in the same folder; if a later write fails, each file written before it is put back
-// as it was, and the folder holds no temporary file.
-
 const tempProjects = setUpTempProjects()
 
 const AN_EXISTING_CONFIG = moduleText(exportedConstant('writtenByTheTeam'))
-// A folder that does not exist, so no temporary file can be made in it.
 const MISSING_FOLDER = 'missing-folder'
 
 describe('writing the files init changes', () => {
@@ -60,7 +55,7 @@ describe('writing the files init changes', () => {
     })
   })
 
-  // A failed write may or may not have made its temporary file (write-all-or-none.partial-writes.test.ts makes one).
+  // write-all-or-none.partial-writes.test.ts covers a write that made its temporary file.
   it('says it could not write the path it failed on, and why, where that write made no temporary file', () => {
     const projectDir = tempProjects.create({ files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_BEFORE_INIT } })
     const failingPath = join(projectDir, MISSING_FOLDER, CONFIG_FILE)

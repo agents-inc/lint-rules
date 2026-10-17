@@ -1,9 +1,4 @@
-// Runs Stryker (`bun run mutation`) on the lines changed since the last commit: each hunk of
-// `git diff -U0 HEAD`, so staged and unstaged edits both count, and every untracked file whole. Each
-// package's Stryker config (PACKAGE_STRYKER_CONFIGS) runs in turn on the changed files it mutates; a
-// config file given as the first argument runs alone instead. The other arguments are passed on to
-// Stryker. A run that fails, or a mutant a run's report gives as Survived after running no test, fails
-// the round.
+// Runs Stryker on lines changed since HEAD (staged, unstaged, and untracked files whole).
 import { execFileSync, spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -13,7 +8,7 @@ import { mutantsSurvivedWithoutATest, parseMutationReport } from '../packages/li
 import { configsOfTheRound, exitCodeOfTheRound, isMutated, mutatePatternsOf } from '../packages/lint-rules/mutation-testing/stryker-round.ts'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))
-// Stryker's default for the json reporter, which no config moves.
+// Stryker's default json reporter path.
 const MUTATION_REPORT = join(REPO_ROOT, 'reports/mutation/mutation.json')
 const LAST_COMMIT = 'HEAD'
 // A dry run tests no mutant and writes no report.

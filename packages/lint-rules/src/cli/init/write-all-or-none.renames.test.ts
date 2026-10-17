@@ -5,10 +5,8 @@ import { filesStateOf, initWritesIn, PACKAGE_JSON_AFTER_INIT, PACKAGE_JSON_BEFOR
 import { setUpTempProjects } from '../../__tests__/temp-projects.ts'
 import { writeAllOrNone } from './write-all-or-none.ts'
 
-// I-14, the second phase (spec-cli.md "I: init", step 5): once every temporary file is written, each
-// replaces its file by a rename, and a rename that fails puts back each file replaced before it. A
-// rename in the folder the temporary file was just written to fails for no file a test can make, so
-// here node:fs's renameSync fails for the one path a test names, and renames every other path.
+// No file a test can make fails a rename in the folder just written to, so renameSync fails for the
+// one path a test names.
 
 const renames = vi.hoisted(() => {
   const failing: { target: string | null } = { target: null }

@@ -2,9 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { gitDiffOutputLines, hunkHeader } from './__tests__/factories/git-diff-factories.ts'
 import { changedLineRanges } from './changed-line-ranges.ts'
 
-// scripts/mutate-changed-lines.mts hands Stryker one range per hunk of `git diff -U0`, in the lines of
-// the file as it is now. The headers follow what git 2.34 printed (measured): a side of one line has
-// no count, a side of none has the count 0.
+// Headers as git 2.34 prints them: a one-line side has no count, an empty side has count 0.
 
 const FILE = 'packages/lint-rules/src/core/editor-parts.ts'
 const ENCLOSING_LINE = 'export function eslintPartGiven(part: unknown) {'

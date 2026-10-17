@@ -3,13 +3,11 @@ import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import { THIS_PACKAGE } from '../../core/package-json-files.ts'
 import { textOfLines } from '../printed-lines.ts'
 
-/** One list's rulesets: those it lists, the opt-in ones its comment names, and which of those sort code. */
 type ListedRulesets = { readonly listed: readonly string[]; readonly optIn: readonly string[]; readonly optInSortingCode: readonly string[] }
 
 type FlatList = Exclude<RulesetList, 'libs'>
 
-// q-i7, q77, the owner's note on q-i6 (P6): the gate's list and common generated files, in the `**/`
-// form, which matches at any depth in both engines. Each is listed so a team can see and remove it.
+// The `**/` form matches at any depth in both engines. Each is listed so a team can see and remove it.
 const IGNORES = [
   '**/build/**',
   '**/coverage/**',
@@ -21,7 +19,6 @@ const IGNORES = [
   '**/*.min.js',
   '**/mockServiceWorker.js',
 ]
-// Owner, 2026-10-15: a ruleset that sorts code conflicts with a formatter that sorts the same code.
 const FORMATTER_WARNING =
   "each sorts code, so it conflicts with a formatter that sorts the same code (Biome, oxfmt's sortImports, a Prettier sort plugin): use one or the other."
 const INDENT = '  '
@@ -30,9 +27,8 @@ const DOMAIN_DEPTH = 3
 const BARE_KEY = /^[A-Za-z_$][\w$]*$/u
 
 /**
- * The agents-inc.lint.mts init writes (q-i6, q30a): the agent set lists every ruleset that is not
- * opt-in, in data order, each opt-in one named only in a comment above its list's key, and those
- * that sort code named again with the formatter warning; the editor set lists none, under its comment.
+ * Opt-in rulesets are named only in a comment above their list's key, those that sort code again
+ * with the formatter warning. The editor set lists none.
  */
 export function initConfigText(definitions: readonly RulesetDefinition[]): string {
   return textOfLines([
@@ -70,7 +66,6 @@ export function initConfigText(definitions: readonly RulesetDefinition[]): strin
   ])
 }
 
-/** The file init writes, by its name. */
 export const INIT_CONFIG_FILE = consumerConfigFiles.lintRules
 
 function flatListLines(list: FlatList, definitions: readonly RulesetDefinition[]): string[] {
@@ -89,7 +84,6 @@ function libsLines(definitions: readonly RulesetDefinition[]): string[] {
   return [`${indentOf(LIST_DEPTH)}libs: {`, ...domains.flatMap((domain) => domainLines(domain, libs)), `${indentOf(LIST_DEPTH)}},`]
 }
 
-/** The domain's rulesets on one line, under a comment naming its opt-in ones. */
 function domainLines(domain: string, libs: readonly RulesetDefinition[]): string[] {
   const rulesets = listedRulesets(libs.filter((definition) => domainOf(definition) === domain))
   return [...optInCommentLines(rulesets, DOMAIN_DEPTH), `${indentOf(DOMAIN_DEPTH)}${keyOf(domain)}: [${quotedList(rulesets.listed)}],`]
@@ -104,7 +98,7 @@ function listedRulesets(definitions: readonly RulesetDefinition[]): ListedRulese
   }
 }
 
-/** The opt-in comment, then the formatter warning naming the opt-in rulesets that sort code, each left out where it would name none. */
+/** Each left out where it would name none. */
 function optInCommentLines({ optIn, optInSortingCode }: ListedRulesets, depth: number): string[] {
   return [
     ...commentLinesNaming(optIn, (names) => `Opt-in, so not listed: ${names}`, depth),

@@ -1,5 +1,4 @@
-// The exit codes `check` and `init` share (owner, q-c2). Imported by the bin entry before its Node
-// floor check, so this module imports nothing.
+// Imported before the Node floor check, so it imports nothing.
 
 export const EXIT_CLEAN = 0
 /** `check`: an error is left after the fixes. `init`: it refused, as the config exists. */

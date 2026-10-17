@@ -4,10 +4,9 @@ import { NOT_FOUND } from '../not-found.ts'
 import { printedTextOf } from '../printed-lines.ts'
 import { OXLINT_PRINTED_NOTHING, oxlintFailed } from './texts.ts'
 
-/** Where a diagnostic is: its line, and its place in the file's text. */
 export type OxlintSpan = { readonly line: number; readonly offset: number; readonly length: number }
 
-/** One diagnostic of oxlint's JSON report: `code` null for a parse error or an unused suppression, which name no rule. */
+/** `code` is null for a parse error or an unused suppression, which name no rule. */
 export type OxlintDiagnostic = {
   readonly code: string | null
   readonly message: string
@@ -18,7 +17,6 @@ export type OxlintDiagnostic = {
 
 export type OxlintReport = { readonly diagnostics: readonly OxlintDiagnostic[] }
 
-/** What the oxlint CLI printed to each stream. */
 export type OxlintOutput = { readonly stdout: string; readonly stderr: string }
 
 type RawOxlintDiagnostic = {
@@ -31,14 +29,13 @@ type RawOxlintDiagnostic = {
 
 type RawOxlintReport = { readonly diagnostics: readonly RawOxlintDiagnostic[] }
 
-/** The report, or why oxlint's output is not one. */
 type ReportRead = { readonly report: RawOxlintReport } | { readonly unreadable: unknown }
 
 const PLUGIN_SEPARATOR = '/'
 
 const ruleIdsByCodeOf = new WeakMap<Catalog, ReadonlyMap<string, string>>()
 
-/** The RuleId oxlint reports under the code (`eslint(no-debugger)`), as the catalog records the oxlint we install: throws on a code it does not record. */
+/** `eslint(no-debugger)` → its RuleId; throws on a code the catalog does not record. */
 export function ruleIdOfOxlintCode(code: string, catalog: Catalog): string {
   const ruleId = ruleIdsByCode(catalog).get(code)
   if (ruleId === undefined) throw new Error(`oxlint reported the code ${code}, which no rule in the catalog has`)
@@ -46,10 +43,8 @@ export function ruleIdOfOxlintCode(code: string, catalog: Catalog): string {
 }
 
 /**
- * oxlint's JSON report. oxlint exits 1 for findings and for a config it refuses alike (measured,
- * 1.87), so only the output tells them apart: anything but the report throws, quoting all oxlint
- * printed. A refusal gives its reason after a header line, and the reason is what tells a team which
- * of its settings oxlint refuses (read-q64).
+ * oxlint exits 1 for findings and for a refused config alike (1.87), so only the output tells them
+ * apart: anything but the report throws, quoting all oxlint printed.
  */
 export function oxlintReportFrom({ stdout, stderr }: OxlintOutput): OxlintReport {
   const read = reportIn(stdout)
@@ -57,12 +52,10 @@ export function oxlintReportFrom({ stdout, stderr }: OxlintOutput): OxlintReport
   return { diagnostics: read.report.diagnostics.map(diagnosticOf) }
 }
 
-/** The code oxlint reports a rule's findings under: its plugin, then its rule name in parentheses. */
 function oxlintCodeOfRule({ oxlintName, oxlintPlugin }: OxlintRule): string {
   return `${oxlintPlugin}(${ruleNameWithoutPlugin(oxlintName)})`
 }
 
-/** The rule's name after its plugin's, where oxlint's name for it starts with one. */
 function ruleNameWithoutPlugin(oxlintName: string): string {
   const separator = oxlintName.indexOf(PLUGIN_SEPARATOR)
   return separator === NOT_FOUND ? oxlintName : oxlintName.slice(separator + PLUGIN_SEPARATOR.length)

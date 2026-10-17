@@ -16,10 +16,8 @@ const EXPERIMENTAL_WARNING = 'ExperimentalWarning'
 const TYPE_STRIPPING = /^Type Stripping /u
 
 /**
- * Runs the command from the current folder and exits as it says (q-c2). Any error is a run that
- * could not finish: exit 2, never 0. A first SIGINT or SIGTERM lets the command stop what it was
- * doing and exit 130 or 143; a second exits at once. A command a signal or a failure stops prints
- * to stdout what it changed before it stopped.
+ * Any error exits 2, never 0. A first SIGINT or SIGTERM lets the command stop and exit 130 or 143;
+ * a second exits at once.
  */
 export async function runCommand(command: Command): Promise<void> {
   printWarningsButTypeStripping()
@@ -50,7 +48,6 @@ function couldNotRunOutcome(command: Command, error: unknown, stdout: string): O
   return { stdout, stderr: textOfLines([couldNotRunLine(command, messageOf(error))]), exitCode: EXIT_COULD_NOT_RUN }
 }
 
-/** Aborts on the first SIGINT or SIGTERM; on a second, removes what check left and exits at once. */
 function interruptionOnSignals(): Interruption {
   const controller = new AbortController()
   let firstSignal: (typeof SIGNALS)[number] | null = null
@@ -73,11 +70,7 @@ function interruptionOnSignals(): Interruption {
   }
 }
 
-/**
- * Node 23 warns, on stderr, that type stripping is experimental when check imports
- * agents-inc.lint.mts (measured, 23.10; 22.23 does not). Agents read stderr, so check prints every
- * warning but that one, as the first line of Node's own form.
- */
+/** Node 23.10 (not 22.23) warns on stderr that type stripping is experimental; agents read stderr, so it is dropped. */
 function printWarningsButTypeStripping(): void {
   process.removeAllListeners('warning')
   process.on('warning', (warning) => {
@@ -89,7 +82,6 @@ function isTypeStrippingWarning({ name, message }: Error): boolean {
   return name === EXPERIMENTAL_WARNING && TYPE_STRIPPING.test(message)
 }
 
-/** The first line Node itself prints for a warning. */
 function nodeWarningText({ name, message }: Error): string {
   return textOfLines([`(node:${String(process.pid)}) ${name}: ${message}`])
 }

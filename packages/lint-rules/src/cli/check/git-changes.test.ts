@@ -5,11 +5,7 @@ import { createGitProject } from '../../__tests__/git-projects.ts'
 import { setUpTempProjects } from '../../__tests__/temp-projects.ts'
 import { changedFilesIn, gitRepoAt, gitTopLevelOf, gitTopLevelUnlessGitIsMissing } from './git-changes.ts'
 
-// spec-cli.md "K: check", step 6: check reads the changed files from git, a moved file paired with
-// its old path. K-16: a git failure stops check, quoting git's first line; where git prints nothing,
-// as when it is killed, check names the command and how it exited; where git cannot be started, as
-// where none is installed, check quotes why. Here node:child_process's spawnSync answers the one git
-// subcommand a test names as such a git does, and runs every other command.
+// spawnSync answers the one git subcommand a test names as such a git would, and runs every other.
 
 const silentGit = vi.hoisted(() => {
   const failing: { subcommand: string | null } = { subcommand: null }
@@ -23,7 +19,7 @@ const unstartableGit = vi.hoisted(() => {
 
 vi.mock('node:child_process', async (importOriginal) => {
   const childProcess = await importOriginal<typeof import('node:child_process')>()
-  // What git's exit with code 128, having printed nothing, gives spawnSync.
+  // git exiting 128 having printed nothing.
   const silentFailure: SpawnSyncReturns<string> = { pid: 0, output: [], stdout: '', stderr: '', status: 128, signal: null }
   // A PATH holding no folder: spawnSync finds no git to start, as where none is installed.
   const pathWithoutGit = ''
@@ -42,7 +38,7 @@ const ADDED = 'src/added.ts'
 const MOVED_FROM = 'src/old.ts'
 const MOVED_TO = 'src/new.ts'
 
-// What spawnSync's error says where it finds no git to start (measured, Node 22).
+// spawnSync's error where it finds no git to start (Node 22).
 const GIT_NOT_STARTED = 'git failed: spawnSync git ENOENT'
 
 afterEach(() => {

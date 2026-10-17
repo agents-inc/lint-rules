@@ -1,7 +1,5 @@
-// Mutates packages/eslint-plugin-house/src with that package's own tests
-// (docs/work/mutation-testing.md): stryker.config.json pointed at the house plugin. Its rule tests run
-// in-process and take seconds, so the mutants that run while modules load are tested here too
-// (`ignoreStatic` off) and need no second pass. No build runs, and nothing gets `// @ts-nocheck`.
+// The house plugin's tests run in-process and fast, so static mutants are tested here too
+// (`ignoreStatic` off) and need no second pass.
 import { readFileSync } from 'node:fs'
 
 const lintRulesConfig = JSON.parse(readFileSync(new URL('./stryker.config.json', import.meta.url), 'utf8'))

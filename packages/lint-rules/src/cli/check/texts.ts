@@ -1,17 +1,11 @@
-// Every line `check` prints (spec-cli.md "Output contract"; owner, q-c4: as concise as possible
-// while giving sub-agents enough context). stdout carries the findings and the summary, stderr the
-// notes and why check could not run.
-
 import { noteLine } from '../command-lines.ts'
 
 const COMMAND = 'check'
-// What to do with the errors listed, after "Fix " or "The list is complete: fix ".
+// Follows "Fix " or "The list is complete: fix ".
 const ERRORS_ADVICE = "what is in code you wrote, then run check again. Do not read the lint configuration or this package's source; each line says what to fix."
 const LIST_IS_COMPLETE = 'The list is complete'
 
-/** A finding's label where the file does not parse, in place of a rule ID (q-c10). */
 export const PARSE_ERROR_LABEL = 'parse error'
-/** A finding's label for a suppression comment that silenced nothing (q-c15, P8). */
 export const UNUSED_SUPPRESSION_LABEL = 'unused suppression'
 export const WARNING_MARK = ' (warning)'
 export const MESSAGE_SEPARATOR = ' — '
@@ -27,17 +21,15 @@ export function unusedSuppressionMessage(ruleName: string): string {
   return `suppresses ${ruleName}, which reported nothing here`
 }
 
-/** The first stdout line where check changed files (P2): an agent's next edit of a file it holds open would fail otherwise. */
+/** First: an agent's next edit of a file it holds open would fail otherwise. */
 export function autofixedLine(files: readonly string[]): string {
   return `${COMMAND}: autofixed ${files.join(', ')}; read them again before editing them.`
 }
 
-/** In place of the findings past the cut (c5-again). */
 export function cutLine(findingCount: number, fileCount: number): string {
   return `+${countOf(findingCount, 'more finding', 'more findings')} in ${countOf(fileCount, 'file', 'files')}. Fix the ones above, then run check again to see them.`
 }
 
-/** Whether the findings printed are all of them, or the cut left some out. */
 export type ListPrinted = 'complete' | 'cut'
 
 export type SummaryCounts = {
@@ -48,7 +40,7 @@ export type SummaryCounts = {
   readonly list: ListPrinted
 }
 
-/** The last stdout line: errors left, warnings only, or nothing (q-c3, q-c4). Under a cut, it does not call the list complete. */
+/** Under a cut, it does not call the list complete. */
 export function summaryLine({ errors, warnings, filesWithFindings, changedFiles, list }: SummaryCounts): string {
   const ofChangedFiles = `${String(filesWithFindings)} of ${countOf(changedFiles, 'changed file', 'changed files')}`
   if (errors > 0) {
@@ -61,12 +53,11 @@ export function summaryLine({ errors, warnings, filesWithFindings, changedFiles,
   return `${COMMAND}: no findings in ${countOf(changedFiles, 'changed file', 'changed files')}.`
 }
 
-/** What to do with the errors listed: the list is called complete only where the cut left none out. */
 function errorsAdvice(list: ListPrinted): string {
   return list === 'complete' ? `${LIST_IS_COMPLETE}: fix ${ERRORS_ADVICE}` : `Fix ${ERRORS_ADVICE}`
 }
 
-/** The one note (q-c6): changed files outside the config's folder, which check leaves to that folder's own config. */
+/** Changed files outside the config's folder are left to that folder's own config. */
 export function skippedNote(count: number, configFolder: string): string {
   return noteLine(COMMAND, `skipped ${countOf(count, 'changed file', 'changed files')} outside ${configFolder}.`)
 }
@@ -87,7 +78,6 @@ export function notInstalled(configFile: string, packageName: string): string {
   return `${packageName} is not installed where ${configFile} can import it. Run your package manager's install.`
 }
 
-/** The config imported, but exports no part defineLintRules returned. */
 export const NO_ESLINT_PART_EXPORTED =
   'it exports no `eslint` part that defineLintRules returned: end it with `export const { eslint, oxlint } = config.editorRulesets`'
 

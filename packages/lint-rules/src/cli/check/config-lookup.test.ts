@@ -6,12 +6,8 @@ import { buildPackageJson, packageJsonText } from '../../__tests__/factories/pac
 import { setUpTempProjects } from '../../__tests__/temp-projects.ts'
 import { eslintPartExportedBy, type FoundConfig, refuseAnotherCopy } from './config-lookup.ts'
 
-// K-16 (spec-cli.md "Output contract", could not run): before check lints, it finds the package
-// agents-inc.lint.mts imports, and the ESLint part the config exports. Each refusal says why.
-
 const tempProjects = setUpTempProjects()
 
-/** The config, in a project holding it and the package.json given, as check finds it. Nothing is installed. */
 function configBeside(packageJson: string, config: string): FoundConfig {
   const folder = tempProjects.create({ files: { [PACKAGE_JSON_FILE]: packageJson, [CONFIG_FILE]: config } })
   return { path: join(folder, CONFIG_FILE), folder }
@@ -26,7 +22,6 @@ describe('the package the config imports', () => {
     )
   })
 
-  // Node reads the package.json beside the config, which may name this package itself, and refuses one that is not JSON.
   it("passes on Node's own refusal of a package.json left mid-merge, which no install fixes", () => {
     const found = configBeside(PACKAGE_JSON_LEFT_MID_MERGE, moduleText(exportedConstant('config')))
 

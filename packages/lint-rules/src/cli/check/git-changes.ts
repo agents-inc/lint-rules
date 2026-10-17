@@ -7,23 +7,21 @@ import { addedLinesIn, type ChangedLines, partlyChanged, WHOLE_FILE_CHANGED } fr
 import { leftoverToRemove } from './leftovers.ts'
 import { gitFailed } from './texts.ts'
 
-/** A file git counts as changed, by its path from the repo's top level, with the path it had at HEAD where git paired it with one. */
+/** `oldPath`: its path at HEAD where git paired it as a rename or copy. */
 export type ChangedFile = { readonly path: string; readonly oldPath: string | null; readonly isNew: boolean }
 
-/** The repo check reads, and how it asks git about it. */
 export type GitRepo = {
   readonly topLevel: string
-  /** The variables that point git at the scratch index and objects: null where the repo has no commit, and every file is then wholly changed (q-c8). */
+  /** Null where the repo has no commit: every file is then wholly changed. */
   readonly scratch: ScratchGit | null
 }
 
 type ScratchGit = { readonly GIT_INDEX_FILE: string; readonly GIT_OBJECT_DIRECTORY: string; readonly GIT_ALTERNATE_OBJECT_DIRECTORIES: string }
 
-// Every git command is an argument array, never a shell string: a file name is data. Each runs from
-// the top level, never refreshes the real index on the side, and reads paths literally, so a file
-// named `a*.ts` is not a pattern.
+// Argument arrays, never a shell string: a file name is data. No real-index refresh, and literal
+// pathspecs, so `a*.ts` is no pattern.
 const READ_ONLY_GIT = { GIT_OPTIONAL_LOCKS: '0', GIT_LITERAL_PATHSPECS: '1' }
-// The gate's measured choice (q-c7): a pairing this weak only drops lines that really are the same.
+// A pairing this weak only drops lines that really are the same.
 const FIND_RENAMES = '--find-renames=1%'
 const NUL = '\0'
 const SCRATCH_PREFIX = 'agents-inc-check-git-'
@@ -35,25 +33,21 @@ const PAIRED_STATUSES = new Set(['R', 'C'])
 const ADDED = 'A'
 const GIT_OUTPUT_LIMIT = 256 * 1024 * 1024
 
-/** The top level of the git repository holding the folder, or null where no repository does. Throws where git cannot be started. */
+/** Null outside a repository; throws where git cannot be started. */
 export function gitTopLevelOf(cwd: string): string | null {
   return topLevelFrom(askGitForTheTopLevel(cwd))
 }
 
-/**
- * As gitTopLevelOf, but null where git cannot be started too, as where none is installed: init
- * writes outside git all the same, and notes that check needs it (q-i8).
- */
+/** Null where git is missing too: init writes outside git all the same. */
 export function gitTopLevelUnlessGitIsMissing(cwd: string): string | null {
   const answer = askGitForTheTopLevel(cwd)
   return answer.error === undefined ? topLevelFrom(answer) : null
 }
 
 /**
- * The repo, with a scratch index where it has commits: a copy of the real one, in the OS temp
- * folder, with every untracked file added as intent-to-add, so git can pair a plain `mv` with its
- * old path (q-c7). Adding writes the empty blob, so git writes objects into a scratch folder beside
- * it and reads the repo's own as an alternate: the repo is never written. The caller removes both.
+ * The scratch index is a copy of the real one with untracked files intent-to-add, so git pairs a
+ * plain `mv` with its old path. Its objects go to a scratch folder with the repo's as an alternate:
+ * the repo is never written. The caller removes both.
  */
 export function gitRepoAt(topLevel: string): GitRepo {
   if (!hasCommits(topLevel)) return { topLevel, scratch: null }
@@ -70,7 +64,7 @@ export function gitRepoAt(topLevel: string): GitRepo {
   return { topLevel, scratch }
 }
 
-/** Every file added, copied, modified or renamed since HEAD, staged or not, untracked included; every file git does not ignore where there is no commit. */
+/** Untracked files included; with no commit, every file git does not ignore. */
 export function changedFilesIn({ topLevel, scratch }: GitRepo): ChangedFile[] {
   if (scratch === null) {
     return entriesOf(git(topLevel, null, ['ls-files', '-z', '--cached', '--others', '--exclude-standard'])).map((path) => ({ path, oldPath: null, isNew: true }))
@@ -79,7 +73,6 @@ export function changedFilesIn({ topLevel, scratch }: GitRepo): ChangedFile[] {
   return Array.from(changedFilesFrom(entries))
 }
 
-/** The lines of the file a change added: all of a file with no old path, else those its diff against HEAD adds. */
 export function changedLinesOf(repo: GitRepo, file: ChangedFile): ChangedLines {
   if (repo.scratch === null || file.isNew) return WHOLE_FILE_CHANGED
   const pathspec = file.oldPath === null ? [file.path] : [file.oldPath, file.path]
@@ -91,7 +84,6 @@ function askGitForTheTopLevel(cwd: string): SpawnSyncReturns<string> {
   return askGit(cwd, null, ['rev-parse', '--show-toplevel'])
 }
 
-/** The top level git answered with: null where it found no repository. Throws where git could not be started. */
 function topLevelFrom(answer: SpawnSyncReturns<string>): string | null {
   throwWhereGitCouldNotStart(answer)
   return answer.status === 0 ? answer.stdout.trim() : null
@@ -107,9 +99,8 @@ function hasCommits(topLevel: string): boolean {
 }
 
 /**
- * `<status>\0<path>\0`, or `R<score>\0<old>\0<new>\0` for a pair: a pair's entry takes one more path.
- * The loop and nextPathIn share one iterator over the fields, so each path taken inside the loop is
- * one the loop skips, and the loop's next field is the next entry's status.
+ * `<status>\0<path>\0`, or `R<score>\0<old>\0<new>\0` for a pair. nextPathIn shares the loop's
+ * iterator, so a pair's extra path is one the loop skips.
  */
 function* changedFilesFrom(entries: readonly string[]): Generator<ChangedFile> {
   const fields = entries.values()
@@ -130,7 +121,7 @@ function entriesOf(nulSeparated: string): string[] {
   return nulSeparated.split(NUL).filter((entry) => entry !== '')
 }
 
-/** Runs git from the top level: its stdout, or throws quoting the first line it printed. */
+/** Throws quoting the first line git printed. */
 function git(topLevel: string, scratch: ScratchGit | null, args: readonly string[]): string {
   const answer = askGit(topLevel, scratch, args)
   throwWhereGitCouldNotStart(answer)

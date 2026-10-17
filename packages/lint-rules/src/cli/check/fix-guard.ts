@@ -5,10 +5,8 @@ import { type ChangedLines, isOnChangedLines } from './changed-lines.ts'
 const FIRST_LINE = 1
 
 /**
- * Whether an engine's fixes in one file left every line nobody changed as it was (q-c11, P1): each
- * unchanged line of the text before the fixes is still there, in the same order. Lines may be
- * inserted anywhere, and changed lines modified, moved or deleted. `changed` gives the lines of
- * `before`.
+ * Every unchanged line must stay, in order; lines may be inserted anywhere, and changed lines
+ * modified, moved or deleted. `changed` gives the lines of `before`.
  */
 export function keepsUnchangedLines(before: string, after: string, changed: ChangedLines): boolean {
   if (changed.wholeFile) return true
@@ -16,7 +14,6 @@ export function keepsUnchangedLines(before: string, after: string, changed: Chan
   return isInOrderWithin(unchanged, linesOf(after))
 }
 
-/** Whether each of `wanted` appears in `lines`, in order, with any lines between. */
 function isInOrderWithin(wanted: readonly string[], lines: readonly string[]): boolean {
   let searchFrom = 0
   for (const line of wanted) {
