@@ -1,18 +1,10 @@
 import type { OxlintConfig } from 'oxlint'
 import type { ProjectFiles } from '../temp-projects.ts'
 
-// Framework globals, the same class as Svelte's runes (decisions.md, 2026-10-14 "fix round 4
-// closed"): names a framework's compiler gives the script of its own component files, and no other
-// file. Fix round 4's developer measured oxlint's no-undef reporting each of them beside oxlint.
-// The names, read from each framework's own package:
-// - Vue 3.5.44's `<script setup>` compiler macros: `MACROS` in @vue/compiler-sfc
-//   (dist/compiler-sfc.cjs.js).
-// - Astro 7.3.8's `Astro`: `declare const Astro` in astro/env.d.ts, its one global.
-// - Svelte 5.57.2's `$$props`, `$$restProps` and `$$slots`: `RESERVED` in
-//   src/compiler/phases/2-analyze/index.js.
-// Each component reading them also uses one name nobody declares, which no-undef must still report
-// outside .svelte files, where it is off (owner, q79), and beside each a JS file uses a global of that
-// framework, which it does not have. One more Svelte component writes to its legacy globals.
+// Globals a framework's compiler gives its own component files alone: Vue 3.5.44's `<script setup>` macros
+// (`MACROS`, @vue/compiler-sfc), Astro 7.3.8's `Astro` (astro/env.d.ts), and Svelte 5.57.2's legacy globals
+// (`RESERVED`, 2-analyze/index.js). Each component also uses one undeclared name, and a JS file beside it uses
+// the framework's global, which it does not have.
 
 /** Every `<script setup>` compiler macro of Vue 3.5.44, a global in a .vue file alone. */
 export const VUE_SCRIPT_SETUP_MACROS = ['defineProps', 'defineEmits', 'defineExpose', 'defineOptions', 'defineSlots', 'defineModel', 'withDefaults'] as const
@@ -75,11 +67,8 @@ const LEGACY_COMPONENT = `<script>
 <p>{title}</p>
 `
 
-// Writing to each legacy global, one to a line from 3 to 5. Svelte 5.57.2 compiles a component
-// declaring `$$restProps` and `$$slots` as constants, and reads `$$props` as the constant
-// `$$sanitized_props` (src/compiler/phases/3-transform/client/transform-client.js), so none takes
-// a write: our oxlint part gives each as a read-only global, as each engine's env gives every other
-// framework global, and no-global-assign reports each write.
+// Writes to each legacy global (3 to 5). Svelte 5.57.2 compiles them as constants (transform-client.js),
+// so our oxlint part gives them as read-only globals and no-global-assign reports each write.
 const LEGACY_COMPONENT_WRITING_TO_ITS_GLOBALS = `<script>
   export let label = ''
   $$props = {}
@@ -94,8 +83,7 @@ const LEGACY_COMPONENT_WRITING_TO_ITS_GLOBALS = `<script>
 const LEGACY_GLOBAL_IN_A_RUNE_MODULE = `export const title = $$props.title
 `
 
-// A store subscription (3): `$` and the name of a store the component imports, which Svelte
-// subscribes to. No list of globals can hold every such name.
+// A store subscription (3): `$` plus an imported store's name, which no list of globals can hold.
 const STORE_COMPONENT = `<script>
   import { count } from './count.js'
   const doubled = $count * 2
@@ -107,10 +95,6 @@ const STORE_COMPONENT = `<script>
 const COUNT_STORE = `export const count = { subscribe: () => () => {} }
 `
 
-/**
- * Each file of the project: a component of each framework, the JS file beside it, a Svelte
- * component writing to its legacy globals, and one subscribing to a store.
- */
 export const FRAMEWORK_FILES = {
   vueComponent: 'src/components/Greeting.vue',
   vueMacroInAJsFile: 'src/components/use-greeting.js',
@@ -135,19 +119,13 @@ export const frameworkSourceFiles: ProjectFiles = {
   [FRAMEWORK_FILES.svelteStore]: COUNT_STORE,
 }
 
-/** The JS files beside the components, each using a framework global it does not have. */
 export const JS_FILES_USING_A_FRAMEWORK_GLOBAL = [
   FRAMEWORK_FILES.vueMacroInAJsFile,
   FRAMEWORK_FILES.astroGlobalInAJsFile,
   FRAMEWORK_FILES.svelteLegacyGlobalInARuneModule,
 ]
 
-/**
- * What oxlint owes where it runs no-undef: in each Vue and Astro component the name nobody declares
- * alone, nothing in a Svelte component, where no-undef is off (owner, q79), and in each JS file
- * beside one the framework global it uses. The store subscription is owed apart
- * (OWED_IN_THE_STORE_COMPONENT).
- */
+/** What no-undef owes in oxlint: the undeclared name in Vue and Astro components, the global in each JS file. */
 export const OWED_BY_OXLINT_IN_FRAMEWORK_FILES = {
   [FRAMEWORK_FILES.vueComponent]: { 'no-undef': ['src/components/Greeting.vue:13 eslint(no-undef)'] },
   [FRAMEWORK_FILES.vueMacroInAJsFile]: { 'no-undef': ['src/components/use-greeting.js:2 eslint(no-undef)'] },
@@ -158,13 +136,9 @@ export const OWED_BY_OXLINT_IN_FRAMEWORK_FILES = {
   [FRAMEWORK_FILES.svelteStore]: { 'no-undef': [] },
 }
 
-/** What oxlint owes in the component subscribing to a store: nothing, as Svelte declares `$count` from the import, and no-undef is off in .svelte files (owner, q79). */
+/** Nothing: Svelte declares `$count` from the import, and no-undef is off in .svelte files. */
 export const OWED_IN_THE_STORE_COMPONENT = { [FRAMEWORK_FILES.svelteStoreComponent]: { 'no-undef': [] } }
 
-/**
- * What oxlint owes where it runs no-global-assign: each write to a legacy global in the component
- * writing to them, and nothing in the component reading them.
- */
 export const OWED_FOR_WRITES_TO_SVELTE_LEGACY_GLOBALS = {
   [FRAMEWORK_FILES.svelteLegacyComponentWritingToItsGlobals]: {
     'no-global-assign': [
@@ -176,26 +150,16 @@ export const OWED_FOR_WRITES_TO_SVELTE_LEGACY_GLOBALS = {
   [FRAMEWORK_FILES.svelteLegacyComponent]: { 'no-global-assign': [] },
 }
 
-/** A team oxlint config whose root turns Svelte's `$$props` off, and turns nothing on, not even oxlint's default correctness category. */
 export const TEAM_OXLINT_CONFIG_TURNING_SVELTE_PROPS_OFF: OxlintConfig = { categories: { correctness: 'off' }, globals: { $$props: 'off' } }
 
-/**
- * What oxlint owes in the component writing to the legacy globals, beside the team's root turning
- * `$$props` off: the writes to `$$restProps` (4) and `$$slots` (5), which the team leaves to ours as
- * read-only globals; not the write to `$$props` (3), which the team's root setting makes no global in
- * every file, as its root env does (Q-E). Read through no-global-assign: no-undef, which read it
- * before, is off in .svelte files (owner, q79).
- */
+/** The team's root `$$props: off` makes it no global: only the writes to `$$restProps` (4) and `$$slots` (5) are owed. */
 export const OWED_IN_THE_WRITING_COMPONENT_BESIDE_A_TEAM_TURNING_PROPS_OFF = {
   [FRAMEWORK_FILES.svelteLegacyComponentWritingToItsGlobals]: {
     'no-global-assign': ['src/lib/LegacyWrites.svelte:4 eslint(no-global-assign)', 'src/lib/LegacyWrites.svelte:5 eslint(no-global-assign)'],
   },
 }
 
-/**
- * What ESLint owes where it runs no-undef, in a project that lists no oxlint: the framework global
- * in each JS file, under ESLint's name. It lints no component, so owes nothing there.
- */
+/** ESLint, in a project listing no oxlint, lints no component: only each JS file's framework global. */
 export const OWED_BY_ESLINT_IN_FRAMEWORK_FILES = {
   [FRAMEWORK_FILES.vueMacroInAJsFile]: { 'no-undef': ['src/components/use-greeting.js:2 no-undef'] },
   [FRAMEWORK_FILES.astroGlobalInAJsFile]: { 'no-undef': ['src/pages/page-title.js:1 no-undef'] },

@@ -8,12 +8,10 @@ export function buildEngineFinding(engine: EngineFinding['engine'], file: string
   return { engine, file, rule, line, message }
 }
 
-/** A rule known by the names given. */
 export function buildRuleByItsNames(rule: string, names: readonly string[]): RuleByItsNames {
   return { rule, names }
 }
 
-/** One file's findings of each rule given. */
 export function buildFindingsOfAFile(file: string, byRule: Readonly<Record<string, readonly string[]>>): FindingsByFileAndRule {
   return { [file]: byRule }
 }

@@ -2,11 +2,8 @@ import { buildReportingPlugin } from '../factories/catalog-factories.ts'
 import { buildEslintMergeShapeValue, type EslintMergeShapeValue, installedEslintPlugin } from '../factories/eslint-merge-factories.ts'
 import type { Dimension } from '../pairwise-shapes.ts'
 
-// The shapes the ESLint merge is checked in against ESLint's own calculated config
-// (merge-eslint-config.differential.test.ts): the name a team's block states one of our rules by,
-// where that block applies, the entry it gives, and how our settings state the rule, each a
-// dimension. The team's config is one block, so no shape runs two names of a rule by the team's
-// own choice.
+// The shapes the ESLint merge is checked in against ESLint's own calculated config, each a dimension. The team's
+// config is one block, so no shape runs two names of a rule by the team's own choice.
 
 const ARRAY_TYPE = '@typescript-eslint/array-type'
 const TYPESCRIPT_ESLINT = '@typescript-eslint'
@@ -19,7 +16,6 @@ const GENERIC_ARRAY_TYPE = [{ default: 'generic' }]
 const OUR_ENTRY_FILES = ['legacy/old/**']
 const NO_TEAMS_PREFIXES: ReadonlyMap<string, readonly string[]> = new Map()
 
-/** Files in and out of every scope the shapes give: the team block's files, ignores and basePath, our entry's files, and our ignores. */
 export const ESLINT_MERGE_FILES = [
   'src/a.ts',
   'src/a.js',
@@ -31,10 +27,8 @@ export const ESLINT_MERGE_FILES = [
   'legacy/vendor/a.ts',
 ]
 
-// The name a team states each rule by. Every rule is ESLint's without oxlint; with oxlint,
-// import-x/first is oxlint's, so its alias is off across engines (Q-C). The team registers the
-// installed plugin where its name runs our plugin's module, so its options and defaults are the
-// ones the merged config reads.
+// The name a team states each rule by. With oxlint, import-x/first is oxlint's, so its alias is off across
+// engines. The team registers the installed plugin, so its options and defaults are the ones the merge reads.
 const TEAM_STATES_ITS_OWN_ID = buildEslintMergeShapeValue('the team states our rule by its own ID', {
   team: {
     stating: {
@@ -130,16 +124,15 @@ const AN_ENTRY_OF_OURS_TURNS_IT_OFF = buildEslintMergeShapeValue('an entry of ou
 
 const NO_IGNORES_OF_OURS = buildEslintMergeShapeValue('no ignores of ours', { ours: {} })
 const OUR_IGNORES = buildEslintMergeShapeValue('our ignores name the vendor folders', { ours: { ignores: ['**/vendor/**'] } })
-// Folder-style values, which the agent build's global ignores read as every file under the folder
-// (docs/plan.md): one named bare, which matches at any depth, and one with a trailing slash.
+// Folder-style values, which the agent build's global ignores read as every file under the folder: one bare,
+// which matches at any depth, and one with a trailing slash.
 const OUR_IGNORES_A_FOLDER_BY_NAME = buildEslintMergeShapeValue('our ignores name the vendor folders bare, as vendor', {
   ours: { ignores: ['vendor'] },
 })
 const OUR_IGNORES_A_FOLDER_WITH_A_TRAILING_SLASH = buildEslintMergeShapeValue('our ignores name one vendor folder with a trailing slash, as legacy/vendor/', {
   ours: { ignores: ['legacy/vendor/'] },
 })
-// A name ending in its only slash, every folder of that name in both engines (q62); ESLint read it
-// at the root alone before (fix round 1 review, Must fix 1).
+// A name ending in its only slash: every folder of that name in both engines.
 const OUR_IGNORES_A_FOLDER_ENDING_IN_ITS_ONLY_SLASH = buildEslintMergeShapeValue('our ignores name the vendor folders by vendor/, every folder of that name', {
   ours: { ignores: ['vendor/'] },
 })
@@ -173,14 +166,10 @@ export const ESLINT_MERGE_DIMENSIONS: readonly Dimension<EslintMergeShapeValue>[
 ]
 
 /**
- * Shapes where ours runs beside a team statement that would show a leak: a bare severity after our
- * entry keeps our options there (measured, ESLint 10.12), in every file and in a team block's files
- * crossing our entry's; and a twin the team states everywhere ours runs its rule. And a shape where
- * ours runs in a vendor folder the team's block leaves alone, which a folder named bare among our
- * ignores must keep it out of. And a shape where the team states, in every file, the alias of a rule
- * our oxlint part runs beside oxlint, and our ignores name the vendor folders as each engine reads
- * them differently.
- */
+* Shapes that would show a leak: a bare team severity after our entry keeps our options there (measured, ESLint
+* 10.12); a twin the team states where ours runs; ours in a vendor folder only a bare folder ignore keeps it out
+* of; and a team alias of a rule our oxlint part runs, beside vendor ignores each engine reads differently.
+*/
 export const ESLINT_MERGE_SEEDS: readonly (readonly EslintMergeShapeValue[])[] = [
   [TEAM_STATES_ITS_OWN_ID, IN_EVERY_FILE, A_BARE_SEVERITY, OUR_RULES_TURN_IT_ON],
   [TEAM_STATES_ITS_OWN_ID, IN_THE_FILES_IT_NAMES, A_BARE_SEVERITY, AN_ENTRY_OF_OURS_TURNS_IT_ON],

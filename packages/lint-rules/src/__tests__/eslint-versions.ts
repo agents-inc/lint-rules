@@ -10,11 +10,7 @@ type PluginRule = NonNullable<ESLint.Plugin['rules']>[string]
 
 const TYPESCRIPT_ESLINT_PREFIX = '@typescript-eslint'
 
-/**
- * Whether ESLint has a version of the rule among its core rules and the plugins we install. Read
- * from ESLint and the plugins themselves rather than from the catalog, so a spec built on it checks
- * the catalog instead of repeating it.
- */
+/** Read from ESLint and the installed plugins, not the catalog, so a spec built on it checks the catalog. */
 export function hasEslintVersion(id: string): boolean {
   const prefix = pluginPrefixOf(id)
   if (prefix === null) return builtinRules.has(id)
@@ -33,7 +29,6 @@ export function oxlintOnlyRules(): RuleRoute[] {
   return shippedOxlintRoutes().filter((route) => !hasEslintVersion(route.id))
 }
 
-/** The rules the skip list keeps out of the ESLint part, read through the catalog. */
 export function skippedRuleIds(): string[] {
   return [...catalog.eslintFallbackSkips.keys()].toSorted()
 }
@@ -44,10 +39,9 @@ export function provenMovedRules(): RuleRoute[] {
 }
 
 /**
- * Every moved core rule a current typescript-eslint rule extends, beside that rule: without oxlint,
- * the twin runs on TS files and the core rule on JS files. Read from typescript-eslint's own rule
- * meta (`docs.extendsBaseRule`, and no `deprecated`), not from the catalog.
- */
+* Without oxlint, the twin runs on TS files and the core rule on JS files. Read from typescript-eslint's rule
+* meta (`docs.extendsBaseRule`, and no `deprecated`), not the catalog.
+*/
 export function twinnedMovedRules(): TwinPair[] {
   const twinByCoreRule = new Map(currentTypescriptEslintExtensions().map(({ core, twin }) => [core, twin]))
   return movedRules().flatMap(({ id }) => {

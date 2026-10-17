@@ -4,38 +4,16 @@ import type { RuleByItsNames } from '../findings-beside-the-team.ts'
 import { buildBundlerTsconfig } from '../factories/tsconfig-factories.ts'
 import type { ProjectFiles } from '../temp-projects.ts'
 
-// Imports eslint-plugin-n 18.4.1 cannot resolve, in publishable packages of a monorepo (decisions.md,
-// 2026-10-14 "fix round 4 closed" and "fix round 5 review"). The plugin reads a name that fails its
-// package-name pattern (`@/…`, `#…`, `$app/…`) as a path; where it resolves no file behind it,
-// check-publish.js measures the import as `path.relative(packageDir, "")`, which is the folder the
-// process runs in: outside the package, as from a monorepo's root, the import is reported unpublished
-// whatever it names; inside it, never (measured, ESLint 10.12). The plugin reads aliases from the
-// nearest file named tsconfig.json alone (lib/util/get-tsconfig.js), and for TS files alone
-// (lib/util/import-target.js, getResolver). The `resolverConfig` option we ship on
-// n/no-unpublished-import goes to enhanced-resolve 5.26, whose own `tsconfig` option finds
-// tsconfig.json's aliases for JS files too (measured, ESLint 10.12); nothing reaches the rest
-// (questions.md #78).
-//
-// Four packages: a TS project allowing JS, whose JS file imports through tsconfig.json's alias; Vite's
-// layout, its alias in tsconfig.app.json; a JS project, its alias in jsconfig.json; and a SvelteKit
-// app importing its framework's virtual modules. Each also imports a package it lists in
-// devDependencies alone, which the rule must report.
-//
-// A CommonJS package of a TS project allowing JS requires through tsconfig.json's alias too
-// (decisions.md, 2026-10-14 "fix round 6 closed"): n/no-unpublished-require ships the same
-// `resolverConfig` option, so it reads the alias to the published src as a file, and still reports
-// what the package does not publish.
-//
-// Two more hold imports no rule of ours reports, which the same `resolverConfig` given as the
-// plugin's setting rather than our rule's option made n/no-extraneous-import report as extraneous
-// packages (fix round 5's review; measured, ESLint 10.12): a JS file importing through tsconfig.json's
-// aliases named like packages (`~/…`, `components/…`), and a TS file importing through baseUrl alone
-// (`utils/…`).
+// Imports eslint-plugin-n 18.4.1 cannot resolve, in a monorepo's publishable packages. It reads a name failing its
+// package-name pattern (`@/…`, `#…`, `$app/…`) as a path, and an unresolved path as the cwd: reported unpublished
+// from outside the package, never from inside (measured, ESLint 10.12). It reads aliases from tsconfig.json alone,
+// for TS files alone; the `resolverConfig` option we ship reaches JS files too. Each package also imports a
+// devDependency the rule must report.
+// Given as the plugin's setting rather than our rule's option, `resolverConfig` makes n/no-extraneous-import
+// report aliases named like packages (`~/…`) and baseUrl paths; the last two packages pin that.
 
-/** Every package's devDependency the rule must report, as packages/ui's `@repo/api-mocks` was in real run 3. */
 const DEV_DEPENDENCY = '@repo/api-mocks'
 
-/** The package's package.json: published, and listing DEV_DEPENDENCY under devDependencies. */
 function manifestText(packageName: string): string {
   return jsonFileText({ ...buildPublishedPackageJson(packageName), devDependencies: { [DEV_DEPENDENCY]: '*' } })
 }
@@ -69,8 +47,7 @@ import { mocks } from '@repo/api-mocks'
 export const all = [browser, mocks]
 `
 
-// Vite's virtual module, by its convention's prefix (1). The plugin's package-name pattern has no end
-// anchor, so it reads `virtual:pwa-register` as a package of that name, which no manifest lists.
+// Vite's virtual module (1): the package-name pattern has no end anchor, so `virtual:pwa-register` reads as a package.
 const USES_A_VIRTUAL_PREFIX = `import { registerSW } from 'virtual:pwa-register'
 
 export const all = [registerSW]
@@ -97,7 +74,6 @@ const USES_THE_BASE_URL = `import { format } from 'utils/format'
 export const all = [format]
 `
 
-/** The module of each package importing what the plugin cannot resolve. */
 const UNRESOLVABLE_IMPORTERS = {
   jsFileThroughTsconfigAlias: 'packages/js-in-ts/src/uses-alias.js',
   tsFileThroughAppTsconfigAlias: 'packages/vite-app/src/app.ts',
@@ -107,13 +83,11 @@ const UNRESOLVABLE_IMPORTERS = {
   cjsFileThroughTsconfigAlias: 'packages/cjs-in-ts/src/uses-alias.cjs',
 } as const
 
-/** The module of each package importing through what our option resolves and the plugin's setting would read as a package. */
 const IMPORTERS_OF_ALIASES_NAMED_LIKE_PACKAGES = {
   jsFileThroughTsconfigAliases: 'packages/js-tilde/src/uses-aliases.js',
   tsFileThroughBaseUrl: 'packages/ts-base-url/src/uses-base-url.ts',
 } as const
 
-/** The seven packages' files, under packages/ of the project's root. */
 export const unresolvableImportFiles: ProjectFiles = {
   'packages/js-in-ts/package.json': manifestText('js-in-ts'),
   'packages/js-in-ts/tsconfig.json': jsonFileText(
@@ -156,25 +130,17 @@ export const unresolvableImportFiles: ProjectFiles = {
 
 export const NO_UNPUBLISHED_REQUIRE: RuleByItsNames = { rule: 'n/no-unpublished-require', names: ['n/no-unpublished-require'] }
 
-/**
- * What n/no-unpublished-require owes where the `resolverConfig` option we ship on it reaches: in the
- * CommonJS file of the TS project, the relative path to the unpublished scripts folder and the
- * devDependency, not the alias to src.
- */
+/** n/no-unpublished-require, which our `resolverConfig` reaches: the unpublished path and the devDependency, not the alias. */
 export const OWED_WHERE_OUR_RESOLVER_OPTION_REACHES_A_REQUIRE = {
   [UNRESOLVABLE_IMPORTERS.cjsFileThroughTsconfigAlias]: {
     'n/no-unpublished-require': ['packages/cjs-in-ts/src/uses-alias.cjs:2 n/no-unpublished-require', 'packages/cjs-in-ts/src/uses-alias.cjs:3 n/no-unpublished-require'],
   },
 }
 
-/** The rule fix round 5's review saw report an alias named like a package once the plugin's setting resolved it. */
+/** Reports aliases named like packages when `resolverConfig` is the plugin's setting. */
 export const NO_EXTRANEOUS_IMPORT: RuleByItsNames = { rule: 'n/no-extraneous-import', names: ['n/no-extraneous-import'] }
 
-/**
- * What n/no-unpublished-import owes where the `resolverConfig` option we ship on it reaches: in the
- * JS file of the TS project, the alias to the unpublished scripts folder and the devDependency, not
- * the alias to src; and nothing for the `virtual:` prefix, read as a package.
- */
+/** n/no-unpublished-import, which our option reaches: the unpublished alias and the devDependency; nothing for `virtual:`. */
 export const OWED_WHERE_OUR_RESOLVER_OPTION_REACHES = {
   [UNRESOLVABLE_IMPORTERS.jsFileThroughTsconfigAlias]: {
     'n/no-unpublished-import': ['packages/js-in-ts/src/uses-alias.js:2 n/no-unpublished-import', 'packages/js-in-ts/src/uses-alias.js:3 n/no-unpublished-import'],
@@ -182,9 +148,7 @@ export const OWED_WHERE_OUR_RESOLVER_OPTION_REACHES = {
   [UNRESOLVABLE_IMPORTERS.virtualPrefix]: { 'n/no-unpublished-import': [] },
 }
 
-// What n/no-unpublished-import owes where neither our option nor a setting of the plugin's reaches:
-// the devDependency alone, on line 2 of each, and not the alias or the virtual module, which name
-// what the package publishes or nothing it ships at all.
+// Where nothing of ours reaches: the devDependency alone, on line 2 of each.
 
 /** Vite's layout: the alias in tsconfig.app.json, which the plugin never reads. */
 export const OWED_THROUGH_THE_APP_TSCONFIG_ALIAS = {
@@ -201,10 +165,7 @@ export const OWED_BESIDE_A_KIT_MODULE = {
   [UNRESOLVABLE_IMPORTERS.kitVirtualModule]: { 'n/no-unpublished-import': ['packages/kit-app/src/routes/load.ts:2 n/no-unpublished-import'] },
 }
 
-/**
- * What n/no-extraneous-import and n/no-unpublished-import owe where an import names a file the package
- * publishes through an alias named like a package, or through baseUrl: nothing, from either rule.
- */
+/** Nothing from either rule for an alias named like a package, or a baseUrl path. */
 export const OWED_THROUGH_ALIASES_NAMED_LIKE_PACKAGES = {
   [IMPORTERS_OF_ALIASES_NAMED_LIKE_PACKAGES.jsFileThroughTsconfigAliases]: { 'n/no-extraneous-import': [], 'n/no-unpublished-import': [] },
   [IMPORTERS_OF_ALIASES_NAMED_LIKE_PACKAGES.tsFileThroughBaseUrl]: { 'n/no-extraneous-import': [], 'n/no-unpublished-import': [] },

@@ -3,29 +3,23 @@ import type { LintRules } from '../../index.ts'
 import type { TeamGlobalIgnoresBlock, TeamIgnoresFunction } from '../factories/consumer-project-factories.ts'
 import type { RuleByItsNames } from '../findings-beside-the-team.ts'
 
-// The projects the editor merges are checked in on both real engines, through the built package
-// (editor-merges.both-engines.integration.test.ts). Each source line draws one rule, noted beside it.
-// The team lints its .vue, .svelte and .astro files in ESLint through a parser of its own: a stand-in
-// that parses the script block's lines and blanks the rest, so every finding keeps its line.
+// The projects the editor merges are checked in on both real engines, through the built package. Each source
+// line draws one rule, noted beside it. The team's .vue, .svelte and .astro parser is a stand-in that blanks
+// all but the script block, so every finding keeps its line.
 
-/** The settings our part is made from beside its rulesets: rules, entries and ignores. */
 export type OurFields = Pick<LintRules, 'rules' | 'fileOverrides' | 'ignores'>
 
 type OurRules = NonNullable<LintRules['rules']>
 
-/** A rule of ours on the grid, by its ID. */
 export type GridRuleId = keyof typeof OUR_GRID_RULES
 
-/**
- * One of our rules on the grid: every name either engine reports it under, its typescript-eslint
- * twin's included, the one the team's configs alone report it under, and the engine they run it in.
- */
+/** Every name either engine reports it under, the team's name for it, and the engine the team runs it in. */
 export type GridRule = RuleByItsNames & { readonly rule: GridRuleId; readonly teamsName: string; readonly teamsEngine: 'eslint' | 'oxlint' }
 
 /** A way our settings keep our rules out of some files, which each engine reads its own way. */
 export type GridRow = { readonly how: string; readonly ours: OurFields }
 
-/** A kind of source the grid holds: its text, and the line of each rule's finding in it, null where it cannot draw the rule. */
+/** Null where the source cannot draw the rule. */
 type GridSource = { readonly text: string; readonly lines: Readonly<Record<GridRuleId, number | null>> }
 
 // typescript/array-type under array-simple (1); no-unused-vars (3), which oxlint's reports in no
@@ -57,12 +51,7 @@ const ONE_LINE_DOWN = { 'no-debugger': 5, '@typescript-eslint/array-type': 2, 'n
 const SCRIPT_BLOCK: GridSource = { text: `<script lang="ts">\n${TS_SOURCE}</script>\n`, lines: ONE_LINE_DOWN }
 const FRONTMATTER: GridSource = { text: `---\n${TS_SOURCE}---\n`, lines: ONE_LINE_DOWN }
 
-/**
- * Files in and out of each way our settings keep our rules out: a folder named generated, legacy,
- * vendor or gen at the root and in src, a folder legacy/keep inside legacy, two files in lib, a.js at
- * the root and in src, and a .vue, .svelte and .astro file; and a file in node_modules, at the root
- * and in a nested package, which ESLint never lints and the agent build's oxlint config leaves out.
- */
+/** Files in and out of each way our settings keep our rules out, and files in node_modules, which ESLint never lints. */
 const GRID_SOURCES: Readonly<Record<string, GridSource>> = {
   'a.js': JS,
   'a.ts': TS,
@@ -92,13 +81,11 @@ export const gridSourceFiles: Readonly<Record<string, string>> = Object.fromEntr
 
 export const GRID_FILES = Object.keys(GRID_SOURCES)
 
-/** The grid's files in a node_modules folder: ESLint lints none of them, whatever its config (its default ignores). */
 const FILES_IN_NODE_MODULES: readonly string[] = ['node_modules/x/a.js', 'packages/p/node_modules/y/a.js']
 
 /** Files oxlint lints, and ESLint lints only through a team's parser of its own: no JS or TS file. */
 export const COMPONENT_FILES: readonly string[] = ['src/c.vue', 'src/c.svelte', 'src/c.astro']
 
-/** The grid's JS and TS files, which our ESLint part lints. */
 export const GRID_JS_AND_TS_FILES = GRID_FILES.filter((file) => !COMPONENT_FILES.includes(file))
 
 export const OUR_GRID_RULES = {
@@ -109,12 +96,9 @@ export const OUR_GRID_RULES = {
 } as const satisfies OurRules
 
 /**
- * Our rules on the grid, each turned on by the team in the other engine: no-debugger and
- * no-unused-vars, which our oxlint part runs, the team runs in ESLint, no-unused-vars as
- * typescript-eslint's twin;
- * array-type and no-var, which our ESLint part runs, the team runs in oxlint. no-var shows ESLint's
- * reading of our ignores in JS files too, where array-type draws nothing.
- */
+* Each turned on by the team in the other engine. no-var shows ESLint's reading of our ignores in JS files,
+* where array-type draws nothing.
+*/
 export const GRID_RULES: readonly GridRule[] = [
   { rule: 'no-debugger', names: ['no-debugger', 'eslint(no-debugger)'], teamsName: 'no-debugger', teamsEngine: 'eslint' },
   {
@@ -132,13 +116,12 @@ export const GRID_RULES: readonly GridRule[] = [
   },
 ]
 
-/** Every rule on the grid: the team turns each on in one of its configs, so each is the team's (decisions.md, "Owner 2026-10-14"). */
+/** The team turns each on in one of its configs, so each is the team's. */
 export const GRID_RULES_THE_TEAM_SETS: readonly string[] = GRID_RULES.map(({ rule }) => rule)
 
-/** The rules the team's ESLint config turns on in every file it lints: the two our oxlint part runs, no-unused-vars as its twin. */
+/** The two our oxlint part runs, no-unused-vars as its twin. */
 export const TEAM_GRID_ESLINT_RULES = { 'no-debugger': 'error', '@typescript-eslint/no-unused-vars': 'error' } as const
 
-/** The team's oxlint config turning on the two rules our ESLint part runs, and nothing by category. */
 export const TEAM_GRID_OXLINT_CONFIG: OxlintConfig = {
   plugins: ['typescript'],
   categories: { correctness: 'off' },
@@ -162,10 +145,9 @@ export const GRID_ROWS: readonly GridRow[] = [
 ]
 
 /**
- * What the team's configs alone report on the grid, by file, then by rule: each rule in every file
- * that can draw it and the engine the team turns it on in lints, under that engine's name for it.
- * oxlint, given no ignore of the team's, lints the files in node_modules too (measured, oxlint 1.87).
- */
+* Each rule in every file that can draw it and that the team's engine for it lints. Given no ignore of the
+* team's, oxlint lints node_modules too (measured, oxlint 1.87).
+*/
 export function teamAloneFindingsOnTheGrid(): Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> {
   return Object.fromEntries(
     Object.entries(GRID_SOURCES).map(([file, { lines }]) => [
@@ -177,44 +159,34 @@ export function teamAloneFindingsOnTheGrid(): Readonly<Record<string, Readonly<R
   )
 }
 
-/** A TS file in src, and a JS and a TS file of a package in node_modules, each holding the grid's source of its kind. */
 export const nodeModulesSourceFiles: Readonly<Record<string, string>> = {
   'src/a.ts': TS.text,
   'node_modules/x/a.js': JS.text,
   'node_modules/x/b.ts': TS.text,
 }
 
-/** The team's ESLint global ignores, taking back every node_modules folder ESLint's default ignores leave out. */
 export const TEAM_GLOBAL_IGNORES_TAKING_NODE_MODULES_BACK: TeamGlobalIgnoresBlock = { ignores: ['!**/node_modules/'] }
 
-/**
- * A team's ESLint global ignores taking files back from ESLint's default ignores, and a project of
- * the grid's sources holding files they take back.
- */
 export type TeamTakeBackCase = {
   readonly how: string
   readonly sources: Readonly<Record<string, string>>
   readonly teamEslintGlobalIgnores: TeamGlobalIgnoresBlock
-  /** The project's files the team's ESLint config lints, alone and merged: those its global ignores take back among them. */
+  /** Those its global ignores take back among them. */
   readonly lintedByTheTeamsEslint: readonly string[]
-  /** Whether oxlint is given each source file, as an editor gives it the file it opens: its walk of the project skips every .git folder. */
+  /** As an editor does; oxlint's walk of the project skips every .git folder. */
   readonly oxlintGivenEachSourceFile?: true
 }
 
-/** A function in a team's ignores that leaves out no file. */
 const A_FUNCTION_LEAVING_OUT_NO_FILE: TeamIgnoresFunction = { functionSource: '() => false' }
 
-/** The node_modules sources, and a JS file in dist/keep, which dist/ read from the project's parent leaves in. */
+/** dist/keep/a.js, which dist/ read from the project's parent leaves in. */
 const nodeModulesAndDistSourceFiles: Readonly<Record<string, string>> = { ...nodeModulesSourceFiles, 'dist/keep/a.js': JS.text }
 
 /**
- * Team global ignores taking files back from ESLint's default ignores, each a way the merge must
- * read: the root .git folder, the second default; node_modules in packages/p from that basePath,
- * which leaves packages/q out; every node_modules folder from a basePath outside the project, its
- * parent, which still reaches every file of it (measured, ESLint 10.12), alone and after a glob
- * that is not negated, so that a block taking files back is told by any negated glob, not every
- * glob; and every node_modules folder after a function, which no glob stands for.
- */
+* Team global ignores taking files back from ESLint's defaults, each a way the merge must read: the root .git
+* folder; node_modules from a basePath; every node_modules from a basePath outside the project, which still
+* reaches all of it (measured, ESLint 10.12), alone and after a non-negated glob; and after a function.
+*/
 export const TEAM_TAKE_BACK_CASES: readonly TeamTakeBackCase[] = [
   {
     how: 'take the root .git folder back: !.git/',
@@ -255,43 +227,36 @@ export const TEAM_TAKE_BACK_CASES: readonly TeamTakeBackCase[] = [
 ]
 
 /**
- * A TS file in src, and a JS and a TS file in a .git folder inside it, each holding the grid's source
- * of its kind: ESLint's default ignores leave out the root .git folder alone, so ESLint lints these
- * with no take-back, and oxlint walking the project skips every .git folder (measured, ESLint 10.12,
- * oxlint 1.87).
- */
+* ESLint's default ignores leave out the root .git folder alone; oxlint's walk skips every .git folder
+* (measured, ESLint 10.12, oxlint 1.87).
+*/
 export const nestedGitSourceFiles: Readonly<Record<string, string>> = {
   'src/a.ts': TS.text,
   'src/.git/a.js': JS.text,
   'src/.git/b.ts': TS.text,
 }
 
-/**
- * A JS file in src and two packages in node_modules, one of which our ignores take back from ESLint's
- * default ignores as ESLint documents it, each holding the grid's JS source: no-unused-vars (2),
- * no-debugger (3), no-var (5).
- */
+/** One package in node_modules our ignores take back as ESLint documents it. Lines: no-unused-vars (2), no-debugger (3), no-var (5). */
 export const packageTakenBackSourceFiles: Readonly<Record<string, string>> = {
   'src/a.js': JS.text,
   'node_modules/mylib/a.js': JS.text,
   'node_modules/other/a.js': JS.text,
 }
 
-/** Our no-var, which our ESLint part runs, and no-unused-vars, which our oxlint part runs, beside ignores taking node_modules/mylib back. */
+/** no-var runs in our ESLint part, no-unused-vars in our oxlint part. */
 export const OURS_TAKING_A_PACKAGE_BACK_FROM_ESLINT_DEFAULTS: OurFields = {
   rules: { 'no-var': 'error', 'no-unused-vars': 'error' },
   ignores: ['!node_modules/', 'node_modules/*', '!node_modules/mylib/'],
 }
 
-/** The team's oxlint config turning on no-var, which our ESLint part runs, and nothing by category. */
 export const TEAM_OXLINT_CONFIG_TURNING_NO_VAR_ON: OxlintConfig = { categories: { correctness: 'off' }, rules: { 'no-var': 'error' } }
 
-/** Whether the engine lints the file with a config that ignores nothing: ESLint lints no file in node_modules. */
+/** ESLint lints no file in node_modules. */
 function lintsTheFile(engine: GridRule['teamsEngine'], file: string): boolean {
   return engine === 'oxlint' || !FILES_IN_NODE_MODULES.includes(file)
 }
 
-/** A finding as `file:line name`, none where the line is null. */
+/** None where the line is null. */
 function findingAt(file: string, line: number | null, name: string): string[] {
   return line === null ? [] : [`${file}:${String(line)} ${name}`]
 }
@@ -307,10 +272,8 @@ export const NO_DEBUGGER: RuleByItsNames = { rule: 'no-debugger', names: ['no-de
 
 export const NO_UNUSED_VARS: RuleByItsNames = { rule: 'no-unused-vars', names: ['no-unused-vars', 'eslint(no-unused-vars)'] }
 
-/** The two rules our oxlint part runs on the debugger sources, which the team turns on in ESLint too. */
 export const DEBUGGER_RULES = { 'no-debugger': 'error', 'no-unused-vars': 'error' } as const satisfies OurRules
 
-/** A TS file and the three component kinds, each holding the debugger source, one line down in a component. */
 export const debuggerSourceFiles = {
   'src/a.ts': DEBUGGER_SOURCE,
   'src/c.vue': `<script lang="ts">\n${DEBUGGER_SOURCE}</script>\n`,
@@ -329,14 +292,12 @@ export const ARRAY_TYPE: RuleByItsNames = {
 
 export const OURS_TURNING_ARRAY_TYPE_ON = { '@typescript-eslint/array-type': 'error' } as const satisfies OurRules
 
-/** A team oxlint config turning array-type on, and nothing by category. */
 export const TEAM_OXLINT_CONFIG_TURNING_ARRAY_TYPE_ON: OxlintConfig = {
   plugins: ['typescript'],
   categories: { correctness: 'off' },
   rules: { 'typescript/array-type': 'error' },
 }
 
-/** A TS file and the three component kinds, each holding an array type array-simple reports. */
 export const arrayTypeSourceFiles = {
   'src/a.ts': ARRAY_TYPE_SOURCE,
   'src/c.vue': `<script lang="ts">\n${ARRAY_TYPE_SOURCE}</script>\n`,
@@ -344,7 +305,6 @@ export const arrayTypeSourceFiles = {
   'src/c.astro': `---\n${ARRAY_TYPE_SOURCE}---\n`,
 } as const
 
-/** Both twins, by every name either engine reports them under. */
 export const MAX_PARAMS: RuleByItsNames = {
   rule: 'max-params',
   names: ['max-params', '@typescript-eslint/max-params', 'eslint(max-params)', 'typescript(max-params)'],
@@ -364,19 +324,17 @@ export const fiveParameterSourceFiles = {
 `,
 } as const
 
-/** Both twins of default-param-last, by every name either engine reports them under. */
 export const DEFAULT_PARAM_LAST: RuleByItsNames = {
   rule: 'default-param-last',
   names: ['default-param-last', '@typescript-eslint/default-param-last', 'eslint(default-param-last)'],
 }
 
-/** typescript-eslint's default-param-last, whose core rule the catalog routes to ESLint; our ignores leave out legacy/. */
+/** The catalog routes the core rule to ESLint; our ignores leave out legacy/. */
 export const OURS_SETTING_THE_DEFAULT_PARAM_LAST_EXTENSION: OurFields = {
   rules: { '@typescript-eslint/default-param-last': 'error' },
   ignores: ['legacy/'],
 }
 
-/** A team oxlint config turning default-param-last on, the core rule of a twin pair, and nothing by category. */
 export const TEAM_OXLINT_CONFIG_TURNING_DEFAULT_PARAM_LAST_ON: OxlintConfig = { categories: { correctness: 'off' }, rules: { 'default-param-last': 'error' } }
 
 // A parameter with a default before one without (1), which default-param-last reports.
@@ -385,7 +343,6 @@ const DEFAULT_PARAM_FIRST_TS_SOURCE = `export function last(a: number = 1, b: nu
 }
 `
 
-/** A TS and a JS file in src, where our part runs the pair, and a TS file in legacy, which our ignores leave out. */
 export const defaultParamFirstSourceFiles = {
   'src/a.ts': DEFAULT_PARAM_FIRST_TS_SOURCE,
   'src/b.js': `export function last(a = 1, b) {
@@ -395,16 +352,12 @@ export const defaultParamFirstSourceFiles = {
   'legacy/a.ts': DEFAULT_PARAM_FIRST_TS_SOURCE,
 } as const
 
-/** Both twins of no-redeclare, by every name either engine reports them under. */
 export const NO_REDECLARE: RuleByItsNames = {
   rule: 'no-redeclare',
   names: ['no-redeclare', '@typescript-eslint/no-redeclare', 'eslint(no-redeclare)'],
 }
 
-/**
- * Our no-redeclare in every file, and typescript-eslint's, with an option oxlint's no-redeclare
- * refuses (measured, oxlint 1.87: "unknown field `ignoreDeclarationMerge`"), in an entry for legacy/**.
- */
+/** oxlint's no-redeclare refuses the option (measured, oxlint 1.87: "unknown field `ignoreDeclarationMerge`"). */
 export const OURS_SETTING_NO_REDECLARE_WITH_AN_OPTION_OXLINT_REFUSES: OurFields = {
   rules: { 'no-redeclare': 'error' },
   fileOverrides: [{ files: ['legacy/**'], rules: { '@typescript-eslint/no-redeclare': ['error', { ignoreDeclarationMerge: true }] } }],
@@ -427,13 +380,10 @@ var x = 2
 export { x }
 `
 
-/** A team oxlint config turning no-redeclare on, the core rule of a twin pair, and nothing by category. */
 export const TEAM_OXLINT_CONFIG_TURNING_NO_REDECLARE_ON: OxlintConfig = { categories: { correctness: 'off' }, rules: { 'no-redeclare': 'error' } }
 
-/** The team's ESLint rules turning no-redeclare on, the core rule of a twin pair. */
 export const TEAM_ESLINT_RULES_TURNING_NO_REDECLARE_ON = { 'no-redeclare': 'error' } as const
 
-/** A TS and a JS file in legacy, where the entry sets typescript-eslint's no-redeclare, and in src, where it does not. */
 export const redeclaringSourceFiles = {
   'legacy/a.ts': REDECLARING_TS_SOURCE,
   'legacy/b.js': REDECLARING_JS_SOURCE,

@@ -4,23 +4,22 @@ import { devNull } from 'node:os'
 import { dirname, join } from 'node:path'
 import { CONSUMER_INSTALL, type LinkedPackage, type ProjectFiles, type TempProjects, writeFileCreatingItsDir } from './temp-projects.ts'
 
-/** How the project's folder stands to git before the agent's changes. */
 export type RepoState = 'committed' | 'no commits' | 'not a repo'
 
 export type GitProjectSpec = {
-  /** The project's files before the agent's changes: the first commit, where the repo has one. */
+  /** The first commit, where the repo has one. */
   readonly files: ProjectFiles
   readonly repo: RepoState
   /** Installed in the folder above the project. A consumer's install unless given: this package and oxlint. */
   readonly linkedPackages?: readonly LinkedPackage[]
 }
 
-/** A temp project, by its real path, and the changes an agent makes to it. Every file path is relative to the project. */
+/** By its real path; every file path is relative to the project. */
 export type GitProject = {
   readonly dir: string
   readonly pathOf: (file: string) => string
   readonly read: (file: string) => string
-  /** The file's text, or null where there is no such file: for a file the run under test should have written. */
+  /** Null where there is no such file. */
   readonly readIfWritten: (file: string) => string | null
   readonly readBytes: (file: string) => Buffer
   readonly exists: (file: string) => boolean
@@ -49,7 +48,6 @@ const GIT_ISOLATION = {
 // The test's own git commands never refresh the index on the side, so only check could change it.
 const NO_OPTIONAL_LOCKS = { GIT_OPTIONAL_LOCKS: '0' }
 
-/** The project, made as the spec says, its repo initialised and committed as `repo` says. */
 export function createGitProject(tempProjects: TempProjects, { files, repo, linkedPackages = CONSUMER_INSTALL }: GitProjectSpec): GitProject {
   const dir = realpathSync(tempProjects.create({ files, linkedPackages }))
   if (repo !== 'not a repo') gitIn(dir, ['init', '--quiet'])
@@ -93,7 +91,7 @@ export function gitStatusOf(project: GitProject): string[] {
     .toSorted()
 }
 
-/** The test's own environment for a process it starts, with git kept to the folder it runs in, and the variables given over it. */
+/** git kept to the folder it runs in, the variables given over it. */
 export function testEnv(variables: Readonly<Record<string, string>>): NodeJS.ProcessEnv {
   const inherited = Object.fromEntries(Object.entries(process.env).filter(([name]) => !GIT_REPOSITORY_VARIABLES.includes(name)))
   return { ...inherited, ...GIT_ISOLATION, ...variables }

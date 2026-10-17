@@ -37,15 +37,13 @@ undefinedThing()
 `,
 } as const
 
-/** The folders of a team project whose overrides list the react plugin: src, and lib beside it, which no override for src matches. */
+/** src, and lib, which no override for src matches. */
 export const REACT_LINTED_DIRS = ['src', 'lib']
 
-// react/jsx-no-duplicate-props, which the react plugin's correctness category turns on, and
-// react/jsx-key, both on line 1.
+// react/jsx-no-duplicate-props (via react's correctness category) and react/jsx-key, both on line 1.
 const REACT_SOURCE = `export const List = () => <ul id="a" id="b">{[1].map(() => <li />)}</ul>
 `
 
-/** The same react source in four files a team's override globs tell apart: .tsx, .jsx, a test file, and one outside src. */
 export const reactSourceFiles = {
   'src/f.tsx': REACT_SOURCE,
   'src/g.jsx': REACT_SOURCE,
@@ -76,13 +74,11 @@ export const localPlugin = `export default {
 }
 `
 
-/** A browser script in two folders, src and lib, an entry of ours can tell apart. */
 export const browserSourceFilesInTwoFolders = {
   'src/i.js': browserSourceFiles['src/i.js'],
   'lib/i.js': browserSourceFiles['src/i.js'],
 } as const
 
-/** The folders the browser scripts are in. */
 export const BROWSER_LINTED_DIRS = ['src', 'lib']
 
 // typescript/array-type under array-simple (1); a second line, so a max-lines of 1 reports the file.
@@ -90,16 +86,11 @@ const ARRAY_TYPE_SOURCE = `export const list: Array<string> = []
 export const other = 1
 `
 
-// The same, in a TSX file.
 const ARRAY_TYPE_TSX_SOURCE = `export const list: Array<string> = []
 export const View = () => <div />
 `
 
-/**
- * Files where our ESLint part runs a rule or not, by our ignores (dist, and a folder named generated
- * at the root and in src), an entry of ours (legacy), and the rule's own files (max-lines ships for
- * .tsx files but tests).
- */
+/** Our ESLint part runs a rule here or not by our ignores (dist, generated), an entry (legacy), and max-lines' own files (.tsx but tests). */
 export const crossEngineSourceFiles = {
   'src/a.ts': ARRAY_TYPE_SOURCE,
   'dist/a.ts': ARRAY_TYPE_SOURCE,
@@ -110,17 +101,15 @@ export const crossEngineSourceFiles = {
   'src/f.test.tsx': ARRAY_TYPE_TSX_SOURCE,
 } as const
 
-/** The folders the cross-engine files are in. */
 export const CROSS_ENGINE_LINTED_DIRS = ['src', 'dist', 'legacy', 'generated']
 
-/** A folder named legacy at the root and in src, which an ignore ending in a slash tells apart by engine, and a file beside them. */
+/** An ignore ending in a slash tells the root and src legacy folders apart by engine. */
 export const trailingSlashSourceFiles = {
   'src/a.ts': ARRAY_TYPE_SOURCE,
   'legacy/a.ts': ARRAY_TYPE_SOURCE,
   'src/legacy/a.ts': ARRAY_TYPE_SOURCE,
 } as const
 
-/** The folders the trailing-slash files are in. */
 export const TRAILING_SLASH_LINTED_DIRS = ['src', 'legacy']
 
 // typescript/array-type under array-simple (1); eqeqeq under always (2); no-warning-comments under
@@ -138,14 +127,10 @@ export const negatedIgnoresSourceFiles = {
   'lib/b.ts': ARRAY_TYPE_AND_LOOSE_EQUALITY_SOURCE,
 } as const
 
-/** The paths of the negated-ignores files, the root file by name, so oxlint lints no config file written beside it. */
+/** The root file by name, so oxlint lints no config file written beside it. */
 export const NEGATED_IGNORES_LINTED_PATHS = ['a.ts', 'src', 'lib']
 
-/**
- * Files an entry of ours for lib/** and max-lines' own files (.tsx and .jsx but tests) tell apart:
- * a .tsx file, a test .tsx file and a .ts file in lib, and a .tsx and a .ts file in src. Each has a
- * second line, so a max-lines of 1 reports it.
- */
+/** Each file has a second line, so a max-lines of 1 reports it. */
 export const maxLinesSourceFiles = {
   'src/f.tsx': ARRAY_TYPE_TSX_SOURCE,
   'src/a.ts': ARRAY_TYPE_SOURCE,
@@ -154,5 +139,4 @@ export const maxLinesSourceFiles = {
   'lib/b.ts': ARRAY_TYPE_SOURCE,
 } as const
 
-/** The folders the max-lines files are in. */
 export const MAX_LINES_LINTED_DIRS = ['src', 'lib']

@@ -7,9 +7,8 @@ import { isIgnoredByOxlintConfig, oxlintConfigForFile, oxlintSeverityFor } from 
 import { allowEveryTestForParallelLoad } from './parallel-load.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './temp-projects.ts'
 
-// The oracle the merge specs read configs through, against the real oxlint CLI: for each way a
-// config can name files or set env, the files the oracle says a rule runs in are those oxlint
-// reports it in. A specs' reading that oxlint does not share would let a merge defect through.
+// The oracle the merge specs read configs through, against the real oxlint CLI: a reading oxlint does not share
+// would let a merge defect through.
 
 const NO_DEBUGGER = 'no-debugger'
 const NO_DEBUGGER_CODE = 'eslint(no-debugger)'
@@ -20,24 +19,20 @@ const PROJECT = setUpTempProjects().create({ files: folderLayoutSourceFiles, lin
 
 allowEveryTestForParallelLoad()
 
-/** The files oxlint reports the code in with the config given, written to the file given. */
 function filesOxlintReports(file: string, config: OxlintConfig, code: string): string[] {
   writeOxlintConfigFile(PROJECT, file, config)
   const findings = oxlintFindingsIn(runOxlintCli(PROJECT, file).report).filter(({ rule }) => rule === code)
   return [...new Set(findings.map((finding) => finding.file))].toSorted()
 }
 
-/** A config running no-debugger and no other rule, in every file its ignore patterns leave. */
 function ignoringConfig(pattern: string): OxlintConfig {
   return buildTeamOxlintConfig({ categories: EVERY_CATEGORY_OFF, ignorePatterns: [pattern], rules: { [NO_DEBUGGER]: 'error' } })
 }
 
-/** A config running no-debugger in an override's files, less its excludeFiles, and no other rule. */
 function overrideConfig(override: Omit<NonNullable<OxlintConfig['overrides']>[number], 'rules'>): OxlintConfig {
   return buildTeamOxlintConfig({ categories: EVERY_CATEGORY_OFF, overrides: [{ ...override, rules: { [NO_DEBUGGER]: 'error' } }] })
 }
 
-/** A config running no-undef, with the env given in the place given. */
 function noUndefConfig(fields: OxlintConfig): OxlintConfig {
   return buildTeamOxlintConfig({ categories: EVERY_CATEGORY_OFF, rules: { 'no-undef': 'error' }, ...fields })
 }

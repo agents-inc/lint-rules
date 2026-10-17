@@ -3,29 +3,19 @@ import inventory from '@workspace/rule-data/generated/inventory.json' with { typ
 import type { OxlintConfig, OxlintOverride } from 'oxlint'
 import { oxlintPluginListedAs, oxlintRuleKeyedBy } from './oxlint-rule-keys.ts'
 
-// When the team's oxlint config sets a rule (spec-merge-model.md, 1.2): anywhere, in whatever files,
-// at any severity. A model of oxlint 1.87's config resolution, written apart from the merge
-// (Oxlintrc::merge in oxlintrc.rs, override_rules in rules.rs, resolve_overrides in
-// config_builder.rs, apply_overrides in config_store.rs):
-// - A config's root merges with every config it extends: two `plugins` lists unite, and one left out
-//   adds oxlint's default plugins to the other's; left out everywhere, the defaults are the root's.
-//   Categories merge key by key, the extending config's over the extended one's. Only a category a
-//   config writes counts: oxlint's own `correctness: warn`, which runs where every config leaves
-//   correctness out, sets no rule (decisions.md, "Owner 2026-10-14 (questions on the merge rework
-//   spec", point 1).
-// - A root statement counts where its rule's plugin is listed at the root, or is eslint, which
-//   always runs; an override's where it is listed at the root or in that very override. A statement
-//   oxlint ignores sets nothing (O5).
-// - A category on at the root runs each of its rules whose plugin is eslint, or is listed at the root
-//   or in any override, nursery rules included (measured, oxlint 1.87: `nursery: 'warn'` runs
-//   import/named, no-undef and no-unreachable-loop); never a type-aware one unless `options.typeAware` is on.
-// - A key under the prefix of a JS plugin the config names by its package, or by `{ name }`, sets the
-//   rule of ours that key is an ESLint name of.
+// When the team's oxlint config sets a rule: anywhere, in any files, at any severity. A model of oxlint 1.87's
+// config resolution, written apart from the merge (oxlintrc.rs, rules.rs, config_builder.rs, config_store.rs):
+// - A root merges with every config it extends: `plugins` lists unite, and one left out adds oxlint's defaults.
+//   Categories merge key by key, the extending config's winning; oxlint's own `correctness: warn` sets no rule.
+// - A root statement counts where its plugin is eslint or listed at the root; an override's where it is listed
+//   at the root or in that override.
+// - A category on at the root runs its rules whose plugin is eslint or listed anywhere, nursery included
+//   (measured: `nursery: 'warn'` runs import/named), type-aware ones only with `options.typeAware`.
+// - A key under a JS plugin's prefix sets the rule of ours that key is an ESLint name of.
 
-/** The configs a team's config extends by path, by the path its `extends` gives: the oxlint run reads them. */
+/** Keyed by the path `extends` gives. */
 export type ConfigsExtendedByPath = ReadonlyMap<string, OxlintConfig>
 
-/** A JS plugin as a config names it: a package or a path, or a name for it and its specifier. */
 type JsPluginEntry = NonNullable<OxlintConfig['jsPlugins']>[number]
 
 type CategorySeverities = Readonly<Record<string, unknown>>
@@ -48,7 +38,6 @@ const TYPE_AWARE_RULE_IDS: ReadonlySet<string> = new Set(
   inventory.rules.flatMap(({ id, oxlint }) => (oxlint !== null && oxlint.typeAware ? [id] : [])),
 )
 
-/** The RuleId of every rule the team's oxlint config sets, sorted. */
 export function ruleIdsTheTeamsOxlintConfigSets(
   team: OxlintConfig,
   catalog: Catalog,
@@ -113,7 +102,6 @@ function resolvedCategoriesOf(config: OxlintConfig, extendedByPath: ConfigsExten
   )
 }
 
-/** Whether the config runs oxlint's type-aware rules: its options turn them on. */
 function typeAwareRulesRun({ options }: OxlintConfig): boolean {
   return options !== undefined && options.typeAware === true
 }
@@ -146,7 +134,6 @@ function rulesItsCategoriesRun(
   )
 }
 
-/** Each rule of ours an ESLint name of which a statement keys under the prefix of a JS plugin the configs name. */
 function ruleIdsKeyedUnderJsPlugins(configs: readonly OxlintConfig[], catalog: Catalog): string[] {
   const prefixes: ReadonlySet<string | null> = new Set(configs.flatMap(jsPluginsNamedBy).flatMap(prefixOfJsPlugin))
   const keys = configs.flatMap(({ rules = {}, overrides = [] }) => [

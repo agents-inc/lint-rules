@@ -19,11 +19,7 @@ export function snapshotOf(plugin: ESLint.Plugin): PluginSnapshot {
   }
 }
 
-/**
- * Each change made to the plugin object since its snapshot, one line each: a key or rule added,
- * removed or replaced by another object, or the meta changed in place. None for a plugin left as
- * it was.
- */
+/** One line per change since the snapshot: a key or rule added, removed or replaced, or the meta changed in place. */
 export function changesSince(snapshot: PluginSnapshot): string[] {
   const now = snapshotOf(snapshot.plugin)
   return [

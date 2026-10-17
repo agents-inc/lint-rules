@@ -13,16 +13,12 @@ import {
   suppressionOfTheNextLine,
 } from '../factories/check-factories.ts'
 
-/** A rule a suppression comment names that silenced nothing, by the line the comment starts on. */
 export type UnusedAt = { readonly line: number; readonly ruleName: string }
 
 /**
- * A file whose disable comments silenced nothing, one of which oxlint reports at the enable comment
- * that closes it: oxlint's report on the file's text with no-debugger on, as the factories build it
- * (checked against oxlint in check-factories.test.ts); where ESLint, running no-var alone, reports
- * one (measured, ESLint 10.12); and the unused suppressions check reports, each at the disable
- * comment that turned the rule off.
- */
+* Disable comments that silenced nothing, one of which oxlint reports at the enable comment closing it: oxlint's
+* report (checked in check-factories.test.ts), ESLint's (measured, ESLint 10.12), and what check reports.
+*/
 export type SuppressionPairCase = {
   readonly shape: string
   readonly lines: readonly string[]
@@ -39,8 +35,8 @@ const ENABLE_NO_DEBUGGER = blockEnable({ form: 'eslint', ruleName: NO_DEBUGGER }
 // oxlint spans a line comment that silenced nothing up to the line's end, its trailing spaces included (measured, 1.87).
 const TRAILING_SPACES = '   '
 
-// Comment-like text in a string or a template literal is no comment: the engines read only real
-// comments (measured, oxlint 1.87, ESLint 10.12). Each pair below silenced nothing.
+// Comment-like text in a string or template is no comment to the engines (measured, oxlint 1.87, ESLint 10.12).
+// Each pair below silenced nothing.
 
 /** A pair around a string that holds the text of an enable comment (line 2): oxlint reports the pair at line 3. */
 export const A_PAIR_AROUND_A_STRING_HOLDING_AN_ENABLE = [blockDisable('eslint', NO_DEBUGGER), exportedString('between', ENABLE_NO_DEBUGGER), ENABLE_NO_DEBUGGER]
@@ -56,7 +52,7 @@ export const A_PAIR_BELOW_A_STRING_HOLDING_A_DISABLE = [
   ENABLE_NO_DEBUGGER,
 ]
 
-/** The same pair below a string that holds no comment text: the control beside the one above. */
+/** The control beside the one above. */
 export const A_PAIR_BELOW_A_STRING_HOLDING_NO_COMMENT = [exportedString('above', 'no comment here'), blockDisable('eslint', NO_DEBUGGER), exportedConstant('between'), ENABLE_NO_DEBUGGER]
 
 export const SUPPRESSION_PAIR_CASES: readonly SuppressionPairCase[] = [

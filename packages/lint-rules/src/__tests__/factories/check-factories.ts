@@ -30,33 +30,24 @@ const BLOCK_COMMENT_START = '/*'
 const BLOCK_COMMENT_END = '*/'
 const NOT_FOUND = -1
 const UNUSED_SUPPRESSION_LABEL = 'unused suppression'
-/** The file a unit test's reports are on, as check prints it. */
 export const REPORTED_FILE = 'src/a.ts'
 
-/** The agent rulesets most check runs use: their fixtures fire rules that report and never fix. */
+/** Their fixtures fire rules that report and never fix. */
 export const REDUNDANCY = { quality: ['redundancy'] } as const
 
-/** Settings that allow suppression comments in the files under src/allowed (q-c15). */
 export const SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED: SharedFields = { fileOverrides: [{ files: ['src/allowed/**'], allowSuppressions: true }] }
 
-/** A package's folder below the repo's top level, as in a monorepo. */
 export const NESTED_PACKAGE = 'packages/a'
 
-/** check's stderr where a signal stopped it (q-c2). */
 export const CHECK_INTERRUPTED = 'check: interrupted\n'
 
-/** How check's stderr starts where ESLint failed. */
 export const CHECK_ESLINT_FAILED = 'check: could not run: ESLint failed: '
 
-/** agents-inc.lint.mts listing the agent rulesets given and the other settings given, the editor set empty. */
 export function checkConfigText(agentRulesets: Partial<Rulesets>, fields: SharedFields = {}): string {
   return agentsIncLintModuleTextRootedAtItsFolder(buildConsumerSettings({ agentRulesets }, fields))
 }
 
-/**
- * agents-inc.lint.mts handing defineLintRules the settings given as they are, which may be ones it
- * refuses, rooted at its own folder.
- */
+/** Hands defineLintRules the settings as they are, which may be ones it refuses. */
 export function checkConfigTextHanding(settings: unknown): string {
   return `import { defineLintRules } from '${BUILT_PACKAGE}'
 
@@ -64,7 +55,7 @@ export const { eslint, oxlint } = defineLintRules({ tsconfigRootDir: import.meta
 `
 }
 
-/** A package's own files for check: its package.json and agents-inc.lint.mts, under the folder given ('' for the project's root). */
+/** Under the folder given, '' for the project's root. */
 export function checkedPackageFiles(agentRulesets: Partial<Rulesets>, fields: SharedFields = {}, folder = ''): ProjectFiles {
   return {
     [`${folder}${PACKAGE_JSON_FILE}`]: packageJsonText(buildPackageJson()),
@@ -72,56 +63,46 @@ export function checkedPackageFiles(agentRulesets: Partial<Rulesets>, fields: Sh
   }
 }
 
-/** A module's text: the lines given, each ending in a newline. */
 export function moduleText(...lines: readonly string[]): string {
   return lines.map((line) => `${line}${LINE_END}`).join('')
 }
 
-/** A line exporting a constant, named so no two files share it. */
 export function exportedConstant(name: string): string {
   return `export const ${name} = 1`
 }
 
-/** A line exporting a constant that holds the value given, written as JSON. */
 export function exportedValue(name: string, value: unknown): string {
   return `export const ${name} = ${JSON.stringify(value)}`
 }
 
-/** A line that has Node emit a warning of the name and message given, once the module running it has loaded. */
+/** Node emits the warning once the module running it has loaded. */
 export function emittingAWarning(name: string, message: string): string {
   return `process.emitWarning(${JSON.stringify(message)}, ${JSON.stringify(name)})`
 }
 
-/** A line exporting a string constant that holds the text given, in double quotes. */
 export function exportedString(name: string, text: string): string {
   return `export const ${name} = ${JSON.stringify(text)}`
 }
 
-/** A line exporting a JSX element: it parses as a `.tsx` file and not as a `.ts` one. */
+/** Parses as `.tsx` and not as `.ts`. */
 export function exportedElement(name: string): string {
   return `export const ${name} = <div />`
 }
 
-/** Three lines exporting a template literal whose middle line is the text given. */
 export function exportedTemplate(name: string, middleLine: string): string[] {
   return [`export const ${name} = \``, middleLine, '`']
 }
 
-/** A line exporting a `let` nothing reassigns: oxlint's prefer-const reports it and fixes it to `const`. */
+/** oxlint's prefer-const reports it and fixes it to `const`. */
 export function exportedLet(name: string): string {
   return `export let ${name} = 1`
 }
 
-/** That line as prefer-const's fix leaves it. */
 export function exportedConstFixedFromLet(name: string): string {
   return `export const ${name} = 1`
 }
 
-/**
- * oxlint's fix run as a stand-in: it writes the text after its fixes of each file given that has one,
- * by its path in the project, and leaves any other file alone, as oxlint leaves a file it finds
- * nothing to fix in.
- */
+/** A stand-in oxlint fix run: rewrites each file given, leaving others alone as oxlint leaves a file with nothing to fix. */
 export function oxlintFixRunWriting(projectDir: string, afterFixes: ProjectFiles): InPlaceFixer {
   return async (paths) => {
     Object.entries(afterFixes).forEach(([file, fixed]) => {
@@ -130,35 +111,30 @@ export function oxlintFixRunWriting(projectDir: string, afterFixes: ProjectFiles
   }
 }
 
-/** A file whose lines all change: ESLint's ChangedLines for it. */
 export function wholeFileChanged(): ChangedLines {
   return { wholeFile: true }
 }
 
-/** A file of which only the lines given changed. */
 export function linesChanged(...lines: readonly number[]): ChangedLines {
   return { wholeFile: false, lines: new Set(lines) }
 }
 
-/** A finding as check reports it, by its path relative to the config's folder: an error unless given. */
+/** By its path relative to the config's folder: an error unless given. */
 export function buildCheckFinding(fields: Partial<CheckFinding> = {}): CheckFinding {
   return { file: 'src/a.ts', line: 1, label: 'no-console', severity: 'error', message: 'Unexpected console statement.', ...fields }
 }
 
-/** The message of every message buildLintMessage makes. */
 export const ESLINT_FINDING_MESSAGE = 'a fixable finding'
 
-/** One ESLint message, at error severity, with the rule and line given: no rule for one of ESLint's own. */
+/** At error severity; no rule for one of ESLint's own. */
 export function buildLintMessage({ ruleId, line }: { readonly ruleId: string | null; readonly line: number }): Linter.LintMessage {
   return { ruleId, line, column: 1, message: ESLINT_FINDING_MESSAGE, severity: ESLINT_ERROR }
 }
 
-/** As buildLintMessage, of a rule a team set to warn. */
 export function buildLintWarning({ ruleId, line }: { readonly ruleId: string; readonly line: number }): Linter.LintMessage {
   return { ...buildLintMessage({ ruleId, line }), severity: ESLINT_WARNING }
 }
 
-/** ESLint's result on the file at the path given: no message and no fixed text, unless given. */
 export function buildLintResult(filePath: string, fields: Partial<ESLint.LintResult> = {}): ESLint.LintResult {
   return {
     filePath,
@@ -174,10 +150,9 @@ export function buildLintResult(filePath: string, fields: Partial<ESLint.LintRes
   }
 }
 
-/** A suppression comment's form: which engine's name it starts with. */
 export type SuppressionForm = 'eslint' | 'oxlint'
 
-/** A file both engines reported on, with the lines given: REPORTED_FILE, suppressions allowed, and neither engine reported anything, unless given. */
+/** REPORTED_FILE, suppressions allowed and nothing reported, unless given. */
 export function buildFileReports({
   file = REPORTED_FILE,
   lines,
@@ -197,9 +172,9 @@ export function buildFileReports({
 }
 
 /**
- * Where the whole of one line of the module text is, as oxlint gives a span: the line (from 1), and
- * its offset and length in UTF-8 bytes. oxlint spans a suppression comment that silenced nothing this way.
- */
+* As oxlint spans a suppression comment that silenced nothing: the line (from 1), and its offset and length in
+* UTF-8 bytes.
+*/
 export function spanOfLine(text: string, line: number): OxlintSpan {
   const lines = text.split(LINE_END)
   const spanned = lines[line - 1]
@@ -208,91 +183,77 @@ export function spanOfLine(text: string, line: number): OxlintSpan {
   return { line, offset: Buffer.byteLength(before.join('')), length: Buffer.byteLength(spanned) }
 }
 
-/** The message of every finding buildOxlintDiagnostic makes. */
 export const OXLINT_FINDING_MESSAGE = 'a finding at each place'
 
-/** An oxlint finding of the rule whose code is given, at each place given, oxlint's first label first. */
+/** oxlint's first label first. */
 export function buildOxlintDiagnostic(code: string, ...spans: readonly OxlintSpan[]): OxlintDiagnostic {
   return { code, message: OXLINT_FINDING_MESSAGE, severity: 'error', filename: REPORTED_FILE, spans }
 }
 
-/** As buildOxlintDiagnostic, of a rule a team set to warn. */
 export function buildOxlintWarning(code: string, ...spans: readonly OxlintSpan[]): OxlintDiagnostic {
   return { ...buildOxlintDiagnostic(code, ...spans), severity: OXLINT_WARNING }
 }
 
-/** oxlint's report of a suppression comment, at its span, that silenced nothing: oxlint gives it no code (measured, 1.87). */
+/** oxlint gives it no code (measured, 1.87). */
 export function oxlintUnusedSuppression(form: SuppressionForm, span: OxlintSpan): OxlintDiagnostic {
   return { code: null, message: `Unused ${form}-disable directive (no problems were reported).`, severity: 'error', filename: REPORTED_FILE, spans: [span] }
 }
 
-/**
- * oxlint's report of one rule a suppression comment names that silenced nothing, where another it
- * names silenced something: no code, spanning that rule's name (measured, 1.87).
- */
+/** Where another rule the comment names silenced something: no code, spanning that rule's name (measured, 1.87). */
 export function oxlintPartlyUnusedSuppression(form: SuppressionForm, ruleName: string, span: OxlintSpan): OxlintDiagnostic {
   return { code: null, message: `Unused ${form}-disable directive (no problems were reported from ${ruleName}).`, severity: 'error', filename: REPORTED_FILE, spans: [span] }
 }
 
-/** ESLint's report of a suppression comment on the line given that silenced nothing of the rule named: no rule reports it (measured, 10.12). */
+/** No rule reports it (measured, ESLint 10.12). */
 export function eslintUnusedSuppression(ruleName: string, line: number): Linter.LintMessage {
   return { ruleId: null, line, column: 1, message: eslintUnusedSuppressionText(ruleName), severity: ESLINT_ERROR }
 }
 
-/** The text of ESLint's report of a suppression comment that silenced nothing of the rule named. */
 export function eslintUnusedSuppressionText(ruleName: string): string {
   return `Unused eslint-disable directive (no problems were reported from '${ruleName}').`
 }
 
-/** A suppression comment, in the form given, of the rule named on the next line. */
 export function suppressionOfTheNextLine(form: SuppressionForm, ruleName: string): string {
   return `// ${form}-disable-next-line ${ruleName}`
 }
 
-/** A reason a suppression comment gives after `--`. */
 export const A_SUPPRESSION_REASON = 'kept, while it is debugged'
 
-/** As suppressionOfTheNextLine, giving the reason after `--`, as both engines read it. */
+/** Both engines read the reason after `--`. */
 export function suppressionOfTheNextLineWithAReason(form: SuppressionForm, ruleName: string, reason: string): string {
   return `${suppressionOfTheNextLine(form, ruleName)} -- ${reason}`
 }
 
-/** A block comment, in the form given, turning the rule named off for the lines below it, up to an enable comment of it. */
 export function blockDisable(form: SuppressionForm, ruleName: string): string {
   return `/* ${form}-disable ${ruleName} */`
 }
 
-/** A block comment turning back on the rule it names, or every rule where it names none (`ruleName` null). */
+/** `ruleName` null turns every rule back on. */
 export type EnableComment = { readonly form: SuppressionForm; readonly ruleName: string | null }
 
 export function blockEnable({ form, ruleName }: EnableComment): string {
   return ruleName === null ? `/* ${form}-enable */` : `/* ${form}-enable ${ruleName} */`
 }
 
-/** A block disable comment in the form given of the rule named, the line given, then its enable comment. */
 export function blockPairAround(form: SuppressionForm, ruleName: string, between: string): string[] {
   return [blockDisable(form, ruleName), between, blockEnable({ form, ruleName })]
 }
 
-/** What check says of a suppression comment of the rule named that silenced nothing (q-c15). */
 export function unusedSuppressionMessageOf(ruleName: string): string {
   return `suppresses ${ruleName}, which reported nothing here`
 }
 
-/** A suppression comment of the rule named that silenced nothing, at its line: in REPORTED_FILE unless a file is given. */
+/** In REPORTED_FILE unless a file is given. */
 export type UnusedSuppressionAt = { readonly line: number; readonly ruleName: string; readonly file?: string }
 
-/** That suppression as check reports it (q-c15). */
 export function buildUnusedSuppressionFinding({ line, ruleName, file = REPORTED_FILE }: UnusedSuppressionAt): CheckFinding {
   return buildCheckFinding({ file, line, label: UNUSED_SUPPRESSION_LABEL, message: unusedSuppressionMessageOf(ruleName) })
 }
 
 /**
- * oxlint's report of the enable comment on the line given of the text, where it turns back on
- * nothing a disable comment turned off: no code, as an unused suppression has none. oxlint spans the
- * rule the comment names, or, where it names none, the comment's text inside its delimiters
- * (measured, 1.87).
- */
+* An enable comment turning back on nothing: no code. oxlint spans the rule it names, or else the comment's text
+* inside its delimiters (measured, 1.87).
+*/
 export function oxlintUnusedEnable(enable: EnableComment, text: string, line: number): OxlintDiagnostic {
   const { form, ruleName } = enable
   const forTheRule = ruleName === null ? '' : ` for ${ruleName}`
@@ -306,12 +267,11 @@ export function oxlintUnusedEnable(enable: EnableComment, text: string, line: nu
   }
 }
 
-/** oxlint's report of a parse error at the span given: no code, and its parser's message (measured, 1.87, at the `=` of `export const = 2`). */
+/** No code, and its parser's message (measured, 1.87, at the `=` of `export const = 2`). */
 export function oxlintParseError(span: OxlintSpan): OxlintDiagnostic {
   return { code: null, message: 'Unexpected token', severity: 'error', filename: REPORTED_FILE, spans: [span] }
 }
 
-/** Where the text given first appears on the line given of the module text, as oxlint gives a span. */
 export function spanOfTextOnLine(text: string, line: number, spanned: string): OxlintSpan {
   const whole = spanOfLine(text, line)
   const lineText = Buffer.from(text).subarray(whole.offset, whole.offset + whole.length).toString()
@@ -320,26 +280,22 @@ export function spanOfTextOnLine(text: string, line: number, spanned: string): O
   return { line, offset: whole.offset + Buffer.byteLength(lineText.slice(0, at)), length: Buffer.byteLength(spanned) }
 }
 
-/** The fixes check never applies, rule ID to why: here one. */
+/** The fixes check never applies, rule ID to why: one reason for all. */
 export function buildWithheldFixes(...ruleIds: readonly string[]): ReadonlyMap<string, string> {
   return new Map(ruleIds.map((ruleId) => [ruleId, 'reorders what the program observes']))
 }
 
-/** The end of check's summary when errors are left (q-c4). */
 export const ERRORS_SUMMARY_TAIL =
   "The list is complete: fix what is in code you wrote, then run check again. Do not read the lint configuration or this package's source; each line says what to fix."
 
-/**
- * The end of the summary when errors are left and the cut left some out: the list is not complete
- * there, so the summary does not say it is (the cut line above it says to run check again).
- */
+/** After a cut the list is not complete, so the summary does not say it is. */
 export const ERRORS_SUMMARY_TAIL_AFTER_A_CUT =
   "Fix what is in code you wrote, then run check again. Do not read the lint configuration or this package's source; each line says what to fix."
 
 /** A finding line's length for which 80 lines fill check's 8,000-character cap, whether or not their newlines count. */
 export const LINE_LENGTH_FILLING_THE_CAP_IN_80 = 99
 
-/** The line spec-cli.md's "Output contract" prints for the finding. */
+/** The line check prints for the finding. */
 export function findingLineOf({ file, line, label, severity, message }: CheckFinding): string {
   const warningMark = severity === 'warning' ? ' (warning)' : ''
   return `${file}:${String(line)} ${label}${warningMark} — ${message}`

@@ -12,16 +12,13 @@ const TRY_EXTENSIONS = 'tryExtensions'
 const SETTINGS_READ_AS_ONE_OBJECT = ['typescriptExtensionMap', 'tsconfigPath'] as const
 const [N_SETTINGS_KEY, LEGACY_SETTINGS_KEY] = SETTINGS_KEYS_IN_THE_ORDER_READ
 
-/** The extensions eslint-plugin-n tries for a file whose rule gives none: the first `tryExtensions` array of settings.n and settings.node, as strings; undefined where neither holds one. */
+/** The first `tryExtensions` array of settings.n and settings.node; undefined where neither holds one. */
 export function tryExtensionsEslintPluginNReads(settings: unknown): string[] | undefined {
   if (!isRecord(settings)) return undefined
   return SETTINGS_KEYS_IN_THE_ORDER_READ.map((key) => tryExtensionsIn(settings[key])).find((extensions) => extensions !== undefined)
 }
 
-/**
- * typescriptExtensionMap and tsconfigPath, each where it is set, of the one object eslint-plugin-n
- * reads both from for a file whose rule gives neither: settings.n where it is set, else settings.node.
- */
+/** From settings.n where it is set, else settings.node. */
 export function typescriptSettingsEslintPluginNReads(settings: unknown): Readonly<Record<string, unknown>> {
   if (!isRecord(settings)) return {}
   const readFrom = settingsReadAsOneObjectIn(settings)

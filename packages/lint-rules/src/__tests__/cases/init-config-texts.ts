@@ -1,7 +1,7 @@
 import { buildRulesetDefinition, type InitLists, type InitRulesetDefinition } from '../factories/init-factories.ts'
 
-// Small ruleset catalogs and the exact text init writes for each (q-i6, q30a, q-i7; spec-cli.md
-// "The config text"). Data order is not alphabetical, so a sorted list would show.
+// Small ruleset catalogs and the exact text init writes for each. Data order is not alphabetical, so a sorted
+// list would show.
 
 /**
  * Two opt-in quality rulesets; a testing domain with an opt-in member, whose last member comes after
@@ -78,7 +78,6 @@ const config = defineLintRules({
 export const { eslint, oxlint } = config.editorRulesets
 `
 
-/** The lists TEXT_WITH_OPT_IN_RULESETS gives, for the factory that lays out init's text. */
 export const LISTS_WITH_OPT_IN_RULESETS: InitLists = {
   quality: { listed: ['naming', 'correctness'], optIn: ['strict-design-tokens', 'strict-naming'] },
   libs: [
@@ -148,10 +147,10 @@ export const LISTS_WITH_AN_EMPTY_FLAT_LIST: InitLists = {
 }
 
 /**
- * The opt-in rulesets that sort code (owner, 2026-10-15): two in quality, beside an opt-in one that
- * sorts nothing and which the formatter warning leaves out; one in a libs domain, under its domain's
- * comment; and a language that sorts code but is not opt-in, so it is listed under no comment.
- */
+* The opt-in rulesets that sort code: two in quality, beside an opt-in one that sorts nothing and which the
+* formatter warning leaves out; one in a libs domain, under its domain's comment; and a language that sorts
+* code but is not opt-in, so it is listed under no comment.
+*/
 export const CATALOG_WITH_SORTING_RULESETS: readonly InitRulesetDefinition[] = [
   buildRulesetDefinition({ name: 'naming', list: 'quality' }),
   buildRulesetDefinition({ name: 'import-order', list: 'quality', optIn: true, sortsCode: true }),

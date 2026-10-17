@@ -39,8 +39,8 @@ describe('oxlintConfigForFile', () => {
   })
 })
 
-// oxlint matches a glob with no slash against the file's name, at any depth, and reads `./` as the
-// config's folder (measured, oxlint 1.87; oxlint-config-oracle.integration.test.ts).
+// oxlint matches a glob with no slash against the file's name at any depth, and reads `./` as the config's
+// folder (measured, oxlint 1.87).
 describe('oxlintConfigForFile, given override globs written as a file name or from the config folder', () => {
   const byName: OxlintConfig = {
     overrides: [
@@ -61,9 +61,8 @@ describe('oxlintConfigForFile, given override globs written as a file name or fr
   })
 })
 
-// Each config extended as an object merges into the one extending it, the overrides of the
-// extended configs first (Oxlintrc::merge, oxlint 1.87). An extended config's root env reaches no
-// file, while the env of its overrides does (measured, oxlint 1.87; oxlint-config-oracle.integration.test.ts).
+// Extended objects merge into the extending config, their overrides first; an extended root env reaches no
+// file, while its overrides' env does (measured, oxlint 1.87).
 const extending: OxlintConfig = {
   env: { node: true },
   rules: { eqeqeq: ['error', 'always'] },
@@ -167,10 +166,7 @@ describe('isIgnoredByOxlintConfig', () => {
     expect([isIgnoredByOxlintConfig(ignoring, 'src/dist.ts'), isIgnoredByOxlintConfig(config, 'dist/a.ts')]).toStrictEqual([false, false])
   })
 
-  // oxlint reads `ignorePatterns` as .gitignore lines (measured, oxlint 1.87;
-  // oxlint-config-oracle.integration.test.ts): a pattern with no slash but a last one matches a
-  // folder or file of that name in any folder, a last slash matches folders only, and a folder
-  // matched leaves out every file under it. A slash before the end ties the pattern to the config's folder.
+  // oxlint reads `ignorePatterns` as .gitignore lines (measured, oxlint 1.87).
   it.each([
     { pattern: 'generated', ignored: ['generated/a.js', 'src/generated/a.js'], linted: ['generated.js', 'src/a.js'] },
     { pattern: 'legacy/', ignored: ['legacy/a.js', 'src/legacy/deep/a.js'], linted: ['src/legacy.js', 'legacy.js'] },

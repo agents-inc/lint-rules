@@ -82,9 +82,9 @@ export const WRAP_FIXED = ['export function wrap(m: number) {', '  return { m }'
 export const ATTEMPT = ['export function attempt(task: () => void) {', '  task()', '}']
 
 /**
- * unicorn/prefer-optional-catch-binding on line 4, whose fix removes `(error)`; preserve-caught-error
- * on line 5, which has no fix and reports nothing once the binding is gone (P3).
- */
+* unicorn/prefer-optional-catch-binding on line 4, whose fix removes `(error)`; preserve-caught-error
+* on line 5, which has no fix and reports nothing once the binding is gone.
+*/
 export const ATTEMPT_CATCHING = ['export function attempt(task: () => void) {', '  try {', '    task()', '  } catch (error) {', "    throw new Error('the task failed')", '  }', '}']
 
 /** perfectionist/sort-arrays, ESLint, on line 1: its fix would put GB before MB. The gate withholds it. */
@@ -223,11 +223,10 @@ export function noDebuggerPairAround(form: SuppressionForm, between: string): st
 export const A_RULE_REPORTING_NOTHING = 'no-console'
 
 /**
- * A suppression in the form given, on line 2, of no-debugger, which reports the `debugger` below it,
- * and of no-console, which reports nothing there. oxlint spans the name no-console alone, and check
- * reports it at line 2 where suppressions are allowed (measured, oxlint 1.87, ESLint 10.12, cli
- * review n3).
- */
+* A suppression in the form given, on line 2, of no-debugger, which reports the `debugger` below it,
+* and of no-console, which reports nothing there. oxlint spans the name no-console alone, and check
+* reports it at line 2 where suppressions are allowed (measured, oxlint 1.87, ESLint 10.12).
+*/
 export function aSuppressionPartlyUnused(form: SuppressionForm): string[] {
   return [exportedConstant('before'), suppressionOfTheNextLine(form, `no-debugger, ${A_RULE_REPORTING_NOTHING}`), DEBUGGER_STATEMENT]
 }

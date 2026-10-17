@@ -1,6 +1,5 @@
-// Run by dist-loading.test.ts as a Node process of its own, never imported. It records the URL of
-// every module the process resolves and writes them to a file at exit: written to stdout at exit,
-// the list was cut short (measured). Meanwhile it loads the built package the way a consumer does.
+// Run by dist-loading.test.ts as a Node process of its own, never imported. Records the URL of every module it
+// resolves to a file at exit (stdout cut the list short), while loading the built package as a consumer does.
 //
 //   node record-resolved-modules.ts <record file> <dist dir> oxlint-side <lint rules JSON>
 //   node record-resolved-modules.ts <record file> <dist dir> eslint-entry
@@ -31,10 +30,7 @@ process.on('exit', () => {
 if (step === 'oxlint-side') await loadTheOxlintSide(distDir, lintRulesJson)
 else await import(builtEntry(distDir, 'eslint.mjs'))
 
-/**
- * What a team's oxlint config does: define the lint rules, read both parts, and merge the oxlint one
- * into `{}`, naming no ESLint config, so no module of ESLint's side is loaded to read one.
- */
+/** As a team's oxlint config does, naming no ESLint config, so no module of ESLint's side loads to read one. */
 async function loadTheOxlintSide(dist: string, lintRules: string | undefined): Promise<void> {
   if (lintRules === undefined) throw new Error('the oxlint side needs the lint rules, as JSON')
   const index: typeof import('../index.ts') = await import(builtEntry(dist, 'index.mjs'))

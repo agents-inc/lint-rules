@@ -1,11 +1,6 @@
-// Run by eslint-in-its-own-process.ts as a Node process of its own, never imported. typescript-eslint
-// keeps one project service per process, set up by the first config it parses, so a test linting
-// several projects in one process lints all but the first with that one's setup (spec-core.md C9).
-// This process lints one project, as `check` and a consumer's ESLint run do: from its cwd, it defines
-// the lint rules given and lints every file with ESLint's Node API, stats on, first with the agent
-// build, then with our ESLint part merged into an empty team config, beside the team's oxlint config
-// file given. Prints `{ "agent": [...], "editor": [...] }`, each result the file, its messages, and
-// every rule that ran on it.
+// Run by eslint-in-its-own-process.ts as a Node process of its own, never imported: typescript-eslint keeps one
+// project service per process, set by the first config it parses. Lints every file from its cwd with the agent
+// build, then our ESLint part merged into an empty team config. Prints `{ "agent": [...], "editor": [...] }`.
 //
 //   node eslint-build-process.ts <lint rules JSON> [<team oxlint config file>]
 import { ESLint, type Linter } from 'eslint'

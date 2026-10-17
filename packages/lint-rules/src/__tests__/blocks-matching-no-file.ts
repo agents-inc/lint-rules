@@ -1,11 +1,8 @@
 import type { Linter } from 'eslint'
 import type { OxlintConfig, OxlintOverride } from 'oxlint'
 
-// A block or override whose files no path can match changes nothing and should never be written
-// (verify.md, U066). These are the contradictions the globs as written show, each engine reading
-// them its own way: a glob ANDed with its own negation, two literal paths ANDed, or a glob the
-// block's own ignores leave out whole. No glob is matched against a path, so a pair no path can
-// meet only by what the globs match (every TS file among every JS and TS file) is not seen.
+// A block or override whose files no path can match changes nothing and should never be written. These are the
+// contradictions the globs as written show; a pair no path meets only by what the globs match is not seen.
 
 const NEGATION = '!'
 const ESCAPED_CHARACTER = /\\(?<character>.)/gsu

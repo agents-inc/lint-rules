@@ -16,39 +16,31 @@ export type CalculatedRules = Readonly<Record<string, unknown>>
 /** A file ESLint would not lint at all with the config: a global ignore matches it, or no block's files do. */
 export const NOT_LINTED = 'not linted'
 
-/** A file's calculated rule entries, or NOT_LINTED. */
 export type CalculatedRulesOrNotLinted = CalculatedRules | typeof NOT_LINTED
 
-/** The rule ID of each message ESLint reports on a file, null for ESLint's own, by the file's path relative to the project. */
+/** By the file's path relative to the project; null for ESLint's own messages. */
 export type RuleIdsReportedByFile = Readonly<Record<string, readonly (string | null)[]>>
 
 /** Every file path is relative to the oracle's temp dir, which is ESLint's cwd. */
 export type EslintConfigOracle = {
-  /** ESLint's merged config for the file, or undefined when ESLint would not lint it at all. */
   calculatedConfigFor: (config: Linter.Config[], file: string) => Promise<Linter.Config | undefined>
   /** As `calculatedConfigFor`, for a file ESLint lints: throws where it does not. */
   lintedConfigFor: (config: Linter.Config[], file: string) => Promise<Linter.Config>
-  /** The settings ESLint calculates for the file: throws where it gives none, as no config holding our base block does. */
+  /** Throws where ESLint gives none, as for a config without our base block. */
   settingsFor: (config: Linter.Config[], file: string) => Promise<Readonly<Record<string, unknown>>>
-  /** The linterOptions ESLint calculates for the file: it leaves noInlineConfig out when no block sets it. Throws where it gives none. */
+  /** ESLint leaves noInlineConfig out when no block sets it. Throws where it gives none. */
   linterOptionsFor: (config: Linter.Config[], file: string) => Promise<Linter.LinterOptions>
-  /** As `calculatedConfigFor`, with ESLint run from the project directory given, as in `ruleSeverityInProjectFor`. */
+  /** With ESLint run from the project directory given. */
   calculatedConfigInProjectFor: (projectDir: string, config: Linter.Config[], file: string) => Promise<Linter.Config | undefined>
-  /** Each file's calculated rule entries, read by one ESLint: none where no block sets a rule, NOT_LINTED where ESLint lints no such file. */
   calculatedRulesOfEach: (config: Linter.Config[], files: readonly string[]) => Promise<Readonly<Record<string, CalculatedRulesOrNotLinted>>>
   /** The rule's entry as ESLint calculates it for the file, options filled in. */
   ruleEntryFor: (config: Linter.Config[], file: string, ruleId: string) => Promise<unknown>
-  /** The rule's severity for the file, or undefined when no block sets it. */
   ruleSeverityFor: (
     config: Linter.Config[],
     file: string,
     ruleId: string,
   ) => Promise<Linter.StringSeverity | undefined>
-  /**
-   * As `ruleSeverityFor`, with ESLint run from the project directory given, as a team's
-   * eslint.config.mjs beside its tsconfig is, the file relative to it: for a config whose paths are
-   * absolute paths into that project.
-   */
+  /** ESLint run from the project directory, as a team's eslint.config.mjs is, for configs with absolute paths into it. */
   ruleSeverityInProjectFor: (
     projectDir: string,
     config: Linter.Config[],
@@ -58,34 +50,20 @@ export type EslintConfigOracle = {
   globalsFor: (config: Linter.Config[], file: string) => Promise<Readonly<Record<string, unknown>>>
   parserOptionsFor: (config: Linter.Config[], file: string) => Promise<Readonly<Record<string, unknown>>>
   isPathIgnored: (config: Linter.Config[], file: string) => Promise<boolean>
-  /**
-   * Each plugin namespace of the file's calculated config, by the entry ESLint's cache key holds for
-   * it (`Config#toJSON`): `namespace:name@version` from the plugin's meta, or the namespace alone
-   * where the plugin carries no name.
-   */
+  /** By the entry ESLint's cache key holds (`Config#toJSON`): `namespace:name@version`, or the namespace where the plugin has no name. */
   serializedPluginsFor: (config: Linter.Config[], file: string) => Promise<Readonly<Record<string, string>>>
   ruleIdsReportedOn: (config: Linter.Config[], source: string, file: string) => Promise<(string | null)[]>
   messagesReportedOn: (config: Linter.Config[], source: string, file: string) => Promise<ReportedMessage[]>
-  /**
-   * ESLint run from the project directory over `.`, as `eslint .` lints it: every file it lints,
-   * with the files on disk and the type information a tsconfig of the project gives, and the rule
-   * ID of each message reported on each, null for ESLint's own, a parse error included. A file a
-   * global ignore matches, or no block's files match, is not among them.
-   */
+  /** `eslint .` from the project directory, with type information: each linted file's rule IDs, null for ESLint's own. */
   ruleIdsReportedInProjectByFile: (projectDir: string, config: Linter.Config[]) => Promise<RuleIdsReportedByFile>
 }
 
-/** What ESLint's calculated config holds that its cache key is made from. */
 type SerializableConfig = { readonly plugins: Readonly<Record<string, unknown>>; readonly toJSON: () => unknown }
 
 const TEMP_DIR_PREFIX = 'lint-rules-eslint-oracle-'
 const NAMESPACE_SEPARATOR = ':'
 
-/**
- * ESLint's own merge of a config for one file, so a spec asserts what applies there rather than how
- * the blocks are laid out. Call it at the top of a test file: it registers that file's hooks, which
- * make the temp dir before the suite and remove it after.
- */
+/** ESLint's own merge for one file. Registers hooks: call it at the top of a test file. */
 export function setUpEslintConfigOracle(): EslintConfigOracle {
   let tempDir: string | undefined
 

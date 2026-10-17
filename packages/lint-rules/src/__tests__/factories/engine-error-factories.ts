@@ -2,7 +2,6 @@ import { catalog } from '@workspace/rule-data'
 import type { ErrorAt } from '../engine-run.ts'
 import { oxlintCodeOf } from '../oxlint-codes.ts'
 
-/** An error ESLint reports, under the rule's ID. */
 export function buildEslintError(ruleId: string, line: number): ErrorAt {
   return { engine: 'eslint', rule: ruleId, line }
 }

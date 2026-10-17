@@ -1,18 +1,13 @@
-// Lists of our ignores, as a consumer writes them, over which the shared ESLint reading of the forms
-// our layers hold them in is checked against the real ESLint
-// (core/ignores-read-by-each-engine.integration.test.ts). They are the fix developer's parity
-// corpus (fix round 2): the grid's values, every shape of a folder value with negated values after
-// it, and the values each break of the reading was measured to change; and lists taking files back
-// from ESLint's default ignores, which hold in the editor whatever our negated lines say.
+// Lists of our ignores over which the shared ESLint reading is checked against the real ESLint
+// (core/ignores-read-by-each-engine.integration.test.ts).
 
-/** A list of our ignores the reading reads differently from ESLint, and the files it takes in that ESLint leaves out: it leaves out none ESLint lints. */
+/** A list the reading reads differently from ESLint, and the files only it takes in: it leaves out none ESLint lints. */
 export type EslintReadingLimit = { readonly ignores: readonly string[]; readonly takenInByTheReadingOnly: readonly string[] }
 
 const FOLDER_NAMES = ['legacy', 'keep', 'src', 'x']
 const MOST_FOLDERS_DEEP = 3
 const FILE_NAME = 'a.js'
 
-/** Every path of folders as deep as given or less, each folder named one of the folder names: the root's empty path first. */
 function folderPathsOfUpTo(depth: number): string[][] {
   if (depth === 0) return [[]]
   const shallower = folderPathsOfUpTo(depth - 1)
@@ -20,13 +15,8 @@ function folderPathsOfUpTo(depth: number): string[][] {
   return [...shallower, ...deepest.flatMap((path) => FOLDER_NAMES.map((name) => [...path, name]))]
 }
 
-/** a.js at the root, and in every folder of up to three of the names legacy, keep, src and x. */
 export const FILES_IN_NAMED_FOLDERS: readonly string[] = folderPathsOfUpTo(MOST_FOLDERS_DEEP).map((path) => [...path, FILE_NAME].join('/'))
 
-/**
- * Files in a node_modules folder, at the root, in a package and below another folder, which ESLint's
- * default ignores leave out; and in the root .git folder, which they leave out too.
- */
 export const FILES_ESLINT_DEFAULTS_LEAVE_OUT: readonly string[] = [
   'node_modules/a.js',
   'node_modules/x/a.js',
@@ -37,18 +27,10 @@ export const FILES_ESLINT_DEFAULTS_LEAVE_OUT: readonly string[] = [
   '.git/x/a.js',
 ]
 
-/**
- * The files the ESLint reading is checked over. No other file lies under a folder whose name starts
- * with a dot: the files-condition oracle matches globs as node's matchesGlob does, whose `**` crosses
- * no such folder where ESLint's crosses it, so such a file would show the oracle's difference, not
- * the reading's (measured: src/.git/a.js under **\/a.js).
- */
+/** No other file sits under a dot-folder: the oracle's `**`, as node's matchesGlob, crosses none where ESLint's does. */
 export const ESLINT_READING_FILES: readonly string[] = [...FILES_IN_NAMED_FOLDERS, ...FILES_ESLINT_DEFAULTS_LEAVE_OUT]
 
-/**
- * Lists the reading leaves out exactly the files ESLint leaves out of, in the editor (measured, ESLint
- * 10.12). The first is no list at all: ESLint's default ignores alone.
- */
+/** Lists the reading reads exactly as ESLint does in the editor (measured, ESLint 10.12); the first is ESLint's defaults alone. */
 export const IGNORES_READ_AS_ESLINT_READS_THEM: readonly (readonly string[])[] = [
   [],
   ['**/generated'],
@@ -114,12 +96,9 @@ export const IGNORES_READ_AS_ESLINT_READS_THEM: readonly (readonly string[])[] =
 ]
 
 /**
- * Lists taking files back from ESLint's default ignores, which the agent build's ESLint lints, as our
- * ignores are global there, and the editor's does not: there our ignores are not global (D-a), so the
- * default ignores hold whatever our negated lines say (decisions.md, 2026-10-12 "fix round 2, after
- * its second review"). Some take back a node_modules or .git folder by name, the others a folder
- * holding one: `!src/**` takes back src/node_modules (measured, ESLint 10.12).
- */
+* Lists taking files back from ESLint's default ignores: the agent build, where our ignores are global, lints
+* them; the editor's does not. `!src/**` takes back src/node_modules (measured, ESLint 10.12).
+*/
 export const IGNORES_TAKING_FILES_BACK_FROM_ESLINT_DEFAULTS: readonly (readonly string[])[] = [
   ['!**/node_modules/'],
   ['!node_modules/'],
@@ -132,12 +111,10 @@ export const IGNORES_TAKING_FILES_BACK_FROM_ESLINT_DEFAULTS: readonly (readonly 
 ]
 
 /**
- * Lists the reading takes in files from that ESLint leaves out, each with those files (measured,
- * ESLint 10.12): a legacy folder in a keep folder in a legacy folder, which ESLint leaves out by the
- * highest legacy folder; the files directly in a legacy folder a negated value takes back under
- * another folder, which shows only beside a negated file value; and a negated value the globs
- * cannot read as a folder.
- */
+* Lists the reading takes in files ESLint leaves out (measured, ESLint 10.12): nested legacy folders ESLint
+* leaves out by the highest; a negated value taking back a legacy folder's files under another folder; and a
+* negated value the globs cannot read as a folder.
+*/
 export const ESLINT_READING_LIMITS: readonly EslintReadingLimit[] = [
   { ignores: ['**/legacy/**', '!**/keep/**'], takenInByTheReadingOnly: ['legacy/keep/legacy/a.js'] },
   { ignores: ['**/legacy/', '!**/keep/**'], takenInByTheReadingOnly: ['legacy/keep/legacy/a.js'] },
@@ -152,7 +129,7 @@ export const ESLINT_READING_LIMITS: readonly EslintReadingLimit[] = [
     ignores: ['legacy/**', '!**/legacy', '!**/a.js'],
     takenInByTheReadingOnly: ['legacy/keep/legacy/a.js', 'legacy/src/legacy/a.js', 'legacy/x/legacy/a.js'],
   },
-  // !legacy/ names every legacy folder (q62), as !**/legacy/ does above.
+  // !legacy/ names every legacy folder, as !**/legacy/ does above.
   {
     ignores: ['legacy/**', '!legacy/', '!**/a.js'],
     takenInByTheReadingOnly: ['legacy/keep/legacy/a.js', 'legacy/src/legacy/a.js', 'legacy/x/legacy/a.js'],

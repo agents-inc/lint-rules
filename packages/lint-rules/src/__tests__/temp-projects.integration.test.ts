@@ -5,12 +5,9 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { setUpTempProjects } from './temp-projects.ts'
 import { runVitestCli, type TestFileOutcome } from './vitest-cli.ts'
 
-// A temp project a test file makes is gone once the file finishes, however it ends: its tests pass
-// or fail, it fails while it is collected, or the run skips a suite of it, by a name filter or a
-// bail, as Stryker runs each mutant. Each fixture makes a project and ends one of those ways. The
-// vitest CLI runs it under the package's own config, with a temp dir of its own that it must leave
-// empty. Each fixture names its project in a test's title or its error, which shows the project was
-// made, and made in that temp dir.
+// A temp project a test file makes is gone once the file finishes, however it ends: tests pass or fail, collection
+// fails, or a name filter or bail skips a suite, as Stryker runs each mutant. Each fixture names its project in a
+// test title or error, which shows it was made in the run's own temp dir, which must be left empty.
 
 const FIXTURES_CONFIG = fileURLToPath(new URL('../../test-fixtures/temp-projects/vitest.config.ts', import.meta.url))
 const FIXTURE_RUNS_TIMEOUT_MS = 600_000
@@ -19,7 +16,6 @@ const BAIL_AT_THE_FIRST_FAILURE = ['--bail=1']
 // The pool Stryker's vitest runner runs in; the package's own runs use vitest's default.
 const STRYKER_POOL = ['--pool=threads']
 
-/** Each run, by how its file ends: the fixture it runs, and the options it runs it with. */
 const FIXTURE_RUNS = [
   { ending: 'passes', fixture: 'passes.fixture.ts', args: [] },
   { ending: 'fails a test', fixture: 'fails-a-test.fixture.ts', args: [] },
@@ -31,7 +27,6 @@ const FIXTURE_RUNS = [
 
 type Ending = (typeof FIXTURE_RUNS)[number]['ending']
 
-/** The temp dir a run was given, how its file ended, and what it left in that temp dir. */
 type FixtureRun = { readonly tempDir: string; readonly files: readonly TestFileOutcome[]; readonly leftInTempDir: readonly string[] }
 
 describe('a test file run under the package vitest config, once it finishes', () => {
@@ -53,7 +48,6 @@ describe('a test file run under the package vitest config, once it finishes', ()
     return run
   }
 
-  /** A title or a message naming a path in the temp dir. */
   function namingAPathIn(tempDir: string): unknown {
     return expect.stringContaining(` ${tempDir}/`)
   }

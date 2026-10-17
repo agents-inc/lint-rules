@@ -1,10 +1,8 @@
 import { type JsonLayout, OUR_PACKAGE, OUR_RANGE, type PackageJsonObject, packageJsonTextIn } from '../factories/init-factories.ts'
 
-// I-1 and I-7 (q-i4; spec-cli.md "The package.json edit"): init adds `"@agents-inc/lint-rules":
-// "^<our version>"` to devDependencies, before the first key that sorts after it, else last, and a
-// devDependencies it lacks as the last key; an entry under dependencies or devDependencies stays as
-// it is. It edits the text, keeping every other byte. Each case's file before and after init, laid
-// out the same way; `keywords` is an array on one line, which re-serialising would spread out.
+// init adds `"@agents-inc/lint-rules": "^<our version>"` to devDependencies, before the first key sorting after it,
+// else last; an existing entry stays. It edits the text, keeping every other byte: `keywords` is an array on one
+// line, which re-serialising would spread out.
 
 export type PackageJsonEdit = {
   readonly kind: string
@@ -82,7 +80,7 @@ export const PACKAGE_JSON_EDITS: readonly PackageJsonEdit[] = [
   },
 ]
 
-/** Entries init keeps as they are, and one it does not count (q-i4). */
+/** Entries init keeps as they are, and one it does not count. */
 export const PACKAGE_JSON_LISTING_US: readonly (PackageJsonEdit & { readonly entry: 'added' | 'kept' })[] = [
   {
     kind: 'listed under dependencies',
@@ -107,7 +105,6 @@ export const PACKAGE_JSON_LISTING_US: readonly (PackageJsonEdit & { readonly ent
   },
 ]
 
-/** A package.json's text before init's edit, and after it. */
 export type PackageJsonTextEdit = { readonly kind: string; readonly before: string; readonly after: string }
 
 const A_VALUE_WITH_ESCAPES = 'says "hi", and \\ goes on'
@@ -122,10 +119,9 @@ const ON_ONE_LINE = '"name":"consumer-project","version":"1.0.0","private":true'
 const OUR_ENTRY = `${JSON.stringify(OUR_PACKAGE)}: ${JSON.stringify(OUR_RANGE)}`
 
 /**
- * Texts the edit reads past to find where the entry goes (q-i4): a string holding an escaped quote
- * and a backslash, arrays of one value and of none, and a file on one line, ending in a literal. A
- * file on one line has no indent to copy, so the lines init adds indent two spaces a level.
- */
+* Texts the edit reads past: an escaped quote and a backslash, arrays of one value and of none, and a one-line
+* file, which has no indent to copy, so the lines init adds indent two spaces a level.
+*/
 export const PACKAGE_JSON_TEXT_EDITS: readonly PackageJsonTextEdit[] = [
   {
     kind: 'a string holding an escaped quote and a backslash',

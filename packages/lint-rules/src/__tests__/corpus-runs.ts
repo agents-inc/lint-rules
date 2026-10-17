@@ -7,11 +7,7 @@ import {
   TEAM_CORPUS_OXLINT_CONFIG,
 } from './cases/both-engines-corpus.ts'
 
-/**
- * Both engines' runs over a corpus project, made before the suite: its files, our settings, and the
- * team's two configs of the corpus, its oxlint config the case's where it gives one. Call it at the
- * top of a describe block: it registers that scope's hooks.
- */
+/** The team's oxlint config is the case's where it gives one. Registers hooks: call it in a describe block. */
 export function setUpCorpusRuns({ ourRulesets, ours, files, teamOxlintConfig = TEAM_CORPUS_OXLINT_CONFIG }: CorpusCase): () => BothEnginesRuns {
   return setUpBothEnginesRuns({
     sources: corpusSourcesOf(files),

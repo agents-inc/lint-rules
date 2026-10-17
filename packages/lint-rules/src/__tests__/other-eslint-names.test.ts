@@ -17,11 +17,8 @@ import {
   withTheTeamsPrefixes,
 } from './other-eslint-names.ts'
 
-// The oracles the merge's "other names" specs walk with. One that missed a same-rule name would
-// let a team's copy of our rule keep running; one that took an oxlint-only spelling would turn off
-// names no ESLint plugin defines; one that took a twin for the same rule would turn the team's
-// twin off where our rule does not run (questions.md #41); one that took a rule bound to a module
-// of its own for another name of ours would turn off a rule of the team's.
+// A wrong oracle here would keep a team's copy of our rule running, turn off names no ESLint plugin defines,
+// or turn off a rule of the team's.
 
 const QUALITY = buildQualityRuleset('quality')
 

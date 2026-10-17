@@ -29,7 +29,7 @@ function ourEslintPart(projectDir: string, fields: SharedFields): EslintPart {
   return defineLintRules(buildConsumerLintRules(projectDir, {}, fields)).editorRulesets.eslint
 }
 
-/** Each file's calculated entry of each rule given, or NOT_LINTED: the always-on rules every part states are left out. */
+/** NOT_LINTED where ESLint lints no such file; the always-on rules every part states are left out. */
 async function entriesIn(
   part: EslintPart,
   files: readonly string[],
@@ -69,7 +69,7 @@ describe('eslintPartAlone', () => {
     })
   })
 
-  // Without oxlint the ESLint part runs typescript-eslint's extension of a core rule on TS files (#39).
+  // Without oxlint the ESLint part runs typescript-eslint's extension of a core rule on TS files.
   it('runs the extension of a core rule it takes over from oxlint on TS files, and the core rule on JS files, in a project whose package.json lists no oxlint', async () => {
     const part = ourEslintPart(PROJECT_WITHOUT_OXLINT, { rules: { [MAX_PARAMS]: ['error', { max: 3 }] } })
 

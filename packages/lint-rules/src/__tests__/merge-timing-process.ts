@@ -1,7 +1,5 @@
-// Run by outside-every-tsconfig.integration.test.ts as a Node process of its own, never imported, so
-// a merge that never finishes can be stopped. It loads the built package the way a team's
-// eslint.config.mjs does, defines the lint rules given, and times mergeEslintConfig merging their
-// ESLint part into an empty team config. Prints `{ "mergeMs": … }` as JSON.
+// Run by outside-every-tsconfig.integration.test.ts as a Node process of its own, never imported, so a merge that
+// never finishes can be stopped. Times mergeEslintConfig into an empty team config; prints `{ "mergeMs": … }`.
 //
 //   node merge-timing-process.ts <dist dir> <lint rules JSON>
 import { builtEntry } from './built-entries.ts'

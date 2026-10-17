@@ -7,24 +7,19 @@ import { runNodeScript } from './node-process.ts'
 import { setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
 import { BUILT_DIST_DIR, INSTALLED_OXLINT, type LinkedPackage, type ProjectFiles, THIS_PACKAGE } from './temp-projects.ts'
 
-/** What the merges in one process gave: each merged config, in order, or the message of the first that threw. */
 export type OxlintMergesOutcome = { readonly merged: readonly OxlintConfig[] } | { readonly refused: string }
 
-/** The merges one process runs, one after another: each of our oxlint part into the team's oxlint config given, naming the team's ESLint config given. */
+/** Each merges our oxlint part into `theirs`, naming `eslintConfig`. */
 export type OxlintMerges = { readonly theirs: OxlintConfig; readonly eslintConfig: string; readonly times: number }
 
-/** The project the merges ran in, and what they gave. */
 export type OxlintMergesRun = { readonly projectDir: string; readonly outcome: OxlintMergesOutcome }
 
 const MERGES_PROCESS = fileURLToPath(new URL('./oxlint-merges-process.ts', import.meta.url))
 
 /**
- * Makes the project before the suite, with the built package, oxlint and each package the team's
- * configs import installed, and runs the merges given in a Node process of its own, which loads the
- * built package as a team's oxlint run does (oxlint-merges-process.ts), our part taken from the
- * project's agents-inc.lint.mts. Reads the build output, so build the package first. Call it at the
- * top of a describe block: it registers that scope's hooks.
- */
+* Runs the merges in a process of its own, loading the built package as a team's oxlint run does: build it
+* first. Registers hooks: call it in a describe block.
+*/
 export function setUpOxlintMergesInOneProcess(
   files: ProjectFiles,
   merges: OxlintMerges,

@@ -5,16 +5,13 @@ import {
   IGNORES_TAKING_FILES_BACK_FROM_ESLINT_DEFAULTS,
 } from './eslint-ignores-values.ts'
 
-// Lists of our ignores, as a consumer writes them, over which the shared oxlint reading of the forms
-// our layers hold them in is checked against the real oxlint, given the ignorePatterns the agent
-// build gives it (core/ignores-read-by-each-engine.integration.test.ts): every list the ESLint
-// reading is checked over, and lines taking a file in node_modules back, which the agent build's
-// own `**/node_modules/**` leaves out.
+// Lists of our ignores over which the shared oxlint reading is checked against the real oxlint, given the agent
+// build's ignorePatterns (core/ignores-read-by-each-engine.integration.test.ts).
 
-/** A list of our ignores the reading reads differently from oxlint, and the files it takes back that oxlint leaves out: it leaves out none oxlint lints. */
+/** A list the reading reads differently from oxlint, and the files only it takes back: it leaves out none oxlint lints. */
 export type OxlintReadingLimit = { readonly ignores: readonly string[]; readonly takenBackByTheReadingOnly: readonly string[] }
 
-/** Every file in a keep folder holding a legacy folder, or in a legacy folder inside a keep folder: what a negated keep line takes back from a legacy line. */
+/** What a negated keep line takes back from a legacy line. */
 const IN_A_LEGACY_FOLDER_UNDER_KEEP = [
   'keep/keep/legacy/a.js',
   'keep/legacy/a.js',
@@ -28,13 +25,7 @@ const IN_A_LEGACY_FOLDER_UNDER_KEEP = [
   'x/keep/legacy/a.js',
 ]
 
-/**
- * The files the oxlint reading is checked over: those the ESLint reading is, but in no .git folder,
- * and a file in node_modules at the root, in a package and below another folder. No file lies under a
- * folder whose name starts with a dot: the files-condition oracle matches globs as node's matchesGlob
- * does, whose `**` crosses no such folder where oxlint's ignorePatterns cross it, so such a file would
- * show the oracle's difference, not the reading's (measured: .git/a.js under **\/a.js).
- */
+/** No file sits under a dot-folder: the oracle's `**`, as node's matchesGlob, crosses none where oxlint's does. */
 export const OXLINT_READING_FILES: readonly string[] = [
   ...FILES_IN_NAMED_FOLDERS,
   'node_modules/a.js',
@@ -45,17 +36,15 @@ export const OXLINT_READING_FILES: readonly string[] = [
 ]
 
 /**
- * Lines taking files in node_modules back as files: the agent build's `**\/node_modules/**` matches
- * every such file, so only a line matching the file itself takes it back (measured, oxlint 1.87).
- */
+* The agent build's `**\/node_modules/**` matches every such file, so only a line matching the file itself takes
+* it back (measured, oxlint 1.87).
+*/
 const IGNORES_TAKING_NODE_MODULES_FILES_BACK: readonly (readonly string[])[] = [['!node_modules/x/**'], ['!**/a.js']]
 
 /**
- * Lists the reading takes back files from that oxlint leaves out, each with those files (measured,
- * oxlint 1.87, every file given by its path): where a negated line takes back a folder, oxlint decides
- * a file under a folder of the left-out name below it by that deeper folder, which the globs cannot
- * tell (decisions.md, 2026-10-12 "fix round 2, after its developer": a limit, pinned).
- */
+* Where a negated line takes back a folder, oxlint decides a file under a deeper folder of the left-out name by
+* that folder, which the globs cannot tell (measured, oxlint 1.87): a pinned limit.
+*/
 export const OXLINT_READING_LIMITS: readonly OxlintReadingLimit[] = [
   { ignores: ['legacy/', '!legacy/keep/'], takenBackByTheReadingOnly: ['legacy/keep/legacy/a.js'] },
   { ignores: ['legacy/', '!keep/'], takenBackByTheReadingOnly: IN_A_LEGACY_FOLDER_UNDER_KEEP },
@@ -89,7 +78,7 @@ export const OXLINT_READING_LIMITS: readonly OxlintReadingLimit[] = [
 
 const LIMITED = new Set(OXLINT_READING_LIMITS.map(({ ignores }) => JSON.stringify(ignores)))
 
-/** Lists the reading leaves out exactly the files oxlint leaves out of (measured, oxlint 1.87): every list the ESLint reading is checked over, but the limits. */
+/** Lists the reading reads exactly as oxlint does (measured, oxlint 1.87). */
 export const IGNORES_READ_AS_OXLINT_READS_THEM: readonly (readonly string[])[] = [
   ...IGNORES_READ_AS_ESLINT_READS_THEM,
   ...IGNORES_TAKING_FILES_BACK_FROM_ESLINT_DEFAULTS,

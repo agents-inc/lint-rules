@@ -1,10 +1,8 @@
 import { TEAM_OXLINT_CONFIG_SETTING_NO_RULE } from '../team-configs-of-the-other-engine.ts'
 
-// The files of a team project whose own ESLint config the editor part is merged into, linted by
-// the real ESLint CLI. `team-config.mjs` holds the team's existing config; `team.eslint.config.mjs`
-// lints with it alone, and `merged.eslint.config.mjs` with it merged with our editor part, naming
-// the team's oxlint config, which sets no rule. The root config files are ignored by the team, so
-// neither run lints them.
+// A team project whose own ESLint config the editor part is merged into, linted by the real ESLint CLI:
+// `team.eslint.config.mjs` lints with the team's config alone, `merged.eslint.config.mjs` merged with ours.
+// The team ignores the root config files, so neither run lints them.
 
 export const TEAM_ALONE_CONFIG_FILE = 'team.eslint.config.mjs'
 export const MERGED_CONFIG_FILE = 'merged.eslint.config.mjs'
@@ -73,10 +71,7 @@ export const teamConfig = [
 ]
 `
 
-/**
- * Typed linting through the project service, switched off again for the scripts folder with
- * typescript-eslint's disableTypeChecked: the scripts are linted without types.
- */
+/** Typed linting through the project service, switched off for scripts/ with disableTypeChecked. */
 export const teamSwitchingTypesOffForScripts = `import tseslint from 'typescript-eslint'
 
 export const teamConfig = [
@@ -142,11 +137,7 @@ export const listWithoutKeys = `export const Items = ({ items }: { items: readon
 export const rootScript = `export const script = 1
 `
 
-/**
- * A team block whose `files` is a function, which ESLint 10 accepts though its types do not: a bare
- * `warn` of max-lines in every file under a legacy folder. Only JS can write it without a cast, as
- * a team's eslint.config.mjs does.
- */
+/** `files` as a function, which ESLint 10 accepts though its types do not: only JS can write it without a cast. */
 export const teamBlockWithFunctionFiles = `export const teamConfig = [
   { name: 'team', files: [(filePath) => filePath.includes('/legacy/')], rules: { 'max-lines': 'warn' } },
 ]

@@ -1,11 +1,7 @@
-// Imported into every Node process a check run starts, never by a test: cli-runs.ts's
-// anotherWriterAsOxlintsLintRunEnds puts it in NODE_OPTIONS, as the mutation run puts its
-// child-coverage-hook.mjs there. In oxlint's lint run, the last of check's two oxlint runs (its
-// arguments hold no `--fix`), it writes each file the variable below names, with the text it gives,
-// as that process exits: after oxlint read every file and reported, and before check, which waits for
-// oxlint to end, reads them again. In a real run another writer lands there by chance; here it lands
-// there every time. It does nothing in any other process. Plain JS: a TypeScript module imported this
-// way prints a warning about type stripping to stderr on Node 23.
+// Imported into every Node process a check run starts (cli-runs.ts puts it in NODE_OPTIONS), never by a test. In
+// oxlint's lint run, the last of check's two (no `--fix`), it writes each file the variable below names as the
+// process exits: after oxlint read them and before check reads them again, where a real writer lands by chance.
+// Plain JS: a TypeScript module imported this way warns about type stripping on Node 23.
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 

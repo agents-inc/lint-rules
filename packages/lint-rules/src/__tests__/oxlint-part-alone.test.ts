@@ -36,9 +36,8 @@ describe('oxlintPartAlone', () => {
     }).toStrictEqual({ ours: 'error', oursInTheEntry: 'off', eslintRuns: undefined })
   })
 
-  // typescript is listed for no-non-null-assertion, which oxlint runs, react for jsx-key, and unicorn
-  // for no-abusive-eslint-disable, which oxlint runs where suppressions are allowed (owner, q-r1), as
-  // they are in the editor parts.
+  // typescript is listed for no-non-null-assertion, react for jsx-key, and unicorn for no-abusive-eslint-disable,
+  // which oxlint runs where suppressions are allowed, as they are in the editor parts.
   it('lists the plugin of each rule it runs and turns every category off, so it runs no rule it does not name', () => {
     const { plugins, categories } = oxlintPartAlone(ourOxlintPart(), catalog)
 

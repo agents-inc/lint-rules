@@ -1,12 +1,8 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
 
-// How oxlint 1.87 reads a rule key and a `plugins` name (parse_rule_key and unalias_plugin_name in
-// crates/oxc_linter/src/config/rules.rs, normalize_plugin_name and LintPlugins::try_from in
-// plugins.rs), modelled here apart from merge-oxlint-config.ts, so the differential oracle does not
-// share the merge's reading of a key. The catalog's oxlintSpellings say which plugin-prefixed keys
-// oxlint takes for each rule, `typescript/` for the core rules oxlint adapts to TypeScript included.
+// How oxlint 1.87 reads a rule key and a `plugins` name (rules.rs, plugins.rs), modelled apart from
+// merge-oxlint-config.ts so the differential oracle does not share the merge's reading.
 
-/** A rule key cut where oxlint cuts it. */
 type CutKey = { readonly prefix: string; readonly ruleName: string }
 
 const SEPARATOR = '/'
@@ -17,7 +13,7 @@ const PACKAGE_NAME_JOINER = '-'
 const NEXTJS_KEY_PREFIXES: ReadonlySet<string> = new Set(['@next', '@next/next'])
 const NEXTJS = 'nextjs'
 
-/** Each name oxlint takes for one of its plugins, once a package name is cut down, and the plugin it names, as the catalog spells it. */
+/** Each name oxlint takes for one of its plugins, once a package name is cut down. */
 const PLUGIN_BY_NAME: ReadonlyMap<string, string> = new Map([
   ['eslint', 'eslint'],
   ['react', 'react'],
@@ -47,10 +43,7 @@ const PLUGIN_BY_NAME: ReadonlyMap<string, string> = new Map([
   ['vue', 'vue'],
 ])
 
-/**
- * oxlint's plugins in the order its rule list keeps them, as `oxlint --rules` prints them: a key with
- * no prefix names the first rule so named.
- */
+/** As `oxlint --rules` orders them: a key with no prefix names the first rule so named. */
 export const OXLINT_PLUGINS_IN_RULE_ORDER: readonly string[] = [
   'eslint',
   'import',
@@ -71,11 +64,7 @@ export const OXLINT_PLUGINS_IN_RULE_ORDER: readonly string[] = [
 
 const rulesBySpellingOfEachCatalog = new WeakMap<Catalog, ReadonlyMap<string, OxlintRule>>()
 
-/**
- * The rule oxlint reads a rule key as: the rule of the plugin its prefix names, or, with no prefix,
- * the first rule so named. Undefined where the prefix names no plugin of oxlint's (a JS plugin's
- * rule), or where oxlint has no rule so keyed.
- */
+/** Undefined where the prefix names no plugin of oxlint's (a JS plugin's rule), or oxlint has no rule so keyed. */
 export function oxlintRuleKeyedBy(key: string, catalog: Catalog): OxlintRule | undefined {
   const bySpelling = oxlintRulesBySpelling(catalog)
   const cut = cutWhereOxlintCuts(key)
@@ -84,10 +73,7 @@ export function oxlintRuleKeyedBy(key: string, catalog: Catalog): OxlintRule | u
   return plugin === undefined ? undefined : bySpelling.get(spellingUnder(plugin, cut.ruleName))
 }
 
-/**
- * The plugin a name in a `plugins` list names, as the catalog spells it: oxlint refuses any other
- * name. `oxlint --rules` prints each rule's plugin by one of these names (`jsx_a11y`).
- */
+/** As the catalog spells it: oxlint refuses any other name. `oxlint --rules` prints plugins by these names (`jsx_a11y`). */
 export function oxlintPluginListedAs(name: string): string {
   const plugin = PLUGIN_BY_NAME.get(withThePackageNamingCut(name))
   if (plugin === undefined) throw new Error(`"${name}" names no plugin of oxlint's`)

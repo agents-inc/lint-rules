@@ -8,19 +8,15 @@ import { CONFIG_FILE, exportedConstant, moduleText, PACKAGE_JSON_FILE } from './
 import { EVERY_RULESET } from './lint-rules-factories.ts'
 import { buildPackageJson, lintRulesPackageVersion, packageJsonText } from './package-json-factories.ts'
 
-/** A ruleset definition as init reads it: rule-data's, with whether it is opt-in (X1). */
+/** rule-data's ruleset definition, with whether it is opt-in. */
 export type InitRulesetDefinition = Parameters<typeof initConfigText>[0][number]
 
-/**
- * One list of rulesets in the text init writes: the rulesets it lists, the opt-in ones its comment
- * names, and those of them that sort code, which the comment's formatter warning names (none unless given).
- */
+/** The opt-in ones its comment names, and those of them that sort code, which the formatter warning names. */
 export type InitList = { readonly listed: readonly string[]; readonly optIn: readonly string[]; readonly sortsCode?: readonly string[] }
 
-/** A libs domain's list, under its domain's key. */
 export type InitDomainList = InitList & { readonly domain: string }
 
-/** Every agent list in the text init writes, in the order the file gives them. */
+/** In the order the file gives them. */
 export type InitLists = {
   readonly quality: InitList
   readonly libs: readonly InitDomainList[]
@@ -28,7 +24,6 @@ export type InitLists = {
   readonly languages: InitList
 }
 
-/** How a package.json is laid out: what it indents with, its line ends, and whether it ends with one. */
 export type JsonLayout = { readonly indent: string; readonly eol: '\n' | '\r\n'; readonly finalNewline: boolean }
 
 /** A value kept as it is written, such as an array on one line, which JSON.stringify would lay out otherwise. */
@@ -39,23 +34,20 @@ export type PackageJsonValue = string | boolean | WrittenAsIs | PackageJsonObjec
 /** A package.json's fields, in their order in the file. */
 export type PackageJsonObject = { readonly [key: string]: PackageJsonValue }
 
-/** The package init adds, and the range it gives it: a caret on this package's version (q-i4). */
+/** init gives it a caret on this package's version. */
 export const OUR_PACKAGE = '@agents-inc/lint-rules'
 export const OUR_RANGE = `^${lintRulesPackageVersion()}`
 
-/** package.json before init's edit, and after it. */
 export const PACKAGE_JSON_BEFORE_INIT = packageJsonText(buildPackageJson())
 export const PACKAGE_JSON_AFTER_INIT = packageJsonText(buildPackageJson({ devDependencies: { [OUR_PACKAGE]: OUR_RANGE } }))
 /** A config file as init writes it, for a test of how init writes, not of what. */
 export const CONFIG_INIT_WRITES = moduleText(exportedConstant('writtenByInit'))
 
-/** Which of init's two writes comes first. */
 export type InitWriteOrder = 'package.json first' | 'config first'
 
-/** What a project holds once init's writes ended: its entries, and package.json's text. */
 export type InitFilesState = { readonly entries: readonly string[]; readonly packageJson: string }
 
-/** The `ignores` init writes (q-i7, q77, P6): the gate's list and common generated files, in the `**\/` form. */
+/** The gate's list and common generated files, in the `**\/` form. */
 export const INIT_IGNORES = [
   '**/build/**',
   '**/coverage/**',
@@ -68,11 +60,11 @@ export const INIT_IGNORES = [
   '**/mockServiceWorker.js',
 ]
 
-/** The rulesets that sort code (owner, 2026-10-15): opt-in, so init names them in quality's comment, with the formatter warning. */
+/** Opt-in, so init names them in quality's comment, with the formatter warning. */
 export const SORTING_RULESETS: readonly string[] = ['import-order', 'ordering']
 
 const NO_OPT_IN: readonly string[] = []
-/** What init's comment says after the opt-in rulesets that sort code (owner, 2026-10-15). */
+/** What init's comment says after the opt-in rulesets that sort code. */
 const FORMATTER_WARNING =
   "each sorts code, so it conflicts with a formatter that sorts the same code (Biome, oxfmt's sortImports, a Prettier sort plugin): use one or the other."
 const INIT_PROJECT_NAME = 'consumer-project'
@@ -83,7 +75,7 @@ export function buildRulesetDefinition(fields: Pick<InitRulesetDefinition, 'name
   return { domain: null, env: null, optIn: false, sortsCode: false, ...fields }
 }
 
-/** The lists for rulesets of the shape a consumer writes, none of them opt-in. */
+/** None of them opt-in. */
 export function initListsOf(rulesets: LintRules['agentRulesets']): InitLists {
   const { quality = [], libs = {}, runtimes = [], languages = [] } = rulesets
   return {
@@ -94,7 +86,7 @@ export function initListsOf(rulesets: LintRules['agentRulesets']): InitLists {
   }
 }
 
-/** The lists init writes for the real catalog: every ruleset but the sorting ones, which quality's comment names with the formatter warning. */
+/** Every ruleset but the sorting ones, which quality's comment names with the formatter warning. */
 export function initListsOfTheCatalog(): InitLists {
   return {
     ...initListsOf(EVERY_RULESET),
@@ -102,10 +94,7 @@ export function initListsOfTheCatalog(): InitLists {
   }
 }
 
-/**
- * The text init writes for the agent lists given (q-i6, q30a, q-i7, spec-cli.md "The config text"),
- * as the spec lays it out: two-space indent, single quotes, trailing commas, no semicolons.
- */
+/** As the spec lays it out: two-space indent, single quotes, trailing commas, no semicolons. */
 export function initConfigTextListing({ quality, libs, runtimes, languages }: InitLists): string {
   return moduleText(
     "import { defineLintRules } from '@agents-inc/lint-rules'",
@@ -202,7 +191,6 @@ export function filesStateOf(projectDir: string): InitFilesState {
   return { entries: entriesUnder(projectDir), packageJson: readFileSync(join(projectDir, PACKAGE_JSON_FILE), 'utf8') }
 }
 
-/** Which runner and install command init prints for a package manager (q-i3, q-i5). */
 export type PackageManagerLines = { readonly install: string; readonly runner: string }
 
 export const NPM: PackageManagerLines = { install: 'npm install', runner: 'npx' }
@@ -210,7 +198,7 @@ export const BUN: PackageManagerLines = { install: 'bun install', runner: 'bunx'
 export const PNPM: PackageManagerLines = { install: 'pnpm install', runner: 'pnpm exec' }
 export const YARN: PackageManagerLines = { install: 'yarn install', runner: 'yarn' }
 
-/** What init prints to stdout once it wrote both files, its first line saying whether it added our entry or kept one (q-i3, q-i4, q-i5, P7). */
+/** Its first line says whether it added our entry or kept one. */
 export function initStdout(entry: 'added' | 'kept', { install, runner }: PackageManagerLines): string {
   const firstLine =
     entry === 'added'
@@ -225,19 +213,16 @@ export function initStdout(entry: 'added' | 'kept', { install, runner }: Package
   )
 }
 
-/** init's note where the folder is in no git repo (q-i8). */
 export function outsideGitNote(folder: string): string {
   return `init: note: ${folder} is not in a git repository, and check needs one.\n`
 }
 
-/** init's note where no package.json up to the git top level lists @types/node (q-i9, P7). */
+/** Where no package.json up to the git top level lists @types/node. */
 export const TYPES_NODE_NOTE =
   'init: note: agents-inc.lint.mts reads import.meta.dirname, which TypeScript knows only from @types/node. If your tsconfig includes the file, add @types/node to devDependencies.\n'
 
-/** @types/node, as a project lists it. */
 export const TYPES_NODE_ENTRY = { '@types/node': '^22.0.0' }
 
-/** The dependency lists a package.json init finds may hold. */
 export type InitPackageJsonFields = {
   /** A package npm may publish: no `"private": true`. */
   readonly published?: boolean
@@ -245,7 +230,7 @@ export type InitPackageJsonFields = {
   readonly devDependencies?: Readonly<Record<string, string>>
 }
 
-/** The fields of a package's package.json, in the order npm writes them: private unless published, listing only the dependencies given. */
+/** In the order npm writes them: private unless published. */
 export function buildInitPackageJson({ published = false, ...dependencyLists }: InitPackageJsonFields = {}): PackageJsonObject {
   return { name: INIT_PROJECT_NAME, version: INIT_PROJECT_VERSION, ...(published ? {} : { private: true }), type: 'module', ...dependencyLists }
 }

@@ -8,10 +8,8 @@ import { buildPackageJsonListingOxlint, packageJsonText } from './factories/pack
 import { TEAM_OXLINT_CONFIG_SETTING_NO_RULE, TEAM_OXLINT_CONFIG_SETTING_NO_RULE_FILE, writeTeamOxlintConfigSettingNoRule } from './team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './temp-projects.ts'
 
-// writeTeamOxlintConfigSettingNoRule writes into a temp project alone. Every spec loads the shared
-// empty tsconfigRootDir, and refuses to load where it holds a file, so a part rooted there or at the
-// temp dir itself, which a broken merge or a mutant hands it beside oxlint, is refused and nothing
-// is written: a file left there would stay for every later spec of the test file.
+// writeTeamOxlintConfigSettingNoRule refuses to write outside a temp project, as a broken merge or a mutant might
+// ask: a file left in the shared empty tsconfigRootDir would stay for every later spec of the test file.
 
 const tempProjects = setUpTempProjects()
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) }, linkedPackages: [INSTALLED_OXLINT] })

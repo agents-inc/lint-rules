@@ -3,22 +3,14 @@ import { buildOurShapeValue, buildTeamShapeValue, type OxlintMergeShapeValue } f
 import { buildTeamOxlintConfig } from '../factories/team-config-factories.ts'
 import type { Dimension } from '../pairwise-shapes.ts'
 
-// The shapes the oxlint merge is checked in against the real oxlint CLI: the ways a team's config
-// lists plugins and states rules, and the ways our part states rules, each a dimension.
+// Team and our oxlint config shapes, each a dimension, checked against the real oxlint CLI.
 
-/** The folders oxlint lints: app holds the files only the statements of other keys' values name. */
+// app/ holds the files only the shapes stating rules under other keys name.
 export const OXLINT_MERGE_LINTED_DIRS = ['src', 'lib', 'app']
 
-// Each line draws one rule, in a category of a plugin a shape lists or leaves out:
-// 1 typescript/consistent-type-imports (style); ours where a shape turns it on
-// 2 oxc/erasing-op (correctness)
-// 3 unicorn/no-useless-spread (correctness)
-// 4 typescript/no-duplicate-enum-values (correctness)
-// 5 no-compare-neg-zero (correctness)
-// 6 typescript/array-type (style); ESLint runs ours where a shape turns it on
-// 7 promise/param-names (style); ESLint runs ours where a shape turns it on
-// 9 typescript/no-this-alias (correctness); ESLint runs ours where a shape turns it on
-// 10 no-unused-vars (correctness); ESLint runs typescript-eslint's twin of it where a shape turns that on
+// Rule each line draws: 1 typescript/consistent-type-imports, 2 oxc/erasing-op, 3 unicorn/no-useless-spread,
+// 4 typescript/no-duplicate-enum-values, 5 no-compare-neg-zero, 6 typescript/array-type, 7 promise/param-names,
+// 9 typescript/no-this-alias, 10 no-unused-vars.
 const TYPESCRIPT_SOURCE = `import { Thing } from './thing'
 export const isZero = (value: number): boolean => value * 0 === 0
 export const copy = [...[1, 2]]
@@ -38,25 +30,16 @@ export const isNegativeZero = (value) => value === -0
 export const waited = new Promise((ok, fail) => ok(fail))
 `
 
-// react/jsx-no-duplicate-props (correctness), which the team's statements set; react/jsx-key
-// (correctness), ours where a shape turns it on; then jsx-a11y/alt-text (correctness), which the
-// team's statements under jsx-a11y's other prefixes set.
+// Draws react/jsx-no-duplicate-props, react/jsx-key, then jsx-a11y/alt-text.
 const JSX_LINES = `export const List = () => <ul id="a" id="b">{[1].map(() => <li />)}</ul>
 export const Logo = () => <img src="logo.png" />
 `
 
-// Each line draws the rule a team's key under another name reads, or a bare key, beside it: a test
-// file, as oxlint runs jest's rules in test files only (measured, 1.87). No glob of the shapes but
-// app/** matches it.
-// 1 import/no-namespace (bare no-namespace); import/no-nodejs-modules (import-x/)
-// 2 eslint/require-await (bare require-await, which typescript has too)
-// 3 eslint/no-nested-ternary (bare no-nested-ternary, which unicorn has too)
-// 4 eslint/no-dupe-keys (bare no-dupe-keys, which vue has too)
-// 5 jest/no-focused-tests (bare no-focused-tests, which vitest has too)
-// 6 import/no-anonymous-default-export (bare no-anonymous-default-export, which unicorn has too)
-// 7 oxc/approx-constant (deepscan/)
-// 8 typescript/no-explicit-any (typescript-eslint/)
-// 9 typescript/no-non-null-assertion (@typescript-eslint/eslint-plugin/)
+// A test file, as oxlint runs jest's rules in test files only (measured, 1.87). Rule each line draws (key):
+// 1 import/no-namespace (bare), import/no-nodejs-modules (import-x/); 2 eslint/require-await (bare);
+// 3 eslint/no-nested-ternary (bare); 4 eslint/no-dupe-keys (bare); 5 jest/no-focused-tests (bare);
+// 6 import/no-anonymous-default-export (bare); 7 oxc/approx-constant (deepscan/);
+// 8 typescript/no-explicit-any (typescript-eslint/); 9 typescript/no-non-null-assertion (@typescript-eslint/eslint-plugin/)
 const APP_TYPESCRIPT_SOURCE = `import * as path from 'node:path'
 export const run = async () => path.sep
 export const pick = (count: number) => (count > 0 ? 'a' : count < 0 ? 'b' : 'c')
@@ -68,15 +51,10 @@ export const loose: any = 1
 export const forced = keys!
 `
 
-// The same for JSX, in a file no glob of the shapes but app/** matches:
-// 1 react/require-render-return (bare require-render-return, which vue has too)
-// 2 react-perf/jsx-no-new-object-as-prop (react_perf/)
-// 3 nextjs/no-img-element (@next/)
-// 4 nextjs/no-html-link-for-pages (@next/next/)
-// 5 nextjs/no-sync-scripts (@next/eslint-plugin-next/)
-// 6 jsx-a11y/label-has-associated-control (jsx_a11y/)
-// 7 react/no-danger (react-hooks/)
-// 8 react/no-unknown-property (eslint-plugin-react/)
+// The same for JSX: 1 react/require-render-return (bare); 2 react-perf/jsx-no-new-object-as-prop (react_perf/);
+// 3 nextjs/no-img-element (@next/); 4 nextjs/no-html-link-for-pages (@next/next/);
+// 5 nextjs/no-sync-scripts (@next/eslint-plugin-next/); 6 jsx-a11y/label-has-associated-control (jsx_a11y/);
+// 7 react/no-danger (react-hooks/); 8 react/no-unknown-property (eslint-plugin-react/)
 const APP_JSX_SOURCE = `export class Widget extends React.Component { render() {} }
 export const Styled = () => <div style={{ color: 'red' }} />
 export const Photo = () => <img src="photo.png" alt="photo" />
@@ -87,7 +65,6 @@ export const Danger = () => <div dangerouslySetInnerHTML={{ __html: '' }} />
 export const Unknown = () => <div class="unknown" />
 `
 
-/** TS, TSX and JSX files, in and out of the folders and test files the shapes' globs tell apart. */
 export const oxlintMergeSourceFiles = {
   'src/a.ts': TYPESCRIPT_SOURCE,
   'lib/b.ts': TYPESCRIPT_SOURCE,
@@ -100,17 +77,14 @@ export const oxlintMergeSourceFiles = {
   'app/k.jsx': APP_JSX_SOURCE,
 } as const
 
-// A JS plugin of the team's whose one rule has the name of an oxlint rule, and reports each file it
-// lints, on line 1: a key under its prefix is its rule, whatever oxlint names the same.
+// The team's JS plugin's rule shares an oxlint rule's name: a key under the plugin's prefix means the plugin's.
 const JS_PLUGIN_FILE = 'lint/local-plugin.js'
 const JS_PLUGIN_RULE = 'local/jsx-no-duplicate-props'
 
-// A JS plugin named under @next, whose one rule has the name of a nextjs rule: oxlint reads
-// `@next/eslint-plugin-local/` as its package name, `@next/local`, which names no plugin of oxlint's.
+// oxlint reads `@next/eslint-plugin-local/` as package `@next/local`, which names no plugin of oxlint's.
 const SCOPED_JS_PLUGIN_FILE = 'lint/next-local-plugin.js'
 const SCOPED_JS_PLUGIN_RULE_UNDER_ITS_PACKAGE_NAME = '@next/eslint-plugin-local/no-img-element'
 
-/** A JS plugin of the given name, whose one rule, of the given name, reports each file it lints, on line 1. */
 function jsPluginReportingEveryFile(pluginName: string, ruleName: string): string {
   return `export default {
   meta: { name: '${pluginName}' },
@@ -127,14 +101,12 @@ function jsPluginReportingEveryFile(pluginName: string, ruleName: string): strin
 `
 }
 
-/** The project's other files: the team's JS plugins, outside the folders oxlint lints. */
 export const oxlintMergeJsPluginFiles = {
   [JS_PLUGIN_FILE]: jsPluginReportingEveryFile('local', 'jsx-no-duplicate-props'),
   [SCOPED_JS_PLUGIN_FILE]: jsPluginReportingEveryFile('@next/local', 'no-img-element'),
 } as const
 
-// The team's rule the statements set: a category rule of react, a plugin the team lists in
-// overrides only, if at all. Our part never states it.
+// A react category rule the team lists in overrides only, if at all; our part never states it.
 const TEAM_STATED_RULE_NAME = 'jsx-no-duplicate-props'
 const TEAM_STATED_RULE = `react/${TEAM_STATED_RULE_NAME}`
 const TEST_TSX_FILES = ['**/*.test.tsx']
@@ -142,8 +114,7 @@ const TSX_FILES = ['**/*.tsx']
 const LIB_FILES = ['lib/**']
 const SRC_FILES = ['src/**']
 const APP_FILES = ['app/**']
-// No file oxlint lints is in vendor: a listing for it changes nothing for the team, and has the
-// merge list the plugins at the root.
+// No linted file is in vendor/: a listing there only makes the merge list its plugins at the root.
 const VENDOR_FILES = ['vendor/**']
 const TEST_AND_JSX_FILES = ['**/*.test.tsx', '**/*.jsx']
 const PLUGINS_LISTED_IN_OVERRIDES: OxlintOverride['plugins'] = ['promise', 'react']
@@ -167,8 +138,7 @@ export const EXTENDS_STATING_IN_AN_OVERRIDE = buildTeamShapeValue(
   `extends an object listing [], whose override states ${TEAM_STATED_RULE} error for **/*.tsx, listing no plugin`,
   { extends: [{ plugins: [], overrides: [{ files: TSX_FILES, rules: { [TEAM_STATED_RULE]: 'error' } }] }] },
 )
-// Two statements oxlint ignores while react is not listed at the root: one at an extended config's
-// root, and one in an override of a config that config extends.
+// oxlint ignores both statements while react is not listed at the root.
 export const EXTENDS_STATING_AT_ITS_ROOT_AND_IN_A_NESTED_OVERRIDE = buildTeamShapeValue(
   `extends an object listing [] stating ${TEAM_STATED_RULE} error at its root, and extending one listing [] whose override states it error for **/*.tsx, listing no plugin`,
   {
@@ -217,7 +187,6 @@ export const TWO_LISTINGS_OF_TWO_SETS = buildTeamShapeValue('two overrides list 
     { files: SRC_FILES, plugins: ['promise'] },
   ],
 })
-// Two listings of one set, one excluding test files and one not.
 export const THREE_LISTINGS_OF_TWO_SETS = buildTeamShapeValue('[react] listed for **/*.tsx; [promise] for **/*.tsx but test files, and for src/**', {
   overrides: [
     { files: TSX_FILES, plugins: ['react'] },
@@ -225,8 +194,6 @@ export const THREE_LISTINGS_OF_TWO_SETS = buildTeamShapeValue('[react] listed fo
     { files: SRC_FILES, plugins: ['promise'] },
   ],
 })
-// Two listings of one set excluding the same files, given in two orders: lib/m.test.tsx is excluded
-// by both, and matched by the [react] listing alone.
 export const TWO_LISTINGS_EXCLUDING_ALIKE = buildTeamShapeValue(
   '[react] listed for **/*.tsx; [promise] for lib/** and for **/*.tsx, both but test and .jsx files, given in two orders',
   {
@@ -237,20 +204,17 @@ export const TWO_LISTINGS_EXCLUDING_ALIKE = buildTeamShapeValue(
     ],
   },
 )
-// oxlint never switches categories on for eslint, and switches none on for a plugin its root lists:
-// the root's statement of an eslint rule holds in the listing's files.
+// oxlint switches no category on for eslint, nor for a plugin its root lists.
 export const LISTING_ESLINT_AND_A_ROOT_PLUGIN = buildTeamShapeValue(
   'an override lists [eslint, react, unicorn] for **/*.tsx; no-compare-neg-zero error at the root',
   { rules: { 'no-compare-neg-zero': 'error' }, overrides: [{ files: TSX_FILES, plugins: ['eslint', 'react', 'unicorn'] }] },
 )
-// [react] lies inside [promise, react]: two different sets, one inside the other.
 export const LISTINGS_OF_NESTED_SETS = buildTeamShapeValue('an override lists [promise, react] for **/*.tsx, and another [react] for lib/**', {
   overrides: [
     { files: TSX_FILES, plugins: PLUGINS_LISTED_IN_OVERRIDES },
     { files: LIB_FILES, plugins: ['react'] },
   ],
 })
-// Two different sets of one size that share a plugin: neither lies inside the other.
 export const LISTINGS_OF_EQUAL_SETS_SHARING_A_PLUGIN = buildTeamShapeValue(
   'an override lists [promise, react] for **/*.tsx, and another [jsx-a11y, promise] for src/**',
   {
@@ -277,11 +241,8 @@ export const OTHER_OVERRIDE_STATES_OFF = buildTeamShapeValue(`${TEAM_STATED_RULE
   overrides: [{ files: TEST_TSX_FILES, rules: { [TEAM_STATED_RULE]: 'off' } }],
 })
 
-// Keys oxlint takes for one of its rules (parse_rule_key and normalize_plugin_name, oxlint 1.87
-// rules.rs and plugins.rs) that the catalog's oxlintSpellings do not hold: another name of the
-// plugin, the plugin's package named oxlint-plugin-*, or no prefix at all. Each value lists the
-// rule's plugin for lib/** alone, and states the rule in overrides listing no plugin, which oxlint
-// ignores for the team, or at a root that does not list it, which oxlint ignores too.
+// Keys oxlint takes for its rules (parse_rule_key, oxlint 1.87) that the catalog's oxlintSpellings miss,
+// each stated where oxlint ignores it for the team.
 export const NO_STATEMENT_UNDER_ANOTHER_KEY = buildTeamShapeValue('no statement under a key the catalog does not spell', {})
 export const REACT_UNDER_OTHER_PREFIXES = buildTeamShapeValue(
   `react listed for lib/**; react_hooks/${TEAM_STATED_RULE_NAME} error for src/**, and oxlint-plugin-react/${TEAM_STATED_RULE_NAME} for lib/**, in overrides listing no plugin`,
@@ -324,8 +285,7 @@ export const REACT_UNDER_NO_PREFIX = buildTeamShapeValue(
   },
 )
 
-// The allowed case beside them: a JS plugin's rule, named as an oxlint rule is, under the JS
-// plugin's prefix, which oxlint runs whatever the plugins listed.
+// The allowed case: a JS plugin's rule under its own prefix runs whatever plugins are listed.
 export const JS_PLUGIN_RULE_NAMED_AS_OXLINTS = buildTeamShapeValue(
   `react listed for lib/**; the team's JS plugin's ${JS_PLUGIN_RULE} error for src/**, in an override listing no plugin`,
   {
@@ -337,11 +297,8 @@ export const JS_PLUGIN_RULE_NAMED_AS_OXLINTS = buildTeamShapeValue(
   },
 )
 
-// The other names oxlint takes for its plugins in a key (unalias_plugin_name and
-// normalize_plugin_name, rules.rs and plugins.rs), one key each, each for a rule app/ draws on a line
-// of its own (measured, oxlint 1.87). Their plugins are listed only where no file is, so oxlint
-// ignores each statement for the team, under a root not listing typescript or oxc. Beside them, the
-// allowed case: a JS plugin named under @next, keyed under its package name.
+// Other names oxlint takes for its plugins (unalias_plugin_name, normalize_plugin_name; measured, 1.87), listed
+// only where no file is, so oxlint ignores each statement. Allowed case: an @next JS plugin under its package name.
 export const OTHER_NAMES_OF_OXLINTS_PLUGINS = buildTeamShapeValue(
   'import, jsx-a11y, nextjs, oxc, react, react-perf and typescript listed for vendor/** only; for app/**, in an override listing no plugin, a rule of each under another name oxlint takes for it, and the team JS plugin @next/local rule under its package name',
   {
@@ -369,10 +326,7 @@ export const OTHER_NAMES_OF_OXLINTS_PLUGINS = buildTeamShapeValue(
   },
 )
 
-// Bare names more than one plugin of oxlint's has: oxlint reads each as the rule of the first of
-// those plugins in its order (parse_rule_key, rules.rs). At the root, where its plugin is listed only
-// where no file is, oxlint ignores the statement for the team; in an override listing no plugin, the
-// statement is the eslint rule's, which always runs, under a root not listing the other plugin.
+// oxlint reads a bare name several of its plugins share as the first such plugin's rule (parse_rule_key).
 export const BARE_NAMES_OF_SHARED_RULES = buildTeamShapeValue(
   'import, jest and react listed for vendor/** only; no-namespace, no-anonymous-default-export, require-render-return and no-focused-tests error at the root; require-await, no-nested-ternary and no-dupe-keys error for app/**, in an override listing no plugin',
   {
@@ -389,11 +343,7 @@ export const BARE_NAMES_OF_SHARED_RULES = buildTeamShapeValue(
   },
 )
 
-// The team's statements of rules our part may state, each an oxlint rule our part runs where a shape
-// turns it on: typescript/consistent-type-imports (line 1 of the TS files, whose import is used as a
-// type only), react/jsx-key, and no-compare-neg-zero, a core rule, which oxlint always runs. Where a
-// statement counts, the team's setting decides the rule in its files (spec-owner-answers.md, the
-// precedence contract); where oxlint ignores it, ours does.
+// Where oxlint counts the team's statement of a rule ours states, the team's setting decides; where it ignores it, ours does.
 export const NO_STATEMENT_OF_OURS = buildTeamShapeValue('no statement of a rule our part may state', {})
 export const ROOT_STATES_OURS = buildTeamShapeValue(
   '@typescript-eslint/consistent-type-imports warn preferring no type imports, eslint/no-compare-neg-zero warn and react-hooks/jsx-key warn at the root',
@@ -465,7 +415,7 @@ export const OUR_ENTRY_TURNING_OFF_A_RULE_WE_DO_NOT_RUN = buildOurShapeValue('ou
 export const OUR_REACT_RULE_ONLY_IN_AN_ENTRY = buildOurShapeValue('ours: react/jsx-key on in an entry for lib/** only', {
   fileOverrides: [{ files: LIB_FILES, rules: { 'react/jsx-key': 'error' } }],
 })
-// Our top-level rules turning a rule off remove only ours: the team's config alone decides it (#42).
+// Our top-level off removes only ours: the team's config alone decides the rule.
 export const OUR_REACT_RULE_OFF_AT_THE_TOP_LEVEL = buildOurShapeValue('ours: react/jsx-key off at the top level', {
   rules: { 'react/jsx-key': 'off' },
 })
@@ -477,30 +427,24 @@ export const OUR_CORE_RULE_ONLY_IN_AN_ENTRY = buildOurShapeValue('ours: no-compa
   fileOverrides: [{ files: LIB_FILES, rules: { 'no-compare-neg-zero': 'error' } }],
 })
 
-// Our ignores remove only our rules from the files they match: the team's findings there stay
-// (spec-owner-answers.md, D-a). Written as a folder, an ignore covers what the agent build's
-// ignorePatterns and ESLint's global ignores cover (review.md, Must fix 3).
+// Our ignores remove only our rules from the files they match; the team's findings there stay.
+// Written as a folder, an ignore covers what ignorePatterns and ESLint's global ignores cover.
 export const NO_IGNORES_OF_OURS = buildOurShapeValue('ours: no ignores', {})
 export const OUR_IGNORES = buildOurShapeValue('ours: ignores lib/**', { ignores: LIB_FILES })
 export const OUR_IGNORES_OF_A_FOLDER = buildOurShapeValue('ours: ignores lib, a folder', { ignores: ['lib'] })
 export const OUR_IGNORES_OF_A_FOLDER_ENDING_IN_A_SLASH = buildOurShapeValue('ours: ignores lib/, a folder', { ignores: ['lib/'] })
 
-// The rules our ESLint part runs are off in oxlint only where that part runs them: not in our
-// ignores, nor where an entry of ours turns them off (decisions.md, D1).
+// Our ESLint-run rules are off in oxlint only where ESLint runs them: not in our ignores or entries turning them off.
 export const NO_RULE_ESLINT_RUNS = buildOurShapeValue('ours: no rule ESLint runs', {})
 export const OUR_RULES_ESLINT_RUNS = buildOurShapeValue('ours: @typescript-eslint/array-type and promise/param-names, which ESLint runs', {
   rules: { '@typescript-eslint/array-type': 'error', 'promise/param-names': 'error' },
 })
-// oxlint's own correctness: warn, which runs where the team writes no correctness, would run its
-// copy of no-this-alias under typescript, a default plugin: the merge switches that copy off in every
-// file, so ESLint's is the only one (decisions.md, "Owner 2026-10-14 (questions on the merge rework
-// spec", point 1).
+// oxlint's own correctness: warn runs its no-this-alias copy under typescript, a default plugin; the merge turns it off everywhere.
 export const OUR_RULE_ESLINT_RUNS_IN_OXLINTS_DEFAULT_CATEGORY = buildOurShapeValue(
   "ours: @typescript-eslint/no-this-alias, which ESLint runs, and oxlint's correctness category holds",
   { rules: { '@typescript-eslint/no-this-alias': 'error' } },
 )
-// oxlint has no copy of typescript-eslint's no-unused-vars, but its own correctness: warn runs the
-// core no-unused-vars, the twin, under eslint, which always runs: the merge switches that copy off too.
+// Likewise the core no-unused-vars, twin of typescript-eslint's, which correctness: warn runs under eslint.
 export const OUR_TWIN_RULE_ESLINT_RUNS_IN_OXLINTS_DEFAULT_CATEGORY = buildOurShapeValue(
   "ours: @typescript-eslint/no-unused-vars, which ESLint runs, whose core twin oxlint's correctness category holds",
   { rules: { '@typescript-eslint/no-unused-vars': 'error' } },
@@ -612,31 +556,27 @@ export const OXLINT_MERGE_DIMENSIONS: readonly Dimension<OxlintMergeShapeValue>[
   },
 ]
 
-/**
- * Values that must meet in one shape beyond a pair: each set reproduces a defect a review round, or
- * this differential test, found, fixing every dimension the defect depends on, so the run keeps
- * holding it whatever the generator picks around it.
- */
+/** Values that must meet in one shape beyond a pair: each set pins a defect a review or this test found. */
 export const OXLINT_MERGE_SEEDS: readonly (readonly OxlintMergeShapeValue[])[] = [
-  // oxlint adds its default plugins through an extended config that lists none (round-3 review).
+  // oxlint adds its default plugins through an extended config that lists none.
   [ROOT_PLUGINS_LISTED, EXTENDS_LISTING_NONE, OUR_RULE_OF_A_DEFAULT_PLUGIN],
   [ROOT_PLUGINS_EMPTY, EXTENDS_LISTING_NONE, OUR_RULE_OF_A_DEFAULT_PLUGIN],
-  // Our entry's off, where the team lists the rule's plugin only in an override (round 3).
+  // Our entry's off, where the team lists the rule's plugin only in an override.
   [ONE_LISTING, OUR_ENTRY_TURNING_OFF_A_RULE_WE_DO_NOT_RUN],
-  // A rule our part states only in an entry, where the team's listing runs it outside the entry: the team's there (#42).
+  // A rule ours states only in an entry, where the team's listing runs it outside the entry.
   [ONE_LISTING, OUR_REACT_RULE_ONLY_IN_AN_ENTRY],
-  // A file two of the team's listings both match and both exclude, which nothing else lists react for (round 3).
+  // A file two team listings both match and both exclude, which nothing else lists react for.
   [ROOT_PLUGINS_OMITTED, NO_EXTENDS, TWO_LISTINGS_OVERLAPPING, NO_STATEMENT, OUR_REACT_RULE],
-  // Our off of a rule ESLint runs, whose plugin the team lists in an override, with its category on (round 3).
+  // Our off of a rule ESLint runs, whose plugin the team lists in an override, with its category on.
   [ROOT_PLUGINS_OMITTED, NO_EXTENDS, ONE_LISTING, STYLE_ON, OUR_RULES_ESLINT_RUNS],
-  // A root statement oxlint ignores where the plugin is not listed (questions.md #44).
+  // A root statement oxlint ignores where the plugin is not listed.
   [ONE_LISTING, ROOT_STATES_ON, OUR_REACT_RULE],
-  // Under a root listing no plugin but eslint, an override's listing switches no category on (round 4).
+  // Under a root listing no plugin but eslint, an override's listing switches no category on.
   [ROOT_PLUGINS_EMPTY, NO_EXTENDS, ONE_LISTING, NO_REACT_RULE],
-  // An extended config's override stating a rule whose plugin it does not list, which oxlint ignores (round-4 review, B).
+  // An extended config's override stating a rule whose plugin it does not list, which oxlint ignores.
   [ROOT_PLUGINS_LISTED, EXTENDS_STATING_IN_AN_OVERRIDE, ONE_LISTING, NO_STATEMENT, NO_STATEMENT_UNDER_ANOTHER_KEY],
   // Listings of two sets under a root listing none, one excluding test files: the other's categories
-  // stay off in the files it excludes (round-4 review, C).
+  // stay off in the files it excludes.
   [
     ROOT_PLUGINS_EMPTY,
     NO_EXTENDS,
@@ -646,12 +586,11 @@ export const OXLINT_MERGE_SEEDS: readonly (readonly OxlintMergeShapeValue[])[] =
     STYLE_ON,
     NO_RULE_ESLINT_RUNS,
   ],
-  // A root statement oxlint ignores, of a rule whose category is off, so no category off covers it (round-4 review, D).
+  // A root statement oxlint ignores, of a rule whose category is off, so no category off covers it.
   [ROOT_PLUGINS_LISTED, NO_EXTENDS, ONE_LISTING, ROOT_STATES_ON, NO_STATEMENT_UNDER_ANOTHER_KEY, CORRECTNESS_OFF],
-  // A category an extended config alone turns on, switched on by an override's listing (round-4 review, E).
+  // A category an extended config alone turns on, switched on by an override's listing.
   [ROOT_PLUGINS_LISTED, EXTENDS_SETTING_CATEGORIES, ONE_LISTING, NO_STATEMENT_UNDER_ANOTHER_KEY, NO_CATEGORIES, NO_RULE_ESLINT_RUNS],
-  // Statements under keys oxlint takes for its rules that the catalog does not spell, which oxlint
-  // ignores where their plugin is not listed (round-4 review, B3).
+  // Statements under keys the catalog does not spell, which oxlint ignores where their plugin is not listed.
   [ROOT_PLUGINS_LISTED, NO_EXTENDS, REACT_UNDER_OTHER_PREFIXES, NO_STATEMENT],
   [
     ROOT_PLUGINS_LISTED,
@@ -663,7 +602,7 @@ export const OXLINT_MERGE_SEEDS: readonly (readonly OxlintMergeShapeValue[])[] =
   ],
   [ROOT_PLUGINS_EMPTY, NO_EXTENDS, JSX_A11Y_UNDER_OTHER_PREFIXES],
   [ROOT_PLUGINS_LISTED, NO_EXTENDS, REACT_UNDER_NO_PREFIX, NO_STATEMENT],
-  // Round 6 broke each line of the merge in turn; each seed below holds a break no shape caught.
+  // Each seed from here holds a break of the merge no generated shape caught.
   // Statements oxlint ignores at an extended config's root, and in an override of a config it extends.
   [ROOT_PLUGINS_LISTED, EXTENDS_STATING_AT_ITS_ROOT_AND_IN_A_NESTED_OVERRIDE, ONE_LISTING, NO_STATEMENT, NO_STATEMENT_UNDER_ANOTHER_KEY],
   // The same, with the rule's category off, so no category off covers the extended root's statement.
@@ -691,7 +630,7 @@ export const OXLINT_MERGE_SEEDS: readonly (readonly OxlintMergeShapeValue[])[] =
   [ROOT_PLUGINS_LISTED, EXTENDS_TWO_SETTING_STYLE, ONE_LISTING, NO_STATEMENT, NO_CATEGORIES],
   // oxlint's default plugins, which our config first in line must not add beside an extended config.
   [ROOT_PLUGINS_EMPTY, EXTENDS_LISTING_PLUGINS, NO_CATEGORIES],
-  // Listings of one set, one excluding test files, beside another set (round-5 review, S2).
+  // Listings of one set, one excluding test files, beside another set.
   [ROOT_PLUGINS_EMPTY, NO_EXTENDS, THREE_LISTINGS_OF_TWO_SETS, NO_STATEMENT, NO_STATEMENT_UNDER_ANOTHER_KEY, STYLE_ON],
   // A file two listings of one set both exclude by the same globs, in two orders.
   [ROOT_PLUGINS_EMPTY, NO_EXTENDS, TWO_LISTINGS_EXCLUDING_ALIKE, NO_STATEMENT, NO_STATEMENT_UNDER_ANOTHER_KEY, NO_CATEGORIES],
@@ -699,7 +638,7 @@ export const OXLINT_MERGE_SEEDS: readonly (readonly OxlintMergeShapeValue[])[] =
   [ROOT_PLUGINS_LISTED, NO_EXTENDS, LISTING_ESLINT_AND_A_ROOT_PLUGIN, NO_CATEGORIES],
   // One listing's set inside another's.
   [ROOT_PLUGINS_EMPTY, NO_EXTENDS, LISTINGS_OF_NESTED_SETS, NO_STATEMENT, NO_STATEMENT_UNDER_ANOTHER_KEY, STYLE_ON],
-  // Two sets of one size sharing a plugin, which are two sets, where our part adds nothing (round-6 review).
+  // Two sets of one size sharing a plugin, where our part adds nothing.
   [
     ROOT_PLUGINS_EMPTY,
     NO_EXTENDS,
@@ -713,14 +652,11 @@ export const OXLINT_MERGE_SEEDS: readonly (readonly OxlintMergeShapeValue[])[] =
   ],
   // A root listing only eslint, which lists, for oxlint, no plugin.
   [ROOT_PLUGINS_ESLINT_ONLY, NO_EXTENDS, ONE_LISTING, NO_CATEGORIES],
-  // Keys under the other names of oxlint's plugins, and bare names more than one plugin has, under a
-  // root listing neither typescript, oxc nor unicorn (round-5 review, S4 and S5).
+  // Keys under other names of oxlint's plugins, and bare names several plugins share, under a root
+  // listing neither typescript, oxc nor unicorn.
   [ROOT_PLUGINS_EMPTY, NO_EXTENDS, NO_LISTING, OTHER_NAMES_OF_OXLINTS_PLUGINS],
   [ROOT_PLUGINS_EMPTY, NO_EXTENDS, NO_LISTING, BARE_NAMES_OF_SHARED_RULES],
-  // The owner's precedence (2026-10-11): the team's statement of a rule our part states decides it
-  // in the files it applies to, where oxlint counts it; where oxlint ignores it, ours decides. The
-  // team's root states ours under other spellings, under a root running oxlint's default plugins,
-  // and under one not listing typescript.
+  // The team's root states ours under other spellings: where oxlint counts a statement it decides; where it ignores it, ours does.
   [ROOT_PLUGINS_OMITTED, NO_EXTENDS, ROOT_STATES_OURS, OUR_RULE_OF_A_DEFAULT_PLUGIN, OUR_CORE_RULE],
   [ROOT_PLUGINS_LISTED, NO_EXTENDS, ROOT_STATES_OURS, OUR_RULE_OF_A_DEFAULT_PLUGIN, OUR_REACT_RULE],
   // Statements of ours that count only where an extended config lists react at the root, and where none does.
@@ -734,27 +670,22 @@ export const OXLINT_MERGE_SEEDS: readonly (readonly OxlintMergeShapeValue[])[] =
   // Our off and our ignores, where the team's listing switches react's categories on: the team's findings stay.
   [ROOT_PLUGINS_OMITTED, NO_EXTENDS, ONE_LISTING, NO_STATEMENT_OF_OURS, OUR_REACT_RULE_OFF_AT_THE_TOP_LEVEL],
   [ROOT_PLUGINS_OMITTED, NO_EXTENDS, ONE_LISTING, NO_STATEMENT_OF_OURS, OUR_REACT_RULE, OUR_IGNORES],
-  // The same, our ignores written as a folder (review.md, Must fix 3).
+  // The same, our ignores written as a folder.
   [ROOT_PLUGINS_OMITTED, NO_EXTENDS, ONE_LISTING, NO_STATEMENT_OF_OURS, OUR_REACT_RULE, OUR_IGNORES_OF_A_FOLDER],
-  // The rules our ESLint part runs, beside team categories that run them: the team's findings stay
-  // where our ignores keep our ESLint part out, or an entry of ours turns one off (decisions.md, D1).
+  // Our ESLint-run rules beside team categories running them: the team's findings stay where our
+  // ignores or an entry of ours keep ESLint out.
   [ROOT_PLUGINS_OMITTED, NO_EXTENDS, ONE_LISTING, NO_STATEMENT_OF_OURS, STYLE_ON, OUR_RULES_ESLINT_RUNS, OUR_IGNORES],
   [ROOT_PLUGINS_OMITTED, NO_EXTENDS, ONE_LISTING, NO_STATEMENT_OF_OURS, STYLE_ON, OUR_RULES_ESLINT_RUNS, OUR_IGNORES_OF_A_FOLDER],
   [ROOT_PLUGINS_OMITTED, NO_EXTENDS, ONE_LISTING, NO_STATEMENT_OF_OURS, STYLE_ON, OUR_RULES_ESLINT_RUNS_OFF_IN_AN_ENTRY, NO_IGNORES_OF_OURS],
-  // A rule our ESLint part runs, whose oxlint copy oxlint's own correctness: warn runs under its default
-  // plugins: off in every file, our ignores' included; and where the team writes correctness off,
-  // nothing to switch off.
+  // The correctness: warn copy of a rule our ESLint part runs: off in every file, our ignores' included;
+  // nothing to switch off where the team writes correctness off.
   [ROOT_PLUGINS_OMITTED, NO_EXTENDS, NO_LISTING, NO_STATEMENT_OF_OURS, NO_CATEGORIES, OUR_RULE_ESLINT_RUNS_IN_OXLINTS_DEFAULT_CATEGORY, OUR_IGNORES],
   [ROOT_PLUGINS_OMITTED, NO_EXTENDS, NO_LISTING, NO_STATEMENT_OF_OURS, STYLE_ON, OUR_RULE_ESLINT_RUNS_IN_OXLINTS_DEFAULT_CATEGORY, NO_IGNORES_OF_OURS],
   [ROOT_PLUGINS_OMITTED, NO_EXTENDS, NO_LISTING, NO_STATEMENT_OF_OURS, CORRECTNESS_OFF, OUR_RULE_ESLINT_RUNS_IN_OXLINTS_DEFAULT_CATEGORY],
-  // The off of oxlint's silent copies of the rules our ESLint part runs, broken a decision at a time
-  // (decisions.md, "Owner 2026-10-14 (questions on the merge rework spec", point 1): each seed below
-  // holds a break no shape caught. The core twin of such a rule, whose copy oxlint's own correctness:
-  // warn runs: off too.
+  // The core twin of an ESLint-run rule, whose copy correctness: warn runs: off too.
   [ROOT_PLUGINS_OMITTED, NO_EXTENDS, NO_LISTING, NO_STATEMENT_OF_OURS, NO_CATEGORIES, OUR_TWIN_RULE_ESLINT_RUNS_IN_OXLINTS_DEFAULT_CATEGORY],
-  // A root listing plugins, and typescript listed for lib/** alone, where oxlint switches typescript's
-  // categories on, its own correctness: warn included: the off of the copy of a rule our ESLint part
-  // runs follows that switch, so it holds in lib/** too.
+  // typescript listed for lib/** alone switches its categories on there, correctness: warn included:
+  // the off of our ESLint-run rule's copy holds in lib/** too.
   [
     ROOT_PLUGINS_LISTED,
     NO_EXTENDS,
@@ -767,9 +698,7 @@ export const OXLINT_MERGE_SEEDS: readonly (readonly OxlintMergeShapeValue[])[] =
   ],
 ]
 
-// Two team configs the merge cannot reproduce (questions.md #48), each a value adding nothing to
-// ours. G2: under a root listing no plugin, an override listing [react, promise] turns the team's
-// rule off in every TSX file, and a later override listing [react] alone matches the test files.
+// Two team configs the merge cannot reproduce.
 export const OFF_UNDONE_BY_A_LATER_LISTING = buildTeamShapeValue(
   `root plugins []; ${TEAM_STATED_RULE} off for **/*.tsx in an override listing [react, promise], then [react] listed for test files`,
   buildTeamOxlintConfig({
@@ -781,8 +710,6 @@ export const OFF_UNDONE_BY_A_LATER_LISTING = buildTeamShapeValue(
   }),
 )
 
-// G3: under a root listing no plugin, [react] listed for every TSX file, and [promise] listed by two
-// overrides that both exclude lib/m.test.tsx, each through excludeFiles of its own.
 export const FILE_EXCLUDED_BY_TWO_LISTINGS = buildTeamShapeValue(
   'root plugins []; [react] listed for **/*.tsx; [promise] listed for lib/** but test files, and for test files but lib/**',
   buildTeamOxlintConfig({

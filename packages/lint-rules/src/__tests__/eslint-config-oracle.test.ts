@@ -5,9 +5,8 @@ import { buildFakePlugin } from './factories/catalog-factories.ts'
 import { buildTeamEslintBlock } from './factories/team-config-factories.ts'
 import { setUpTempProjects } from './temp-projects.ts'
 
-// The reading of ESLint's cache key the plugin-identity specs rest on: one that confused two
-// namespaces, or dropped a plugin without a name, would let a stale cache entry pass. And the
-// reading from a project's own directory the absolute-path specs rest on.
+// A reading of ESLint's cache key that confused two namespaces, or dropped a nameless plugin, would let a stale
+// cache entry pass.
 
 const { calculatedConfigInProjectFor, calculatedRulesOfEach, ruleIdsReportedInProjectByFile, ruleSeverityInProjectFor, serializedPluginsFor } =
   setUpEslintConfigOracle()

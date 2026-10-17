@@ -1,9 +1,6 @@
 const ROOT_PATH = '$'
 
-/**
- * The path of every function inside a value, walking plain objects and arrays: `$.a.b[0]`. A
- * value met twice is walked once, so a cycle ends the walk rather than the test run.
- */
+/** Walks plain objects and arrays: `$.a.b[0]`. A value met twice is walked once, so a cycle ends the walk. */
 export function pathsOfFunctionsIn(value: unknown): string[] {
   return pathsOfFunctionsUnder(value, ROOT_PATH, new WeakSet())
 }

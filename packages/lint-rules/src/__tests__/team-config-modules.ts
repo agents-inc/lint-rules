@@ -3,11 +3,7 @@ import { pathToFileURL } from 'node:url'
 import type { Linter } from 'eslint'
 import { isRecord } from '../core/is-record.ts'
 
-/**
- * The `teamConfig` a JS module in the project exports, as a team's eslint.config.mjs hands its
- * config over: untyped, so it may hold what ESLint's types leave out, a function in `files`. Each
- * block is a plain object; nothing further is checked.
- */
+/** Untyped, as a team's eslint.config.mjs hands it over, so it may hold what ESLint's types leave out. */
 export async function importedTeamConfig(projectDir: string, file: string): Promise<Linter.Config[]> {
   // Parse boundary: a JS module, typed as any by import().
   const module: unknown = await import(pathToFileURL(join(projectDir, file)).href)

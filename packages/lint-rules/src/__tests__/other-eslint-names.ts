@@ -7,14 +7,10 @@ import { builtinRules } from 'eslint/use-at-your-own-risk'
 export type TwinPair = { readonly ours: string; readonly theirs: string }
 
 /**
- * Every other ESLint name of the same rule, sorted: its ESLint aliases, and each oxlint spelling
- * that is an ESLint rule ID. A spelling is one when it is a rule ID of the catalog, or carries the
- * rule's own plugin prefix, as the old name of a renamed rule does (`unicorn/no-array-for-each`
- * beside `unicorn/no-for-each`). A spelling only oxlint reads (`typescript/…`, `eslint/…`, a
- * package form) is not. A twin is not either, though oxlint spells some twins as the rule itself
- * (`@typescript-eslint/no-unused-vars` beside `no-unused-vars`): in ESLint it is another rule.
- * Aliases and spellings are read from the catalog, so a spec built on them walks the catalog.
- */
+* Every other ESLint name of the same rule, sorted: its ESLint aliases, and each oxlint spelling that is an ESLint
+* rule ID (a catalog rule ID, or under the rule's own plugin prefix, as a renamed rule's old name). A twin is not
+* one, though oxlint spells some twins as the rule itself: in ESLint it is another rule.
+*/
 export function sameRuleNamesOf(id: string, catalog: Catalog): string[] {
   const { eslintAliases, oxlintSpellings } = routeIn(catalog, id)
   const prefix = pluginPrefixOf(id)
@@ -27,18 +23,14 @@ export function sameRuleNamesOf(id: string, catalog: Catalog): string[] {
     .toSorted()
 }
 
-/** The same-rule names of every rule given, once each and sorted. */
 export function sameRuleNamesOfEach(ids: readonly string[], catalog: Catalog): string[] {
   return [...new Set(ids.flatMap((id) => sameRuleNamesOf(id, catalog)))].toSorted()
 }
 
 /**
- * typescript-eslint's twins of the rule, sorted: of a core rule, each typescript-eslint rule that
- * extends it; of a typescript-eslint rule, the core rule it extends. Both report the same finding.
- * Read from the installed typescript-eslint's own metadata (`meta.docs.extendsBaseRule`), never from
- * the catalog the merge reads. An extension deprecated in favour of its core rule checks nothing
- * the core rule does not, so it is the same rule under another name, not a twin.
- */
+* typescript-eslint's twins of the rule, read from the installed plugin's `meta.docs.extendsBaseRule`, never from
+* the catalog. An extension deprecated in favour of its core rule is the same rule under another name, not a twin.
+*/
 export function typescriptEslintTwinsOf(id: string): string[] {
   const extensions = typescriptEslintExtensions().filter(({ replacedByCoreRule }) => !replacedByCoreRule)
   const extendingIt = extensions.filter(({ coreRule }) => coreRule === id).map((extension) => extension.id)
@@ -47,12 +39,9 @@ export function typescriptEslintTwinsOf(id: string): string[] {
 }
 
 /**
- * Every other name the rule's own plugin binds to the rule's module object, sorted: @eslint-react
- * 5.24.10 registers rules both as `x-no-missing-key` and as `no-missing-key`, one rule under two
- * names (decisions.md, round 6). Read from the installed plugins and ESLint's own core rules, never
- * from the catalog the merge reads. A rule of a plugin ESLint has none installed of, as an
- * oxlint-only rule, has none.
- */
+* Other names the rule's own plugin binds to its module object: @eslint-react 5.24.10 registers `x-no-missing-key`
+* and `no-missing-key` as one rule. Read from the installed plugins, never from the catalog.
+*/
 export function sameModuleNamesOf(id: string): string[] {
   const prefix = pluginPrefixOf(id)
   const rules = rulesUnder(prefix)
@@ -65,26 +54,19 @@ export function sameModuleNamesOf(id: string): string[] {
     .toSorted()
 }
 
-/** The same-module names of every rule given, once each and sorted. */
 export function sameModuleNamesOfEach(ids: readonly string[]): string[] {
   return [...new Set(ids.flatMap(sameModuleNamesOf))].toSorted()
 }
 
-/** Each rule given beside each of its twins, in the order given. */
 export function twinPairsOf(ids: readonly string[]): TwinPair[] {
   return ids.flatMap((ours) => typescriptEslintTwinsOf(ours).map((theirs) => ({ ours, theirs })))
 }
 
-/** Every ESLint name of the rule, sorted: its own ID, its same-rule names and its same-module names. */
 export function eslintNamesOf(id: string, catalog: Catalog): string[] {
   return [...new Set([id, ...sameRuleNamesOf(id, catalog), ...sameModuleNamesOf(id)])].toSorted()
 }
 
-/**
- * The names given, and each one under a prefix of ours also under every prefix the team registers
- * that plugin under, sorted: `ts/array-type` beside `@typescript-eslint/array-type` where the team
- * registers typescript-eslint as `ts`, as antfu's config does. `teamsPrefixes` is keyed by our prefix.
- */
+/** Adds each name under every prefix the team registers that plugin under: `ts/array-type` beside `@typescript-eslint/array-type`. */
 export function withTheTeamsPrefixes(names: readonly string[], teamsPrefixes: ReadonlyMap<string, readonly string[]>): string[] {
   const underTheTeamsPrefixes = names.flatMap((name) => {
     const prefix = pluginPrefixOf(name)
@@ -94,7 +76,7 @@ export function withTheTeamsPrefixes(names: readonly string[], teamsPrefixes: Re
   return [...new Set([...names, ...underTheTeamsPrefixes])].toSorted()
 }
 
-/** ESLint's core rules where there is no prefix, the installed plugin's under one, none where no plugin of ours is installed under it. */
+/** None where no plugin of ours is installed under the prefix. */
 function rulesUnder(prefix: string | null): ReadonlyMap<string, unknown> {
   if (prefix === null) return builtinRules
   const plugin = eslintPlugins[prefix]

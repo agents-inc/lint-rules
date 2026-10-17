@@ -1,7 +1,6 @@
-// Run by project-service-verdicts.ts, in a process of its own for each tsconfigRootDir: typescript-eslint
-// keeps one project service per process, and a file it has opened keeps the project it found then,
-// whatever tsconfigRootDir a later lint gives (measured, typescript-eslint 8.71.1). Prints, as JSON,
-// each file given that typescript-eslint's project service finds no project for, as ESLint reports it.
+// Run by project-service-verdicts.ts, a process per tsconfigRootDir: a file typescript-eslint's project service
+// has opened keeps the project it found, whatever a later tsconfigRootDir gives (measured, typescript-eslint
+// 8.71.1). Prints, as JSON, each file given that the service finds no project for.
 
 import { ESLint } from 'eslint'
 import tseslint from 'typescript-eslint'

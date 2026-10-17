@@ -9,12 +9,9 @@ const NO_TEAM_PLUGINS: ReadonlyMap<string, ESLint.Plugin> = new Map()
 const NO_RULE_NAMES: ReadonlyMap<string, readonly string[]> = new Map()
 
 /**
- * Our ESLint part as a config of its own, built without the merge and laid out as the agent build
- * lays out its ESLint config: our ignores as global ignores, then the base block and every block
- * after it, on our own type information, which leaves out the TS files outside every tsconfig. What
- * our part gives with no team config: the oracle for the rules it states. It states no ESLint name
- * of a rule our oxlint part runs, and registers the plugins as the registry holds them.
- */
+* Our ESLint part laid out as the agent build lays it out, without the merge: the oracle for the rules it states
+* with no team config.
+*/
 export function eslintPartAlone(part: EslintPart, catalog: Catalog, registry: EslintPluginRegistry): Linter.Config[] {
   const projectFacts = projectFactsOf(part.tsconfigRootDir)
   const { globalIgnores, base, afterTheBase } = eslintBlocksBeforeTheOffSwitch(

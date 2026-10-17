@@ -3,16 +3,15 @@ import type { OxlintConfig, OxlintEnv, OxlintOverride } from 'oxlint'
 
 type Severity = 'off' | 'warn' | 'error'
 
-/** The keys of a config the oracle reads, with every config it extends as an object merged in. */
+/** With every config extended as an object merged in. */
 type ConfigReadForAFile = Required<Pick<OxlintConfig, 'rules' | 'env' | 'overrides'>>
 
-/** What oxlint applies to one file: rule entries keyed by oxlint name, and the env switches. */
 export type OxlintFileConfig = {
   readonly rules: Readonly<Record<string, unknown>>
   readonly env: OxlintEnv
 }
 
-/** An ignore pattern read as a .gitignore line: the glob, whether it holds from the config's folder only, and whether it matches folders only. */
+/** An ignore pattern read as a .gitignore line. */
 type IgnoreLine = { readonly glob: string; readonly isAnchored: boolean; readonly matchesFoldersOnly: boolean }
 
 const SEVERITY_BY_SPELLING = new Map<unknown, Severity>([
@@ -32,12 +31,10 @@ const NEGATION = '!'
 const ANY_FOLDERS = '**/'
 
 /**
- * The config oxlint applies to a file, read the way oxlint 1.87 reads it: the top-level rules and
- * env, then each override whose `files` match the file and whose `excludeFiles` do not, in order,
- * so a later override wins. Paths are relative to the config, as oxlint resolves override globs. A
- * config extended as an object is merged in first, but for its root env, which reaches no file; one
- * extended by path is out of sight. All measured in oxlint-config-oracle.integration.test.ts.
- */
+* The config oxlint 1.87 applies to a file: top-level rules and env, then each matching override in order, a
+* later one winning. Globs are relative to the config. A config extended as an object merges in first, but for
+* its root env; one extended by path is out of sight. Measured in oxlint-config-oracle.integration.test.ts.
+*/
 export function oxlintConfigForFile(config: OxlintConfig, file: string): OxlintFileConfig {
   const { rules = {}, env = {}, overrides = [] } = withExtendedConfigsMergedIn(config)
   return overrides
@@ -51,11 +48,7 @@ export function oxlintConfigForFile(config: OxlintConfig, file: string): OxlintF
     )
 }
 
-/**
- * The entry oxlint applies to a rule in a file, the rule written under any of the spellings given,
- * each of which oxlint reads as that rule: the last statement of it, the top level's first, then
- * each override that applies, in order. Undefined where no statement of it applies.
- */
+/** The last statement of the rule under any spelling given, top level first; undefined where none applies. */
 export function oxlintEntryOfRuleFor(config: OxlintConfig, file: string, spellings: readonly string[]): unknown {
   const { rules = {}, overrides = [] } = withExtendedConfigsMergedIn(config)
   // An override may switch only env, and state no rule.
@@ -64,27 +57,21 @@ export function oxlintEntryOfRuleFor(config: OxlintConfig, file: string, spellin
   return lastStatement === undefined ? undefined : lastStatement[1]
 }
 
-/** The rule's severity in the file, or undefined when neither the top level nor an override sets it. */
 export function oxlintSeverityFor(config: OxlintConfig, file: string, oxlintName: string): Severity | undefined {
   const entry = oxlintConfigForFile(config, file).rules[oxlintName]
   return entry === undefined ? undefined : severityOfOxlintEntry(entry)
 }
 
 /**
- * Whether the config's `ignorePatterns` match the file, so oxlint lints it with none of the config's
- * rules. oxlint reads each pattern as a .gitignore line, relative to the config: a pattern with no
- * slash but a last one matches a folder or file of that name in any folder, a last slash matches
- * folders only, a slash before that ties it to the config's folder, and a folder matched leaves out
- * every file under it. A negated pattern is refused, as the oracle does not model it.
- */
+* oxlint reads each ignore pattern as a .gitignore line relative to the config: no slash but a trailing one
+* matches that name in any folder, a trailing slash matches folders only, an earlier slash anchors it, and a
+* matched folder leaves out every file under it. Negated patterns are refused: the oracle does not model them.
+*/
 export function isIgnoredByOxlintConfig({ ignorePatterns = [] }: OxlintConfig, file: string): boolean {
   return ignorePatterns.map(ignoreLineOf).some((line) => ignoreLineMatches(line, file))
 }
 
-/**
- * Whether one of oxlint's override globs matches the file: a glob with no slash matches a file of
- * that name in any folder, and `./` starts at the config's folder.
- */
+/** A glob with no slash matches that file name in any folder; `./` starts at the config's folder. */
 export function oxlintGlobMatches(glob: string, file: string): boolean {
   const fromTheConfigFolder = glob.startsWith(FROM_THE_CONFIG_FOLDER) ? glob.slice(FROM_THE_CONFIG_FOLDER.length) : glob
   return matchesGlob(file, fromTheConfigFolder.includes(PATH_SEPARATOR) ? fromTheConfigFolder : `${ANY_FOLDERS}${fromTheConfigFolder}`)
@@ -107,23 +94,20 @@ function ignoreLineOf(pattern: string): IgnoreLine {
   return { glob, isAnchored, matchesFoldersOnly }
 }
 
-/** Whether the line matches the file, or a folder the file is under. */
 function ignoreLineMatches({ glob, isAnchored, matchesFoldersOnly }: IgnoreLine, file: string): boolean {
   const candidates = matchesFoldersOnly ? foldersHolding(file) : [...foldersHolding(file), file]
   return candidates.some((path) => matchesGlob(path, isAnchored ? glob : `${ANY_FOLDERS}${glob}`))
 }
 
-/** Each folder the file is under, outermost first: `src`, then `src/deep`, for `src/deep/a.js`. */
 function foldersHolding(file: string): string[] {
   const segments = file.split(PATH_SEPARATOR).slice(0, -1)
   return segments.map((segment, index) => [...segments.slice(0, index), segment].join(PATH_SEPARATOR))
 }
 
 /**
- * The config with each config it extends as an object merged in, as oxlint merges them: their top-level
- * rules, a later config's over an earlier's, under the config's own; their overrides, env included,
- * in order, before the config's own. Only the config's own root env stands.
- */
+* Extended configs' rules sit under the config's own, a later one's over an earlier's; their overrides come
+* first, in order. Only the config's own root env stands.
+*/
 function withExtendedConfigsMergedIn(config: OxlintConfig): ConfigReadForAFile {
   const { rules = {}, env = {}, overrides = [], extends: extended = [] } = config
   const merged = extended.filter(isAnObject).map(withExtendedConfigsMergedIn)

@@ -1,4 +1,3 @@
-/** One way a shape varies: its name, and the values it takes there. */
 export type Dimension<V> = { readonly name: string; readonly values: readonly V[] }
 
 /** One value of each dimension, in the dimensions' order. */
@@ -29,7 +28,6 @@ const PICK_SEPARATOR = '|'
 const POSITION_SEPARATOR = ':'
 const SHAPE_NAME_SEPARATOR = '; '
 
-/** A shape's name, for a test's title: its values' names, in order. */
 export function shapeNameOf(shape: Shape<{ readonly name: string }>): string {
   return shape.map(({ name }) => name).join(SHAPE_NAME_SEPARATOR)
 }
@@ -52,7 +50,6 @@ export function pairwiseShapes<V extends NonNullable<unknown>>(
   return shapesMeetingEveryPair(dimensions, seeded, everyPair).map((positions) => valuesAt(dimensions, positions))
 }
 
-/** Each two values of two dimensions that meet in none of the shapes. */
 export function pairsMetInNoShape<V extends NonNullable<unknown>>(
   dimensions: readonly Dimension<V>[],
   shapes: readonly Shape<V>[],
@@ -64,7 +61,6 @@ export function pairsMetInNoShape<V extends NonNullable<unknown>>(
   return [...notMet].map((key) => picksOfKey(key).map((pick) => valueAt(dimensions, pick)))
 }
 
-/** How many shapes and combinations there are, and how many of all pairs and triples of values the shapes meet. */
 export function coverageOf<V extends NonNullable<unknown>>(dimensions: readonly Dimension<V>[], shapes: readonly Shape<V>[]): ShapeCoverage {
   const positions = shapes.map((shape) => positionsIn(dimensions, shape))
   const metOf = (size: number): number => new Set(positions.flatMap((shape) => combinationKeysIn(shape, size))).size
@@ -86,7 +82,6 @@ function shapesMeetingEveryPair<V>(dimensions: readonly Dimension<V>[], shapes: 
   return shapesMeetingEveryPair(dimensions, [...shapes, next], everyPair)
 }
 
-/** The pairs none of the shapes meets, in the order given. */
 function pairsNotMetBy(everyPair: readonly string[], shapes: readonly Positions[]): ReadonlySet<string> {
   const met = new Set(shapes.flatMap((shape) => combinationKeysIn(shape, PAIR)))
   return new Set(everyPair.filter((key) => !met.has(key)))

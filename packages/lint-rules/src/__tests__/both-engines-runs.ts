@@ -30,61 +30,47 @@ import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './runs-
 import { EMPTY_TEAM_OXLINT_CONFIG } from './team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, installedPackage, type ProjectFiles, THIS_PACKAGE, type TempProjects } from './temp-projects.ts'
 
-/** The rulesets our part lists, by set: none unless given. */
 type OurRulesets = Parameters<typeof buildConsumerLintRules>[1]
 
-/** A consumer's project: its sources, our settings, and the team's two configs. */
 export type BothEnginesProject = {
   readonly sources: ProjectFiles
   readonly ourRulesets?: OurRulesets
   readonly ours: OurFields
-  /** The rules the team's ESLint config turns on in every file it lints, its .vue, .svelte and .astro files included. */
+  /** Turned on in every file the team lints, .vue, .svelte and .astro included. */
   readonly teamEslintRules: TeamEslintRules
-  /** The extensions of the JS and TS files the team's ESLint config lints: .js and .ts unless given. */
+  /** .js and .ts unless given. */
   readonly teamJsAndTsExtensions?: readonly string[]
-  /** The block of global ignores the team's ESLint config gives, which may take files back from ESLint's default ignores: none unless given. */
+  /** May take files back from ESLint's default ignores. */
   readonly teamEslintGlobalIgnores?: TeamGlobalIgnoresBlock
   readonly teamOxlintConfig: OxlintConfig
-  /** Whether a config of ours oxlint refuses to load is kept as a refusal, its findings none: unless given, the runs fail. */
+  /** Keeps a config oxlint refuses as a refusal with no findings; unless given, the runs fail. */
   readonly keepsOxlintRefusals?: true
-  /**
-   * Whether the oxlint CLI is given each source file, as an editor gives it the file it opens, rather
-   * than the project's folder, whose walk skips every .git folder (measured, oxlint 1.87): unless
-   * given, the folder.
-   */
+  /** Gives oxlint each source file, as an editor does, not the folder, whose walk skips every .git folder (measured, oxlint 1.87). */
   readonly oxlintGivenEachSourceFile?: true
 }
 
-/** What both engines report over the whole project with each build. */
 export type BothEnginesRuns = {
-  /** The agent build of our settings, suppressions allowed as the editor set allows them: our part alone. */
+  /** Our part alone, suppressions allowed as the editor set allows them. */
   readonly agent: readonly EngineFinding[]
-  /** Our editor parts, through the built package, merged into a team ESLint config with no block and a team oxlint config turning nothing on. */
+  /** Our editor parts merged into an empty team ESLint config and a team oxlint config turning nothing on. */
   readonly mergedIntoEmptyTeamConfigs: readonly EngineFinding[]
-  /** Our editor parts, through the built package, merged into the team's two configs. */
   readonly mergedIntoTheTeamsConfigs: readonly EngineFinding[]
-  /** The team's two configs alone. */
   readonly teamAlone: readonly EngineFinding[]
-  /** `run, file: message` for every fatal ESLint message, a parse error included, in every ESLint run. */
+  /** `run, file: message`, parse errors included. */
   readonly eslintFatalMessages: readonly string[]
-  /** As `eslintFatalMessages`, by build: for a test that reads some builds alone. */
   readonly eslintFatalMessagesInEachBuild: Readonly<Record<BuildName, readonly string[]>>
-  /** The files each ESLint run lints, sorted: every file it gives a result for. */
+  /** Every file each ESLint run gives a result for, sorted. */
   readonly eslintLintedFiles: Readonly<Record<BuildName, readonly string[]>>
-  /** `run: what oxlint printed` for each config oxlint refused to load, where the project keeps refusals. */
+  /** `run: what oxlint printed`, where the project keeps refusals. */
   readonly oxlintRefusals: readonly string[]
 }
 
-/** Each build both engines lint the project with. */
 export type BuildName = 'agent' | 'mergedIntoEmptyTeamConfigs' | 'mergedIntoTheTeamsConfigs' | 'teamAlone'
 
-/** The configs of one build, by engine: an ESLint config file or its blocks, and an oxlint config file. */
 type BuildConfigs = { readonly name: string; readonly eslint: string | Linter.Config[]; readonly oxlintConfigFile: string }
 
-/** How the oxlint CLI is run in every build: the paths it is given, and whether a config it refuses is kept as a refusal. */
 type OxlintRuns = { readonly paths: readonly string[]; readonly keepsRefusals: boolean }
 
-/** What both engines report with one build. */
 type BuildRun = {
   readonly findings: readonly EngineFinding[]
   readonly eslintFatalMessages: readonly string[]
@@ -103,14 +89,7 @@ const MERGED_INTO_EMPTY_TEAM_CONFIGS = { name: 'merged into empty team configs',
 const MERGED_INTO_THE_TEAMS_CONFIGS = { name: "merged into the team's configs", eslint: 'eslint.merged.mjs', oxlintConfigFile: 'oxlint.merged.mts' } as const
 const TEAM_ALONE = { name: "the team's configs alone", eslint: 'eslint.team-alone.mjs', oxlintConfigFile: 'oxlint.team-alone.json' } as const
 
-/**
- * Makes the project before the suite, with the built package, oxlint and typescript-eslint installed,
- * and lints all of it with each build, by the real oxlint CLI and the real ESLint Node API: the agent
- * build of our settings, laid out by the source as `check` will lay it out; and, through the built
- * package as a consumer loads it, our editor parts merged into empty team configs and into the
- * team's, and the team's alone. Call it at the top of a describe block: it registers that scope's
- * hooks.
- */
+/** Lints the project with each build, by the real oxlint CLI and ESLint Node API. Registers hooks: call it in a describe block. */
 export function setUpBothEnginesRuns(project: BothEnginesProject): () => BothEnginesRuns {
   return setUpRunsBeforeTheSuite((tempProjects) => bothEnginesRunsOf(tempProjects, project), BOTH_ENGINES_RUNS)
 }
@@ -153,17 +132,15 @@ async function bothEnginesRunsOf(tempProjects: TempProjects, project: BothEngine
   }
 }
 
-/** How the project's oxlint runs are made, the same in every build. */
 function oxlintRunsFor({ sources, keepsOxlintRefusals, oxlintGivenEachSourceFile }: BothEnginesProject): OxlintRuns {
   return { paths: oxlintGivenEachSourceFile === true ? Object.keys(sources) : [EVERYTHING], keepsRefusals: keepsOxlintRefusals === true }
 }
 
-/** Our settings in the project, with suppressions allowed, as the editor set always allows them, so the agent build states its rules. */
+/** Suppressions allowed, as the editor set always allows them, so the agent build states its rules. */
 function lintRulesOf(projectDir: string, { ourRulesets = {}, ours }: BothEnginesProject): LintRules {
   return buildConsumerLintRules(projectDir, ourRulesets, { ...ours, allowSuppressions: true })
 }
 
-/** agents-inc.lint.mts, the team's ESLint config modules, and each config file the built package is loaded through. */
 function writeConsumerFiles(
   projectDir: string,
   lintRules: LintRules,
@@ -191,11 +168,7 @@ function writeConsumerFiles(
   writeOxlintConfigFile(projectDir, TEAM_ALONE.oxlintConfigFile, teamOxlintConfig)
 }
 
-/**
- * Both engines over the whole project with the build's configs: ESLint first, in this process, then
- * the oxlint CLI, given the paths its runs are given. A config oxlint refuses fails the run, or,
- * where refusals are kept, reports nothing.
- */
+/** ESLint first, in this process, then the oxlint CLI. A config oxlint refuses fails the run or, where refusals are kept, reports nothing. */
 async function runOf(projectDir: string, { name, eslint, oxlintConfigFile }: BuildConfigs, oxlintRuns: OxlintRuns): Promise<BuildRun> {
   const results = await eslintFor(projectDir, eslint).lintFiles([EVERYTHING])
   const linting = oxlintCliOutcomeOf(projectDir, oxlintConfigFile, oxlintRuns.paths)
@@ -208,7 +181,6 @@ async function runOf(projectDir: string, { name, eslint, oxlintConfigFile }: Bui
   }
 }
 
-/** ESLint with a config file of the project, as `eslint -c` loads it, or with the blocks given. */
 function eslintFor(projectDir: string, eslint: string | Linter.Config[]): ESLint {
   if (typeof eslint === 'string') return new ESLint({ cwd: projectDir, overrideConfigFile: join(projectDir, eslint) })
   return new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: eslint })

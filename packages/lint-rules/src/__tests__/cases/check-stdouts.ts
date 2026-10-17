@@ -1,5 +1,4 @@
-// What check prints to stdout, in the shapes spec-cli.md's "Output contract" gives, for the tests
-// of the reader in check-output.ts.
+// What check prints to stdout, for the tests of the reader in check-output.ts.
 
 export const CHECK_STDOUT_WITH_EVERY_KIND_OF_LINE = `check: autofixed src/a.ts, src/with space.ts; read them again before editing them.
 src/with space.ts:2 no-debugger — \`debugger\` statement is not allowed

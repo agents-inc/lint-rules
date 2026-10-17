@@ -8,27 +8,21 @@ import { runNodeScript } from './node-process.ts'
 import { setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
 import type { TempProject } from './temp-projects.ts'
 
-/** The two builds that lint the project: the agent build, and our ESLint part merged into an empty team config. */
+/** `editor`: our ESLint part merged into an empty team config. */
 export type EslintBuild = 'agent' | 'editor'
 
-/** One file's result as eslint-build-process.ts prints it: ESLint's, and every rule that ran on the file. */
+/** As eslint-build-process.ts prints it. */
 export type EslintProcessResult = EslintCliResult & { readonly rulesRun: readonly string[] }
 
 export type EslintResultsByBuild = { readonly [build in EslintBuild]: readonly EslintProcessResult[] }
 
-/** What linting the project gave: ESLint's results by build, and the oxlint CLI's run of the agent build's oxlint config, where asked. */
 export type EslintRunsInItsOwnProcess = {
-  /** tsconfigRootDir, ESLint's cwd: every path below is relative to it. */
+  /** ESLint's cwd: every path below is relative to it. */
   readonly rootDir: string
   readonly eslint: EslintResultsByBuild
   readonly agentOxlint: OxlintCliOutcome | null
 }
 
-/**
- * A project, the folder in it the consumer gives as tsconfigRootDir, the lint rules defined there,
- * the team's oxlint config the editor build merges beside, where the project lists oxlint, and
- * whether the oxlint CLI runs the agent build's oxlint config over the project too.
- */
 export type ProjectLinted = {
   readonly project: TempProject
   /** Relative to the project. */
@@ -44,13 +38,9 @@ const AGENT_OXLINT_CONFIG_FILE = '.oxlintrc.json'
 const PROCESS_TIMEOUT_MS = 240_000
 
 /**
- * Makes the project before the suite and lints it with both builds, ESLint in a Node process of its
- * own (eslint-build-process.ts): typescript-eslint keeps one project service per process, set up by
- * the first config it parses, so two projects linted in one process would share the first's
- * (spec-core.md C9). That process loads this package's source, as the tests in this one do. Where
- * asked, the oxlint CLI then runs the agent build's oxlint config over the project. Call it at the
- * top of a describe block: it registers that scope's hooks.
- */
+* Lints the project with both builds, ESLint in a process of its own: typescript-eslint keeps one project
+* service per process, set by the first config it parses. Registers hooks: call it in a describe block.
+*/
 export function setUpEslintRunsInItsOwnProcess({ project, tsconfigRootDir, lintRulesFor, teamOxlintConfig, runsTheAgentOxlintConfig }: ProjectLinted): () => EslintRunsInItsOwnProcess {
   return setUpRunsBeforeTheSuite((tempProjects) => {
     const rootDir = join(tempProjects.create(project), tsconfigRootDir)
@@ -63,18 +53,18 @@ export function setUpEslintRunsInItsOwnProcess({ project, tsconfigRootDir, lintR
   })
 }
 
-/** The oxlint CLI's run of the agent build's oxlint config: throws where it was not asked for. */
+/** Throws where it was not asked for. */
 export function agentOxlintOf({ agentOxlint, rootDir }: EslintRunsInItsOwnProcess): OxlintCliOutcome {
   if (agentOxlint === null) throw new Error(`oxlint was not asked to run the agent build's config over ${rootDir}`)
   return agentOxlint
 }
 
-/** Every rule ESLint ran on the file in the build given, from its stats: none when the file failed to parse. */
+/** From ESLint's stats: none when the file failed to parse. */
 export function rulesRunOn({ eslint, rootDir }: EslintRunsInItsOwnProcess, build: EslintBuild, file: string): readonly string[] {
   return resultFor(eslint[build], rootDir, file).rulesRun
 }
 
-/** The rule ID of each message on the file in the build given, null for ESLint's own, a parse error included. */
+/** Null for ESLint's own messages, parse errors included. */
 export function ruleIdsOn({ eslint, rootDir }: EslintRunsInItsOwnProcess, build: EslintBuild, file: string): (string | null)[] {
   return resultFor(eslint[build], rootDir, file).messages.map(({ ruleId }) => ruleId)
 }
@@ -95,14 +85,14 @@ function eslintResultsInItsOwnProcess(rootDir: string, lintRules: LintRules, tea
   return JSON.parse(stdout) as EslintResultsByBuild
 }
 
-/** The team's oxlint config, written into the project, as the editor build names it: none where the project lists no oxlint. */
+/** None where the project lists no oxlint. */
 function teamOxlintConfigArgument(rootDir: string, teamOxlintConfig: OxlintConfig | null): string[] {
   if (teamOxlintConfig === null) return []
   writeOxlintConfigFile(rootDir, TEAM_OXLINT_CONFIG_FILE, teamOxlintConfig)
   return [TEAM_OXLINT_CONFIG_FILE]
 }
 
-/** The agent build's oxlint config, built here, where nothing is parsed with type information, and run by the oxlint CLI over the project. */
+/** Built here, where nothing is parsed with type information. */
 function oxlintRunOfTheAgentBuild(rootDir: string, lintRules: LintRules): OxlintCliOutcome {
   writeOxlintConfigFile(rootDir, AGENT_OXLINT_CONFIG_FILE, agentConfigsOf(defineLintRules(lintRules)).oxlint)
   return oxlintCliOutcomeOf(rootDir, AGENT_OXLINT_CONFIG_FILE)

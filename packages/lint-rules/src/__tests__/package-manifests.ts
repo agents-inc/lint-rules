@@ -3,7 +3,6 @@ import { dirname, join } from 'node:path'
 import { satisfies, subset } from 'semver'
 import ts from 'typescript'
 
-/** The fields of a package.json the manifest checks read. */
 export type Manifest = {
   readonly name: string
   readonly version: string
@@ -11,25 +10,24 @@ export type Manifest = {
   readonly dependencies?: Readonly<Record<string, string>>
   readonly devDependencies?: Readonly<Record<string, string>>
   readonly peerDependencies?: Readonly<Record<string, string>>
-  /** The globs naming a workspace root's packages. */
   readonly workspaces?: readonly string[]
 }
 
-/** A package as installed: its name, its version, and the Node versions its engines field admits, null where it states none. */
+/** `nodeRange` null where its engines field states none. */
 export type InstalledPackage = { readonly name: string; readonly version: string; readonly nodeRange: string | null }
 
-/** A package two manifests both list, at different versions: the shipped package's and the one its build inlines. */
+/** At different versions in the shipped package's manifest and the one its build inlines. */
 export type ListingDisagreement = { readonly name: string; readonly shipped: string; readonly inlined: string }
 
 type DependencyField = 'dependencies' | 'devDependencies' | 'peerDependencies'
 
-/** A workspace as bun.lock records it: its name, its version but the root's, and the packages it lists under each dependency field. */
+/** As bun.lock records it: no version for the root. */
 export type LockedWorkspace = Pick<Manifest, 'name' | DependencyField> & Partial<Pick<Manifest, 'version'>>
 
-/** Each workspace bun.lock records, by its directory from the repo root: `''` for the root. */
+/** By directory from the repo root, `''` for the root. */
 export type LockedWorkspaces = Readonly<Record<string, LockedWorkspace>>
 
-/** A package a dependency field lists at one version in the manifest and another in the lock, null where one side lists none. */
+/** Null where one side lists none. */
 export type LockDisagreement = {
   readonly field: DependencyField
   readonly name: string
@@ -37,7 +35,6 @@ export type LockDisagreement = {
   readonly listed: string | null
 }
 
-/** bun.lock's top level, as far as the checks read it. */
 type BunLock = { readonly workspaces: LockedWorkspaces }
 
 const PACKAGE_JSON = 'package.json'
@@ -55,10 +52,9 @@ export function readManifest(path: string): Manifest {
 }
 
 /**
- * The package.json of the package installed under the name given, as Node finds it from the
- * directory given: in the nearest node_modules holding it, symlinks resolved. Looked up by path,
- * since a package's `exports` may leave its package.json out.
- */
+* As Node finds it from the directory, symlinks resolved. Looked up by path, since a package's `exports` may
+* leave its package.json out.
+*/
 export function installedManifestPath(fromDir: string, name: string): string {
   const manifestPath = nearestInstalledManifestPath(fromDir, name)
   if (manifestPath === null) throw new Error(`${name} is not installed where ${fromDir} can resolve it`)
@@ -73,11 +69,7 @@ function nearestInstalledManifestPath(dir: string, name: string): string | null 
   return parent === dir ? null : nearestInstalledManifestPath(parent, name)
 }
 
-/**
- * Every package installed for the package in the directory given: those it lists under
- * dependencies and peerDependencies, then each one's dependencies in turn, each install once,
- * sorted by name and version. A dependency's own peers and optional dependencies are left out.
- */
+/** Sorted, each install once; a dependency's own peers and optional dependencies are left out. */
 export function packagesInstalledFor(packageDir: string): InstalledPackage[] {
   const found = new Map<string, InstalledPackage>()
   const visit = (fromDir: string, names: readonly string[]): void => {
@@ -93,26 +85,20 @@ export function packagesInstalledFor(packageDir: string): InstalledPackage[] {
   return [...found.values()].toSorted((first, second) => first.name.localeCompare(second.name) || first.version.localeCompare(second.version))
 }
 
-/**
- * Each package whose engines field leaves out a Node version the range given admits, as
- * `name: its engines.node range`. A package stating no Node range admits every Node.
- */
+/** As `name: its engines.node range`; a package stating no Node range admits every Node. */
 export function packagesAdmittingLessNodeThan(nodeRange: string, packages: readonly InstalledPackage[]): string[] {
   return packages.flatMap(({ name, nodeRange: theirs }) => (theirs === null || subset(nodeRange, theirs) ? [] : [`${name}: ${theirs}`]))
 }
 
-/** The Node versions given that the range admits, in their order. */
 export function nodeVersionsAdmittedBy(nodeRange: string, versions: readonly string[]): string[] {
   return versions.filter((version) => satisfies(version, nodeRange))
 }
 
-/** Each package the inlined package depends on that the shipped package lists under neither dependencies nor devDependencies. */
 export function dependenciesNotListedBy(shipped: Manifest, inlined: Manifest): string[] {
   const listed = listingsOf(shipped)
   return namesListedUnder(inlined, ['dependencies']).filter((name) => !listed.has(name))
 }
 
-/** Each package both manifests list under dependencies or devDependencies, at a version they disagree on. */
 export function listingDisagreements(shipped: Manifest, inlined: Manifest): ListingDisagreement[] {
   const shippedListings = listingsOf(shipped)
   return [...listingsOf(inlined)].flatMap(([name, inlinedVersion]) => {
@@ -121,7 +107,6 @@ export function listingDisagreements(shipped: Manifest, inlined: Manifest): List
   })
 }
 
-/** Every package listed under dependencies or devDependencies, by name, with the version it is listed at. */
 function listingsOf(manifest: Manifest): ReadonlyMap<string, string> {
   return new Map(LISTING_FIELDS.flatMap((field) => Object.entries(listedUnder(manifest, field))))
 }
@@ -136,10 +121,7 @@ function listedUnder(manifest: Pick<Manifest, DependencyField>, field: Dependenc
   return listed === undefined ? {} : listed
 }
 
-/**
- * Each workspace of a bun workspace root, by its directory from the root, sorted: `''` for the root
- * itself, and each directory holding a package.json that its `workspaces` globs name.
- */
+/** By directory from the root, sorted: `''` for the root itself. */
 export function workspaceDirsOf(rootDir: string): string[] {
   const { workspaces = [] } = readManifest(join(rootDir, PACKAGE_JSON))
   const packageDirs = workspaces.flatMap((glob) => globSync(join(glob, PACKAGE_JSON), { cwd: rootDir }).map(dirname))
@@ -154,11 +136,7 @@ export function readLockedWorkspaces(lockPath: string): LockedWorkspaces {
   return workspaces
 }
 
-/**
- * Each package a dependency field of the workspace's manifest lists otherwise than bun.lock records
- * it: at another version or range, or on one side only. bun 1.2.6's frozen install accepts such a
- * lock and leaves it as it is, so nothing else notices.
- */
+/** bun 1.2.6's frozen install accepts such a lock and leaves it as it is, so nothing else notices. */
 export function lockDisagreements(locked: LockedWorkspace, manifest: Manifest): LockDisagreement[] {
   return LOCKED_FIELDS.flatMap((field) => disagreementsUnder(field, listedUnder(locked, field), listedUnder(manifest, field)))
 }
@@ -176,7 +154,6 @@ function disagreementsUnder(
   })
 }
 
-/** The version a field lists the package at: null where it lists no such package. */
 function versionOrNull(listed: Readonly<Record<string, string>>, name: string): string | null {
   const version = listed[name]
   return version === undefined ? null : version

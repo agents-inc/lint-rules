@@ -1,4 +1,3 @@
-/** A package npm installs beside a peer outside its range: its name, its version and the peer range it states. */
 export type PeerOverride = { readonly packageName: string; readonly version: string; readonly peerRange: string }
 
 const PEER = 'eslint'

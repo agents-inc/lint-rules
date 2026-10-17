@@ -3,17 +3,12 @@ import { buildTsconfig } from '../factories/tsconfig-factories.ts'
 import type { RuleByItsNames } from '../findings-beside-the-team.ts'
 import type { ProjectFiles } from '../temp-projects.ts'
 
-// A publishable package in a monorepo, shaped like real run 3's case R-ALL-6 (turborepo-monorepo's
-// packages/ui): it publishes `dist` and `src`, its tsconfig maps `@/*` to `./src/*`, and its stories
-// import a helper of `src` through that alias, where n/no-unpublished-import reported every story
-// (`"@/internal/story/story" is not published.`) when ESLint ran from the monorepo's root. Beside the
-// alias, three imports the rule must still report: a package the package lists in devDependencies
-// alone, as packages/ui's `@repo/api-mocks` was, and a file it does not publish, through an alias
-// eslint-plugin-n reads as a path, as it reads `@/`, and through a relative path.
+// A publishable package whose tsconfig maps `@/*` to `./src/*`, whose stories import a helper of `src` through
+// that alias. Beside it, three imports the rule must still report: a devDependency, and an unpublished file
+// through an alias eslint-plugin-n reads as a path and through a relative path.
 
 export const NO_UNPUBLISHED_IMPORT: RuleByItsNames = { rule: 'n/no-unpublished-import', names: ['n/no-unpublished-import'] }
 
-/** The story importing through the alias, which the package publishes. */
 export const STORY_FILE = 'packages/ui/src/components/button/button.stories.tsx'
 
 const PACKAGE_JSON = {
@@ -24,8 +19,7 @@ const PACKAGE_JSON = {
   devDependencies: { '@repo/api-mocks': '*' },
 }
 
-// No baseUrl, which TypeScript 6 deprecates: each path is relative to the tsconfig. `#scripts/*`
-// names the unpublished scripts folder; like `@/`, it fails the plugin's package-name pattern.
+// No baseUrl, which TypeScript 6 deprecates. `#scripts/*`, like `@/`, fails the plugin's package-name pattern.
 const TSCONFIG = buildTsconfig({
   compilerOptions: {
     target: 'ES2022',
@@ -40,7 +34,6 @@ const TSCONFIG = buildTsconfig({
   include: ['src', 'scripts'],
 })
 
-// The story helper packages/ui imports by its alias; a .tsx file, as story.tsx was there.
 const STORY_HELPER = `export function StoryWrapper({ title }: { readonly title: string }) {
   return <section aria-label={title} />
 }
@@ -64,7 +57,6 @@ const BUILD_STORY_SCRIPT = `export function buildStory(...parts: readonly unknow
 const STORY_TITLE_SCRIPT = `export const storyTitle = 'Button'
 `
 
-/** The package's files, under packages/ui of the project's root. */
 export const workspacePackageFiles: ProjectFiles = {
   'packages/ui/package.json': jsonFileText(PACKAGE_JSON),
   'packages/ui/tsconfig.json': jsonFileText(TSCONFIG),
@@ -74,7 +66,7 @@ export const workspacePackageFiles: ProjectFiles = {
   'packages/ui/scripts/story-title.ts': STORY_TITLE_SCRIPT,
 }
 
-/** What the rule owes in the story: each import of something the package does not publish, and not the alias to src. */
+/** Each import of something unpublished, not the alias to src. */
 export const OWED_IN_THE_STORY = {
   [STORY_FILE]: {
     'n/no-unpublished-import': [
@@ -85,17 +77,12 @@ export const OWED_IN_THE_STORY = {
   },
 }
 
-// Two more publishable packages, whose tsconfig maps `@/*` to `./src/*` and does not allow importing
-// TS extensions, as packages/ui's did: eslint-plugin-n then tries no TS or JSX extension of its own
-// (lib/util/get-try-extensions.js, 18.4.1). In the first, a module imports through the alias a file
-// of each extension we lint and a JSON file, all published. In the second, `@/both` names both.ts,
-// which the package does not publish, beside both.json, which it does: TypeScript and bundlers
-// resolve it to both.ts.
+// Two more packages whose tsconfig does not allow importing TS extensions: eslint-plugin-n 18.4.1 then tries no
+// TS or JSX extension of its own (get-try-extensions.js). In the second, `@/both` resolves to the unpublished
+// both.ts, as TypeScript and bundlers resolve it, beside the published both.json.
 
-/** The module importing through the alias a published file of each extension. */
 export const EVERY_EXTENSION_MODULE = 'packages/ui/src/every-extension.tsx'
 
-/** The module importing `@/both`. */
 export const BOTH_MODULE = 'packages/conf/src/uses-both.ts'
 
 const ALIAS_TSCONFIG = buildTsconfig({
@@ -138,7 +125,6 @@ const USES_BOTH = `import both from '@/both'
 export const all = [both]
 `
 
-/** The two packages' files, under packages/ui and packages/conf of the project's root. */
 export const aliasedFilesOfEachExtension: ProjectFiles = {
   'packages/ui/package.json': jsonFileText(PUBLISHING_SRC),
   'packages/ui/tsconfig.json': jsonFileText(ALIAS_TSCONFIG),
@@ -159,7 +145,7 @@ export const aliasedFilesOfEachExtension: ProjectFiles = {
   [BOTH_MODULE]: USES_BOTH,
 }
 
-/** What the rule owes in the two modules: nothing through the alias to a published file, and the import TypeScript resolves to the unpublished both.ts. */
+/** Nothing through the alias to a published file; the import TypeScript resolves to the unpublished both.ts. */
 export const OWED_THROUGH_THE_ALIAS = {
   [EVERY_EXTENSION_MODULE]: { 'n/no-unpublished-import': [] },
   [BOTH_MODULE]: { 'n/no-unpublished-import': [`${BOTH_MODULE}:1 n/no-unpublished-import`] },

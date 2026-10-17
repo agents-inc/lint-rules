@@ -10,19 +10,12 @@ const DIRECTORIES_NEVER_WALKED: ReadonlySet<string> = new Set(['node_modules', '
 const GLOB_SEPARATOR = '/'
 const VERDICTS_TIMEOUT_MS = 300_000
 
-/**
- * Every TS file under the directory, `.d.ts` included, as a path relative to it with `/` between
- * segments, sorted. node_modules and .git are not walked into.
- */
+/** `.d.ts` included, relative with `/` between segments, sorted. */
 export function tsFilesUnder(root: string): string[] {
   return filesUnder(root, '').filter((file) => TS_FILE.test(file)).toSorted()
 }
 
-/**
- * The TS files under `tsconfigRootDir` that typescript-eslint's project service finds no project for,
- * as ESLint reports them when linting each one with `projectService: true` from that root, sorted.
- * The real service decides, in a process of its own, so this is what a lint run sees.
- */
+/** Decided by the real service, in a process of its own, linting each file with `projectService: true` from that root. */
 export function tsFilesTheProjectServiceFindsNoProjectFor(tsconfigRootDir: string): string[] {
   const stdout = runNodeScript(VERDICTS_PROCESS, [tsconfigRootDir, ...tsFilesUnder(tsconfigRootDir)], {
     cwd: tsconfigRootDir,

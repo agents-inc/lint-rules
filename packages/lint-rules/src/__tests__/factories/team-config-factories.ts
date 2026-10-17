@@ -5,10 +5,8 @@ import { ruleNamesByPrefix } from '../../core/build-eslint-config.ts'
 import type { mergeEslintConfig } from '../../eslint.ts'
 import { buildReportingPlugin } from './catalog-factories.ts'
 
-/** A team's whole ESLint config: whatever ESLint's defineConfig takes. */
 type TeamEslintConfig = Parameters<typeof mergeEslintConfig>[0]
 
-/** How a team gives typescript-eslint type information: its project service, or the older `project`. */
 export type TeamTypeInformation = 'projectService' | 'project'
 
 const PARSER_OPTIONS_GIVING_TYPES: Readonly<Record<TeamTypeInformation, Linter.ParserOptions>> = {
@@ -16,30 +14,21 @@ const PARSER_OPTIONS_GIVING_TYPES: Readonly<Record<TeamTypeInformation, Linter.P
   project: { project: './tsconfig.json' },
 }
 
-/** One block of a team's own ESLint config, named so a spec can tell it from ours. */
+/** Named so a spec can tell it from ours. */
 export function buildTeamEslintBlock(name: string, fields: Omit<Linter.Config, 'name'> = {}): Linter.Config {
   return { name, ...fields }
 }
 
-/** A team config that is one block extending others, as defineConfig's `extends` reads them. */
 export function buildTeamEslintConfigExtending(name: string, extended: readonly Linter.Config[]): TeamEslintConfig {
   return { name, extends: [...extended] }
 }
 
-/**
- * A team block turning on every rule ID given, at error, and registering under each plugin prefix
- * among them a plugin whose rules of those names report every file: a team's own twins of rules,
- * whose firing a spec can see. A core rule ID needs no plugin.
- */
+/** Registers under each plugin prefix a plugin whose rules of those names report every file, so a spec sees them fire. */
 export function buildTeamEslintBlockTurningOn(name: string, ruleIds: readonly string[]): Linter.Config {
   return buildTeamEslintBlockSetting(name, Object.fromEntries(ruleIds.map((id): [string, Linter.RuleEntry] => [id, 'error'])))
 }
 
-/**
- * A team block giving each rule ID the entry given, options included, and registering under each
- * plugin prefix among them a plugin whose rules of those names report every file and take any
- * options. A core rule ID needs no plugin.
- */
+/** As `buildTeamEslintBlockTurningOn`, with the entries given; the stand-in rules take any options. */
 export function buildTeamEslintBlockSetting(name: string, rules: Readonly<Linter.RulesRecord>): Linter.Config {
   const plugins = [...ruleNamesByPrefix(Object.keys(rules))].map(([prefix, ruleNames]): [string, ESLint.Plugin] => [
     prefix,
@@ -48,7 +37,6 @@ export function buildTeamEslintBlockSetting(name: string, rules: Readonly<Linter
   return buildTeamEslintBlock(name, { plugins: Object.fromEntries(plugins), rules: { ...rules } })
 }
 
-/** A team block giving type information to the files its fields name: every file it applies to, without `files`. */
 export function buildTeamTypedEslintBlock(
   name: string,
   typeInformation: TeamTypeInformation,
@@ -57,11 +45,7 @@ export function buildTeamTypedEslintBlock(
   return buildTeamEslintBlock(name, { ...fields, languageOptions: { parserOptions: PARSER_OPTIONS_GIVING_TYPES[typeInformation] } })
 }
 
-/**
- * A team block setting typescript-eslint's parser options as given, and no other language option:
- * for a block that switches type information off again (`projectService: false`) or one that leaves
- * it on (`program: null` alone).
- */
+/** For a block switching type information off again (`projectService: false`) or leaving it on (`program: null`). */
 export function buildTeamEslintBlockSettingParserOptions(
   name: string,
   parserOptions: Linter.ParserOptions,
@@ -70,29 +54,17 @@ export function buildTeamEslintBlockSettingParserOptions(
   return buildTeamEslintBlock(name, { ...fields, languageOptions: { parserOptions } })
 }
 
-/**
- * typescript-eslint's own disableTypeChecked config, as a team spreads it into a block of its own:
- * type information switched off, and every typed rule of typescript-eslint off, in the files its
- * fields name.
- */
+/** typescript-eslint's disableTypeChecked, as a team spreads it into a block of its own. */
 export function buildTeamDisableTypeCheckedBlock(name: string, fields: Omit<Linter.Config, 'name' | 'languageOptions' | 'rules'> = {}): Linter.Config {
   return { ...tseslint.configs.disableTypeChecked, name, ...fields }
 }
 
-/**
- * The language options of typescript-eslint's disableTypeChecked alone, as a team block switching
- * type information off for the files its fields name, and setting no rule: the rules
- * disableTypeChecked turns off make each of them the team's in every file (decisions.md, "Owner
- * 2026-10-14").
- */
+/** disableTypeChecked's language options alone, setting no rule. */
 export function buildTeamBlockSwitchingTypesOffAsDisableTypeCheckedDoes(name: string, fields: Omit<Linter.Config, 'name' | 'languageOptions' | 'rules'> = {}): Linter.Config {
   return { ...tseslint.configs.disableTypeChecked, name, ...fields, rules: {} }
 }
 
-/**
- * A parser of the team's own, named so a spec can tell it from ours. It refuses to parse: specs read
- * which parser ESLint calculates for a file, and lint none with it.
- */
+/** Refuses to parse: specs read which parser ESLint calculates for a file, and lint none with it. */
 export function buildTeamParser(name: string): Linter.Parser {
   return {
     meta: { name },
@@ -102,11 +74,7 @@ export function buildTeamParser(name: string): Linter.Parser {
   }
 }
 
-/**
- * A team block holding every key an ESLint flat config block can hold (measured, ESLint 10.12:
- * `flat-config-schema.js`, and `@eslint/config-array`'s base schema), each given a value that
- * changes nothing a merge reads but the rule it turns off.
- */
+/** Every key a flat config block can hold (measured, ESLint 10.12), each a value no merge reads but the rule it turns off. */
 export function buildTeamEslintBlockHoldingEveryKey(name: string, ruleTurnedOff: string): Linter.Config {
   return {
     name,
@@ -123,21 +91,16 @@ export function buildTeamEslintBlockHoldingEveryKey(name: string, ruleTurnedOff:
   }
 }
 
-/** A team block still holding eslintrc's `env`, as a config half migrated to flat config does: no flat config block holds `env`. */
+/** No flat config block holds eslintrc's `env`, as a half-migrated config still does. */
 export function buildTeamBlockHoldingEslintrcEnv(name: string, env: Readonly<Record<string, boolean>>): Linter.Config & { readonly env: Readonly<Record<string, boolean>> } {
   return { ...buildTeamEslintBlock(name), env }
 }
 
-/** A team's own oxlint config: oxlint's defaults where a key is left out. */
 export function buildTeamOxlintConfig(fields: OxlintConfig = {}): OxlintConfig {
   return { ...fields }
 }
 
-/**
- * A team oxlint config holding every key oxlint's type for a JS or TS config gives (measured,
- * oxlint 1.87: `OxlintConfig`, its schema's root keys but `$schema`), each given a value that
- * changes nothing a merge reads but the rule it turns off.
- */
+/** Every key oxlint's `OxlintConfig` type gives (measured, oxlint 1.87), each a value no merge reads but the rule it turns off. */
 export function buildTeamOxlintConfigHoldingEveryKey(ruleTurnedOff: string): OxlintConfig {
   return {
     categories: { correctness: 'off' },
@@ -154,20 +117,12 @@ export function buildTeamOxlintConfigHoldingEveryKey(ruleTurnedOff: string): Oxl
   }
 }
 
-/**
- * The same, as a team's .oxlintrc.json writes it: every key oxlint's schema lists (measured, oxlint
- * 1.87: `configuration_schema.json`, whose root takes no other key), `$schema` too, which oxlint
- * takes in a JS or TS config as well, though its type for one leaves it out (measured, oxlint 1.87).
- */
+/** As .oxlintrc.json writes it: `$schema` too, which oxlint takes in a JS or TS config though its type leaves it out (measured, 1.87). */
 export function buildTeamOxlintrcHoldingEveryKey(ruleTurnedOff: string): OxlintConfig & { readonly $schema: string } {
   return { $schema: './node_modules/oxlint/configuration_schema.json', ...buildTeamOxlintConfigHoldingEveryKey(ruleTurnedOff) }
 }
 
-/**
- * A team's oxlint config joined from pieces, in order: a later piece's key replaces an earlier
- * one's, but `extends` and `overrides` join in the order given, and `rules` join, a later piece's
- * statement of a rule replacing an earlier one's. A key no piece sets is left out.
- */
+/** Pieces in order: a later key replaces an earlier one's, but `extends`, `overrides` and `rules` join. */
 export function buildTeamOxlintConfigFrom(pieces: readonly OxlintConfig[]): OxlintConfig {
   const joined = pieces.reduce<OxlintConfig>((config, piece) => ({ ...config, ...piece }), {})
   const extended = pieces.flatMap(({ extends: extendedConfigs = [] }) => extendedConfigs)

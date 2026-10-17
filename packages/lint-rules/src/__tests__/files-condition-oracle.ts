@@ -6,10 +6,9 @@ const NEGATION = '!'
 const LEADING_DOT_SLASH = './'
 
 /**
- * The files given that the condition matches, read file by file, as a block written from it applies:
- * a file meets a term where it matches every glob of `all`, a negated one by missing it, and none of
- * `none`; and the condition where it meets one of its terms. Plain sets of files, with no algebra.
- */
+* Read file by file, with no algebra: a file meets a term where it matches every glob of `all` (a negated one by
+* missing it) and none of `none`, and the condition where it meets one of its terms.
+*/
 export function filesTheConditionMatches(condition: FilesCondition, files: readonly string[]): string[] {
   return files.filter((file) => condition.some((term) => meetsTerm(file, term)))
 }

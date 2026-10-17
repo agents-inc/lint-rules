@@ -3,11 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { ABSENT, calculatedEntryOf, namesInPlay, namesOnBeyondTheTeams, owedEntry, rulesInPlayOf } from './eslint-entries-owed.ts'
 import { buildRuleInPlay, buildRulesInPlay, buildSidesOfAFile } from './factories/eslint-merge-factories.ts'
 
-// The oracle the ESLint differential compares the merge with. One that gave ours where the team
-// sets a rule in some file only, or only in the other engine's config, would hide our setting
-// running beside the team's; one that gave the team's twin where ours runs the rule would hide one
-// rule decided twice; one that gave the team's where the team sets the rule nowhere would hide ours
-// lost.
+// The oracle the ESLint differential compares the merge with: a wrong owner here would hide ours running beside
+// the team's, one rule decided twice, or ours lost.
 
 const RULE = 'import-x/first'
 const ALIAS = 'import/first'

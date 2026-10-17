@@ -5,9 +5,8 @@ import { buildTeamOxlintrcExtending } from './factories/shape-factories.ts'
 import { buildTeamOxlintConfig } from './factories/team-config-factories.ts'
 import { ruleIdsTheTeamsOxlintConfigSets } from './oxlint-rules-the-team-sets.ts'
 
-// Which of a team oxlint config's statements and categories oxlint counts was measured with oxlint
-// 1.87 in merge-oxlint-config.integration.test.ts and the differential tests; this spec pins the
-// model the oracles read them through. Each refusal sits beside the case it is told from.
+// Pins the model the oracles read a team's statements and categories through, measured with oxlint 1.87 in
+// merge-oxlint-config.integration.test.ts.
 
 const JSX_KEY = 'react/jsx-key'
 const NO_DEBUGGER = 'no-debugger'
@@ -21,7 +20,6 @@ const NURSERY_RULE = 'import-x/named'
 const SONARJS_RULE = 'sonarjs/anchor-precedence'
 const PATH_BASE = './base.json'
 
-/** Of the rules given, those the team's config sets. */
 function setAmong(team: OxlintConfig, ruleIds: readonly string[]): string[] {
   const set = new Set(ruleIdsTheTeamsOxlintConfigSets(team, catalog))
   return ruleIds.filter((id) => set.has(id))
@@ -154,9 +152,7 @@ describe('ruleIdsTheTeamsOxlintConfigSets, given categories', () => {
     }).toStrictEqual({ left: [NO_DEBUGGER], on: [FLOATING_PROMISES, NO_DEBUGGER] })
   })
 
-  // Only what the team writes counts (decisions.md, "Owner 2026-10-14 (questions on the merge rework
-  // spec", point 1): oxlint's own correctness: warn, which runs where every config leaves correctness
-  // out, sets no rule; correctness written on, by the config or one it extends, sets its rules.
+  // Only what the team writes counts: oxlint's own correctness: warn sets no rule; correctness written on does.
   it("sets no rule oxlint's own correctness category runs where the configs leave correctness out, and its rules where a config writes it on", () => {
     expect({
       leftOut: setAmong(buildTeamOxlintConfig({}), [NO_DEBUGGER]),

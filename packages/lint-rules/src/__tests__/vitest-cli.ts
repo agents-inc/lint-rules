@@ -6,7 +6,7 @@ import { basename, dirname, join } from 'node:path'
 /** A test by its title, and how it ended: `passed`, `failed` or `skipped`. */
 export type TestOutcome = { readonly title: string; readonly status: string }
 
-/** A test file by its name, and how it ended. A file that fails while it is collected runs no test, and its error is the message. */
+/** A file that fails while collected runs no test; its error is the message. */
 export type TestFileOutcome = {
   readonly file: string
   readonly status: string
@@ -23,7 +23,6 @@ export type VitestCliRun = {
   readonly reportFile: string
 }
 
-/** The part of vitest's JSON report read here. */
 type VitestJsonReport = {
   readonly testResults: readonly {
     readonly name: string
@@ -36,10 +35,7 @@ type VitestJsonReport = {
 const VITEST_BIN = join(dirname(createRequire(import.meta.url).resolve('vitest/package.json')), 'vitest.mjs')
 const VITEST_CLI_TIMEOUT_MS = 120_000
 
-/**
- * The vitest CLI run from the config's folder, with the temp dir given: how each test file it ran
- * ended, from its JSON report. A run that wrote no report throws with what it printed.
- */
+/** From the config's folder; a run that wrote no report throws with what it printed. */
 export function runVitestCli({ configFile, args, tempDir, reportFile }: VitestCliRun): readonly TestFileOutcome[] {
   const { status, stdout, stderr } = spawnSync(
     process.execPath,

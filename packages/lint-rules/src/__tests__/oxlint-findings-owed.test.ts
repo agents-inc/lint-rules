@@ -31,7 +31,6 @@ const PARTS = defineLintRules(
   ),
 ).editorRulesets
 
-/** The team's configs, the ESLint one stating the keys given: none unless given. */
 function teamConfigs(oxlint: TeamConfigsRead['oxlint'], eslintRuleKeys: readonly string[] = []): TeamConfigsRead {
   return { oxlint, eslintRuleKeys }
 }
@@ -41,9 +40,7 @@ const PARTS_RUNNING_NO_THIS_ALIAS_IN_ESLINT = defineLintRules(
   buildConsumerLintRules(PROJECT_WITH_OXLINT, {}, { rules: { '@typescript-eslint/no-this-alias': 'error' }, ignores: ['dist/**'] }),
 ).editorRulesets
 
-// The team lists react and runs nothing by category.
 const TEAM_SETTING_NONE = teamConfigs(buildTeamOxlintConfig({ plugins: ['react'], categories: { correctness: 'off' } }))
-// The team sets jsx-key in its test files alone.
 const TEAM_SETTING_JSX_KEY_IN_TEST_FILES = teamConfigs(
   buildTeamOxlintConfig({ plugins: ['react'], categories: { correctness: 'off' }, overrides: [{ files: ['**/*.test.tsx'], rules: { 'react/jsx-key': 'warn' } }] }),
 )
@@ -81,8 +78,7 @@ describe('ownerOfOxlintFindings, for a rule the team sets nowhere', () => {
     expect(ownerOfOxlintFindings(PARTS, TEAM_SETTING_NONE, catalog)(file, code)).toBe(owner)
   })
 
-  // Only what the team writes counts (decisions.md, "Owner 2026-10-14 (questions on the merge rework
-  // spec", point 1): oxlint's own correctness: warn runs jsx-key here, but sets no rule.
+  // Only what the team writes counts: oxlint's own correctness: warn runs jsx-key here, but sets no rule.
   it.each([
     { file: 'src/f.tsx', owner: 'ours', why: 'our part runs it there' },
     { file: 'lib/m.tsx', owner: 'the team', why: "our entry turns it off there, which leaves oxlint's own copy, as the team's config alone runs it" },
@@ -90,7 +86,6 @@ describe('ownerOfOxlintFindings, for a rule the team sets nowhere', () => {
     expect(ownerOfOxlintFindings(PARTS, teamConfigs(buildTeamOxlintConfig({ plugins: ['react'] })), catalog)(file, JSX_KEY)).toBe(owner)
   })
 
-  // Beside the cases above: the team lists react, but the category that runs jsx-key is off.
   it('gives jsx-key our findings where the team turns on a category jsx-key is not in', () => {
     const team = teamConfigs(buildTeamOxlintConfig({ plugins: ['react'], categories: { correctness: 'off', style: 'warn' } }))
 
@@ -98,9 +93,7 @@ describe('ownerOfOxlintFindings, for a rule the team sets nowhere', () => {
   })
 })
 
-// oxlint's silent correctness: warn would run its copy of a rule our ESLint part runs: the merge switches
-// that copy off wherever it would run, so the rule is reported once, by ESLint (decisions.md, "Owner
-// 2026-10-14 (questions on the merge rework spec", point 1).
+// The merge switches off oxlint's silent correctness: warn copy of a rule our ESLint part runs, so ESLint alone reports it.
 describe('ownerOfOxlintFindings, for a rule our ESLint part runs', () => {
   it.each([
     { file: 'src/a.ts', why: 'a file our ESLint part runs it in' },

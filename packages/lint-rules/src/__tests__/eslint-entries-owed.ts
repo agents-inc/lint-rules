@@ -2,27 +2,18 @@ import type { Catalog } from '@workspace/rule-data'
 import { type CalculatedRules, type CalculatedRulesOrNotLinted, NOT_LINTED } from './eslint-config-oracle.ts'
 import { eslintNamesOf, typescriptEslintTwinsOf, withTheTeamsPrefixes } from './other-eslint-names.ts'
 
-// The ESLint merge's precedence contract (decisions.md, "Owner 2026-10-14"; spec-merge-model.md,
-// 1.1) as an oracle: what each ESLint name of a rule is owed in one file, read from the team's
-// config alone and our part alone, never from the merge. Same-rule names and twins come from
-// other-eslint-names.ts.
+// The ESLint merge's precedence contract as an oracle: what each ESLint name of a rule is owed in a file, read
+// from the team's config alone and our part alone, never from the merge.
 
 /** A rule entry as ESLint calculates it for a file, `[severity, ...options]`, or ABSENT where no block sets it. */
 export type CalculatedEntry = readonly unknown[] | typeof ABSENT
 
-/**
- * A rule the merge is checked over: every ESLint name it goes by, its own ID and the team's prefixes
- * included, and typescript-eslint's twins of it, each a rule ID.
- */
+/** Every ESLint name of the rule, the team's prefixes included, and typescript-eslint's twins of it. */
 export type RuleInPlay = { readonly rule: string; readonly names: readonly string[]; readonly twins: readonly string[] }
 
-/**
- * Our rule and typescript-eslint's twins of it, which count as one rule, and whether the team sets
- * any of them, under any of its names, anywhere in either of its configs.
- */
+/** Our rule and its twins count as one rule; `setByTheTeam` where the team sets any of them anywhere. */
 export type RulesInPlay = { readonly rules: readonly RuleInPlay[]; readonly setByTheTeam: boolean }
 
-/** One file as each side gives it: calculated entries of the team's config alone and of our part alone. */
 export type SidesOfAFile = { readonly team: CalculatedRules; readonly ours: CalculatedRules }
 
 export const ABSENT = 'absent'
@@ -30,21 +21,15 @@ export const ABSENT = 'absent'
 const OFF_SEVERITY = 0
 
 /**
- * The entry the name is owed in the file: the team's config alone decides every name of our rule and
- * of its twins, in every file, wherever the team sets any of them, at any severity and in whatever
- * files; our part alone decides them everywhere where the team sets none. Our `off`, our ignores and
- * the files a team block applies to change nothing in who decides.
- */
+* The team's config alone decides every name of our rule and its twins everywhere it sets any of them, at any
+* severity and in any files; otherwise our part alone does.
+*/
 export function owedEntry(name: string, sides: SidesOfAFile, inPlay: RulesInPlay): CalculatedEntry {
   refuseANameOutOfPlay(name, inPlay)
   return calculatedEntryOf(inPlay.setByTheTeam ? sides.team : sides.ours, name)
 }
 
-/**
- * Our rule and each of typescript-eslint's twins of it, each under every ESLint name it goes by, the
- * team's prefixes for our plugins included (`teamsPrefixes`, keyed by our prefix); set by the team
- * where any of those names is among the rule keys the team's configs state.
- */
+/** `teamsPrefixes` is keyed by our prefix; set by the team where any name is among the rule keys its configs state. */
 export function rulesInPlayOf(
   ruleId: string,
   teamsPrefixes: ReadonlyMap<string, readonly string[]>,
@@ -61,12 +46,11 @@ export function rulesInPlayOf(
   return { rules, setByTheTeam: rules.some(({ names }) => names.some((name) => keysTheTeamStates.has(name))) }
 }
 
-/** The names in play on in the merged config's file that the team's config alone does not run there, sorted. */
 export function namesOnBeyondTheTeams(merged: CalculatedRules, teamAlone: CalculatedRules, inPlay: RulesInPlay): string[] {
   return namesInPlay(inPlay).filter((name) => isOn(calculatedEntryOf(merged, name)) && !isOn(calculatedEntryOf(teamAlone, name)))
 }
 
-/** The rule's calculated entry, or ABSENT; ESLint always calculates one as `[severity, ...options]`. */
+/** ESLint always calculates an entry as `[severity, ...options]`. */
 export function calculatedEntryOf(rules: CalculatedRules, name: string): CalculatedEntry {
   const entry = rules[name]
   if (entry === undefined) return ABSENT
@@ -74,7 +58,7 @@ export function calculatedEntryOf(rules: CalculatedRules, name: string): Calcula
   return entry
 }
 
-/** Each file's calculated entry of each rule given, by rule ID, read from each file's calculated rules: NOT_LINTED where ESLint lints no such file. */
+/** NOT_LINTED where ESLint lints no such file. */
 export function entriesOfEachFileIn(
   rulesByFile: Readonly<Record<string, CalculatedRulesOrNotLinted>>,
   ruleIds: readonly string[],
@@ -89,7 +73,6 @@ export function entriesOfEachFileIn(
   )
 }
 
-/** Every name of every rule in play, sorted: the names the merge is checked over. */
 export function namesInPlay({ rules }: RulesInPlay): string[] {
   return [...new Set(rules.flatMap(({ names }) => names))].toSorted()
 }

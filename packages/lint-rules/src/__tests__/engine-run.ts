@@ -20,22 +20,17 @@ export type ProcessOutput = { readonly exitCode: number | null; readonly stdout:
 /** One ESLint message: `ruleId` null for ESLint's own, a parse error or an inline-config warning. */
 export type EslintMessageAt = { readonly ruleId: string | null; readonly severity: number; readonly line: number }
 
-/** A finding at error severity from either engine, under the engine's own name for the rule. */
+/** At error severity, under the engine's own name for the rule. */
 export type ErrorAt = { readonly engine: 'eslint' | 'oxlint'; readonly rule: string | null; readonly line: number | null }
 
 export type OxlintReport = { readonly diagnostics: readonly OxlintCliDiagnostic[]; readonly number_of_rules: number }
 
-/** The team's own configs an editor build merges our parts into. */
 export type TeamConfigs = {
   readonly teamEslintConfig: Parameters<typeof mergeEslintConfig>[0]
   readonly teamOxlintConfig: Parameters<typeof mergeOxlintConfig>[0]
 }
 
-/**
- * Which configs a run lints with: the agent build, through the internal hook, or the editor parts
- * merged into a team's configs. An editor build of a project whose package.json lists no oxlint
- * has no oxlint part, so oxlint does not run.
- */
+/** An editor build of a project whose package.json lists no oxlint has no oxlint part, so oxlint does not run. */
 export type EngineBuild = { readonly kind: 'agent' } | ({ readonly kind: 'editor' } & TeamConfigs)
 
 export const AGENT_BUILD: EngineBuild = { kind: 'agent' }
@@ -55,14 +50,11 @@ export type EngineRun = {
   readonly oxlintCodesOn: (file: string) => string[]
   readonly eslintRuleIdsOn: (file: string) => (string | null)[]
   readonly eslintMessagesOn: (file: string) => EslintMessageAt[]
-  /**
-   * Every error either engine reports on the file, by line, ESLint's first on a shared line: oxlint
-   * as its diagnostic code (`typescript(ban-ts-comment)`), ESLint as its rule ID. Warnings are left out.
-   */
+  /** Errors by line, ESLint's first on a shared line, under oxlint's code or ESLint's rule ID; warnings left out. */
   readonly errorsOn: (file: string) => ErrorAt[]
-  /** Every rule ESLint ran on the file, from its stats: none when the file failed to parse. */
+  /** From ESLint's stats: none when the file failed to parse. */
   readonly eslintRulesRunOn: (file: string) => string[]
-  /** `file: message` for every fatal ESLint message, a parse error included. */
+  /** `file: message`, parse errors included. */
   readonly eslintFatalMessages: () => string[]
   /** `file: rule ID` for every rule a directive names that ESLint has no definition of. */
   readonly eslintRulesNotFound: () => string[]
@@ -85,7 +77,7 @@ type CompletedRun = {
 type EmittedConfigs = { readonly oxlint: OxlintConfig | null; readonly eslint: Linter.Config[] }
 
 const OXLINT_CONFIG_FILE = '.oxlintrc.json'
-// The team's own oxlint config in an editor build, which the ESLint merge reads: a name oxlint never finds by itself.
+// The team's oxlint config in an editor build: a name oxlint never finds by itself.
 const TEAM_OXLINT_CONFIG_FILE = 'team.oxlintrc.json'
 const ENGINE_RUNS_TIMEOUT_MS = 300_000
 const ESLINT_ERROR = 2
@@ -94,16 +86,12 @@ const ENGINE_ORDER = ['eslint', 'oxlint']
 // A finding without a line is about the whole file, so it sorts before line 1.
 const WHOLE_FILE_LINE = 0
 
-/** File contents by path relative to the project. */
 export type WrittenFiles = ProjectFiles
 
 /**
- * Copies the fixtures into a temp project, writes `writtenFiles` beside them, builds the configs
- * `build` names from what `configFor` defines there, writes the oxlint one, and runs the real oxlint
- * CLI and the real ESLint Node API over the whole project. The installed oxlint resolves from the
- * project, as the oxlint merge needs, and so does each package given in `linkedPackages`. Call it
- * at the top of a test file or a describe block: it registers that scope's hooks.
- */
+* Copies the fixtures into a temp project, builds the configs `build` names, and runs the real oxlint CLI and
+* ESLint Node API over it. Registers hooks: call it at the top of a test file or describe block.
+*/
 export function setUpEngineRun(
   fixturesDir: string,
   configFor: (projectDir: string) => DefinedLintRules,
@@ -188,11 +176,7 @@ export function setUpEngineRun(
   }
 }
 
-/**
- * The agent build, or the editor parts merged into the team's configs, each merge given the path of
- * the team's other config (spec-merge-model.md, 1.3): the team's oxlint config, written into the
- * project as JSON; and no ESLint config, as the team's here sets no rule.
- */
+/** Each merge is given the team's other config: its oxlint config as JSON, and no ESLint config, as it sets no rule. */
 function emittedConfigsOf(projectDir: string, defined: DefinedLintRules, build: EngineBuild): EmittedConfigs {
   if (build.kind === 'agent') return agentConfigsOf(defined)
   const { eslint, oxlint } = defined.editorRulesets
@@ -204,10 +188,9 @@ function emittedConfigsOf(projectDir: string, defined: DefinedLintRules, build: 
 }
 
 /**
- * The oxlint merge reads the team's ESLint config from a file, which a team config holding plugin
- * objects cannot be written to: an editor build's team ESLint config states no rule, so it reads as
- * no config at all.
- */
+* The oxlint merge reads the team's ESLint config from a file, which plugin objects cannot be written to; it
+* states no rule here, so it reads as no config.
+*/
 function teamEslintConfigSettingNoRule(teamEslintConfig: TeamConfigs['teamEslintConfig']): TeamEslintConfigPath {
   const statingRules = defineConfig(teamEslintConfig).filter(({ rules = {} }) => Object.keys(rules).length > 0)
   if (statingRules.length > 0) throw new Error("an editor build's team ESLint config states no rule: the oxlint merge could not read it")

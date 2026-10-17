@@ -1,12 +1,7 @@
-// Run by oxlint-merges-in-one-process.ts as a Node process of its own, never imported. A merge
-// reads the team's ESLint config with require(), and where that file calls our ESLint merge, takes
-// what that merge hands it: both merges must be the one copy of the built package the process
-// loads, as in a team's oxlint run. In a vitest worker the merge a test imports is another copy than
-// the one the config file imports. This process loads the built oxlint entry, takes the oxlint part
-// the project's agents-inc.lint.mts exports, and merges it into the team's oxlint config given,
-// naming the team's ESLint config given, as many times as asked, one after another, as oxlint.config.mts
-// does each time it is loaded. Prints `{ "merged": [...] }`, each merged config in order, or
-// `{ "refused": "<message>" }` where a merge throws.
+// Run by oxlint-merges-in-one-process.ts as a Node process of its own, never imported: both merges must be the
+// one copy of the built package, as in a team's oxlint run, where a vitest worker would load two. Merges the
+// project's oxlint part into the team's config as many times as asked, as oxlint.config.mts does on each load.
+// Prints `{ "merged": [...] }`, or `{ "refused": "<message>" }` where a merge throws.
 //
 //   node oxlint-merges-process.ts <dist dir> <agents-inc.lint.mts path> <team oxlint config JSON> <ESLint config path> <merges>
 import { join } from 'node:path'

@@ -20,7 +20,7 @@ export function isOn(entry: unknown): entry is readonly [unknown, ...unknown[]] 
   return Array.isArray(entry) && entry[0] !== 'off' && entry[0] !== 0
 }
 
-/** Every rule the config turns on, at the top level or in an override, once per place it is turned on. */
+/** Once per place it is turned on. */
 export function rulesOnInOxlint({ rules = {}, overrides = [] }: OxlintConfig): RuleOnEngine[] {
   // An override may switch only env, with no rules.
   const ruleMaps = [rules, ...overrides.map((override) => override.rules ?? {})]
@@ -31,7 +31,7 @@ export function rulesOnInOxlint({ rules = {}, overrides = [] }: OxlintConfig): R
   )
 }
 
-/** Every rule the blocks turn on, once per block that turns it on. */
+/** Once per block that turns it on. */
 export function rulesOnInEslint(config: readonly Linter.Config[]): RuleOnEngine[] {
   return config.flatMap((block) =>
     Object.entries(block.rules ?? {}).flatMap(([id, entry]): RuleOnEngine[] =>
@@ -40,19 +40,17 @@ export function rulesOnInEslint(config: readonly Linter.Config[]): RuleOnEngine[
   )
 }
 
-/** Every rule ID the blocks set, to any severity, once each and sorted. */
+/** To any severity, once each and sorted. */
 export function ruleIdsStatedInEslint(config: readonly Linter.Config[]): string[] {
   return [...new Set(config.flatMap((block) => Object.keys(block.rules ?? {})))].toSorted()
 }
 
-/** A rule on the engine the catalog routes it to, with the options given. */
 export function onItsEngine(id: string, options: readonly unknown[]): RuleOnEngine {
   const rule = catalog.rules.get(id)
   if (rule === undefined) throw new Error(`${id} is not a RuleId`)
   return { id, engine: rule.engine, options }
 }
 
-/** A rule run by ESLint, with the options given. */
 export function onEslint(id: string, options: readonly unknown[]): RuleOnEngine {
   return { id, engine: 'eslint', options }
 }

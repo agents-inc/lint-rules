@@ -2,21 +2,18 @@ import { buildPackageJsonListingOxlint, packageJsonText } from '../factories/pac
 import { buildTsconfig } from '../factories/tsconfig-factories.ts'
 import type { ProjectFiles } from '../temp-projects.ts'
 
-// The files a team has once `init` has run and it merges the editor set into its own configs, as
-// plan.md ("Files `init` adds or changes") shows them, with the real run's empty team configs. Real
-// run 3 (case C1) installed the built package beside them and ran both engines from the project.
+// The files a team has once `init` has run and it merges the editor set into its own configs, as plan.md shows
+// them, with empty team configs.
 
 /** The two keys a case varies in `agents-inc.lint.mts`: each as its value's source text, null where the key is left out. */
 export type AgentsIncLintKeys = { readonly tsconfigRootDir: string | null; readonly editorRulesets: string | null }
 
-/** plan.md's values of the two keys. */
 export const AS_PLAN_MD_SHOWS: AgentsIncLintKeys = { tsconfigRootDir: 'import.meta.dirname', editorRulesets: '{}' }
 
 const EDITOR_RULESETS_COMMENT = '   // add the rulesets people\'s editors should show'
 
-// Real run 3, case C1's src/planted.ts: a classic loop, a debugger statement, an explicit any, a
-// floating promise and a loose equality; then a prototype builtin called on an object, which
-// oxlint runs for our correctness ruleset outside its own correctness category.
+// A classic loop, a debugger statement, an explicit any, a floating promise and a loose equality; then a prototype
+// builtin called on an object, which oxlint runs for our correctness ruleset outside its correctness category.
 const PLANTED_SOURCE = `export function sum(values: readonly number[]): number {
   let total = 0
   for (let index = 0; index < values.length; index++) {
@@ -69,16 +66,11 @@ const theirExistingConfig = {}
 export default defineConfig(mergeOxlintConfig(theirExistingConfig, oxlint, { eslintConfig: 'eslint.config.mjs' }))
 `
 
-/** The oxlint config file the team's oxlint loads. */
 export const OXLINT_CONFIG_FILE = 'oxlint.config.mts'
 
-/** The file every case plants its problems in. */
 export const PLANTED_FILE = 'src/planted.ts'
 
-/**
- * `agents-inc.lint.mts` as plan.md shows `init` writing it, verbatim with the keys as plan.md gives
- * them; a key given another value keeps its line, and a key left out loses it.
- */
+/** Verbatim as plan.md shows `init` writing it: a key given another value keeps its line; one left out loses it. */
 export function agentsIncLintTextAsPlanMdShows({ tsconfigRootDir, editorRulesets }: AgentsIncLintKeys): string {
   const tsconfigRootDirLine = tsconfigRootDir === null ? '' : `  tsconfigRootDir: ${tsconfigRootDir},\n`
   const editorRulesetsLine = editorRulesets === null ? '' : `  editorRulesets: ${editorRulesets},${EDITOR_RULESETS_COMMENT}\n`
@@ -131,11 +123,7 @@ export const { eslint, oxlint } = config.editorRulesets
 `
 }
 
-/**
- * A project whose package.json lists oxlint, its tsconfig taking in src/, the problems of real run
- * 3's case C1 planted in src/, and the files plan.md shows: `agents-inc.lint.mts` with the keys given,
- * and the team's two configs merging its parts.
- */
+/** A project listing oxlint, with the planted problems in src/ and the files plan.md shows. */
 export function consumerFilesAsPlanMdShows(keys: AgentsIncLintKeys): ProjectFiles {
   return {
     'package.json': packageJsonText(buildPackageJsonListingOxlint()),

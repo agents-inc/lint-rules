@@ -4,7 +4,6 @@
 const PEER_OVERRIDE_OPENING = 'npm warn ERESOLVE overriding peer dependency'
 const PACKAGE_RESOLVED_LINE = /^npm warn While resolving: (?<packageName>@?[^@\s]+)@\S+$/u
 
-/** Each package npm overrides a peer range for in an install's output, once each and sorted. */
 export function packagesNpmOverridesAPeerFor(installOutput: string): string[] {
   const lines = installOutput.split('\n')
   const packageNames = lines.flatMap((line, index) => (line === PEER_OVERRIDE_OPENING ? [packageResolvedOn(lines[index + 1])] : []))

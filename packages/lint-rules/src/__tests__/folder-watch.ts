@@ -45,7 +45,6 @@ export function watchFolder(dir: string): FolderWatch {
   }
 }
 
-/** The literal as a regular expression's source, its special characters escaped. */
 export function escapeForPattern(literal: string): string {
   return literal.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`)
 }

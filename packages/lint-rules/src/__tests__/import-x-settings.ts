@@ -8,12 +8,12 @@ const LEGACY_RESOLVER_KEYS = ['import-x/resolver-legacy', 'import-x/resolver'] a
 const NODE_RESOLVER_OPTIONS = 'import-x/resolve'
 const UNNAMED = 'unnamed'
 
-/** The resolvers import-x reads for a file: those of resolver-next by their names, or the legacy setting it reads instead, by its key, and its value. */
+/** resolver-next's resolvers by name, or the legacy setting read instead, by its key and value. */
 export type ResolversImportXReads =
   | { readonly key: typeof RESOLVER_NEXT; readonly names: readonly string[] }
   | { readonly key: (typeof LEGACY_RESOLVER_KEYS)[number] | typeof NODE_RESOLVER_OPTIONS; readonly value: unknown }
 
-/** The resolvers import-x reads given the file's settings, as fullResolve chooses them. */
+/** As fullResolve chooses them. */
 export function resolversImportXReads(settings: unknown): ResolversImportXReads {
   const given = isRecord(settings) ? settings : {}
   const next = given[RESOLVER_NEXT]

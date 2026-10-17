@@ -25,7 +25,6 @@ export const bunLockText = `{
 }
 `
 
-/** The workspaces the bun.lock text above records. */
 export const workspacesInTheBunLockText: LockedWorkspaces = {
   '': { name: 'a-monorepo', devDependencies: { turbo: '2.0.0' } },
   'packages/shipped': { name: 'shipped', version: '0.0.0', peerDependencies: { 'shared-plugin': '^1.0.0' } },

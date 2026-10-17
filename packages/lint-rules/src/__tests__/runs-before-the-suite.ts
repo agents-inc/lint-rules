@@ -10,17 +10,15 @@ type RunsBeforeTheSuite<Runs> =
   | { readonly outcome: 'completed'; readonly runs: Runs }
   | { readonly outcome: 'failed'; readonly error: unknown }
 
-/** A run made for one kind of case, among runs made for several. */
 export type RunOfAKind = { readonly kind: string }
 
 /** Runs of the engines' CLIs, or of the bin, each over one project. */
 const ENGINE_RUNS: RunsBeforeTheSuiteOptions = { timeoutMs: 300_000, whatFailed: 'the engines could not be run on the project before the suite' }
 
 /**
- * The runs `make` makes, in the temp projects it creates, before the suite: read after it, a run that
- * threw throws as each test's own failure, since vitest reports a test whose beforeAll threw as
- * skipped. Call it at the top of a describe block: it registers that scope's hooks.
- */
+* A run that threw throws as each test's own failure, since vitest reports a test whose beforeAll threw as
+* skipped. Registers hooks: call it in a describe block.
+*/
 export function setUpRunsBeforeTheSuite<Runs>(
   make: (tempProjects: TempProjects) => Runs | Promise<Runs>,
   { timeoutMs, whatFailed }: RunsBeforeTheSuiteOptions = ENGINE_RUNS,
@@ -43,7 +41,7 @@ export function setUpRunsBeforeTheSuite<Runs>(
   }
 }
 
-/** The run made for the kind given: throws where none was. */
+/** Throws where none was made. */
 export function runMadeFor<Run extends RunOfAKind>(runs: readonly Run[], kind: string): Run {
   const made = runs.find((run) => run.kind === kind)
   if (made === undefined) throw new Error(`no run was made for ${kind}`)

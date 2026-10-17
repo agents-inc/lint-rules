@@ -2,10 +2,9 @@ import { configFileText, sourceImporting, standaloneSources } from '../factories
 import type { ProjectFiles } from '../temp-projects.ts'
 
 /**
- * A project's files, the directory the consumer gives as tsconfigRootDir (relative to the project),
- * and the TS files under it that no tsconfig takes in: the ones typescript-eslint's project service
- * finds no project for (TypeScript 5.7 and later, which search every ancestor config).
- */
+* `tsconfigRootDir` is relative to the project. The TS files no tsconfig takes in are those typescript-eslint's
+* project service finds no project for (TypeScript 5.7 and later search every ancestor config).
+*/
 export type TsconfigLayout = {
   readonly shape: string
   readonly files: ProjectFiles
@@ -17,7 +16,7 @@ export type TsconfigLayout = {
 
 const PROJECT_ROOT = '.'
 
-/** One layout per way a TS file comes to be in a tsconfig's project, or not (spec C3, R2). */
+/** One layout per way a TS file comes to be in a tsconfig's project, or not. */
 export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
   {
     shape: 'a tsconfig.json including one directory, every TS extension on both sides of it',
@@ -183,10 +182,10 @@ export const TSCONFIG_LAYOUTS: readonly TsconfigLayout[] = [
 ]
 
 /**
- * D-h: a TS file no tsconfig lists, imported by one a tsconfig does. The project service finds it
- * through the importer's program; the computation reads only what each config lists, so the file
- * loses typed rules. Matching the service would need a full program (about 1.5 s on this repo, R2).
- */
+* A TS file only an included file imports: the project service finds it through the importer's program, but the
+* computation reads only what each config lists, so it loses typed rules. Matching the service would need a full
+* program (about 1.5 s on this repo).
+*/
 export const IMPORTED_ONLY_LAYOUT = {
   files: {
     'tsconfig.json': configFileText({ include: ['src'] }),

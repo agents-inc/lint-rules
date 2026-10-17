@@ -17,7 +17,6 @@ export const same = (a: number, b: number): boolean => a == b
 // todo: remove this
 `
 
-/** The JS files of the layout, by path from the project's root. */
 export const FOLDER_LAYOUT_JS_FILES = [
   'a.js',
   'b.js',
@@ -40,10 +39,9 @@ export const FOLDER_LAYOUT_JS_FILES = [
   'src/kept.js',
 ] as const
 
-/** The TS files of the layout, which a glob for `.ts` files tells apart. */
 export const FOLDER_LAYOUT_TS_FILES = ['src/b.ts', 'lib/b.ts'] as const
 
-/** Every file of the layout, sorted as oxlint's findings are. */
+/** Sorted as oxlint's findings are. */
 export const FOLDER_LAYOUT_FILES: readonly string[] = [...FOLDER_LAYOUT_JS_FILES, ...FOLDER_LAYOUT_TS_FILES].toSorted()
 
 export const folderLayoutSourceFiles: Readonly<Record<string, string>> = Object.fromEntries([

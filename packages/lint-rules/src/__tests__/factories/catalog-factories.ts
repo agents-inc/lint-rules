@@ -70,22 +70,19 @@ const SHIPPED_RULE_DEFAULTS: Required<ShippedRuleFields> = {
 }
 
 /**
- * A rule in the canonical list. `options`, `files` and `ignores` default to none; it is covered by
- * no rule, split by types with none, and reads no runtime globals unless given (spec-core.md 2.5).
- */
+* `options`, `files` and `ignores` default to none; covered by no rule, split by types with none, and reading no
+* runtime globals unless given.
+*/
 export function buildShippedRule(ruleset: string, fields: ShippedRuleFields = {}): ShippedRule {
   return { ruleset, ...SHIPPED_RULE_DEFAULTS, ...fields }
 }
 
-/** A rule on whatever rulesets are listed, otherwise as `buildShippedRule` gives it. */
+/** On whatever rulesets are listed. */
 export function buildAlwaysOnShippedRule(fields: ShippedRuleFields = {}): ShippedRule {
   return { alwaysOn: true, ...SHIPPED_RULE_DEFAULTS, ...fields }
 }
 
-/**
- * A rule `allowSuppressions` decides: on where suppressions are banned, the default, and off where
- * they are allowed, as `house/no-suppressions` ships; otherwise as `buildShippedRule` gives it.
- */
+/** On where suppressions are banned, the default, and off where allowed, as `house/no-suppressions` ships. */
 export function buildSuppressionModeShippedRule(fields: ShippedRuleFields = {}): ShippedRule {
   return { whenSuppressions: { banned: { options: [] }, allowed: 'off' }, ...SHIPPED_RULE_DEFAULTS, ...fields }
 }
@@ -100,11 +97,9 @@ export function buildEslintRoute(id: string, fields: EslintRouteFields): RuleRou
 }
 
 /**
- * `eslintFallbackSkips`, rule ID to reason, `coreRuleExtensions`, core rule ID to the rules
- * extending it, and `eslintStandIns`, oxlint-only rule ID to the ESLint rule standing in for it, are
- * empty unless given. The rules oxlint has are the oxlint routes given, so one list feeds both.
- * ESLint has a version of each ESLint route given, since it runs it, and of no oxlint route.
- */
+* `eslintFallbackSkips`, `coreRuleExtensions` and `eslintStandIns` are empty unless given. oxlint has the oxlint
+* routes given; ESLint has each ESLint route given and no oxlint route.
+*/
 export function buildCatalog({
   rulesets,
   rules,
@@ -138,7 +133,7 @@ export function buildFakePlugin(ruleNames: readonly string[], fields: Pick<ESLin
   return { ...fields, rules: Object.fromEntries(ruleNames.map((ruleName) => [ruleName, { ...doNothingRule }])) }
 }
 
-/** An ESLint plugin whose every rule reports each file it lints once: a team's own rule, whose firing a spec can see. */
+/** Every rule reports each file once, so a spec sees a team's own rule fire. */
 export function buildReportingPlugin(ruleNames: readonly string[], fields: Pick<ESLint.Plugin, 'meta'> = {}): ESLint.Plugin {
   return { ...fields, rules: Object.fromEntries(ruleNames.map((ruleName) => [ruleName, { ...reportEveryFileRule }])) }
 }

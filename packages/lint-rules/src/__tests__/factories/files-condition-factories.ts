@@ -12,7 +12,6 @@ const MAX_TERMS = 4
 // One glob of `all` in this many is negated.
 const NEGATED_ONE_IN = 6
 
-/** A sequence of draws, the same for the same seed. */
 export function seededDraws(seed: number): Draw {
   let state = seed
   return (bound) => {
@@ -21,7 +20,7 @@ export function seededDraws(seed: number): Draw {
   }
 }
 
-/** A list of one to four terms of the globs given, each glob of `all` negated now and then, as the block globs merged into a condition are. */
+/** One to four terms, each glob of `all` negated now and then, as merged block globs are. */
 export function buildDrawnTerms(draw: Draw, globs: readonly string[]): FilesTerm[] {
   return Array.from({ length: 1 + draw(MAX_TERMS) }, () => buildDrawnTerm(draw, globs))
 }
@@ -38,7 +37,7 @@ function buildDrawnTerm(draw: Draw, globs: readonly string[]): FilesTerm {
   }
 }
 
-/** A term of the globs given: a file meets it where it matches each of `all` and none of `none`. */
+/** A file meets it where it matches each of `all` and none of `none`. */
 export function buildFilesTerm(all: readonly string[], none: readonly string[] = []): FilesTerm {
   return { all: [...all], none: [...none] }
 }

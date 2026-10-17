@@ -1,9 +1,7 @@
-// Imported into every Node process a check run starts, never by a test: cli-runs.ts's
-// oxlintHoldingOnAfterAStop puts it in NODE_OPTIONS, as another-writer-as-oxlint-lint-run-ends.mjs is
-// put there. In oxlint's fix run (its arguments hold `--fix`), it holds the process open for a while
-// once oxlint is done, and has the SIGTERM check's stop sends mark a file instead of ending the
-// process: a child that will not stop when asked. It writes its process ID to the other file as it
-// starts. It does nothing in any other process. Plain JS, as the other module is.
+// Imported into every Node process a check run starts (cli-runs.ts puts it in NODE_OPTIONS), never by a test. In
+// oxlint's fix run (`--fix`), it holds the process open once oxlint is done, and has check's SIGTERM mark a file
+// instead of ending it: a child that will not stop when asked. It writes its process ID to the other file as it
+// starts. Plain JS, as another-writer-as-oxlint-lint-run-ends.mjs is.
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 

@@ -4,21 +4,18 @@ import type { buildConsumerLintRules } from '../factories/lint-rules-factories.t
 import type { RuleByItsNames } from '../findings-beside-the-team.ts'
 import type { OurFields } from './both-engines-grid.ts'
 
-// Projects from the developer's break corpus (fix round 2), which the editor-merges.*.integration
-// tests lint on both real engines through the built package. Each line of the TS source draws one
-// rule, noted beside it; the JS source holds the same lines, types removed; the CommonJS source
-// exports through module.exports. The team runs in ESLint the rules our oxlint part runs, and in
-// oxlint those our ESLint part runs, as the developer's corpus did.
+// Projects the editor-merges.*.integration tests lint on both real engines through the built package. Each line
+// of the TS source draws one rule, noted beside it; the JS source holds the same lines, types removed. The team
+// runs in ESLint the rules our oxlint part runs, and in oxlint those our ESLint part runs.
 
-/** The rulesets our part lists, by set. */
 export type OurRulesets = Parameters<typeof buildConsumerLintRules>[1]
 
-/** No ruleset in either set: our part runs only the rules our settings state, and those always on. */
+/** Our part runs only the rules our settings state, and those always on. */
 export const NO_RULESETS: OurRulesets = {}
 
 type OurRules = NonNullable<LintRules['rules']>
 
-/** A project of the corpus: our settings, the files it holds, the rules each test reads in them, and the team's oxlint config, the corpus's unless given. */
+/** The team's oxlint config is the corpus's unless given. */
 export type CorpusCase = {
   readonly how: string
   readonly ourRulesets: OurRulesets
@@ -69,7 +66,7 @@ declare function five(a: number, b: number, c: number, d: number, e: number): nu
 export {}
 `
 
-/** Every file of the corpus, by its path. A .vue file with a plain script holds the JS source, every other component the TS source, one line down. */
+/** A .vue file with a plain script holds the JS source, every other component the TS source, one line down. */
 const CORPUS_SOURCES: Readonly<Record<string, string>> = {
   'a.js': JS_SOURCE,
   'a.ts': TS_SOURCE,
@@ -100,7 +97,7 @@ const CORPUS_SOURCES: Readonly<Record<string, string>> = {
   'src/c.astro': `---\n${TS_SOURCE}---\n`,
 }
 
-/** The sources of the files given, each from the corpus: throws on a file it does not hold. */
+/** Throws on a file the corpus does not hold. */
 export function corpusSourcesOf(files: readonly string[]): Readonly<Record<string, string>> {
   return Object.fromEntries(files.map((file) => [file, corpusSourceOf(file)]))
 }
@@ -126,18 +123,15 @@ export const BAN_TS_COMMENT: RuleByItsNames = {
 }
 export const MAX_PARAMS: RuleByItsNames = { rule: 'max-params', names: ['max-params', '@typescript-eslint/max-params', 'eslint(max-params)'] }
 
-/** The rules our corpus settings turn on, by every name either engine reports them under. */
 export const CORPUS_RULES: readonly RuleByItsNames[] = [EQEQEQ, ARRAY_TYPE, NO_VAR, NO_UNUSED_VARS, PREFER_CONST, GETTER_RETURN]
 
-/** Every rule the corpus team's two configs set, by its ID: each corpus rule, ban-ts-comment, max-params and no-undef. */
 const CORPUS_RULE_IDS_THE_TEAM_SETS: ReadonlySet<string> = new Set([...CORPUS_RULES.map(({ rule }) => rule), BAN_TS_COMMENT.rule, MAX_PARAMS.rule, 'no-undef'])
 
-/** Of the rules given, the IDs of those the corpus team's two configs set (decisions.md, "Owner 2026-10-14": each is the team's). */
 export function corpusRulesTheTeamSets(rules: readonly RuleByItsNames[]): string[] {
   return rules.map(({ rule }) => rule).filter((ruleId) => CORPUS_RULE_IDS_THE_TEAM_SETS.has(ruleId))
 }
 
-/** Our rules in the corpus: three our oxlint part runs, two our ESLint part runs, and no-unused-vars, a twin. */
+/** Three our oxlint part runs, two our ESLint part runs, and no-unused-vars, a twin. */
 export const OUR_CORPUS_RULES = {
   eqeqeq: 'error',
   '@typescript-eslint/array-type': 'error',
@@ -147,7 +141,7 @@ export const OUR_CORPUS_RULES = {
   'getter-return': 'error',
 } as const satisfies OurRules
 
-/** Our corpus rules but eqeqeq, for settings that turn it on only in an entry. */
+/** For settings that turn eqeqeq on only in an entry. */
 export const OUR_CORPUS_RULES_BUT_EQEQEQ = {
   '@typescript-eslint/array-type': 'error',
   'no-var': 'error',
@@ -156,7 +150,7 @@ export const OUR_CORPUS_RULES_BUT_EQEQEQ = {
   'getter-return': 'error',
 } as const satisfies OurRules
 
-/** Our corpus rules but prefer-const, which our oxlint part runs, for settings that turn it on only in an entry. */
+/** For settings that turn prefer-const, which our oxlint part runs, on only in an entry. */
 export const OUR_CORPUS_RULES_BUT_PREFER_CONST = {
   eqeqeq: 'error',
   '@typescript-eslint/array-type': 'error',
@@ -165,7 +159,7 @@ export const OUR_CORPUS_RULES_BUT_PREFER_CONST = {
   'getter-return': 'error',
 } as const satisfies OurRules
 
-/** Our corpus rules but array-type, for settings that turn it on only in an entry. */
+/** For settings that turn array-type on only in an entry. */
 export const OUR_CORPUS_RULES_BUT_ARRAY_TYPE = {
   eqeqeq: 'error',
   'no-var': 'error',
@@ -174,7 +168,7 @@ export const OUR_CORPUS_RULES_BUT_ARRAY_TYPE = {
   'getter-return': 'error',
 } as const satisfies OurRules
 
-/** The team's ESLint rules in the corpus: those our oxlint part runs, max-params at its default of 3, and the twins of typescript-eslint. */
+/** Those our oxlint part runs, max-params at its default of 3, and the twins of typescript-eslint. */
 export const TEAM_CORPUS_ESLINT_RULES = {
   eqeqeq: 'error',
   'prefer-const': 'error',
@@ -184,20 +178,16 @@ export const TEAM_CORPUS_ESLINT_RULES = {
   '@typescript-eslint/ban-ts-comment': 'error',
 } as const
 
-/** The extensions of the JS and TS files the team's ESLint config lints in the corpus. */
 export const TEAM_CORPUS_JS_AND_TS_EXTENSIONS: readonly string[] = ['js', 'mjs', 'cjs', 'ts', 'tsx']
 
-/** The team's oxlint config in the corpus: the rules our ESLint part runs, and no-undef, nothing by category. */
+/** The rules our ESLint part runs, and no-undef; nothing by category. */
 export const TEAM_CORPUS_OXLINT_CONFIG: OxlintConfig = {
   plugins: ['typescript'],
   categories: { correctness: 'off' },
   rules: { 'typescript/array-type': 'error', 'no-var': 'error', 'no-undef': 'error' },
 }
 
-/**
- * The team's oxlint config in the corpus, also turning on the core rule of each twin pair the corpus
- * holds (D12): no-unused-vars and max-params, at oxlint's default of 3.
- */
+/** Also turns on the core rule of each twin pair the corpus holds: no-unused-vars, and max-params at oxlint's default of 3. */
 export const TEAM_CORPUS_OXLINT_CONFIG_TURNING_TWIN_CORE_RULES_ON: OxlintConfig = {
   plugins: ['typescript'],
   categories: { correctness: 'off' },

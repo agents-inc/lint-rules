@@ -5,7 +5,6 @@ import type { OxlintConfig, OxlintOverride } from 'oxlint'
 
 const A_RULE_OFF = { 'no-debugger': 'off' } as const
 
-/** An ESLint block of ours applying to the `files` entries given, less its ignores. */
 export function buildWrittenEslintBlock(name: string, files: readonly (string | readonly string[])[], ignores: readonly string[] = []): Linter.Config {
   return {
     name,
@@ -15,12 +14,10 @@ export function buildWrittenEslintBlock(name: string, files: readonly (string | 
   }
 }
 
-/** An oxlint override applying to the files given, less those excluded. */
 export function buildWrittenOxlintOverride(files: readonly string[], excludeFiles: readonly string[] = []): OxlintOverride {
   return { files: [...files], ...(excludeFiles.length === 0 ? {} : { excludeFiles: [...excludeFiles] }), rules: A_RULE_OFF }
 }
 
-/** An oxlint config holding the overrides given, and extending the configs given as objects. */
 export function buildWrittenOxlintConfig(overrides: readonly OxlintOverride[], extended: readonly OxlintConfig[] = []): OxlintConfig {
   return { ...(extended.length === 0 ? {} : { extends: [...extended] }), overrides: [...overrides] }
 }

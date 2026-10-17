@@ -22,11 +22,9 @@ const EVERY_CATEGORY_OFF = {
 } as const satisfies Required<RuleCategories>
 
 /**
- * Our oxlint part as a config of its own, laid out as the agent build lays out its oxlint config:
- * every category off, the plugin of each rule it states listed, its rules at the top level and its
- * overrides after. What our part reports with no team config: the oracle for the rules it states.
- * The rules the ESLint part runs, oxlint does not run here.
- */
+* Our oxlint part laid out as the agent build lays it out: the oracle for the rules it states with no team
+* config. The rules the ESLint part runs, oxlint does not run here.
+*/
 export function oxlintPartAlone({ layers }: OxlintPart, catalog: Catalog): OxlintConfig {
   return {
     categories: { ...EVERY_CATEGORY_OFF },

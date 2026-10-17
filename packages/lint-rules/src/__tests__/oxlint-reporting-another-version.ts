@@ -7,12 +7,10 @@ const INSTALLED_OXLINT_DIR = 'node_modules/oxlint'
 const PACKAGE_JSON = 'package.json'
 
 /**
- * Installs into the project's own node_modules the oxlint this repo installs, reporting the version
- * given: every entry of the real package linked, so `import { defineConfig } from 'oxlint'` loads,
- * and only its package.json rewritten. The schema is the real one's unless a text is given. The
- * install the fake-install factories write instead exports nothing from its entry, so a config
- * importing oxlint cannot load beside it.
- */
+* Links every entry of the real oxlint, so `import { defineConfig } from 'oxlint'` loads, rewriting only its
+* package.json; the schema is the real one's unless given. The fake-install factories' entry exports nothing,
+* so a config importing oxlint cannot load beside it.
+*/
 export function installOxlintReporting(projectDir: string, version: string, schemaText?: string): void {
   const installDir = join(projectDir, INSTALLED_OXLINT_DIR)
   mkdirSync(installDir, { recursive: true })
