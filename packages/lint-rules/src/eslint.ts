@@ -11,27 +11,14 @@ import { handOverToTheRead, isInReadingMode, pathOfTheOtherConfigGiven, readTheT
 import { ourPackageJsonFile, versionOf } from './core/package-json-files.ts'
 import { eslintPluginRegistry } from './eslint-plugin-registry.ts'
 
-/** The path of the team's oxlint config, relative to tsconfigRootDir, or null where the project has none. */
+/** The team's oxlint config path, relative to tsconfigRootDir, or null if there is none. */
 type TeamOxlintConfigPath = { readonly oxlintConfig: string | null }
 
 const OXLINT_IS_LISTED = 'the package.json nearest to tsconfigRootDir lists oxlint'
 
 /**
- * The team's ESLint config with the editor set's ESLint part merged in: ours, then the team's
- * blocks. `theirs` is anything ESLint's `defineConfig` takes; `eslint` is the part exactly as
- * `agents-inc.lint.mts` exports it; `oxlintConfig` the path of the team's oxlint config, relative
- * to tsconfigRootDir, or null where the project has none, read only where the project lists oxlint.
- * It refuses an ESLint below 10 installed for the project.
- *
- * Your engine configs override the editor set. If your `eslint.config.mjs` or `oxlint.config.mts`
- * sets a rule anywhere (in any block or override, in a preset you extend, or through an oxlint
- * category you write on), the editor set drops that rule from both engines, in every file, and your
- * setting decides it. That includes a rule you only turn off, or set for some files. A core rule and
- * typescript-eslint's version of it count as one rule. Each merge reads your other engine's config
- * from the path you pass it.
- * oxlint's own `correctness: warn`, which runs where your oxlint config leaves correctness out,
- * sets no rule: where it would run oxlint's copy of a rule the editor set runs in ESLint, the
- * oxlint merge turns that copy off.
+ * Your ESLint config with the editor set's ESLint part merged in before your blocks. A rule your
+ * ESLint or oxlint config sets anywhere is left to your setting. Requires ESLint 10+.
  */
 export function mergeEslintConfig(theirs: TeamEslintConfig, eslint: EslintPart, teamOxlintConfig: TeamOxlintConfigPath): Linter.Config[] {
   const part = eslintPartGiven(eslint)
@@ -42,7 +29,7 @@ export function mergeEslintConfig(theirs: TeamEslintConfig, eslint: EslintPart, 
   return mergeEslintPart(theirs, part, catalog, eslintPluginRegistry, versionOf(ourPackageJsonFile()), setByTheTeamsOxlintConfig)
 }
 
-/** While an oxlint merge reads the file calling this one: the team's config as given, handed to that read with our plugins. */
+/** While an oxlint merge reads this config: hand it the team's blocks and our plugins, unmerged. */
 function handedOverToTheRead(theirs: TeamEslintConfig): Linter.Config[] {
   const blocks = defineConfig(theirs)
   handOverToTheRead({ engine: 'eslint', config: { blocks, ourPlugins: eslintPluginRegistry } })

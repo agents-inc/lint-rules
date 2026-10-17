@@ -166,8 +166,7 @@ describe('validateLintRules', () => {
     })
   })
 
-  // Types are stripped when agents-inc.lint.mts loads, and any value but false is truthy: a quoted
-  // 'false' would otherwise allow suppressions.
+  // Types are stripped when agents-inc.lint.mts loads, so a quoted 'false' would otherwise allow suppressions.
   describe('allowSuppressions', () => {
     it.each([[true], [false]])('is accepted as %s', (allowSuppressions) => {
       const lintRules = buildTwoSetLintRules({}, { allowSuppressions })

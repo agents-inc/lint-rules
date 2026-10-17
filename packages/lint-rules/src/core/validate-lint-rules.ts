@@ -17,13 +17,9 @@ import {
 
 type FlatRulesetList = Exclude<RulesetList, 'libs'>
 
-/** A list a ruleset name can be written in: its label for messages, and the rulesets it holds. */
 type RulesetSlot = { readonly label: string; readonly holds: (ruleset: RulesetDefinition) => boolean }
 
-/**
- * Throws on the first `tsconfigRootDir` that is no existing folder, set left out or name the catalog
- * does not know, naming the file, the value and its path in the config, the set included.
- */
+/** Throws on the first problem, naming the file, the value and its path in the config. */
 export function validateLintRules(lintRules: TwoSetLintRulesInput, catalog: Catalog): void {
   const { tsconfigRootDir, allowSuppressions, rules = {}, fileOverrides = [] } = lintRules
   const [firstProblem] = [
@@ -38,12 +34,7 @@ export function validateLintRules(lintRules: TwoSetLintRulesInput, catalog: Cata
   if (firstProblem !== undefined) throw configErrorIn(consumerConfigFiles.lintRules, firstProblem)
 }
 
-/**
- * Types are stripped when the file loads, so the value may be missing or no string. The typed rules
- * find the project's tsconfigs from it, and whether the project uses oxlint is read from the
- * package.json nearest to it, so a relative path or a missing folder would surface later as an error
- * blaming another file, or as none (decisions.md, 2026-10-14 "real run 3 ... triage").
- */
+/** Types are stripped, so the value may be missing or no string. A relative or missing folder would otherwise surface later as an error blaming another file, or as none. */
 function tsconfigRootDirProblems(tsconfigRootDir: unknown, path: string): string[] {
   if (tsconfigRootDir === undefined) return [`${path}: missing`]
   if (typeof tsconfigRootDir !== 'string') return [`${path}: "${String(tsconfigRootDir)}" is not a string`]
@@ -53,7 +44,7 @@ function tsconfigRootDirProblems(tsconfigRootDir: unknown, path: string): string
   return []
 }
 
-/** Types are stripped when the file loads, so a set the types require may still be missing. A list it leaves out is empty. */
+/** Types are stripped, so a required set may still be missing. */
 function rulesetSetProblems(rulesets: Partial<RulesetsInput> | undefined, path: string, catalog: Catalog): string[] {
   if (rulesets === undefined) return [`${path}: missing`]
   return rulesetProblems(rulesets, path, catalog)
@@ -114,7 +105,7 @@ function rulesetNameProblems(names: readonly string[], slot: RulesetSlot, path: 
   })
 }
 
-/** `allowSuppressions` is the one place that sets the rules it decides, so `rules` cannot name them. */
+/** `allowSuppressions` is the one place that sets the rules it decides. */
 function ruleSettingProblems(rules: RuleSettingsInput, path: string, catalog: Catalog): string[] {
   return Object.entries(rules).flatMap(([id, entry]) => {
     const route = catalog.rules.get(id)

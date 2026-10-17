@@ -242,8 +242,7 @@ describe('resolveRuleLayers', () => {
   })
 })
 
-// "Covered by" (S; spec-core.md C2): a narrow rule is left out of each layer wherever the broader
-// rule covering it is on there, as the layer's rulesets and the top-level rules turn it on.
+// A narrow rule is left out of each layer wherever the broader rule covering it is on there.
 describe('a rule covered by another', () => {
   const COVER = 'functional/no-classes'
   const COVERED = '@eslint-react/x-no-class-component'
@@ -339,8 +338,7 @@ describe('a rule covered by another', () => {
       expect(topLevelRuleIdsOf(buildLintRules({ quality: ['redundancy'] }))).toStrictEqual([COVERED_BY_THE_SCOPED_TYPED_COVER, CORE_RULE_COVERED].toSorted())
     })
 
-    // D9's "extension alone": the consumer naming typescript-eslint's extension of a covered core
-    // rule does not name the core rule, which stays left out; the extension runs as stated.
+    // Naming typescript-eslint's extension of a covered core rule does not name the core rule.
     it("stays left out where the top-level rules name typescript-eslint's extension of it, which runs as stated", () => {
       const { rules } = resolveRuleLayers(buildLintRules({ quality: ['declarative', 'redundancy'] }, { rules: { [EXTENSION_OF_THE_CORE_RULE]: 'warn' } }), coveredCatalog)
 
@@ -385,7 +383,7 @@ describe('a rule covered by another', () => {
       })
     })
 
-    // The limit (spec-core.md call 2): an entry's own rules do not move S, in either direction.
+    // A known limit: an entry's own rules do not move the cover, in either direction.
     it("does not come back where an entry's own rules turn its cover off", () => {
       const lintRules = buildLintRules(BOTH_RULESETS, { fileOverrides: [buildFileOverride([SRC_FILES], { rules: { [COVER]: 'off' } })] })
 
@@ -404,8 +402,7 @@ describe('a rule covered by another', () => {
       })
     })
 
-    // Overlap: a later entry re-adding the cover's ruleset re-states the covered rule an earlier
-    // entry brought back, though the covered rule ships in a list the later entry does not give.
+    // The covered rule ships in a list the later entry does not give, yet the later entry restates it.
     it("is left out again in the files of a later entry re-adding its cover's ruleset over an earlier entry that dropped it", () => {
       const lintRules = buildLintRules(BOTH_RULESETS, {
         fileOverrides: [
@@ -424,9 +421,7 @@ describe('a rule covered by another', () => {
     return { severity: 'error', options: [], files: ['**/*.ts'], ignores: ['**/use-*.ts'] }
   }
 
-  // spec-core.md 2.6, S: both rules ship in a ruleset, not always on and not by allowSuppressions,
-  // and the cover is another rule, covered by none. The data's tests guarantee it; the core still
-  // throws on a breach, naming the covered rule and its cover.
+  // The data's tests guarantee a valid cover; the core still throws on a breach, naming both rules.
   describe('a breach of the data', () => {
     const BOTH_LISTED = buildLintRules(BOTH_RULESETS)
     const COVERED_SHIPPED = buildShippedRule('react', { coveredBy: COVER })

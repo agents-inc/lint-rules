@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { literalGlobOf, normalizeGlob, pathNamedBy } from './globs.ts'
 
-// oxlint matches a slash-free glob at any depth and ESLint only at the root, so the package
-// writes every such glob in the form both engines read the same way.
 describe('normalizeGlob', () => {
   it('lets a slash-free glob match at any depth', () => {
     expect(normalizeGlob('*.test.ts')).toBe('**/*.test.ts')

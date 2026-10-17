@@ -12,12 +12,8 @@ import { buildEslintConfig } from './build-eslint-config.ts'
 import { buildOxlintConfig } from './build-oxlint-config.ts'
 import type { LintRulesInput } from './lint-rules-input.ts'
 
-// The twin-pair decisions core/twin-pairs.test.ts leaves out (D9, D10; twin-pairs.ts), read from the
-// agent build, which runs beside oxlint: the deciding part of a layer stating the extension alone,
-// with options oxlint takes, gives the core rule its setting wherever the core rule is in force
-// there, and nowhere else; stating the core rule alone, off, it turns the extension off with it. An
-// entry finds the core rule in force where it states it, or where the top level runs it, on TS files
-// alone included. A small catalog: no-redeclare, which oxlint runs, extended by typescript-eslint's.
+// Twin-pair decisions read from the agent build, which runs beside oxlint. A small catalog: no-redeclare,
+// which oxlint runs, extended by typescript-eslint's.
 
 const CORE_RULE = 'no-redeclare'
 const EXTENSION = '@typescript-eslint/no-redeclare'
@@ -29,8 +25,7 @@ const LEGACY_JS_FILE = 'legacy/a.js'
 const EVERY_FILE = [LEGACY_TS_FILE, LEGACY_JS_FILE, TS_FILE, JS_FILE]
 const LEGACY_FILES = ['legacy/**']
 const NOT_RUN = 'not run'
-// Options both no-redeclare and typescript-eslint's version take, and oxlint's copy too: each
-// setting below is distinct, so an entry of either engine tells which layer and name set it.
+// Each setting below is distinct, so an entry of either engine tells which layer and name set it.
 const TAKEN_OPTION = 'builtinGlobals'
 const RULESET_SETTING = ['error', { [TAKEN_OPTION]: true }] as const
 const EXTENSION_SETTING = ['warn', { [TAKEN_OPTION]: false }] as const
@@ -38,7 +33,6 @@ const ENTRY_EXTENSION_SETTING = ['error', { [TAKEN_OPTION]: false }] as const
 
 type RunningEntries = Readonly<Record<string, unknown>>
 
-/** The small catalog, the ruleset given shipping the core rule, or the extension, or neither. */
 function twinCatalogShipping(shipped: 'the core rule' | 'the extension' | 'neither'): Catalog {
   const ruleset = buildShippedRule('correctness', { options: [RULESET_SETTING[1]] })
   return buildCatalog({
@@ -54,7 +48,7 @@ function twinCatalogShipping(shipped: 'the core rule' | 'the extension' | 'neith
 // The real typescript-eslint plugin, whose rules refuse options they do not take.
 const plugins = { '@typescript-eslint': pluginRegisteredUnder(eslintPlugins, '@typescript-eslint') }
 
-/** oxlint's entry of the core rule in each file, as the agent build's oxlint config states it: NOT_RUN where none applies, or it is off. */
+/** NOT_RUN where none applies, or it is off. */
 function oxlintRunningEntriesFor(given: LintRulesInput, catalog: Catalog, files: readonly string[]): RunningEntries {
   const config = buildOxlintConfig(given, catalog)
   return Object.fromEntries(
@@ -65,7 +59,7 @@ function oxlintRunningEntriesFor(given: LintRulesInput, catalog: Catalog, files:
   )
 }
 
-/** The severity ESLint runs typescript-eslint's version at in each file, in the agent build's ESLint config: NOT_RUN where no block sets it, or it is off. */
+/** NOT_RUN where no block sets it, or it is off. */
 function setUpEslintExtensionSeverities(): (given: LintRulesInput, catalog: Catalog, files: readonly string[]) => Promise<RunningEntries> {
   const { ruleSeverityFor } = setUpEslintConfigOracle()
 
@@ -123,9 +117,7 @@ describe('a twin pair whose core rule alone an entry of ours states, off, where 
   })
 })
 
-// The top level states the extension alone, off, so the core rule the ruleset ships is off with it:
-// it runs nowhere at the top level, so the entry finds it in force nowhere, and ESLint runs the
-// extension the entry states.
+// The top level states the extension alone, off, so the core rule is off with it and the entry finds it in force nowhere.
 describe('a twin pair whose extension alone our top level states off, over a ruleset shipping the core rule, and an entry of ours states on', () => {
   const eslintExtensionSeveritiesFor = setUpEslintExtensionSeverities()
   const catalog = twinCatalogShipping('the core rule')
@@ -152,8 +144,7 @@ describe('a twin pair whose extension alone an entry of ours states, with option
     )
   })
 
-  // The entry lists the ruleset shipping the core rule itself: the core rule is in force there by the
-  // entry alone, the top level listing no ruleset.
+  // The core rule is in force by the entry's own ruleset alone.
   it("is run by oxlint with the entry's setting in the entry's files, where the entry's own ruleset ships the core rule, and nowhere else", () => {
     const entryListingTheCoreRuleset = buildLintRules(
       {},
@@ -168,8 +159,7 @@ describe('a twin pair whose extension alone an entry of ours states, with option
     })
   })
 
-  // The top level states both names, the core rule off: oxlint's core rule runs there on TS files
-  // alone, with the extension's setting, which puts it in force in the entry.
+  // The top level runs oxlint's core rule on TS files alone, with the extension's setting, which puts it in force in the entry.
   it("is run by oxlint with the entry's setting in all the entry's files, where the top level runs the core rule on its TS files alone", () => {
     const topLevelRunningTheCoreOnTsFiles = buildLintRules({}, { rules: { [CORE_RULE]: 'off', [EXTENSION]: [...EXTENSION_SETTING] }, ...entryStatingTheExtension })
 
@@ -181,7 +171,7 @@ describe('a twin pair whose extension alone an entry of ours states, with option
     })
   })
 
-  // The top level states both names off: it runs the core rule in no file, so the entry finds it in force nowhere.
+  // The top level runs the core rule in no file, so the entry finds it in force nowhere.
   it('is run by no core rule of oxlint, where the top level states both names off', () => {
     const topLevelRunningNeither = buildLintRules({}, { rules: { [CORE_RULE]: 'off', [EXTENSION]: 'off' }, ...entryStatingTheExtension })
 

@@ -234,8 +234,7 @@ describe('buildOxlintConfig', () => {
       ])
     })
 
-    // oxc/no-accumulating-spread ships ignoring **/*.test.ts: softening or enabling it in an entry
-    // never widens it onto the files it ignores.
+    // oxc/no-accumulating-spread ships ignoring **/*.test.ts; an entry setting it never widens it onto those files.
     describe('whose own rules set a rule shipped with ignores', () => {
       const entriesSettingTheRule = [
         {

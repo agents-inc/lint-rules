@@ -42,7 +42,7 @@ const BUILTIN_ENV = { builtin: true, es2024: true } as const satisfies OxlintEnv
 // Read-only, as both engines' envs give every other framework global (oxlint 1.87, globals 17.13).
 const READ_ONLY: NonNullable<OxlintGlobals[string]> = 'readonly'
 
-// Whatever rulesets are listed: framework and test-runner globals are globals of those files, not of a ruleset.
+// Whatever rulesets are listed: framework and test-runner globals belong to those files, not to a ruleset.
 const GLOBALS_OVERRIDES: readonly OxlintOverride[] = [
   envOverrideOf(SVELTE_RUNES),
   { files: [...SVELTE_COMPONENT_GLOBALS.files], globals: globalsReadOnly(SVELTE_COMPONENT_GLOBALS.names) },
@@ -71,7 +71,7 @@ const OXLINT_PLUGINS: readonly OxlintPlugin[] = [
   'vue',
 ]
 
-/** The agent build's complete oxlint config, with no `extends`: oxlint's `extends` drops `ignorePatterns`, `env` and `globals`. */
+/** No `extends`: oxlint's `extends` drops `ignorePatterns`, `env` and `globals`. */
 export function buildOxlintConfig(lintRules: LintRulesInput, catalog: Catalog): OxlintConfig {
   const layers = agentBuildLayersOf(lintRules, catalog)
   return {
@@ -85,7 +85,6 @@ export function buildOxlintConfig(lintRules: LintRulesInput, catalog: Catalog): 
   }
 }
 
-/** The env our rules run with: oxlint's builtins and each runtime listed. */
 export function oxlintEnvOf(layers: RuleLayers): OxlintEnv {
   return { ...BUILTIN_ENV, ...envSwitchedTo(true, layers.env) }
 }
@@ -94,16 +93,11 @@ export function oxlintIgnorePatternsOf(layers: RuleLayers): string[] {
   return [...BUILTIN_IGNORE_PATTERNS, ...layers.ignores]
 }
 
-/** The oxlint-routed rules the top level states, by oxlint name, each carrying its options. */
 export function topLevelRuleMap(layers: RuleLayers, catalog: Catalog): DummyRuleMap {
   return oxlintRuleMap(oxlintSettingsOf(layers.rules, catalog))
 }
 
-/**
- * Every override after the top-level rules: each framework's globals in its files, the test
- * runners' in test files, each rule off under its own ignores, then the top level's TS files'
- * rules, then each file-override entry's.
- */
+/** Framework and test-runner globals, each rule off under its own ignores, the top level's TS-file rules, then each file-override entry's. */
 export function oxlintOverridesOf(layers: RuleLayers, catalog: Catalog): OxlintOverride[] {
   return [
     ...GLOBALS_OVERRIDES,
@@ -123,14 +117,12 @@ export function oxlintPluginsOf(ruleMaps: readonly RuleSettings[], catalog: Cata
   return sortedUnique(plugins)
 }
 
-/** The plugin of its own name: oxlint's names for its plugins, as its config types them. */
 export function toOxlintPlugin(name: string): OxlintPlugin {
   const plugin = oxlintPluginNamed(name)
   if (plugin === undefined) throw new Error(`"${name}" is not an oxlint plugin`)
   return plugin
 }
 
-/** The plugin of its own name, where oxlint has one so named. */
 export function oxlintPluginNamed(name: string): OxlintPlugin | undefined {
   return OXLINT_PLUGINS.find((candidate) => candidate === name)
 }
@@ -139,10 +131,7 @@ export function sortedUnique<T extends string>(values: readonly T[]): T[] {
   return [...new Set(values)].toSorted()
 }
 
-/**
- * Per entry: its ruleset changes and the rules its `allowSuppressions` sets, which no ruleset sets,
- * then its own rules, which win over those, then its TS files' rules, which win there.
- */
+/** Ruleset changes and suppression rules, then the entry's own rules, which win over those, then its TS files' rules. */
 function fileOverrideOverrides(layer: FileOverrideLayer, catalog: Catalog): OxlintOverride[] {
   const files = [...layer.files]
   const configChanges = { ...layer.rulesetChanges, ...suppressionRulesOf(layer) }
@@ -153,10 +142,6 @@ function fileOverrideOverrides(layer: FileOverrideLayer, catalog: Catalog): Oxli
   ]
 }
 
-/**
- * Overrides giving each rule its setting on the layer's TS files alone, after the layer's others: in
- * the files of the layer that are TS files and that the rule's own ignores leave in.
- */
 function tsFileOverridesOf(layerFiles: FilesCondition, tsFileRules: RuleSettings, catalog: Catalog): OxlintOverride[] {
   return oxlintSettingsOf(tsFileRules, catalog).flatMap(({ route, setting }) => {
     const where = bothOf(layerFiles, filesInScopeOf([TS_FILES], ignoresOf(setting)))
@@ -164,12 +149,7 @@ function tsFileOverridesOf(layerFiles: FilesCondition, tsFileRules: RuleSettings
   })
 }
 
-/**
- * One override for the settings that apply to all the files, then one per rule turned on that has
- * ignores: an override has one `excludeFiles`, and the rule must stay off under its ignores. A rule
- * off in some of the files alone, as an entry turns a core rule off on its TS files (D11), gets
- * overrides of its own for those.
- */
+/** An override has one `excludeFiles`, so each rule turned on with ignores gets its own override to stay off under them. */
 function overridesSetting(files: string[], env: OxlintEnv, settings: readonly OxlintSetting[]): OxlintOverride[] {
   const onWithIgnores = settings.filter(isOnWithIgnores)
   const offInSomeFiles = settings.filter(isOffInItsFiles)
@@ -181,7 +161,6 @@ function overridesSetting(files: string[], env: OxlintEnv, settings: readonly Ox
   ]
 }
 
-/** Overrides turning the rule off in the files of the layer that its own files match too. */
 function offInItsFilesOf(files: string[], { route, setting }: OffInItsFiles): OxlintOverride[] {
   const where = bothOf(filesInScopeOf(files, []), filesInScopeOf(setting.files, []))
   return overrideFilesOf(where).map((overrideFiles): OxlintOverride => ({ ...overrideFiles, rules: { [route.oxlintName]: 'off' } }))
@@ -222,8 +201,7 @@ function oxlintSettingsOf(settings: RuleSettings, catalog: Catalog): OxlintSetti
   return Object.entries(settings).flatMap(([id, setting]): OxlintSetting[] => {
     const route = routeOf(id, catalog)
     if (!isOxlintRoute(route)) return []
-    // The catalog routes every rule shipped in files of its own to ESLint (canonical-list.test.ts),
-    // and only an off is written for a rule's own files here (D11), so one turned on is a data error.
+    // The catalog routes every rule shipped with files of its own to ESLint, so only an off is written here.
     if (setting.severity !== 'off' && setting.files !== null) {
       throw new Error(`${id}: turned on in files of its own, so the catalog must route it to ESLint`)
     }

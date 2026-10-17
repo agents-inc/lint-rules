@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { globsReadFromTheRoot } from './globs-read-from-above.ts'
 
-// A team block whose basePath is a folder above the project root (spec-core.md C8): ESLint matches
-// `<the root's folders>/<file>` against its globs with minimatch and `dot: true`. Each case gives the
-// globs that, read from the root, match the files ESLint matches from above: what is left of the glob
-// past the root's folders. Every `fromTheRoot` below was checked against ESLint's minimatch 10.2.6,
-// matching a file under the root from above and from the root.
+// Every `fromTheRoot` below was checked against ESLint's minimatch 10.2.6 (`dot: true`), matching a file
+// under the root from above and from the root.
 
 describe('globsReadFromTheRoot', () => {
   it.each([
@@ -64,8 +61,7 @@ describe('globsReadFromTheRoot', () => {
     expect(globsReadFromTheRoot(glob, folders)).toStrictEqual(fromTheRoot)
   })
 
-  // A segment holding an extglob matches no folder (a written limit, in globs-read-from-above.ts):
-  // so it matches none of these, which ESLint does not match either. `null` is a folder's name too.
+  // A segment holding an extglob matches no folder (a known limit), nor does ESLint here. `null` is a folder's name too.
   it.each([
     { how: 'a folder it does not name', glob: '@(lib)/**', folders: ['app'], fromTheRoot: [] },
     { how: 'a folder named as its characters read as themselves', glob: '@(app)/**', folders: ['app)'], fromTheRoot: [] },
@@ -74,8 +70,7 @@ describe('globsReadFromTheRoot', () => {
     expect(globsReadFromTheRoot(glob, folders)).toStrictEqual(fromTheRoot)
   })
 
-  // ESLint's minimatch builds its RegExp without the `u` flag, so its ? and its character classes
-  // match one UTF-16 code unit: a character outside the Basic Multilingual Plane is two.
+  // ESLint's minimatch builds its RegExp without the `u` flag, so a character outside the BMP is two code units.
   it.each([
     { how: 'one ? matching no emoji', glob: '?/**', folders: ['😀'], fromTheRoot: [] },
     { how: 'two ? matching one emoji', glob: '??/**', folders: ['😀'], fromTheRoot: ['**'] },

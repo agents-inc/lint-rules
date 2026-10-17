@@ -5,9 +5,8 @@ import { buildFilesTerm } from '../__tests__/factories/files-condition-factories
 import { buildTeamEslintBlock } from '../__tests__/factories/team-config-factories.ts'
 import { offBlocksOf } from './eslint-off-blocks.ts'
 
-// An off block reaching files of other types than JS and TS names its files by ignores alone
-// (`offBlockScopesOf`). An entry asking files of one extension outside a folder has no glob for
-// ignores to take back: the folder is left out by ignores, and the off holds in the files left.
+// An entry asking files of one extension outside a folder has no glob for ignores to take back: the folder
+// is left out by ignores, and the off holds in the files left.
 
 const RULE = 'no-debugger'
 const VUE_FILES = '**/*.vue'
@@ -25,7 +24,7 @@ const VUE_FILE_IN_A_COMPONENTS_FOLDER = 'src/components/a.vue'
 const VUE_FILE_IN_A_ROUTES_FOLDER = 'src/routes/a.vue'
 const SVELTE_FILE_IN_A_COMPONENTS_FOLDER = 'src/components/a.svelte'
 const SVELTE_FILE_IN_A_ROUTES_FOLDER = 'src/routes/a.svelte'
-// What the off block's ignores write: every file, then a folder taken back, then every file but a .vue.
+// The off block's ignores: every file, then a folder taken back, then every file but a .vue.
 const EVERY_FILE_IGNORED = '**'
 const EVERY_FILE_BUT_A_VUE_FILE = '**/!(*.vue)'
 const VUE_FILES_RUNNING_THE_RULE = buildTeamEslintBlock('vue-files', { files: [VUE_FILES], rules: { [RULE]: 'error' } })
@@ -40,7 +39,7 @@ function offBlockName(index: number): string {
   return `off/${String(index)}`
 }
 
-/** The rule's severity in each file, with the off blocks after a block running it. */
+/** With the off blocks after a block running it. */
 async function severitiesOf(
   runningTheRule: Linter.Config,
   offs: readonly Linter.Config[],

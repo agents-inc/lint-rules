@@ -5,9 +5,6 @@ import { buildInstalledPackageExportingItsEntryAlone } from '../__tests__/factor
 import { setUpTempProjects } from '../__tests__/temp-projects.ts'
 import { resolvedFrom } from './package-json-files.ts'
 
-// resolvedFrom resolves a request as a module in the folder given requires it: null where no module
-// resolves, and any other failure to resolve thrown as it is, as a package refusing the path asked for.
-
 const PACKAGE = 'installed'
 const NOT_INSTALLED = 'not-installed'
 const PATH_NOT_EXPORTED = `${PACKAGE}/package.json`

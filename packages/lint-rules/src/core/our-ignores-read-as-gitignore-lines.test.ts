@@ -6,12 +6,8 @@ import { filesTheConditionMatches } from '../__tests__/files-condition-oracle.ts
 import { type RuleLayers, resolveRuleLayers } from './resolve-rule-layers.ts'
 import { ourEslintPartOf, ourOxlintPartOf } from './where-our-parts-run.ts'
 
-// q62 (owner): a value of our ignores means what it would mean as a .gitignore line, in both engines.
-// Our layers hold each value in forms the agent build gives both engines, and both merges read
-// through the shared readings of each engine (ignores-read-by-each-engine.ts, checked against the
-// real engines in its integration test). So each engine's reading of the layers leaves out the files
-// the .gitignore line does. The forms themselves are the developer's: only the files are pinned
-// here, beside the values whose forms the answer leaves as they are.
+// A value of our ignores means what it would mean as a .gitignore line, in both engines. Only the files left
+// out are pinned here, not the forms.
 
 const LEGACY_FOLDER_AT_THE_ROOT_ONLY = 'src/legacy/'
 const EVERY_FILE_UNDER_THE_ROOT_LEGACY_FOLDER = 'legacy/**'
@@ -23,7 +19,7 @@ function layersIgnoring(ignores: readonly string[]): RuleLayers {
   return resolveRuleLayers(buildLintRules({}, { ignores: [...ignores] }), catalog)
 }
 
-/** The files each engine's reading of our layers leaves out, of those checked, in the order checked. */
+/** In the order checked. */
 function filesEachEngineLeavesOut(ignores: readonly string[]): { readonly eslint: readonly string[]; readonly oxlint: readonly string[] } {
   const layers = layersIgnoring(ignores)
   return {

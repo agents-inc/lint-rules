@@ -1,72 +1,47 @@
 import { extensionsNamedBy, isNegated, literalGlobOf, negationOf, pathNamedBy, withoutNegation } from './globs.ts'
 import { readOnce } from './read-once.ts'
 
-// Which files a rule of ours may run in, worked out from glob lists alone, so that a block of ours
-// can be kept to exactly those files without a function in its `files` (spec-owner-answers.md,
-// Q-D). Every condition is a list of terms, any one of which a file must meet. A glob with no glob
-// syntax names one path, so a term holding one matches that file or none: two such paths in one
-// term match nothing, and every path but its own among its exclusions asks nothing more. That keeps
-// a list of literal paths, as the TS files outside every tsconfig are, from multiplying the terms
-// it meets (review, Must fix 2).
+// Which files a rule of ours may run in, from glob lists alone, so a block can be kept to exactly those
+// files without a function in its `files`. A glob with no glob syntax names one path, which keeps long
+// lists of literal paths from multiplying the terms.
 
-/**
- * The files matching every glob of `all` and none of `none`. A block writes `all` as one `files`
- * entry, whose globs ESLint ANDs, and `none` as ignores. `none` holds no negated glob: ignores read
- * a leading `!` as taking a file back.
- */
+/** `all` is one `files` entry, whose globs ESLint ANDs; `none` is ignores, so it holds no negated glob. */
 export type FilesTerm = { readonly all: readonly string[]; readonly none: readonly string[] }
 
-/** The files any one of its terms matches: none where it has no term. */
+/** Any one term must match; no terms matches nothing. */
 export type FilesCondition = readonly FilesTerm[]
 
-/** One entry of a block's `files`: a glob, or globs a file must match every one of. */
 export type FilesEntry = string | string[]
 
-/**
- * What a block keeping to some files writes: its `files` entries, each one's globs ANDed (null
- * where every file it otherwise applies to is kept), and the globs it ignores.
- */
+/** `files` entries each AND their globs; null where every file is kept. */
 export type FilesAndIgnores = { readonly files: readonly (readonly string[])[] | null; readonly ignores: readonly string[] }
 
-/** A term's globs, each once, for asking whether it holds a glob without walking its lists. */
 type GlobsHeld = { readonly all: ReadonlySet<string>; readonly none: ReadonlySet<string> }
 
-/** A negated glob of a list of ignores, by its place in the list, and the glob it takes back. */
 type Negation = { readonly index: number; readonly takesBack: string }
 
-/** The terms of a condition by the path their literal glob names, under NO_PATH those naming none. */
 type TermsByPath = ReadonlyMap<string | typeof NO_PATH, readonly FilesTerm[]>
 
 export const EVERY_FILE: FilesCondition = [{ all: [], none: [] }]
 export const NO_FILE: FilesCondition = []
 
 const NO_PATH = null
-// What each normalized term is read as, each part read the first time it is asked for, since a
-// term's lists may be long: a term is never changed after it is made.
+// Each part read the first time it is asked for, since a term's lists may be long: terms are never mutated.
 const pathsOfTerms = new WeakMap<FilesTerm, string | typeof NO_PATH>()
 const globsHeldByTerms = new WeakMap<FilesTerm, GlobsHeld>()
 const keysOfTerms = new WeakMap<FilesTerm, string>()
 
-/** The files a block applies to: those its `files` match (every file, where null), less those its ignores leave out. */
 export function filesInScopeOf(files: readonly FilesEntry[] | null, ignores: readonly string[]): FilesCondition {
   return bothOf(filesMatchedBy(files), notOf(filesIgnoredBy(ignores)))
 }
 
-/**
- * The files a list of ignores leaves out, read in order, a negated glob taking back a file an
- * earlier glob left out: a file is left out where some glob matches it and no negated glob after
- * that one does. A block's ignores read so, and so does the last matching line of a .gitignore.
- */
+/** A negated glob takes back a file an earlier glob left out, as block ignores and .gitignore read them. */
 export function filesIgnoredBy(ignores: readonly string[]): FilesCondition {
   const negations = negationsIn(ignores)
   return simplified(ignores.flatMap((glob, index) => (isNegated(glob) ? [] : [termLeftOutBy(glob, takenBackAfter(index, negations))])))
 }
 
-/**
- * The files every condition matches. A condition of one term narrows every term of the rest alike,
- * so those are joined at once; terms every other condition holds are set aside, as `(c or x) and (c
- * or y)` is `c or (x and y)`; the rest are met two at a time.
- */
+/** `(c or x) and (c or y)` is `c or (x and y)`, so terms every condition holds are set aside first; the rest are met two at a time. */
 export function bothOf(...conditions: readonly FilesCondition[]): FilesCondition {
   const oneTermEach = conditions.flatMap((condition) => (condition.length === 1 ? condition : []))
   const theRest = conditions.filter((condition) => condition.length !== 1)
@@ -84,7 +59,6 @@ function termsOtherThan(keys: ReadonlySet<string>, condition: FilesCondition): F
   return condition.filter((term) => !keys.has(keyOfNormalizedTerm(term)))
 }
 
-/** The terms every one of several conditions holds: none of none. */
 function termsEachHolds(conditions: readonly FilesCondition[]): FilesTerm[] {
   const [first, ...others] = conditions
   if (first === undefined || others.length === 0) return []
@@ -92,12 +66,10 @@ function termsEachHolds(conditions: readonly FilesCondition[]): FilesTerm[] {
   return first.filter((term) => keysOfEachOther.every((keys) => keys.has(keyOfNormalizedTerm(term))))
 }
 
-/** The files any of the conditions matches. */
 export function eitherOf(...conditions: readonly FilesCondition[]): FilesCondition {
   return simplified(conditions.flat())
 }
 
-/** The files the condition does not match. */
 export function notOf(condition: FilesCondition): FilesCondition {
   return bothOf(...condition.map(notOfTerm))
 }
@@ -110,16 +82,12 @@ export function globsOf(entry: FilesEntry): string[] {
   return typeof entry === 'string' ? [entry] : [...entry]
 }
 
-/** One string per condition, the same for two conditions written alike: terms and globs are kept sorted. */
+/** The same for two conditions written alike. */
 export function keyOfCondition(condition: FilesCondition): string {
   return JSON.stringify(condition)
 }
 
-/**
- * The condition as few blocks write it: one per set of globs its terms ignore, whose `files` lists
- * each of those terms' globs as an entry. Where such a term needs no glob, it matches every file the
- * others match, so it is the only one left of them.
- */
+/** One block per set of ignored globs. A term needing no glob matches every file the others do, so it is the only one left. */
 export function filesAndIgnoresOf(condition: FilesCondition): FilesAndIgnores[] {
   return termsGroupedByIgnores(condition).map((terms) => ({
     files: terms.some(({ all }) => all.length === 0) ? null : terms.map(({ all }) => all),
@@ -127,45 +95,38 @@ export function filesAndIgnoresOf(condition: FilesCondition): FilesAndIgnores[] 
   }))
 }
 
-/** Two conditions met: every term of one with each term of the other a file can meet both of. */
 function bothOfTwo(condition: FilesCondition, other: FilesCondition): FilesCondition {
   const otherByPath = termsByPathOf(other)
   return reduced(condition.flatMap((term) => termsMeeting(term, other, otherByPath).flatMap((otherTerm) => termOfBoth(term, otherTerm))))
 }
 
-/** The other condition's terms a file of the term can meet: where the term names a path, only those naming none or the same one. */
+/** Where the term names a path, only those naming none or the same one. */
 function termsMeeting(term: FilesTerm, other: FilesCondition, otherByPath: TermsByPath): readonly FilesTerm[] {
   const path = pathOfTerm(term)
   return path === NO_PATH ? other : [...termsNaming(NO_PATH, otherByPath), ...termsNaming(path, otherByPath)]
 }
 
-/** The files two terms both match, normalized: none where no file can. */
 function termOfBoth(term: FilesTerm, other: FilesTerm): FilesTerm[] {
   return normalizedTerm(termOfEvery([term, other]))
 }
 
-/** Each negated glob of the ignores, by its place among them. */
 function negationsIn(ignores: readonly string[]): Negation[] {
   return ignores.flatMap((glob, index) => (isNegated(glob) ? [{ index, takesBack: withoutNegation(glob) }] : []))
 }
 
-/** The globs the negations after the place given take back. */
 function takenBackAfter(index: number, negations: readonly Negation[]): string[] {
   return negations.filter((negation) => negation.index > index).map(({ takesBack }) => takesBack)
 }
 
-/** The files a glob of ignores leaves out: those it matches that no negated glob after it takes back. */
 function termLeftOutBy(glob: string, takenBack: readonly string[]): FilesTerm {
   return { all: [glob], none: takenBack }
 }
 
-/** The files a block's `files` match: every file, where it names none (null). */
 function filesMatchedBy(files: readonly FilesEntry[] | null): FilesCondition {
   if (files === null) return EVERY_FILE
   return simplified(files.map((entry) => ({ all: globsOf(entry), none: [] })))
 }
 
-/** A file outside a term misses one of its globs, or matches one it must not. */
 function notOfTerm({ all, none }: FilesTerm): FilesCondition {
   return simplified([...all.map(termMissing), ...none.map((glob) => ({ all: [glob], none: [] }))])
 }
@@ -197,26 +158,18 @@ function termOfEvery(terms: readonly FilesTerm[]): FilesTerm {
   return { all: terms.flatMap(({ all }) => all), none: terms.flatMap(({ none }) => none) }
 }
 
-/**
- * The same files, in as few terms as globs alone can tell: each term's globs sorted and once each,
- * a term no file can meet dropped, and a term dropped where another matches every file it does.
- */
+/** Drops a term no file can meet, and one another term covers. */
 function simplified(terms: readonly FilesTerm[]): FilesCondition {
   return reduced(terms.flatMap(normalizedTerm))
 }
 
-/** Normalized terms each once, and none another matches every file of. */
 function reduced(normalized: readonly FilesTerm[]): FilesCondition {
   const unique = uniqueTerms(normalized)
   const byPath = termsByPathOf(unique)
   return unique.filter((term) => !isWithinAnother(term, termsItMayBeWithin(term, byPath)))
 }
 
-/**
- * The term with its globs sorted and once each, a literal glob written as literalGlobOf writes its
- * path: none where no file can meet it. A file at one path is at no other, so a term naming two
- * paths meets none, and of its exclusions only the globs naming no path, or its own, ask more.
- */
+/** A file at one path is at no other, so a term naming two paths meets none, and of its exclusions only those naming no path, or its own, ask more. */
 function normalizedTerm({ all, none }: FilesTerm): FilesTerm[] {
   const paths = [...new Set(all.flatMap(pathsNamedBy))]
   const [path, ...otherPaths] = paths
@@ -243,7 +196,6 @@ function pathsNamedBy(glob: string): string[] {
   return path === NO_PATH ? [] : [path]
 }
 
-/** The path a normalized term's literal glob names: NO_PATH where it holds none. */
 function pathOfTerm(term: FilesTerm): string | typeof NO_PATH {
   return readOnce(pathsOfTerms, term, ({ all }) => {
     const [path] = all.flatMap(pathsNamedBy)
@@ -275,7 +227,6 @@ function termsNaming(path: string | typeof NO_PATH, byPath: TermsByPath): readon
   return terms === undefined ? [] : terms
 }
 
-/** Each term once, in the order of their keys, so two conditions written alike come out alike. */
 function uniqueTerms(terms: readonly FilesTerm[]): FilesTerm[] {
   const byKey = new Map(terms.map((term): [string, FilesTerm] => [keyOfNormalizedTerm(term), term]))
   return [...byKey].toSorted(inOrderOfKeys).map(([, term]) => term)
@@ -286,20 +237,13 @@ function inOrderOfKeys([key]: readonly [string, FilesTerm], [otherKey]: readonly
   return key < otherKey ? -1 : 1
 }
 
-/**
- * A sorted term asking a file to match a glob and also to miss it, or to have an extension it also
- * refuses: its lists are searched, not walked.
- */
+/** Its lists are searched, not walked. */
 function isContradictory(term: FilesTerm): boolean {
   const { all, none } = term
   return all.some((glob) => sortedHolds(none, glob) || sortedHolds(all, negationOf(glob))) || asksOnlyExtensionsItRefuses(term)
 }
 
-/**
- * Whether a glob of `all` naming files by their extensions, as filesOfExtensions writes them, names
- * only extensions that such globs of `none` name: a file has one last extension, so no file meets
- * both, as no JS or TS file is outside every JS, TS and component file.
- */
+/** A file has one last extension, so no file meets both. */
 function asksOnlyExtensionsItRefuses({ all, none }: FilesTerm): boolean {
   const asked = all.flatMap(extensionsListedBy)
   if (asked.length === 0) return false
@@ -307,19 +251,16 @@ function asksOnlyExtensionsItRefuses({ all, none }: FilesTerm): boolean {
   return asked.some((extensions) => extensions.every((extension) => refused.has(extension)))
 }
 
-/** The extensions a glob names files by, as a list holding that one list: none for a glob naming files otherwise. */
 function extensionsListedBy(glob: string): string[][] {
   const extensions = extensionsNamedBy(glob)
   return extensions === null ? [] : [extensions]
 }
 
-/** Whether a list sorted as sortedOnce sorts it holds the glob. */
 function sortedHolds(sorted: readonly string[], glob: string): boolean {
   const index = lowerBoundOf(sorted, glob, 0, sorted.length)
   return sorted[index] === glob
 }
 
-/** The first index from `from` to `to` whose glob does not sort before the one given. */
 function lowerBoundOf(sorted: readonly string[], glob: string, from: number, to: number): number {
   if (from >= to) return from
   const middle = Math.floor((from + to) / 2)
@@ -327,10 +268,7 @@ function lowerBoundOf(sorted: readonly string[], glob: string, from: number, to:
   return atMiddle !== undefined && atMiddle < glob ? lowerBoundOf(sorted, glob, middle + 1, to) : lowerBoundOf(sorted, glob, from, middle)
 }
 
-/**
- * The terms another term can lie within, which ask no glob of a file it does not: where it names a
- * path, those naming none or the same one; where it names none, those naming none.
- */
+/** Where it names a path, those naming none or the same one; where it names none, those naming none. */
 function termsItMayBeWithin(term: FilesTerm, byPath: TermsByPath): readonly FilesTerm[] {
   const path = pathOfTerm(term)
   return path === NO_PATH ? termsNaming(NO_PATH, byPath) : [...termsNaming(NO_PATH, byPath), ...termsNaming(path, byPath)]
@@ -342,7 +280,6 @@ function isWithinAnother(term: FilesTerm, terms: readonly FilesTerm[]): boolean 
   return terms.some((other) => other !== term && isWithin(held, other))
 }
 
-/** Every file the term holding these globs matches, the other matches too: the other asks no more of a file. */
 function isWithin(held: GlobsHeld, other: FilesTerm): boolean {
   return other.all.every((glob) => held.all.has(glob)) && other.none.every((glob) => held.none.has(glob))
 }

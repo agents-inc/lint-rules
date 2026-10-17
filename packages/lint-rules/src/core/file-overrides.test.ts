@@ -271,10 +271,8 @@ describe('file overrides', () => {
     })
   })
 
-  // An entry re-states only the lists it gives. One that gives rules alone says nothing about
-  // runtimes, so where it overlaps an entry that dropped browser, browser stays dropped, as the
-  // engines layer blocks natively. The later entry's files are no test files, which get the test
-  // runners' env besides (q76).
+  // An entry restates only the lists it gives, so where it overlaps one that dropped browser, browser stays
+  // dropped. Its files are not test files, which get the test runners' env besides.
   describe('an entry that sets runtimes, then an overlapping one that sets rules only', () => {
     const lintRules = buildLintRules(everyTopLevelRuleset, {
       fileOverrides: [
@@ -344,8 +342,7 @@ describe('file overrides', () => {
     })
   })
 
-  // Each entry's rulesets say what applies to its files, so where two entries match, the later
-  // one's rulesets apply in full, including what the earlier one switched off.
+  // Where two entries match, the later one's rulesets apply in full, including what the earlier one switched off.
   describe('two entries that set rulesets, whose globs overlap', () => {
     const rulesetCatalog = buildCatalog({
       rulesets: [

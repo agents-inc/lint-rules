@@ -1,6 +1,5 @@
-// The editor set as plain data, one part per engine: what `agents-inc.lint.mts` exports. Nothing
-// here may import a plugin, the parser, `globals`, typescript-eslint, `@eslint/compat` or
-// import-x: a team's oxlint config imports the parts, and must not load ESLint's side to do it.
+// What `agents-inc.lint.mts` exports. Nothing here may import a plugin, the parser, `globals`, typescript-eslint,
+// `@eslint/compat` or import-x: a team's oxlint config imports the parts and must not load ESLint's side.
 
 import { type Catalog, isOxlintRoute, routeOf } from '@workspace/rule-data'
 import { isEslintRoute } from './catalog-lookups.ts'
@@ -18,50 +17,37 @@ import {
 } from './resolve-rule-layers.ts'
 import { layersWithEachTwinPairDecidedBesideOxlint } from './twin-pairs.ts'
 
-/** The editor set's ESLint side. The merge turns it into blocks before the team's. */
 export type EslintPart = {
   /** A team's config is untyped JS, so each merge checks it was handed its own engine's part. */
   readonly engine: 'eslint'
   readonly tsconfigRootDir: string
-  /** Whether the project lists oxlint, which then runs the oxlint-routed rules. */
   readonly usesOxlint: boolean
-  /** The editor set resolved, suppressions allowed: every rule map holds the rules ESLint runs here. */
+  /** Suppressions allowed; every rule map holds the rules ESLint runs here. */
   readonly layers: RuleLayers
-  /**
-   * Beside oxlint, the oxlint part's layers: after the team's blocks the merge turns each
-   * typescript-eslint extension this part runs off where they run a core rule it extends (D10).
-   * Without oxlint, layers stating no rule.
-   */
+  /** Beside oxlint, the oxlint part's layers, so the merge can turn off extensions where oxlint runs their core rule. Without oxlint, empty. */
   readonly oxlintLayers: RuleLayers
 }
 
-/** The editor set's oxlint side, present only where the project lists oxlint. */
+/** Present only where the project lists oxlint. */
 export type OxlintPart = {
   readonly engine: 'oxlint'
   readonly tsconfigRootDir: string
-  /** The editor set resolved, suppressions allowed: every rule map holds only oxlint-routed rules. */
+  /** Suppressions allowed; every rule map holds only oxlint-routed rules. */
   readonly layers: RuleLayers
-  /**
-   * Each rule the ESLint part turns on, in any file, sorted. Where the team's config leaves
-   * correctness out, oxlint's own `correctness: warn` would run its copy of one beside ESLint's, so
-   * the merge turns that copy off.
-   */
+  /** Sorted. Where the team leaves correctness out, oxlint's default would run its copy beside ESLint's, so the merge turns that copy off. */
   readonly turnedOnInEslint: readonly string[]
 }
 
 export type EditorParts = { readonly eslint: EslintPart; readonly oxlint: OxlintPart | undefined }
 
-/** Whether a value a team's config hands a merge is the ESLint part `defineLintRules` made. */
 export function isEslintPart(given: unknown): given is EslintPart {
   return isRecord(given) && given['engine'] === 'eslint'
 }
 
-/** Whether a value a team's config hands a merge is the oxlint part `defineLintRules` made. */
 export function isOxlintPart(given: unknown): given is OxlintPart {
   return isRecord(given) && given['engine'] === 'oxlint'
 }
 
-/** What a team's config handed a merge instead of its part, for the error that refuses it. */
 export function describePartGiven(given: unknown): string {
   if (isEslintPart(given)) return 'its eslint part'
   if (isOxlintPart(given)) return 'its oxlint part'
@@ -76,11 +62,7 @@ export function editorPartsOf(lintRules: TwoSetLintRulesInput, catalog: Catalog,
     : { eslint: eslintPartWithoutOxlint(tsconfigRootDir, layers, catalog), oxlint: undefined }
 }
 
-/**
- * The editor set as the core's single set, with suppressions allowed everywhere, whatever
- * `allowSuppressions` says: people may keep their suppressions, only sub-agents may not (owner,
- * 2026-10-11).
- */
+/** Suppressions are allowed everywhere in the editor set: people may keep theirs, only sub-agents may not. */
 function editorSettingsOf(lintRules: TwoSetLintRulesInput): LintRulesInput {
   const projected = projectedOnto('editorRulesets', lintRules)
   const { fileOverrides } = projected
@@ -88,16 +70,11 @@ function editorSettingsOf(lintRules: TwoSetLintRulesInput): LintRulesInput {
   return { ...projected, allowSuppressions: true, fileOverrides: fileOverrides.map(withoutItsSuppressionSetting) }
 }
 
-/** An entry's `allowSuppressions` decides for sub-agents only, so the editor set drops it. */
 function withoutItsSuppressionSetting({ allowSuppressions, ...entry }: FileOverrideInput): FileOverrideInput {
   return entry
 }
 
-/**
- * oxlint runs the oxlint-routed rules and ESLint the rest. A rule a part only turns off is the
- * team's to set in the other engine: our off removes only ours (questions.md #42). A core rule and
- * typescript-eslint's extension of it are one rule to each layer, its deciding part setting both (D10).
- */
+/** A rule a part only turns off is the team's to set in the other engine: our off removes only ours. */
 function partsBesideOxlint(tsconfigRootDir: string, resolved: RuleLayers, catalog: Catalog): EditorParts {
   const layers = layersWithEachTwinPairDecidedBesideOxlint(resolved, catalog)
   const eslintLayers = layersKeepingRules(layers, ({ id }) => isEslintRoute(routeOf(id, catalog)))
@@ -108,13 +85,7 @@ function partsBesideOxlint(tsconfigRootDir: string, resolved: RuleLayers, catalo
   }
 }
 
-/**
- * Without oxlint, ESLint also takes over each oxlint-routed rule it has a version of, unless the
- * skip list names it: one whose fixture does not fire in ESLint, or one the owner decided against.
- * Where ESLint has none, a rule of its stands in for some (`eslintStandIns`). A rule ESLint has no
- * version of, or a skipped one, is not stated, so the team's setting stands. No rule runs in
- * another engine, so nothing is stated off after the team's blocks.
- */
+/** Without oxlint, ESLint takes over each oxlint-routed rule it has a version of, unless the skip list names it; some oxlint-only rules get an ESLint stand-in. A rule left unstated keeps the team's setting. */
 function eslintPartWithoutOxlint(tsconfigRootDir: string, layers: RuleLayers, catalog: Catalog): EslintPart {
   const standIns = standInsIn(catalog)
   const layersWithStandIns = layersWithEachRuleMap(layers, (settings) => withStandIns(settings, standIns))
@@ -127,11 +98,7 @@ function eslintPartWithoutOxlint(tsconfigRootDir: string, layers: RuleLayers, ca
   }
 }
 
-/**
- * Each oxlint-only rule with a stand-in, stated as its stand-in too: at its severity, files and
- * ignores, and none of its options, which are the oxc rule's (#55, r2-d49-51; spec-core.md C4).
- * Where the map states the stand-in itself, that setting stands, so the stand-in is stated once.
- */
+/** A stand-in takes its rule's severity, files and ignores, but not its options, which are the oxc rule's. Where the map states the stand-in itself, that setting stands. */
 function withStandIns(settings: RuleSettings, standIns: ReadonlyMap<string, string>): RuleSettings {
   const standInSettings = Object.entries(settings).flatMap(([id, setting]): [string, RuleSetting][] => {
     const standIn = standIns.get(id)
@@ -140,13 +107,7 @@ function withStandIns(settings: RuleSettings, standIns: ReadonlyMap<string, stri
   return { ...settings, ...Object.fromEntries(standInSettings) }
 }
 
-/**
- * The catalog's stand-ins, each oxlint-only rule's: throws where the data breaks what C4 needs
- * (spec-core.md 2.6). Only then does each stand-in run in ESLint exactly where its oxlint-only rule
- * would have run in oxlint: a rule ESLint runs or has a version of would report twice, a stand-in
- * oxlint runs or that needs type information would run nowhere or fail, one we ship would be stated
- * twice, and one standing in for two rules would take one setting for both.
- */
+/** Throws on bad data: a stand-in must be a rule ESLint runs untyped, that we do not ship, standing in for one rule only, or it would report twice, run nowhere, or take one setting for two rules. */
 function standInsIn(catalog: Catalog): ReadonlyMap<string, string> {
   const breach = [...catalog.eslintStandIns].find(([oxlintOnly, standIn]) => !isStandInAsTheDataGuarantees(oxlintOnly, standIn, catalog))
   if (breach !== undefined) {
@@ -160,12 +121,10 @@ function isStandInAsTheDataGuarantees(oxlintOnly: string, standIn: string, catal
   return isRunByOxlintAlone(oxlintOnly, catalog) && canStandIn(standIn, catalog) && standsInForOneRule(standIn, catalog)
 }
 
-/** Whether oxlint runs the rule and ESLint has no version of it. */
 function isRunByOxlintAlone(ruleId: string, catalog: Catalog): boolean {
   return isOxlintRoute(routeOf(ruleId, catalog)) && !catalog.ruleIdsWithAnEslintVersion.has(ruleId)
 }
 
-/** Whether the rule is one ESLint runs without type information, and one we do not ship. */
 function canStandIn(ruleId: string, catalog: Catalog): boolean {
   const route = routeOf(ruleId, catalog)
   return isEslintRoute(route) && !route.typed && route.shipped === null

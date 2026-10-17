@@ -7,13 +7,11 @@ import { readOnce } from './read-once.ts'
 
 type ReleaseLine = { readonly major: number; readonly minor: number }
 
-/** What a config file gives the project service: the files it lists itself, and the config files it loads besides. */
 type ConfigFileRead = { readonly ownFiles: ReadonlySet<string>; readonly loadedReferences: readonly string[] }
 
-/** What one walk of tsconfigRootDir finds: the TS files no tsconfig takes in, relative to it, and every config file, absolute. */
+/** TS files relative to tsconfigRootDir; config files absolute. */
 export type TsconfigWalk = { readonly tsFilesOutsideEveryTsconfig: readonly string[]; readonly tsconfigFiles: readonly string[] }
 
-/** What one computation has read, each read once. */
 type Reads = {
   readonly configFiles: Map<string, ConfigFileRead>
   readonly configFilesInDirectory: Map<string, readonly string[]>
@@ -25,33 +23,22 @@ const CONFIG_FILE_NAMES = ['tsconfig.json', 'jsconfig.json']
 const TS_FILE = /\.(?:ts|mts|cts|tsx)$/u
 // ESLint lints nothing under these.
 const DIRECTORIES_NEVER_WALKED: ReadonlySet<string> = new Set(['node_modules', '.git'])
-// A directory the walk cannot list: no permission (R2 measured EACCES on a real project), or gone.
+// A directory the walk cannot list: no permission (measured EACCES on a real project), or gone.
 const UNREADABLE_DIRECTORY_CODES: ReadonlySet<string> = new Set(['EACCES', 'EPERM', 'ENOENT', 'ENOTDIR'])
 const GLOB_SEPARATOR = '/'
-// The TypeScript from which the project service tries every ancestor config, not only the nearest.
+// From this TypeScript the project service tries every ancestor config, not only the nearest.
 const EVERY_ANCESTOR_CONFIG_SINCE: ReleaseLine = { major: 5, minor: 7 }
 const RELEASE_LINE = /^(?<major>\d+)\.(?<minor>\d+)$/u
 
 // A config file TypeScript cannot read lists no file, as the project service then finds no project in it.
 const CONFIG_HOST: ts.ParseConfigFileHost = { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => undefined }
 
-/**
- * The TS files under tsconfigRootDir that typescript-eslint's project service finds no tsconfig
- * for, relative to it, `/` between segments: a typed rule there is a fatal parse error. The search
- * is the service's own (spec C3, R2): from the file's directory up to tsconfigRootDir and no
- * higher, a tsconfig.json then a jsconfig.json in each, and a config takes the file in when it, or
- * a config it references, lists it. Before TypeScript 5.7 only the nearest config counts. A file a
- * config only imports is listed here, though the service finds it through the importer (D-h).
- */
+/** A typed rule on these is a fatal parse error. Mirrors the project service's search: from the file's directory up to tsconfigRootDir, a tsconfig.json then a jsconfig.json in each, a config or one it references listing the file. */
 export function tsFilesOutsideEveryTsconfig(tsconfigRootDir: string): readonly string[] {
   return tsconfigWalkOf(tsconfigRootDir).tsFilesOutsideEveryTsconfig
 }
 
-/**
- * One walk of tsconfigRootDir, outside node_modules and .git: the TS files outside every tsconfig
- * (`tsFilesOutsideEveryTsconfig`), and every tsconfig.json and jsconfig.json, which the import-x
- * resolver reads (spec-core.md C1).
- */
+/** Also returns every tsconfig.json and jsconfig.json, which the import-x resolver reads. */
 export function tsconfigWalkOf(tsconfigRootDir: string): TsconfigWalk {
   const root = resolve(tsconfigRootDir)
   const reads = newReads()
@@ -62,7 +49,6 @@ export function tsconfigWalkOf(tsconfigRootDir: string): TsconfigWalk {
   }
 }
 
-/** Of the files given, relative to tsconfigRootDir, those a config the project service tries for them takes in, by the same search. */
 export function filesTakenInByAConfig(tsconfigRootDir: string, files: readonly string[]): string[] {
   const root = resolve(tsconfigRootDir)
   const reads = newReads()
@@ -79,7 +65,7 @@ function isTakenInByAConfig(file: string, root: string, reads: Reads): boolean {
   )
 }
 
-/** The config files the project service tries for the file, nearest first: before TypeScript 5.7, the nearest alone. */
+/** Nearest first; before TypeScript 5.7, the nearest alone. */
 function configFilesTriedFor(file: string, root: string, reads: Reads): readonly string[] {
   const nearestFirst = directoriesUpFrom(dirname(file), root).flatMap((directory) => configFilesIn(directory, reads))
   return triesEveryAncestorConfig(ts.versionMajorMinor) ? nearestFirst : nearestFirst.slice(0, 1)
@@ -91,7 +77,6 @@ function configFilesIn(directory: string, reads: Reads): readonly string[] {
   )
 }
 
-/** The config file and every config file it loads through its references, transitively, each once. */
 function configFilesLoadedFrom(configFile: string, reads: Reads): string[] {
   const loaded = new Set<string>()
   const load = (current: string): void => {
@@ -110,7 +95,7 @@ function readOf(configFile: string, reads: Reads): ConfigFileRead {
   })
 }
 
-/** Its `extends` resolved. With `disableReferencedProjectLoad`, the service loads none of its references. */
+/** With `disableReferencedProjectLoad`, the service loads none of its references. */
 function configFileReadFrom({ fileNames, options, projectReferences = [] }: ts.ParsedCommandLine): ConfigFileRead {
   const loadsReferences = options.disableReferencedProjectLoad !== true
   return {
@@ -131,7 +116,6 @@ function releaseLineOf(versionMajorMinor: string): ReleaseLine {
   return { major: Number(namedGroupOf(match, 'major')), minor: Number(namedGroupOf(match, 'minor')) }
 }
 
-/** Every file under the directory, relative to the root, `/` between segments. */
 function filesUnder(root: string, fromRoot: string): string[] {
   return entriesOf(join(root, fromRoot)).flatMap((entry) => {
     const path = fromRoot === '' ? entry.name : `${fromRoot}${GLOB_SEPARATOR}${entry.name}`
@@ -140,7 +124,6 @@ function filesUnder(root: string, fromRoot: string): string[] {
   })
 }
 
-/** A TS file, declaration files included. */
 function isTsFile(path: string): boolean {
   return TS_FILE.test(path)
 }
@@ -149,7 +132,7 @@ function isConfigFile(path: string): boolean {
   return CONFIG_FILE_NAMES.includes(basename(path))
 }
 
-/** A directory's entries; none where it cannot be listed. */
+/** None where it cannot be listed. */
 function entriesOf(directory: string): Dirent[] {
   try {
     return readdirSync(directory, { withFileTypes: true })

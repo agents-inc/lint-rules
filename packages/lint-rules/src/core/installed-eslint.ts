@@ -5,17 +5,12 @@ import { PACKAGE_JSON, readPackageJsonFile, resolvedFrom, THIS_PACKAGE, versionO
 
 const ESLINT = 'eslint'
 const ESLINT_MANIFEST = `${ESLINT}/${PACKAGE_JSON}`
-// The merge was measured on ESLint 10 alone (q-r7).
+// The merge was measured on ESLint 10 alone.
 const LOWEST_ESLINT_MAJOR = 10
-// Every ESLint release's version starts with its major and a dot; a prerelease of 10 is 10 too.
+// A prerelease of 10 is 10 too.
 const MAJOR_VERSION = /^(?<major>\d+)\./u
 
-/**
- * The ESLint merge refuses an ESLint below 10 installed for the project, read as the oxlint merge
- * reads the project's oxlint: the one `eslint/package.json` resolves to from `tsconfigRootDir`.
- * Where none resolves, the ESLint running the config is installed elsewhere, where we cannot read
- * it, and the merge goes on (spec-core.md call 9).
- */
+/** Resolved from `tsconfigRootDir`, as the oxlint merge reads oxlint. Where none resolves, ESLint is installed where we cannot read it, and the merge goes on. */
 export function refuseUnsupportedInstalledEslint(tsconfigRootDir: string): void {
   const manifestPath = resolvedFrom(tsconfigRootDir, ESLINT_MANIFEST)
   if (manifestPath === null) return
@@ -27,7 +22,7 @@ export function refuseUnsupportedInstalledEslint(tsconfigRootDir: string): void 
   )
 }
 
-/** Parse boundary: the major of the version an installed manifest gives. */
+/** Parse boundary: the version an installed manifest gives. */
 function majorOf(version: string, manifestPath: string): number {
   const match = MAJOR_VERSION.exec(version)
   if (match === null) throw new Error(`${manifestPath}: version "${version}" does not start with digits and a dot, as every ESLint release's does`)

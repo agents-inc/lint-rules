@@ -9,10 +9,7 @@ import { tsFilesTheProjectServiceFindsNoProjectFor } from '../__tests__/project-
 import { setUpTempProjects } from '../__tests__/temp-projects.ts'
 import { tsFilesOutsideEveryTsconfig } from './ts-files-outside-every-tsconfig.ts'
 
-// Spec C3: a typed rule on a TS file the project service finds no project for is a fatal parse
-// error that switches off every rule in the file, so our typed blocks leave such files out. The
-// computation copies the project service's own search, and each case compares it, file for file,
-// with what the real service decides (typescript-eslint's, with the TypeScript it resolves).
+// Each case compares the computation, file for file, with what the real project service decides.
 
 const REPO_ROOT = fileURLToPath(new URL('../../../..', import.meta.url))
 const LOCKED_DIRECTORY = 'locked'
@@ -54,7 +51,7 @@ describe('tsFilesOutsideEveryTsconfig, beside the real project service', () => {
   })
 })
 
-// R2's own walk threw EACCES on a real project; a directory it cannot read is passed over.
+// A real project threw EACCES; a directory the walk cannot read is passed over.
 describe('tsFilesOutsideEveryTsconfig, given a directory it cannot read', () => {
   it('passes over it and still lists the TS files outside every tsconfig elsewhere', () => {
     const root = tempProjects.create({

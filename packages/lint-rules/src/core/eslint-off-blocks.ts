@@ -4,36 +4,28 @@ import { asFilesEntry, JS_AND_TS_FILES, matchesOnlyJsAndTs } from './eslint-file
 import { type FilesAndIgnores, type FilesCondition, filesAndIgnoresOf, keyOfCondition } from './file-conditions.ts'
 import { extensionsNamedBy, filesOfOtherExtensionsThan, isNegated, negationOf, withoutNegation } from './globs.ts'
 
-// ESLint blocks stating rule names off in some files only, as the merge writes them after the
-// team's blocks and the agent build after its own: one block where the names share their files,
-// else one each, numbered.
+// Blocks turning rules off in some files only: one block where the names share their files, else one each.
 
-/** Something that holds in some files only. */
 export type Where = { readonly where: FilesCondition }
 
-/** ESLint names that are off in the same files. */
 export type NamesOffWhere = Where & { readonly names: readonly string[] }
 
-/** What holds within some files, and how a block keeps to them. */
 export type Within<T> = T & { readonly within: FilesAndIgnores }
 
-/** An entry of a block's `files`: its globs naming files by their extensions, and its others. */
 type EntryByExtensions = { readonly extensions: readonly (readonly string[])[]; readonly others: readonly string[] }
 
-/** How an off block keeps to its files. */
 type OffBlockScope = Pick<Linter.Config, 'files' | 'ignores'>
 
-// An ignore leaving out every file, which a later negated ignore takes files back from.
+// Leaves out every file, so a later negated ignore can take files back.
 const EVERY_FILE_IGNORED = '**'
 const TWINS_OFF = 'agents-inc/twins-off'
 
-/** The names given off where each is off: the names off in the same files in one block, each block named by its place among them. */
+/** Names off in the same files share a block. */
 export function offBlocksOf(offs: readonly NamesOffWhere[], nameOf: (index: number, count: number) => string): Linter.Config[] {
   const blocks = eachWithin(namesOffGroupedByWhere(offs)).flatMap(({ within, names }) => offBlockScopesOf(within).map((scope) => ({ scope, names })))
   return blocks.map(({ scope, names }, index) => ({ name: nameOf(index, blocks.length), ...scope, rules: rulesOff(names) }))
 }
 
-/** The name of a block turning typescript-eslint's twins of rules our oxlint part runs off, by its place among them. */
 export function twinsOffName(index: number): string {
   return `${TWINS_OFF}/${String(index)}`
 }
@@ -42,13 +34,12 @@ export function rulesOff(ruleIds: readonly string[]): Linter.RulesRecord {
   return Object.fromEntries(ruleIds.map((id): [string, Linter.RuleEntry] => [id, 'off']))
 }
 
-/** The items given, those that hold in the same files together, in the order each set of files is first met. */
+/** In the order each set of files is first met. */
 export function groupedByWhere<T extends Where>(items: readonly T[]): T[][] {
   const keys = [...new Set(items.map(({ where }) => keyOfCondition(where)))]
   return keys.map((key) => items.filter(({ where }) => keyOfCondition(where) === key))
 }
 
-/** Each item once for each way a block keeps to its files. */
 export function eachWithin<T extends Where>(items: readonly T[]): Within<T>[] {
   return items.flatMap((item) => filesAndIgnoresOf(item.where).map((within) => ({ ...item, within })))
 }
@@ -59,20 +50,11 @@ export function whereOf(group: readonly Where[]): FilesCondition {
   return first.where
 }
 
-/** The names off in the same files, together. */
 function namesOffGroupedByWhere(offs: readonly NamesOffWhere[]): NamesOffWhere[] {
   return groupedByWhere(offs).map((sharing) => ({ where: whereOf(sharing), names: sortedUnique(sharing.flatMap(({ names }) => names)) }))
 }
 
-/**
- * How off blocks keep to their files without handing ESLint a file to lint (decisions.md, fix round
- * 2: an off block never adds files). ESLint lints a file only where some block's `files` name it by
- * more than every file: a glob neither negated nor ending `/*` or `/**` (measured, ESLint 10.12).
- * Our base block lints every JS and TS file, so a block whose every entry keeps to them names them
- * by `files`. One reaching other types, as our oxlint part runs a rule in .vue, .svelte and .astro
- * files, names its files by ignores alone, in one block where ignores can say every entry at once,
- * else in one block per entry.
- */
+/** An off block must never add files for ESLint to lint, and ESLint lints a file named by any glob not negated nor ending `/*` or `/**` (measured, 10.12). So a block reaching other file types names its files by ignores alone. */
 function offBlockScopesOf({ files, ignores }: FilesAndIgnores): OffBlockScope[] {
   if (files === null) return [ignoresKey(ignores)]
   if (files.every(keepsToJsAndTs)) return [{ files: files.map(asFilesEntry), ...ignoresKey(ignores) }]
@@ -81,12 +63,7 @@ function offBlockScopesOf({ files, ignores }: FilesAndIgnores): OffBlockScope[] 
   return files.map((entry) => offBlockScopeOfOneEntry(entry, ignores))
 }
 
-/**
- * An entry's own off block: by `files` where it keeps to JS and TS files, else by ignores. Where
- * ignores cannot say it either, as an entry asking two globs besides its extensions, which ignores
- * cannot AND, it is kept to the JS and TS files: in its files of other types the off does not
- * hold (a limit).
- */
+/** Where ignores cannot say it either (two globs besides its extensions, which ignores cannot AND), it is kept to JS and TS files, and the off does not hold in its other files (a known limit). */
 function offBlockScopeOfOneEntry(entry: readonly string[], ignores: readonly string[]): OffBlockScope {
   if (keepsToJsAndTs(entry)) return { files: [asFilesEntry(entry)], ...ignoresKey(ignores) }
   const byIgnores = ignoresOfOneEntry(splitByExtensions(entry))
@@ -94,7 +71,6 @@ function offBlockScopeOfOneEntry(entry: readonly string[], ignores: readonly str
   return { files: [asFilesEntry([...entry, JS_AND_TS_FILES])], ...ignoresKey(ignores) }
 }
 
-/** An entry with a glob of only JS and TS files, which our base block lints anyway. */
 function keepsToJsAndTs(entry: readonly string[]): boolean {
   return entry.some(matchesOnlyJsAndTs)
 }
@@ -103,11 +79,7 @@ function ignoresKey(ignores: readonly string[]): Pick<Linter.Config, 'ignores'> 
   return ignores.length === 0 ? {} : { ignores: [...ignores] }
 }
 
-/**
- * Ignores applying a block to the files its entries match, where every entry asks one glob at most
- * besides one set of extensions they share: every file, then each entry's glob taken back, then
- * every file of another extension. Null where ignores cannot say it.
- */
+/** Every file, then each entry's glob taken back, then every file of another extension. Null where ignores cannot say it. */
 function ignoresAlone(files: readonly (readonly string[])[]): string[] | null {
   const entries = files.map(splitByExtensions)
   const [first] = entries
@@ -119,11 +91,7 @@ function ignoresAlone(files: readonly (readonly string[])[]): string[] | null {
   return [...eachEntrysGlobTakenBack, ...first.extensions.map(filesOfOtherExtensionsThan)]
 }
 
-/**
- * Ignores applying a block to the files one entry matches: every file, then its one glob taken
- * back, where it asks one; then each file a negated glob of it leaves out, and each of another
- * extension, left out again. Null where it asks two globs or more, which ignores cannot AND.
- */
+/** Null where the entry asks two globs or more, which ignores cannot AND. */
 function ignoresOfOneEntry({ extensions, others }: EntryByExtensions): string[] | null {
   const asked = others.filter((glob) => !isNegated(glob))
   const [onlyAsked, ...moreAsked] = asked
@@ -132,12 +100,11 @@ function ignoresOfOneEntry({ extensions, others }: EntryByExtensions): string[] 
   return [...(onlyAsked === undefined ? [] : [EVERY_FILE_IGNORED, negationOf(onlyAsked)]), ...leftOutByItsNegations, ...extensions.map(filesOfOtherExtensionsThan)]
 }
 
-/** An entry asking a file one glob at most besides its extensions, and none negated: an ignore can take back only that one. */
+/** An ignore can take back only one glob. */
 function asksOneGlobAtMost({ others }: EntryByExtensions): boolean {
   return others.length <= 1 && others.every((glob) => !isNegated(glob))
 }
 
-/** An entry's globs naming files by their extensions, and its others. */
 function splitByExtensions(entry: readonly string[]): EntryByExtensions {
   const extensions = entry.flatMap((glob) => {
     const named = extensionsNamedBy(glob)

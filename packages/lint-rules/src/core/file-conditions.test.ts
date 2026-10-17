@@ -3,11 +3,8 @@ import { buildDrawnTerms, type Draw, seededDraws } from '../__tests__/factories/
 import { filesTheConditionMatches } from '../__tests__/files-condition-oracle.ts'
 import { bothOf, eitherOf, type FilesCondition, type FilesTerm, notOf } from './file-conditions.ts'
 
-// The merge keeps our blocks to the files each rule may run in by this algebra alone (Q-D), and the
-// TS files outside every tsconfig reach it as literal paths, which it reads as one file each (review,
-// Must fix 2). Each case checks it file by file against plain sets.
+// Each case checks the files algebra file by file against plain sets.
 
-/** The files a condition matches, and the condition. */
 type Drawn = { readonly condition: FilesCondition; readonly files: readonly string[] }
 
 // Paths at the depths the globs tell apart, a literal path's file among them.
@@ -24,8 +21,7 @@ const FILES = [
   'out/f2.ts',
   'a.ts',
 ]
-// Globs with glob syntax, and literal ones naming one path each: src/b.ts written both bare and with
-// a leading ./, which name the same file.
+// src/b.ts is written both bare and with a leading ./, which name the same file.
 const GLOBS = [
   '**/*.ts',
   '**/*.{js,ts}',
@@ -45,11 +41,8 @@ const GLOBS = [
 ]
 const SEED = 7
 const CASES = 3000
-// Review, Must fix 2: a large repo holds tens of thousands of TS files outside every tsconfig
-// (17,274 in ai-benchmarking). Met in time linear in their number, each shape below takes under
-// 0.2 s at this count on a quiet machine; a step meeting the paths pairwise took 0.2 s to 3 s at a
-// tenth of it, so a hundred times that here (measured). The ceiling stands between the two on a
-// loaded machine.
+// Large repos hold tens of thousands of TS files outside every tsconfig. Linear time takes under 0.2 s here;
+// a pairwise step took seconds at a tenth of this count (measured). The ceiling sits between the two.
 const PATH_COUNT = 20_000
 const SHAPE_CEILING_MS = 5_000
 const SHAPE_TEST_TIMEOUT_MS = 60_000
@@ -59,7 +52,7 @@ function drawn(draw: Draw): Drawn {
   return { condition, files: filesTheConditionMatches(condition, FILES) }
 }
 
-/** Each check whose condition, read file by file, matches other files than the plain sets give, as `check: case`. */
+/** As `check: case`. */
 function mismatchesOverCases(): string[] {
   const draw = seededDraws(SEED)
   return Array.from({ length: CASES }, (_, index) => index).flatMap((index) => {

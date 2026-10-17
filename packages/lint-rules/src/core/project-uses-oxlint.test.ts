@@ -9,10 +9,8 @@ import {
 import { INSTALLED_OXLINT, setUpTempProjects } from '../__tests__/temp-projects.ts'
 import { projectUsesOxlint } from './project-uses-oxlint.ts'
 
-// A project uses oxlint when the package.json nearest to tsconfigRootDir lists it under
-// dependencies or devDependencies (questions.md #32 D1, #40). A directory without a package.json is
-// passed over on the way to the nearest one, nothing above that one is read, and what node_modules
-// holds is never read: our package brings an oxlint of its own for `check`.
+// Only the nearest package.json is read, skipping directories without one; node_modules never is, since
+// our package brings its own oxlint for `check`.
 
 const NESTED_PACKAGE = 'packages/app'
 const DIR_WITHOUT_A_PACKAGE_JSON = 'packages/app/config'
@@ -37,7 +35,7 @@ describe('projectUsesOxlint', () => {
     expect(projectUsesOxlint(projectDir)).toBe(true)
   })
 
-  // #32 D1: a monorepo package whose own package.json lists no oxlint uses ESLint only.
+  // A monorepo package whose own package.json lists no oxlint uses ESLint only.
   it('answers no when only a parent package.json lists it, above the nearest one listing other packages', () => {
     const projectDir = tempProjects.create({
       files: {
@@ -110,7 +108,7 @@ describe('projectUsesOxlint', () => {
     expect(() => projectUsesOxlint(projectDir)).toThrowError(join(projectDir, 'package.json'))
   })
 
-  // #32 D1: nothing above the nearest package.json is read, so a malformed one there goes unseen.
+  // Nothing above the nearest package.json is read, so a malformed one there goes unseen.
   it('answers no, without reading it, when a malformed package.json lies above the nearest one', () => {
     const projectDir = tempProjects.create({
       files: {

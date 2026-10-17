@@ -38,8 +38,7 @@ const STORYBOOK_DIRECTORY_GLOB = '**/.storybook/**'
 const NON_JS_FILES_IN_THE_STORYBOOK_DIRECTORY = ['.storybook/x.test.json', '.storybook/x.test.md']
 
 const A_TYPED_RULE = '@typescript-eslint/no-floating-promises'
-// A core rule oxlint runs, an option of whose extension oxlint refuses (rule-data's
-// data/oxlint-refused-options.json), and that extension, typed in a catalog of the test's own.
+// A core rule oxlint runs, with a typed extension that has an option oxlint refuses, in the test's own catalog.
 const CORE_RULE_WITH_A_TYPED_EXTENSION = 'no-redeclare'
 const TYPED_EXTENSION_NAME = 'no-redeclare'
 const TYPED_EXTENSION = `@typescript-eslint/${TYPED_EXTENSION_NAME}`
@@ -51,12 +50,10 @@ const CONSUMER_CONFIG_FILES = [
   'apps/web/oxlint.config.mts',
 ]
 const ORDINARY_MTS_FILE = 'src/a.mts'
-// The two a consumer writes at tsconfigRootDir.
 const ROOT_CONSUMER_CONFIG_FILES = ['agents-inc.lint.mts', 'oxlint.config.mts']
-// As the computation lists them where no tsconfig takes in any consumer config file, beside a stray TS file.
+// As the computation lists them where no tsconfig takes in a consumer config file, beside a stray TS file.
 const CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG = [...CONSUMER_CONFIG_FILES, 'scripts/stray.mts']
-// As the computation lists them for buildEslintConfig: relative to tsconfigRootDir, as written on
-// disk. A directory may be named with glob syntax, as Next.js's `[id]` and `(group)` are.
+// Relative to tsconfigRootDir. A directory may be named with glob syntax, as Next.js's `[id]` and `(group)` are.
 const TS_FILES_OUTSIDE_EVERY_TSCONFIG = ['scripts/stray.mts', 'app/[id]/(group)/page.ts']
 // Inside a tsconfig, and matched by `app/[id]/(group)/page.ts` read as a glob rather than a path.
 const FILE_THE_PATH_READ_AS_A_GLOB_MATCHES = 'app/i/(group)/page.ts'
@@ -68,15 +65,13 @@ const SUPPRESSES_AN_OXLINT_ONLY_NAME_UNDER_A_REGISTERED_PREFIX =
 const SUPPRESSES_A_NAME_NEITHER_ENGINE_HAS_UNDER_A_REGISTERED_PREFIX =
   '// eslint-disable-next-line react/not-a-rule\nexport const element = null\n'
 
-// The name eslint-import-resolver-typescript 4.4.5 gives its resolver (lib/constants.js, IMPORT_RESOLVER_NAME).
+// eslint-import-resolver-typescript 4.4.5's IMPORT_RESOLVER_NAME.
 const TYPESCRIPT_RESOLVER_NAME = 'eslint-import-resolver-typescript'
-// TS first, then JS (spec-core.md C1).
 const IMPORT_X_EXTENSIONS = ['.ts', '.tsx', '.cts', '.mts', '.js', '.jsx', '.cjs', '.mjs']
-// eslint-plugin-react 7.37.5's ULTIMATE_LATEST_SEMVER (lib/util/version.js): what it assumes where detection finds no React.
+// eslint-plugin-react 7.37.5's ULTIMATE_LATEST_SEMVER: what it assumes where detection finds no React.
 const REACT_VERSION_ASSUMED_WITHOUT_REACT = '999.999.999'
 
-// Copied from the gate: functional/prefer-immutable-types matches these as RegExps, which a JSON
-// config could only hold as strings that never match.
+// functional/prefer-immutable-types matches these as RegExps, which JSON could only hold as strings.
 const IMMUTABILITY_TYPE_OVERRIDES = [
   { type: /^(React\.)?(ReactNode|ReactElement|ReactPortal|ReactFragment|JSX\.Element)$/u, to: 'Immutable' },
   { type: /^(React\.)?(CSSProperties|Properties(<.*>)?)$/u, to: 'Immutable' },
@@ -230,7 +225,7 @@ function rulesOf(plugin: ESLint.Plugin): NonNullable<ESLint.Plugin['rules']> {
   return plugin.rules
 }
 
-/** Each rule of the plugin, named 'own' when it is the very rule module the original holds and 'stub' otherwise. */
+/** 'own' where it is the original's very rule module, 'stub' otherwise. */
 function ruleProvenanceOf(plugin: ESLint.Plugin, original: ESLint.Plugin): Record<string, 'own' | 'stub'> {
   const originalRules = rulesOf(original)
   return Object.fromEntries(
@@ -330,7 +325,7 @@ describe('buildEslintConfig', () => {
       })
     })
 
-    // #33 fix C (spec-core.md C1) and E3 (C13): the project here installs no React.
+    // The project here installs no React.
     it('carries the import-x TypeScript resolver and the extensions import-x reads, the immutability type overrides, the extensions eslint-plugin-n tries, ours first, and the React version eslint-plugin-react assumes without React', () => {
       const { settings } = blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'agents-inc/base')
 
@@ -345,8 +340,7 @@ describe('buildEslintConfig', () => {
       })
     })
 
-    // Suppressions are banned unless allowSuppressions says otherwise, and ESLint applies a directive
-    // before any rule runs, so by default it reads none.
+    // ESLint applies a directive before any rule runs, so with suppressions banned by default it reads none.
     it('stops ESLint reporting unused disable directives, which the runner checks itself, and reading any by default', () => {
       const block = blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'agents-inc/base')
 
@@ -419,14 +413,9 @@ describe('buildEslintConfig', () => {
       )
     })
 
-    // typed-config-files (spec-core.md C9): where the type information is ours, the consumer's
-    // config files are TS files like any other. A file a tsconfig takes in gets the typed rules
-    // through the project service; any TS file outside every tsconfig, the two at tsconfigRootDir
-    // and a nested package's config files included, gets neither, as a typed rule on a file the
-    // project service finds no project for is a fatal parse error. No default project is named:
-    // typescript-eslint sets it up once per process, from the first config it parses, so one naming
-    // these two failed every later project in that process whose files a tsconfig takes in, or
-    // leaves out, differently (review option (a), Must Fix 1).
+    // A TS file outside every tsconfig, consumer config files included, gets no typed rules: a typed rule where
+    // the project service finds no project is a fatal parse error. No default project is named, as
+    // typescript-eslint sets one up once per process and it broke later projects.
     describe('gives the config files a consumer writes for us the typed rules', () => {
       const waysATypedRuleIsTurnedOn = [
         {
@@ -513,10 +502,9 @@ describe('buildEslintConfig', () => {
         },
       )
 
-      // KNOWN GAP: typed-config-files owes the two at tsconfigRootDir the typed rules where no
-      // tsconfig takes them in too; only typescript-eslint's default project could give them, and it
-      // is named nowhere (see above). Pinned until the owner decides. The test above builds the same
-      // config, so a build that throws fails there rather than passing here.
+      // KNOWN GAP: the two config files at tsconfigRootDir should get the typed rules even where no tsconfig takes
+      // them in, which only a default project could give. The test above builds the same config, so a throwing
+      // build fails there rather than passing here.
       it.fails.each(waysATypedRuleIsTurnedOn)('gives the two at tsconfigRootDir the typed rule where no tsconfig takes them in, when $how', async ({ lintRules, ruleId, severity }) => {
         const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ tsFilesOutsideEveryTsconfig: CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG }))
         const severities = await Promise.all(ROOT_CONSUMER_CONFIG_FILES.map(async (file) => ({ file, severity: (await ruleSeverityFor(config, file, ruleId)) ?? 'off' })))
@@ -533,8 +521,7 @@ describe('buildEslintConfig', () => {
         expect(severities).toStrictEqual(CONSUMER_CONFIG_FILES.map((file) => ({ file, severity: 'error' })))
       })
 
-      // Spec C3: our project service finds no project for a TS file no tsconfig takes in, and a typed
-      // rule there is a fatal parse error that switches off every rule in the file.
+      // A typed rule on a TS file no tsconfig takes in is a fatal parse error that switches off every rule in the file.
       it.each(waysATypedRuleIsTurnedOn)(
         'and gives each TS file outside every tsconfig neither when $how, while a file its path read as a glob would match gets both',
         async ({ lintRules, ruleId, severity, severityInATsFile }) => {
@@ -565,12 +552,8 @@ describe('buildEslintConfig', () => {
       })
     })
 
-    // Beside oxlint, a layer stating both names of a twin pair gives typescript-eslint's extension
-    // its TS files alone (D9, `tsFileRules`), and drops it from the layer's other rules; where the
-    // extension's setting carries an option oxlint refuses, oxlint's core rule is off there and ESLint
-    // runs the extension (D11). Where that extension is typed and the layer turns no other typed rule
-    // on, the project service must still parse those files: a typed rule without it is a fatal parse
-    // error.
+    // Beside oxlint, a layer stating both twin names runs the extension on TS files alone. Where that extension
+    // is typed and no other typed rule runs, the project service must still parse those files.
     describe('where the only typed rule is a typed extension the top level runs on its TS files alone', () => {
       const catalogWithATypedExtension = buildCatalog({
         rulesets: [buildQualityRuleset('correctness')],
@@ -654,8 +637,7 @@ describe('buildEslintConfig', () => {
       })
     })
 
-    // Softening a rule never widens where it runs: an entry's rules keep the rule's shipped files and
-    // ignores, ANDed with the entry's own globs, as the top-level rules do.
+    // An entry's rules keep the rule's shipped files and ignores, ANDed with the entry's own globs.
     describe('whose own rules set a rule shipped with files and ignores', () => {
       const FILES_INSIDE_AND_OUTSIDE_THE_SCOPES = ['src/a.tsx', 'src/a.test.js', 'src/use-thing.tsx', 'lib/a.tsx']
       const entriesSettingMaxLines = [
@@ -732,9 +714,8 @@ describe('buildEslintConfig', () => {
       expect(await ruleEntryFor(config, 'src/a.ts', 'demo/strict')).toStrictEqual([ERROR, { level: 2 }])
     })
 
-    // ESLint lints every file a block's `files` matches, so an entry's glob alone hands it
-    // x.test.json: `eslint .` then reports a parse error there, or throws outright when the entry
-    // sets a plugin's rule, since our plugins are registered for JS and TS files only.
+    // ESLint lints every file a block's `files` matches, so an entry's glob alone would hand it x.test.json,
+    // which then fails to parse, or throws where the entry sets a plugin's rule.
     describe('whose glob also matches files that are not JS or TS', () => {
       const entriesByBlockTheyEmit = [
         {
@@ -802,8 +783,8 @@ describe('buildEslintConfig', () => {
       )
     })
 
-    // A directory glob names no extension, so ANDed with an entry glob that names none either, the
-    // pair alone matches every file in the directory, x.test.json included.
+    // A directory glob names no extension, so ANDed with an entry glob that names none either, it matches
+    // every file in the directory, x.test.json included.
     describe('whose glob matches files that are not JS or TS, adding a rule shipped with a directory glob', () => {
       const lintRules = buildLintRules(
         {},
@@ -955,9 +936,8 @@ describe('buildEslintConfig', () => {
     })
   })
 
-  // spec-core.md C5 (my-renamed-in-eslint): oxlint honours a suppression of a renamed rule only
-  // under its own name (measured, oxlint 1.87), so where the oxlint name of an oxlint-routed rule
-  // differs from its ID's name, ESLint needs a definition of that name too, under the ID's prefix.
+  // oxlint honours a suppression of a renamed rule only under its own name (measured, 1.87), so ESLint needs
+  // a definition of that name too, under the ID's prefix.
   describe("an oxlint-routed rule whose oxlint name differs from its ID's", () => {
     const catalogWithRenamedRules = buildCatalog({
       rulesets: [buildQualityRuleset('correctness')],
@@ -1008,10 +988,8 @@ describe('buildEslintConfig', () => {
     })
   })
 
-  // Spec C4 (#39, #32 Q4): without oxlint, ESLint takes over oxlint's rules, and on TS files a core
-  // rule typescript-eslint extends runs as its extension, which reads TypeScript syntax the core rule
-  // misreads. The pairs come from the catalog: a core rule's extensions, less those it records as its
-  // aliases (the deprecated ones). The agent build, and every build beside oxlint, keep the core rule.
+  // Without oxlint, ESLint takes over oxlint's rules, and on TS files a core rule typescript-eslint extends runs
+  // as its extension. Builds beside oxlint keep the core rule.
   describe('the blocks of a project without oxlint, for a core rule ESLint takes over that typescript-eslint extends', () => {
     const MAX_PARAMS_TWIN = '@typescript-eslint/max-params'
     const NO_UNUSED_VARS_TWIN = '@typescript-eslint/no-unused-vars'
@@ -1060,7 +1038,7 @@ describe('buildEslintConfig', () => {
           shipped: buildShippedRule('correctness'),
           eslintAliases: [NO_LOOP_FUNC_ALIAS],
         }),
-        // Routed to ESLint, so no build swaps it (O12).
+        // Routed to ESLint, so no build swaps it.
         buildEslintRoute('default-param-last', { typed: false, shipped: buildShippedRule('conventions') }),
         buildEslintRoute(DEFAULT_PARAM_LAST_TWIN, { typed: false, shipped: null }),
       ],
@@ -1084,7 +1062,7 @@ describe('buildEslintConfig', () => {
       blocks: [{ switches: 'on', files: ['packages/typed/**'], ignores: [] }],
     }
 
-    /** Our blocks before the off-switch, in order, for a project whose package.json lists no oxlint unless `besideOxlint`. */
+    /** Lists no oxlint in package.json unless `besideOxlint`. */
     function ourBlocks(
       lintRules: ReturnType<typeof buildLintRules>,
       {
@@ -1107,7 +1085,7 @@ describe('buildEslintConfig', () => {
       return [...globalIgnores, base, ...afterTheBase]
     }
 
-    /** Each rule's calculated entry in each file, or NOT_RUN where no block sets it or it is off. */
+    /** NOT_RUN where no block sets it or it is off. */
     async function entriesIn(
       config: Linter.Config[],
       files: readonly string[],
@@ -1128,7 +1106,7 @@ describe('buildEslintConfig', () => {
       return severity === undefined || severity === 'off' ? NOT_RUN : ruleEntryFor(config, file, ruleId)
     }
 
-    /** The real typescript-eslint plugin, but its max-params declaring a schema ESLint cannot compile: an unknown format. */
+    /** Its max-params declares a schema ESLint cannot compile. */
     function typescriptEslintWithAnUncompilableMaxParamsSchema(): ESLint.Plugin {
       const real = pluginRegisteredUnder(eslintPlugins, '@typescript-eslint')
       const maxParams = real.rules?.['max-params']
@@ -1137,7 +1115,6 @@ describe('buildEslintConfig', () => {
       return { ...real, rules: { ...real.rules, 'max-params': { ...maxParams, meta: { ...maxParams.meta, schema } } } }
     }
 
-    /** The cause of the error the build throws. */
     function causeOfTheErrorThrownBy(build: () => unknown): unknown {
       try {
         build()
@@ -1148,7 +1125,7 @@ describe('buildEslintConfig', () => {
       throw new Error('the build threw nothing')
     }
 
-    /** The entry ESLint calculates for a core rule given the entry alone: it fills in the default options the rule declares. */
+    /** ESLint fills in the default options the rule declares. */
     async function coreEntryAsEslintFillsIn(ruleId: string, entry: Linter.RuleEntry): Promise<unknown> {
       return ruleEntryFor([{ files: [JS_FILE], rules: { [ruleId]: entry } }], JS_FILE, ruleId)
     }
@@ -1197,7 +1174,7 @@ describe('buildEslintConfig', () => {
       })
     })
 
-    // D-f: a typed extension runs only where there is type information; elsewhere the core rule does.
+    // A typed extension runs only where there is type information; elsewhere the core rule does.
     it('runs a typed extension only in TS files our project service types, and the core rule in the rest', async () => {
       const config = ourBlocks(buildLintRules({ quality: ['modern-js'] }))
 
@@ -1221,8 +1198,7 @@ describe('buildEslintConfig', () => {
       })
     })
 
-    // D-e: typescript-eslint's max-params refuses a bare number, and a refused option is a config
-    // error that ends ESLint's run, so where the options given are refused the core rule stays.
+    // typescript-eslint's max-params refuses a bare number, and a refused option ends ESLint's run.
     it("keeps the core rule on TS files where the consumer's options are ones the extension refuses: max-params given 5", async () => {
       const config = ourBlocks(buildLintRules({ quality: ['complexity'] }, { rules: { 'max-params': ['error', 5] } }))
 
@@ -1243,9 +1219,7 @@ describe('buildEslintConfig', () => {
       })
     })
 
-    // ESLint refuses options a rule's schema does not take, and asking it is how a refused option is
-    // told apart; any other failure is a defect of its own, which must not pass for a refusal and
-    // silently keep the core rule (review, Should fix; CLAUDE.md: a caught error reports its cause).
+    // Any failure other than a refusal must surface, not silently keep the core rule.
     it("throws, with ESLint's error as its cause, where checking the extension's options fails for another reason than refusing them", () => {
       const plugins = new Map([['@typescript-eslint', typescriptEslintWithAnUncompilableMaxParamsSchema()]])
       const cause = causeOfTheErrorThrownBy(() => ourBlocks(buildLintRules({ quality: ['complexity'] }), { plugins }))
@@ -1253,9 +1227,7 @@ describe('buildEslintConfig', () => {
       expect(cause instanceof Error ? cause.message : cause).toMatch(/options validation schema/u)
     })
 
-    // D9 (decisions.md, the build wf_ec970377-570 review; review Must fix 4): where our layers state a
-    // core rule ESLint takes over and its extension, the highest layer stating either name decides
-    // the setting, the extension running on TS files and the core rule on JS files, never both.
+    // The highest layer stating either name decides; the extension runs on TS files and the core rule on JS files.
     it("runs the extension on TS files and the core rule on JS files, each with the consumer's setting of the extension, over the core rule a listed ruleset ships", async () => {
       const lintRules = buildLintRules({ quality: ['complexity'] }, { rules: { [MAX_PARAMS_TWIN]: ['error', { max: 2 }] } })
 
@@ -1265,7 +1237,6 @@ describe('buildEslintConfig', () => {
       })
     })
 
-    // The layer states each name its own setting, so each runs with its own where it runs.
     it("runs the extension on TS files and the core rule on JS files, each with its own setting, where one layer states both", async () => {
       const lintRules = buildLintRules({}, { rules: { 'max-params': ['error', { max: 5 }], [MAX_PARAMS_TWIN]: ['error', { max: 2 }] } })
 
@@ -1288,9 +1259,7 @@ describe('buildEslintConfig', () => {
       })
     })
 
-    // The core rule takes the extension's setting where its schema takes the options (the allowed
-    // case), and keeps the layer below's where it refuses them: typescript-eslint's prefer-destructuring
-    // takes an option the core rule's second object does not.
+    // typescript-eslint's prefer-destructuring takes an option the core rule's second object does not.
     it.each([
       { options: 'the core rule takes', given: [{ object: false }], coreOnJs: [ERROR, { object: false }] },
       {
@@ -1310,8 +1279,7 @@ describe('buildEslintConfig', () => {
       },
     )
 
-    // An entry turning the core rule off turns the extension off with it, and its own statement of the
-    // extension, written after, decides: here the extension runs at the entry's setting.
+    // An entry turning the core rule off turns the extension off too, and its own later statement of the extension decides.
     it("runs the extension on TS files with the setting an entry gives it, where the same entry turns the core rule off", async () => {
       const lintRules = buildLintRules(
         {},
@@ -1359,11 +1327,8 @@ describe('buildEslintConfig', () => {
   })
 })
 
-// spec-core.md 2.6, T: both rules of a pair run in ESLint, each on every file it lints, one with
-// type information and the other without. The data's tests guarantee it; the core still throws on a
-// breach, naming the untyped rule and its typed partner. A pair one of whose rules oxlint runs, or
-// that runs on some files alone, would report twice where the typed rule runs and the untyped one
-// is not turned off.
+// Both rules of a pair run in ESLint on every file, one with type information and one without. The core
+// throws on data that breaks this, which would report twice.
 describe('a rule split by types with another, as the data gives it', () => {
   const UNTYPED = 'unicorn/no-unnecessary-boolean-comparison'
   const TYPED = '@typescript-eslint/no-unnecessary-boolean-literal-compare'
@@ -1421,7 +1386,7 @@ describe('a rule split by types with another, as the data gives it', () => {
   })
 
   // An entry stating either rule of the pair states the untyped one in a typed block of its own; one
-  // stating neither leaves the top level's typed block to state it (untypedStatementsOfAnEntry).
+  // stating neither leaves it to the top level's typed block.
   function blockNamesWithAnEntryStating(rules: RuleSettingsInput): (string | undefined)[] {
     const splitCatalog = buildCatalog({ rulesets: [buildQualityRuleset('redundancy')], rules: [untypedInEslint, typedInEslint] })
     const lintRules = buildLintRules({ quality: ['redundancy'] }, { fileOverrides: [buildFileOverride(['legacy/**'], { rules })] })
@@ -1447,8 +1412,7 @@ describe('a rule split by types with another, as the data gives it', () => {
   })
 })
 
-// spec-core.md C13 (spec-next-batch E3): the settings read whether React resolves from
-// tsconfigRootDir from the project facts, and stay pure.
+// Whether React resolves comes from the project facts, so the settings stay pure.
 describe('buildEslintSettings', () => {
   it('gives eslint-plugin-react detect where React is installed, and the version it assumes without React where it is not', () => {
     expect({

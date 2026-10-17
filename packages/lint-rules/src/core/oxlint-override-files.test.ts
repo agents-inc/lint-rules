@@ -2,10 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { buildFilesTerm } from '../__tests__/factories/files-condition-factories.ts'
 import { overrideFilesOf } from './oxlint-override-files.ts'
 
-// How an override names a term's files (oxlint-override-files.ts): its first glob in `files`, each
-// other negated in `excludeFiles`, where oxlint reads a negated glob as every file it does not match;
-// a negated glob of the term as the files it negates, in `excludeFiles`; and a glob with no slash,
-// which ESLint reads in the config's folder alone, written from that folder.
 describe('overrideFilesOf', () => {
   it.each([
     {

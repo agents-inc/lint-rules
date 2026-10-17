@@ -29,51 +29,36 @@ type Rulesets = {
 
 type FileOverride = {
   readonly files: readonly string[]
-  /** A list given here replaces the agent set's top-level one for these files; a list left out is inherited. */
+  /** Replaces the top-level agent lists given here for these files; lists left out are inherited. */
   readonly agentRulesets?: Rulesets
-  /** A list given here replaces the editor set's top-level one for these files; a list left out is inherited. */
+  /** Replaces the top-level editor lists given here for these files; lists left out are inherited. */
   readonly editorRulesets?: Rulesets
-  /** Whether sub-agents may add suppression comments to these files. Left out, the setting before this entry stands. */
+  /** Whether sub-agents may add suppression comments to these files. Left out, the earlier setting stands. */
   readonly allowSuppressions?: boolean
   readonly rules?: RuleSettings
 }
 
 /** The shape of `agents-inc.lint.mts`: only the rules this package ships, by their ESLint rule ID. */
 export type LintRules = {
-  /** The absolute path of an existing folder, where the typed rules find the project's tsconfigs: `import.meta.dirname`. */
+  /** The folder where typed rules find the project's tsconfigs; usually `import.meta.dirname`. */
   readonly tsconfigRootDir: string
-  /** What sub-agents are checked against. A list left out lists no ruleset. */
+  /** The rulesets sub-agents are checked against. */
   readonly agentRulesets: Rulesets
   /**
-   * What a team merges into its own ESLint and oxlint configs, through `editorRulesets` on the
-   * result. A list left out lists no ruleset.
-   *
-   * Your engine configs override the editor set. If your `eslint.config.mjs` or `oxlint.config.mts`
-   * sets a rule anywhere (in any block or override, in a preset you extend, or through an oxlint
-   * category you write on), the editor set drops that rule from both engines, in every file, and your
-   * setting decides it. That includes a rule you only turn off, or set for some files. A core rule
-   * and typescript-eslint's version of it count as one rule. Each merge reads your other engine's
-   * config from the path you pass it.
-   * oxlint's own `correctness: warn`, which runs where your oxlint config leaves correctness out,
-   * sets no rule: where it would run oxlint's copy of a rule the editor set runs in ESLint, the
-   * oxlint merge turns that copy off.
+   * The rulesets merged into your own ESLint and oxlint configs. A rule your engine configs set
+   * anywhere, even only off or for some files, is left to your setting in both engines.
    */
   readonly editorRulesets: Rulesets
-  /** Files our rules stay out of, each value read as a .gitignore line in both engines: `legacy/` is every `legacy` folder, `./a.js` or `/a.js` the root `a.js` alone. */
+  /** Files our rules skip, each read as a .gitignore line: `legacy/` is every `legacy` folder, `/a.js` the root `a.js` only. */
   readonly ignores?: readonly string[]
-  /**
-   * Whether sub-agents may add suppression comments (`eslint-disable*`, `oxlint-disable*`, inline
-   * rule config, `@ts-expect-error` with a description). Default false: every one is reported. The
-   * editor set always allows them.
-   */
+  /** Whether sub-agents may add suppression comments (`eslint-disable*`, `@ts-expect-error`, ...). Default false; the editor set always allows them. */
   readonly allowSuppressions?: boolean
   readonly rules?: RuleSettings
   readonly fileOverrides?: readonly FileOverride[]
 }
 
-/** What `defineLintRules` returns: the editor set's part for each engine, as plain data. */
 type DefinedLintRules = {
-  /** `oxlint` is undefined where the package.json nearest to `tsconfigRootDir` does not list oxlint. */
+  /** The editor set's part for each engine; `oxlint` is undefined where the project does not list oxlint. */
   readonly editorRulesets: EditorParts
 }
 

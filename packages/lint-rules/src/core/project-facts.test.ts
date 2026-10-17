@@ -8,10 +8,8 @@ import { tsFilesTheProjectServiceFindsNoProjectFor } from '../__tests__/project-
 import { type ProjectFiles, setUpTempProjects } from '../__tests__/temp-projects.ts'
 import { projectFactsOf } from './project-facts.ts'
 
-// The consumer's agents-inc.lint.mts, which no tsconfig lists, has type information where another of
-// the consumer's files, which a tsconfig lists, imports it by its path: the project service finds it
-// through the importer's program (D-h). Each case compares the facts with what the real project
-// service decides.
+// agents-inc.lint.mts, which no tsconfig lists, is typed where a listed file imports it by path. Each case
+// compares the facts with the real project service.
 
 const LINT_RULES_FILE = 'agents-inc.lint.mts'
 const OXLINT_CONFIG_FILE = 'oxlint.config.mts'
@@ -23,12 +21,11 @@ const FOLDER_NAMED_AS_A_JS_FILE = 'chart.js'
 
 const tempProjects = setUpTempProjects()
 
-/** agents-inc.lint.mts beside the consumer file given, which the tsconfig alone lists, holding the source given. */
+/** The tsconfig lists only the importer. */
 function projectWhoseImporterIs(importer: string, source: string, compilerOptions = buildTsconfig().compilerOptions): ProjectFiles {
   return { 'tsconfig.json': configFileText({ files: [importer], compilerOptions }), [importer]: source, ...standaloneSources([LINT_RULES_FILE]) }
 }
 
-/** The project's files under the folder given. */
 function underFolder(folder: string, files: ProjectFiles): ProjectFiles {
   return Object.fromEntries(Object.entries(files).map(([path, text]) => [`${folder}/${path}`, text]))
 }
