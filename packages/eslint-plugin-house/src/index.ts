@@ -16,10 +16,7 @@ import { noUnstableListKeys } from './rules/no-unstable-list-keys.ts'
 import { preferLineComments } from './rules/prefer-line-comments.ts'
 import { requireClassHelper } from './rules/require-class-helper.ts'
 
-/**
- * Typed with typescript-eslint's rule types, not `ESLint.Plugin`, which they do not fit. The ESLint
- * plugin registry checks the shape at load instead.
- */
+/** Typed with typescript-eslint's rule types, which `ESLint.Plugin` does not fit; ESLint checks the shape at load. */
 export const housePlugin = {
   meta: { name: 'house', namespace: 'house' },
   rules: {

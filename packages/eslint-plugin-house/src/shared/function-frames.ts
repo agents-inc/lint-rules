@@ -14,11 +14,7 @@ type FrameHandlers<Frame extends FunctionFrame> = {
 
 const COMPONENT_NAME = /^[A-Z]/
 
-/**
- * The visitors that keep `stack` in step with the walk, innermost function last: a frame pushed on
- * entering each function, popped and handed to `onLeave` on leaving it, and marked when JSX renders
- * directly inside it.
- */
+/** Keeps `stack` in step with the walk, innermost function last, handing each popped frame to `onLeave`. */
 export function functionFrameVisitors<Frame extends FunctionFrame>(
   stack: Frame[],
   { ruleName, frameFor, onLeave }: FrameHandlers<Frame>,

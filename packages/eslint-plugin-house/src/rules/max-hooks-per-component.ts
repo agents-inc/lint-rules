@@ -44,8 +44,7 @@ export const maxHooksPerComponent = ESLintUtils.RuleCreator.withoutDocs<Options,
   create(context, [options]) {
     const max = defaultedOption(RULE_NAME, options.max)
     const ignoredHooks = new Set(defaultedOption(RULE_NAME, options.ignore))
-    // A hook call belongs to the innermost function: the rules of hooks forbid calling a hook from a
-    // nested callback.
+    // The rules of hooks forbid calling a hook from a nested callback.
     const stack: Frame[] = []
 
     const reportTooManyHooks = (frame: Frame): void => {

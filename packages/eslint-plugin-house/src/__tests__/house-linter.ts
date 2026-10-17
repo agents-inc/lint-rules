@@ -10,11 +10,7 @@ function houseRuleConfig(ruleName: HouseRuleName, entry: TSESLint.Linter.RuleEnt
   return { plugins: { [HOUSE_PREFIX]: housePlugin }, rules: { [`${HOUSE_PREFIX}/${ruleName}`]: entry } }
 }
 
-/**
- * Lints `code` as `filename` through ESLint itself with one house rule on. Unlike the rule tester,
- * ESLint checks the options against the rule's schema the way a consumer's config is checked, and
- * throws on a mismatch.
- */
+/** Lints through ESLint itself, which checks the options against the rule's schema as a consumer's config is. */
 export function lintWithHouseRule(
   ruleName: HouseRuleName,
   options: readonly unknown[],
@@ -26,11 +22,8 @@ export function lintWithHouseRule(
 }
 
 /**
- * Lints `code` with one house rule on and ESLint's inline config ignored, so a directive in the
- * code is a plain comment: `/* eslint-disable *\/` cannot silence the rule under test, as it would
- * under the rule tester, and naming a rule ESLint lacks draws no "Definition for rule … not found".
- * ESLint's flat config lints only `.js`, `.mjs` and `.cjs` by default, so `filename` takes one of
- * those; JSX parses in them.
+ * Lints with inline config ignored, so a directive in the code cannot silence the rule under test.
+ * ESLint's flat config lints only `.js`, `.mjs` and `.cjs` by default, so `filename` takes one of those.
  */
 export function lintWithInlineConfigIgnored(
   ruleName: HouseRuleName,

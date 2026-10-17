@@ -5,10 +5,8 @@ import { join } from 'node:path'
 import { afterAll, beforeAll } from 'vitest'
 
 /**
- * A temp folder named from the prefix, made before the suite's tests and removed after them. Call it
- * at the top of a describe block, before the block's own hooks: Vitest runs `beforeAll` hooks in the
- * order they are registered and `afterAll` hooks in reverse, so the folder exists for every other hook.
- * The function returned reads the folder from a hook or a test.
+ * A temp folder made before the suite's tests and removed after them. Call it at the top of a describe
+ * block, before the block's own hooks, so the folder exists for every other hook.
  */
 export function setUpTempDir(prefix: string): () => string {
   let tempDir: string | undefined

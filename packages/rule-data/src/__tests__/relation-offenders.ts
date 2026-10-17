@@ -2,11 +2,8 @@ import { sharedKeys } from '../collections.ts'
 import type { CanonicalRule } from '../generate/build-routing.ts'
 import { type Breach, breachesOf } from './breaches.ts'
 
-// What the canonical list guarantees the two relations the core applies between shipped rules
-// (docs/work/spec-data.md, 2.6). "Covered by": the narrow rule is left out wherever the rule covering
-// it is on, so each must be turned on by a ruleset of its own, and the cover must not be left out in
-// turn. "Split by types": the untyped rule is off where its typed partner runs with type information,
-// so both run in ESLint, on every file, turned on by a ruleset.
+// "Covered by": each rule and its cover are turned on by rulesets of their own, and the cover is not
+// left out in turn. "Split by types": both rules run in ESLint, on every file, turned on by a ruleset.
 
 const TURNED_ON_BY_NO_RULESET: Breach<CanonicalRule> = ['is turned on by no ruleset', ({ ruleset, alwaysOn, whenSuppressions }) => ruleset === undefined || alwaysOn === true || whenSuppressions !== undefined]
 const RUN_BY_OXLINT: Breach<CanonicalRule> = ['is run by oxlint', ({ engine }) => engine === 'oxlint']

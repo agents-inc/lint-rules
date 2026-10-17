@@ -8,16 +8,10 @@ const TEST_FILE_TEMP_DIR_PREFIX = 'lint-rules-test-file-'
 const TEMP_DIR_VARIABLE = 'TMPDIR'
 
 /**
- * Vitest's runner, giving each test file a temp dir of its own and removing it once the file
- * finishes, however it ends. Vitest runs a suite's `afterAll` only where the suite runs, so a folder
- * made while a file is collected outlived a file that failed to load, and a suite that a name filter
- * or a bail skipped, as Stryker runs each mutant.
- *
- * It needs a worker for each test file, vitest's default: with `--no-isolate` the next file in a
- * worker is collected in the dir just removed, and fails to load.
- *
- * This package's and lint-rules' vitest configs name this module: vitest loads a runner by its
- * default export.
+ * Gives each test file a temp dir of its own, removed however the file ends: a suite's `afterAll` runs
+ * only where the suite runs, so a file that failed to load or was skipped (as Stryker runs each mutant)
+ * left its folder behind. Needs a worker per test file, vitest's default: under `--no-isolate` the next
+ * file is collected in the dir just removed. Default-exported: vitest loads a runner that way.
  */
 export default class TempDirPerTestFileRunner extends TestRunner {
   #testFileTempDir: string | undefined

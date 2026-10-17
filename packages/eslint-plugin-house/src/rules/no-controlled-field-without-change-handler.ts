@@ -11,8 +11,7 @@ import { formFieldTagOf } from '../shared/jsx-elements.ts'
 
 // onInput fires on the same interactions; the Capture pair are the same events one phase earlier.
 const CHANGE_HANDLERS: ReadonlySet<string> = new Set(['onChange', 'onInput', 'onChangeCapture', 'onInputCapture'])
-// Input types whose `value` is not text the user edits: a button's caption, a hidden payload, or what
-// a radio or checkbox submits. A frozen `checked={x}` goes unreported: a different bug.
+// Input types whose `value` is not text the user edits. A frozen `checked={x}` is a different bug.
 const VALUE_IS_NOT_THE_CONTENT: ReadonlySet<string> = new Set([
   'submit',
   'button',
@@ -39,7 +38,6 @@ function isChangeHandler(attribute: TSESTree.JSXAttribute | TSESTree.JSXSpreadAt
   return isJsxAttribute(attribute) && isJsxAttributeNamedIn(attribute, CHANGE_HANDLERS)
 }
 
-// The handler, an opt-out, or a `type` whose value is not the field's content.
 function exemptsTheField(attribute: TSESTree.JSXAttribute): boolean {
   if (isJsxAttributeNamedIn(attribute, CHANGE_HANDLERS) || isJsxAttributeNamedIn(attribute, OPTS_OUT)) return true
   if (jsxAttributeName(attribute) !== 'type') return false
@@ -57,8 +55,7 @@ function isUncontrolledValue(attribute: TSESTree.JSXAttribute): boolean {
   )
 }
 
-// React's change event bubbles, so `<form onChange={save}>` drives every field it renders. Any JSX
-// ancestor counts, across the arrows and calls between them: `<form onChange>{rows.map(r => <input />)}`.
+// React's change event bubbles, so any JSX ancestor's onChange drives the field, across arrows and calls.
 function hasHandlerOnAncestor(ancestors: readonly TSESTree.Node[]): boolean {
   return ancestors.some(
     (ancestor) =>

@@ -67,7 +67,7 @@ export const classicForInsideForOf = `export function pairs(groups: readonly num
 }
 `
 
-// Plain JavaScript, for linting through ESLint itself, whose default parser reads no types.
+// Plain JavaScript: ESLint's default parser reads no types.
 export const javascriptClassicFor = `for (let index = 0; index < 3; index += 1) {
   console.info(index)
 }

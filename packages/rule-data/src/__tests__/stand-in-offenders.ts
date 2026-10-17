@@ -2,11 +2,8 @@ import type { Catalog, RuleRoute } from '../catalog.ts'
 import { sharedKeys } from '../collections.ts'
 import { type Breach, breachesOf } from './breaches.ts'
 
-// What data/eslint-stand-ins.json guarantees (docs/work/spec-data.md, 2.6): without oxlint, ESLint
-// states each stand-in in place of a shipped oxlint rule ESLint has no version of. So the oxlint
-// rule ships and has no ESLint version to take over, and the stand-in is an untyped rule ESLint runs
-// that nothing else turns on: not shipped, not under consideration, not skipped, and standing in for
-// one rule only.
+// Without oxlint, ESLint states each stand-in in place of a shipped oxlint rule it has no version of,
+// so the stand-in is an untyped ESLint rule nothing else turns on, standing in for one rule only.
 
 /** What the walk reads: the catalog's parts, and the IDs of data/rule-candidates.json. */
 export type StandInSources = Pick<Catalog, 'eslintFallbackSkips' | 'eslintStandIns' | 'ruleIdsWithAnEslintVersion' | 'rules'> & {

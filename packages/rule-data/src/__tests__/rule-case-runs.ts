@@ -10,8 +10,7 @@ import { eslintPlugins } from '../eslint-plugins.ts'
 import { buildOxlintConfigRunningTheRuleWith } from './factories/oxlint-config-factories.ts'
 import { type OxlintJsonDiagnostic, oxlintJsonRun } from './oxlint-cli.ts'
 
-// One rule at a time, on the files of a case, through the real ESLint or the real oxlint: what each
-// engine made of each file. Read by changed-settings.integration.test.ts.
+// One rule at a time on a case's files, through the real ESLint or oxlint: what each engine made of each file.
 
 /** A file a case writes: its path from the project's root, its source, and the one engine that can read it, where only one can. */
 export type CaseFile = { readonly path: string; readonly source: string; readonly onlyIn?: Engine }
@@ -23,14 +22,12 @@ export type CaseFile = { readonly path: string; readonly source: string; readonl
  */
 export type FileOutcome = 'reports' | 'silent' | 'not linted'
 
-/** What a rule runs with: its options, the only files it runs on, and the files it skips. */
 export type RuleSettings = {
   readonly options: readonly unknown[]
   readonly files: readonly string[] | null
   readonly ignores: readonly string[] | null
 }
 
-/** One rule ESLint runs on some of the files. */
 type EslintRuleBlock = { readonly ruleId: string; readonly settings: RuleSettings }
 
 const ERROR = 'error'
@@ -69,8 +66,7 @@ export const UNSHIPPED_RULE_SETTINGS: RuleSettings = { options: [], files: null,
 
 /**
  * The rules ESLint runs for a route: the route's own rule, except that without oxlint ESLint runs a
- * moved core rule's current typescript-eslint extension on TS files in its place, as it does beside
- * no oxlint (questions.md #39).
+ * moved core rule's current typescript-eslint extension on TS files in its place.
  */
 export function eslintBlocksOf(route: RuleRoute, settings: RuleSettings, { rules, coreRuleExtensions }: Pick<Catalog, 'rules' | 'coreRuleExtensions'>): readonly EslintRuleBlock[] {
   const extensions = coreRuleExtensions.get(route.id)

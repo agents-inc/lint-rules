@@ -7,11 +7,9 @@ const DIALOG_ROLES: ReadonlySet<string> = new Set(['dialog', 'alertdialog'])
 // `title` is a real accessible-name source: the accname algorithm falls through to it.
 const DIALOG_NAME_ATTRIBUTES: ReadonlySet<string> = new Set(['aria-label', 'aria-labelledby', 'title'])
 
-// What a report names: the node that says "this is a dialog", and how the message describes it.
 type Dialog = { node: TSESTree.JSXAttribute | TSESTree.JSXTagNameExpression; what: string }
 
-// The string an attribute renders, or null when it is dynamic. `role={'dialog'}` and
-// role={`dialog`} reach the DOM as `role="dialog"`.
+// The string an attribute renders, or null when it is dynamic. role={`dialog`} renders `role="dialog"`.
 function literalValueOf(attribute: TSESTree.JSXAttribute): string | null {
   const { value } = attribute
   if (value === null) return null
@@ -25,8 +23,7 @@ function literalValueOf(attribute: TSESTree.JSXAttribute): string | null {
   return null
 }
 
-// An explicit role replaces the intrinsic one both ways: `<dialog role="presentation">` is no dialog.
-// A dynamic role could be anything, so it is not provably a dialog.
+// An explicit role replaces the intrinsic one both ways; a dynamic role is not provably a dialog.
 function dialogOf(element: TSESTree.JSXOpeningElement): Dialog | null {
   const roleAttribute = findJsxAttribute(element, 'role')
   if (roleAttribute === null) {
@@ -58,7 +55,7 @@ export const dialogHasAccessibleName = ESLintUtils.RuleCreator.withoutDocs<[], '
   create(context) {
     return {
       JSXOpeningElement(node) {
-        // A spread may forward the name from props, as wrapper components do: the deliberate blind spot.
+        // A spread may forward the name from props: a deliberate blind spot.
         const attributes = plainAttributesOf(node)
         if (attributes === null) return
         const dialog = dialogOf(node)

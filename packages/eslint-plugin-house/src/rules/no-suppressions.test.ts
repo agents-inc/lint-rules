@@ -42,9 +42,8 @@ import {
 import { lintWithInlineConfigIgnored } from '../__tests__/house-linter.ts'
 import { housePlugin } from '../index.ts'
 
-// Through ESLint with inline config ignored, not the rule tester: the tester applies directives,
-// so `/* eslint-disable */` would silence the very report under test (measured, ESLint 10.12).
-// The shipped config stops that with linterOptions.noInlineConfig wherever the rule is on.
+// Through ESLint with inline config ignored: the rule tester applies directives, so
+// `/* eslint-disable */` would silence the report under test. The shipped config sets noInlineConfig.
 
 const RULE_NAME = 'no-suppressions'
 const RULE_ID = 'house/no-suppressions'
@@ -170,8 +169,7 @@ const NOT_SUPPRESSIONS: { comment: string; code: string }[] = [
   { comment: 'a line comment of prose opening with the word eslint', code: proseAboutEslint },
   { comment: 'a JSDoc block naming eslint-disable', code: jsdocNamingADirective },
   { comment: 'a JSDoc block shaped like /* eslint-disable */', code: jsdocShapedLikeADirective },
-  // ESLint 10 reports it itself (a fatal "no longer supported", or under noInlineConfig a warning
-  // that it has no effect), and oxlint ignores it: it suppresses nothing.
+  // ESLint 10 reports it itself and oxlint ignores it: it suppresses nothing.
   { comment: 'an /* eslint-env */ comment', code: eslintEnvComment },
   { comment: 'a /* global */ comment, which oxlint ignores and runs no-undef regardless', code: globalComment },
   { comment: 'an /* exported */ comment', code: exportedComment },

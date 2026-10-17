@@ -1,11 +1,8 @@
 import oxlintFileTypes from '../data/oxlint-file-types.json' with { type: 'json' }
 
-// Which files oxlint runs each rule in, by their type: every file it lints by default, less those
-// the rule's own guard skips (data/oxlint-file-types.json, each guard with where it was read or
-// measured). A guard that reads the rule's options, the file's path beyond its extension, or what
-// the file holds (its classes, its JSX, a Vue `<script setup>`) is not recorded: such a rule runs
-// wherever oxlint lints, and finds nothing to report where its guard would skip it. Imports nothing
-// but the data, so lint-rules reads it without loading the catalog.
+// Which file types oxlint runs each rule in (data/oxlint-file-types.json). A guard reading options, the
+// path beyond its extension, or the file's content is not recorded. Imports nothing but the data, so
+// lint-rules reads it without loading the catalog.
 
 /** The file types oxlint runs a rule in: their extensions, and whether the declaration files among them are skipped. */
 export type OxlintRuleFileTypes = { readonly extensions: readonly string[]; readonly skipsDeclarationFiles: boolean }
@@ -19,7 +16,6 @@ const NO_GUARD: FileGuard = { skips: [], skipsDeclarationFiles: false, rules: []
 
 const guardByOxlintName: ReadonlyMap<string, FileGuard> = new Map(oxlintFileTypes.guards.flatMap(eachRuleWithItsGuard))
 
-/** What oxlint reads as a declaration file, as globs. */
 export const oxlintDeclarationFiles: readonly string[] = oxlintFileTypes.declarationFiles.globs
 
 /** The file types oxlint runs the rule in: a rule no guard names runs in every file oxlint lints. */

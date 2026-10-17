@@ -20,9 +20,9 @@ export type RulesetDefinition = {
   list: RulesetList
   domain: string | null
   env: string | null
-  /** `true`: `init` names the ruleset only in a comment, for a team to list (owner, 2026-10-10). */
+  /** `true`: `init` names the ruleset only in a comment, for a team to list. */
   readonly optIn: boolean
-  /** `true`: its rules reorder code, so `init` warns it conflicts with a formatter that sorts (owner, 2026-10-15). */
+  /** `true`: its rules reorder code, so `init` warns it conflicts with a formatter that sorts. */
   readonly sortsCode: boolean
 }
 
@@ -46,10 +46,7 @@ export type ShippedRule = TurnedOnBy &
      * type information. `null` where none.
      */
     readonly splitByTypesWith: string | null
-    /**
-     * Whether our runtimes' globals serve the rule: the editor merges give them only where such a
-     * rule of ours runs (#68).
-     */
+    /** Whether our runtimes' globals serve the rule: the editor merges give them only where such a rule runs. */
     readonly readsRuntimeGlobals: boolean
   }
 

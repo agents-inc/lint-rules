@@ -17,8 +17,7 @@ const DEFAULT_CLASS_HELPERS: readonly string[] = ['cn', 'clsx', 'cx', 'cva', 'tw
 const CVA_FUNCTION_SUFFIX = 'Variants'
 const HELPER_LIST_SEPARATOR = ', '
 
-// What a value is beneath the wrappers that change nothing it renders: `styles.card!`, `className as
-// string` and `styles?.footer` are the lookups they wrap, and `cn?.(…)` is a call to cn.
+// Unwraps what changes nothing rendered: `styles.card!`, `x as string`, `styles?.footer`, `cn?.(…)`.
 function unwrappedClassValueOf(expression: TSESTree.Expression): TSESTree.Expression {
   switch (expression.type) {
     case AST_NODE_TYPES.ChainExpression:
@@ -33,8 +32,7 @@ function unwrappedClassValueOf(expression: TSESTree.Expression): TSESTree.Expres
   }
 }
 
-// A class written out or looked up, which composes nothing. A template with nothing interpolated is
-// a string in backticks.
+// A template with nothing interpolated is a string in backticks.
 function isPlainClass(value: TSESTree.Expression): boolean {
   switch (value.type) {
     case AST_NODE_TYPES.Literal:
@@ -51,8 +49,8 @@ function isPlainClass(value: TSESTree.Expression): boolean {
   }
 }
 
-// A cva-made function returns a class whichever helpers a team configures, so its suffix counts as a
-// helper beside the helpers option rather than through it.
+// A cva-made function returns a class whatever helpers a team configures, so its suffix counts
+// beside the helpers option.
 function isClassHelperName(calleeName: string, helperNames: ReadonlySet<string>): boolean {
   return helperNames.has(calleeName) || calleeName.endsWith(CVA_FUNCTION_SUFFIX)
 }

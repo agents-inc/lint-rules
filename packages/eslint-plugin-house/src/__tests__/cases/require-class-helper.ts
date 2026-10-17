@@ -1,7 +1,3 @@
-// Code for house/require-class-helper. The reported shapes compose classes inline or call something
-// else; the silent ones name a class, hand the composing to a helper or to a function whose name ends
-// in `Variants`, or compose classes outside className and class.
-
 export const DEFAULT_CLASS_HELPERS = ['cn', 'clsx', 'cx', 'cva', 'twMerge', 'classNames', 'classnames']
 
 /** A className passed through a call to `helper`, on line 2. */

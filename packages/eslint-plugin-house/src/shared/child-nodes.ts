@@ -8,10 +8,7 @@ function valuesIn(value: unknown): readonly unknown[] {
   return Array.isArray(value) ? value : [value]
 }
 
-/**
- * Every node one level below `node`, in key order. Read from the node's own keys rather than
- * ESLint's visitor keys, so type annotations count as children too.
- */
+/** Read from the node's own keys, not ESLint's visitor keys, so type annotations count as children. */
 export function childNodesOf(node: TSESTree.Node): TSESTree.Node[] {
   return Object.entries(node)
     .filter(([key]) => key !== 'parent')

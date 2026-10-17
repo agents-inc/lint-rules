@@ -9,18 +9,17 @@ import { consumerConfigFiles } from './consumer-config-files.ts'
 import { eslintPlugins } from './eslint-plugins.ts'
 import { pluginPrefixOf } from './rule-id-parts.ts'
 
-// Both report plan.md's three files as written (real run). ESLint runs both.
+// Both report the three consumer files as written (real run). ESLint runs both.
 const SORT_OBJECTS = 'perfectionist/sort-objects'
 const NO_TOP_LEVEL_SIDE_EFFECTS = 'unicorn/no-top-level-side-effects'
-// Reports each of the three files importing our package in a package npm may publish (measured,
-// check right after init).
+// Reports each of the three files importing our package in a package npm may publish (measured).
 const NO_UNPUBLISHED_IMPORT = 'n/no-unpublished-import'
 const RULES_THE_CONSUMER_FILES_BREAK = [SORT_OBJECTS, NO_TOP_LEVEL_SIDE_EFFECTS]
 const CONSUMER_FILES = Object.values(consumerConfigFiles)
-// The names the files had before the owner's rename to .mts: now any other file of the consumer's.
-// oxlint.config.ts is a tool's config file all the same, which no-top-level-side-effects skips.
+// Ordinary consumer files now. oxlint.config.ts is a tool config file all the same, which
+// no-top-level-side-effects skips.
 const FORMER_CONSUMER_FILES = ['agents-inc.lint.ts', 'oxlint.config.ts']
-// Owner, 2026-10-14 (q71): every tool's config file default-exports a call.
+// Every tool's config file default-exports a call.
 const TOOL_CONFIG_FILES = '**/*.config.{js,mjs,cjs,ts,mts,cts}'
 const NESTED_PACKAGE = 'apps/web'
 const ORDINARY_FILES = ['src/app.ts', 'src/app.mts', 'src/app.mjs']

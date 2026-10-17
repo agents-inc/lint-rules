@@ -1,5 +1,5 @@
-// ESLint suppressions. ESLint itself reads none of them in a line comment except -disable-line and
-// -disable-next-line, but oxlint reads `// eslint-disable` as a file-level disable (measured, oxlint 1.87).
+// ESLint suppressions. In a line comment ESLint reads only -disable-line and -disable-next-line,
+// but oxlint reads `// eslint-disable` as a file-level disable (measured, oxlint 1.87).
 
 export const fileLevelDisable = `/* eslint-disable */
 debugger

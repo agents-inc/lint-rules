@@ -31,7 +31,7 @@ export function findJsxAttribute(
   return element.attributes.filter(isJsxAttribute).find((attribute) => isJsxAttributeNamedIn(attribute, wanted)) ?? null
 }
 
-/** The last attribute with this name, which wins when a name is written twice. */
+/** The last one wins when a name is written twice. */
 export function findLastJsxAttribute(
   attributes: readonly TSESTree.JSXAttribute[],
   name: string,

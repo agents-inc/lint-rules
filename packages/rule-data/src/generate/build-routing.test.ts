@@ -124,7 +124,7 @@ describe('buildRouting', () => {
   })
 
   // rules.json records each relation with its reason; routing carries the other rule's ID alone, and
-  // only where rules.json gives one (spec-data.md, 2.4).
+  // only where rules.json gives one.
   describe("a rule's relations to other shipped rules", () => {
     const inventory = buildInventory([
       buildInventoryRule('no-new', {
@@ -197,7 +197,7 @@ describe('buildRouting', () => {
   })
 
   // rules.json marks each rule our runtimes' globals serve; routing carries the mark only where
-  // rules.json gives it (spec-core.md, 2.4).
+  // rules.json gives it.
   describe("whether our runtimes' globals serve a rule", () => {
     const inventory = buildInventory([
       buildInventoryRule('no-undef', {

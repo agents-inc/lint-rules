@@ -29,8 +29,7 @@ export const multiLineBlockBannerEndingItsLine = `export const x = 1 /* ----
 export const y = 2
 `
 
-// The comment's line break ends the return statement, so the function returns undefined and the 1
-// below is unreachable. Joining the lines would make it return 1.
+// The comment's line break ends the return, so the 1 is unreachable; joining the lines would return it.
 export const multiLineBlockBannerAfterReturn = `export function verify() {
   return /* ----
    ---- */ 1

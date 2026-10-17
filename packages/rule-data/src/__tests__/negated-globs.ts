@@ -1,7 +1,6 @@
 import type { RuleRoute } from '../catalog.ts'
 
-// ESLint and oxlint read a glob led by this mark as a negation: it takes back what an earlier glob
-// of the same list matched.
+// ESLint and oxlint read a glob led by this mark as taking back what an earlier glob matched.
 const NEGATION_MARK = '!'
 
 /**

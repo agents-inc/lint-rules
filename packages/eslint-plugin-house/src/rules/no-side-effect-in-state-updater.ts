@@ -9,7 +9,6 @@ type MessageId = 'effect' | 'nestedUpdate' | 'outerMutation' | 'refMutation' | '
 
 type Updater = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression
 
-// The walk's own chain of ancestors, nearest first.
 type Link = { node: TSESTree.Node; up: Link | null }
 
 type Finding = { node: TSESTree.Node; messageId: MessageId }
@@ -20,8 +19,8 @@ const SETTER_NAME = /^set[A-Z]/
 // Named like setters and take a function first, but schedule it rather than update state.
 const NOT_SETTERS: ReadonlySet<string> = new Set(['setTimeout', 'setInterval', 'setImmediate'])
 
-// Callbacks that run synchronously inside the updater. Every other nested function is stored or
-// scheduled for later: `prev.map(r => ({ ...r, onClick: () => setOpen(true) }))` updates nothing now.
+// Callbacks that run synchronously inside the updater. Any other nested function is stored or
+// scheduled, so it updates nothing now.
 const SYNC_CALLBACK_METHODS: ReadonlySet<string> = new Set([
   'forEach',
   'map',
@@ -69,8 +68,8 @@ const GLOBAL_EFFECTS: ReadonlySet<string> = new Set([
   'clearInterval',
 ])
 
-// Effects reached through a well-known global: every method on it, or only these.
-// `localStorage.getItem` reads and is fine; `localStorage.setItem` persists and is not.
+// Effects reached through a well-known global: every method on it, or only these. `getItem` reads;
+// `setItem` persists.
 type EffectfulMethods = 'every-method' | ReadonlySet<string>
 const MEMBER_EFFECTS: ReadonlyMap<string, EffectfulMethods> = new Map<string, EffectfulMethods>([
   ['localStorage', new Set(['setItem', 'removeItem', 'clear'])],
@@ -161,15 +160,12 @@ function namesBoundIn(node: TSESTree.Node): string[] {
   return [...declaredNamesAt(node), ...parameterNamesAt(node), ...childNodesOf(node).flatMap(namesBoundIn)]
 }
 
-// The identifier a member chain starts from: `ref.current` → `ref`. Null for a value made on the
-// spot, such as `[...prev].sort()`, which nothing else holds.
+// Null for a value made on the spot, such as `[...prev].sort()`, which nothing else holds.
 function rootNameOf(node: TSESTree.Node): string | null {
   if (node.type === AST_NODE_TYPES.MemberExpression) return rootNameOf(node.object)
   return node.type === AST_NODE_TYPES.Identifier ? node.name : null
 }
 
-// The path as written, `window.localStorage.setItem`, or null when a hop is computed or the chain
-// does not start from a name.
 function dottedPathOf(node: TSESTree.Node): DottedPath | null {
   if (node.type === AST_NODE_TYPES.Identifier) return [node.name]
   if (node.type !== AST_NODE_TYPES.MemberExpression || node.computed || node.property.type !== AST_NODE_TYPES.Identifier) {
@@ -214,8 +210,7 @@ const DISCARD_TRANSPARENT: ReadonlySet<string> = new Set([
   AST_NODE_TYPES.SequenceExpression,
 ])
 
-// Whether the call's result is thrown away. A setter is called for its effect; `setPreference(prev,
-// patch)` in return position is a pure helper whose name starts with `set`.
+// A setter is called for its effect; a pure helper named `set…` in return position is not.
 function isDiscarded(link: Link | null): boolean {
   if (link === null) return false
   if (DISCARD_TRANSPARENT.has(link.node.type)) return isDiscarded(link.up)
@@ -239,8 +234,8 @@ function callFinding(call: TSESTree.CallExpression, link: Link, local: ReadonlyS
   if (root !== null && local.has(root)) return null
   const path = memberPathOf(callee)
   if (path !== null && isKnownEffect(path)) return { node: callee, messageId: 'effect' }
-  // Only a bare `setX(…)` or `….setState(…)`: `el.setAttribute` and `d.setHours` update no state.
-  // One argument and a discarded result: a one-argument pure helper is returned, not discarded.
+  // Only a bare `setX(…)` or `….setState(…)`: `el.setAttribute` updates no state. A one-argument pure
+  // helper is returned, not discarded.
   if (isStateSetter(callee) && call.arguments.length <= 1 && isDiscarded(link)) {
     return { node: callee, messageId: 'nestedUpdate' }
   }
@@ -275,8 +270,7 @@ function findingsUnder(node: TSESTree.Node, link: Link, local: ReadonlySet<strin
   return finding === null ? below : [finding, ...below]
 }
 
-// Names the updater binds for itself are its argument or a copy it built, and mutating those is how a
-// correct updater builds the next state.
+// Mutating the updater's own argument, or a copy it built, is how a correct updater builds the next state.
 function sideEffectsIn(updater: Updater): Finding[] {
   const local: ReadonlySet<string> = new Set(namesBoundIn(updater))
   return findingsUnder(updater.body, { node: updater, up: null }, local)

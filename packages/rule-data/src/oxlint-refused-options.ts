@@ -1,10 +1,8 @@
 import oxlintRefusedOptions from '../data/oxlint-refused-options.json' with { type: 'json' }
 
-// The options typescript-eslint's extension of a core rule takes that oxlint's copy of the core rule
-// refuses, or accepts and does not honour (data/oxlint-refused-options.json, with where each was
-// measured). oxlint loads no part of a config giving a rule options it refuses, and drops silently
-// an option it does not honour, so a setting carrying either stays out of oxlint (D11). Imports
-// nothing but the data, so lint-rules reads it without loading the catalog.
+// The options typescript-eslint's extension of a core rule takes that oxlint's copy refuses or ignores
+// (data/oxlint-refused-options.json). oxlint loads no part of a config with a refused option and drops
+// an ignored one silently. Imports nothing but the data, so lint-rules reads it without the catalog.
 
 /** A rule oxlint refuses or does not honour some options of, by its oxlint name, and those options' keys. */
 type RefusedOptions = { readonly rule: string; readonly refusedKeys: readonly string[] }

@@ -4,7 +4,6 @@ export type SuppressionMode = 'banned' | 'allowed'
 /** A rule's setting in one suppression mode: off, or on at `error` with these options. */
 export type SuppressionModeSetting = 'off' | { readonly options: readonly unknown[] }
 
-/** One setting for each suppression mode. */
 export type BySuppressionMode<Setting> = { readonly [mode in SuppressionMode]: Setting }
 
 /** The setting of a rule `allowSuppressions` decides, in each mode. */

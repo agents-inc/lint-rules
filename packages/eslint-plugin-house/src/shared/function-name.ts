@@ -10,10 +10,7 @@ export function isFunctionNode(node: TSESTree.Node): node is FunctionNode {
   )
 }
 
-/**
- * The name a function is known by: its own, the variable or property it is assigned to, or the
- * variable a wrapping call is assigned to, as in `const Panel = memo(() => …)`.
- */
+/** Its own name, or the variable or property it is assigned to, as in `const Panel = memo(() => …)`. */
 export function functionNameOf(fn: FunctionNode): string | null {
   if (fn.id !== null) return fn.id.name
   const { parent } = fn

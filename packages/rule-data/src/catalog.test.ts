@@ -63,9 +63,8 @@ describe('the catalog, src/generated/routing.json', () => {
       expect(negatedShippedGlobsIn(catalog.rules.values())).toStrictEqual([])
     })
 
-    // The ESLint merge gives a team its typescript-eslint twin of a rule of ours back where an entry
-    // of ours turns our rule off (questions.md #41). It reads one twin each way: a twin another rule
-    // of ours shared would come back where that rule still runs, and report each finding twice.
+    // The ESLint merge gives a team its typescript-eslint twin back where an entry of ours turns our rule
+    // off. A twin shared by another rule of ours would come back where that rule runs, and report twice.
     it('has no core rule more than one installed rule extends', () => {
       expect(coreRulesExtendedMoreThanOnce(catalog.coreRuleExtensions)).toStrictEqual([])
     })
@@ -137,9 +136,8 @@ describe('the catalog, src/generated/routing.json', () => {
     })
   })
 
-  // The merge turns a team's twin of our rule off where ours runs (questions.md #41), reading the
-  // twins from coreRuleExtensions; one missed would report each finding twice. The expectation is
-  // read from the installed typescript-eslint itself, deprecated extensions included.
+  // The merge turns a team's twin of our rule off where ours runs, so a missed twin reports twice. The
+  // expectation is read from the installed typescript-eslint, deprecated extensions included.
   describe('coreRuleExtensions', () => {
     it('holds, for each core rule, exactly the typescript-eslint rules that extend it, as the installed typescript-eslint names them', () => {
       const extensions = typescriptEslintExtensions()
@@ -153,7 +151,7 @@ describe('the catalog, src/generated/routing.json', () => {
   })
 
   // rules.json records a relation on one rule of a pair; the catalog gives every shipped rule both,
-  // the other rule's ID or null (spec-data.md, 2.5).
+  // the other rule's ID or null.
   describe("each shipped rule's relations to other shipped rules", () => {
     it("parses each as the other rule's ID where rules.json records one, and as null where it records none", () => {
       const relationsById = Object.fromEntries(
@@ -180,7 +178,7 @@ describe('the catalog, src/generated/routing.json', () => {
   })
 
   // rules.json marks each rule our runtimes' globals serve; the catalog gives every shipped rule the
-  // mark, false where rules.json gives none (spec-core.md, 2.5).
+  // mark, false where rules.json gives none.
   describe("whether our runtimes' globals serve each shipped rule", () => {
     it('parses it as true where rules.json marks the rule, and as false where it does not', () => {
       const markById = Object.fromEntries(['no-undef', 'eqeqeq'].map((id) => [id, shippedRuleOf(routeOf(id, catalog)).readsRuntimeGlobals]))
@@ -196,7 +194,6 @@ describe('the catalog, src/generated/routing.json', () => {
   })
 
   describe('the rulesets', () => {
-    // Owner, 2026-10-15: the rulesets that sort code are opt-in.
     it("carries each ruleset's optIn and sortsCode, both true on the rulesets that sort code and false on every other", () => {
       expect(catalog.rulesets.map(({ name, optIn, sortsCode }) => [name, optIn, sortsCode])).toStrictEqual(
         rulesetDefinitions.map(({ name }) => [name, isSortingRuleset(name), isSortingRuleset(name)]),
@@ -205,10 +202,9 @@ describe('the catalog, src/generated/routing.json', () => {
   })
 
   describe('pinned routes', () => {
-    // oxlint matches a suppression comment by the rule name alone, whatever prefix it is written with,
-    // so beside oxlint a comment naming the RuleId misses a rule oxlint runs under another rule name.
-    // Owner, 2026-10-14: oxlint runs these two all the same; the merge states ESLint stubs for
-    // oxlint's names (spec-core.md, C5). A third rename needs those stubs checked for it.
+    // oxlint matches a suppression comment by rule name alone, so beside oxlint a comment naming the RuleId
+    // misses a rule oxlint runs under another name: the merge states ESLint stubs for oxlint's names. A
+    // third rename needs those stubs checked for it.
     it('runs exactly the two renamed unicorn rules in oxlint under a rule name of its own', () => {
       const renamedInOxlint = routes
         .filter(isOxlintRoute)
@@ -243,7 +239,7 @@ describe('the catalog, src/generated/routing.json', () => {
       })
     })
 
-    // oxlint has it under react/, but refuses an option ESLint's version takes (spec-merge-model.md, 3.2).
+    // oxlint has it under react/, but refuses an option ESLint's version takes.
     it('routes react-hooks/rules-of-hooks to ESLint, though oxlint has it under a name that differs in prefix only', () => {
       const { engine, oxlintName } = routeOf('react-hooks/rules-of-hooks', catalog)
       const oxlintsNames = catalog.oxlintRules.filter(({ id }) => id === 'react-hooks/rules-of-hooks').map((rule) => rule.oxlintName)
@@ -251,8 +247,8 @@ describe('the catalog, src/generated/routing.json', () => {
       expect({ engine, oxlintName, oxlintsNames }).toStrictEqual({ engine: 'eslint', oxlintName: null, oxlintsNames: ['react/rules-of-hooks'] })
     })
 
-    // Hoisting is the house style (owner, 2026-10-10): no ruleset turns the rule on, but a consumer can
-    // still enable it by ID, and oxlint runs it, as it runs the shipped core rule beside it.
+    // Hoisting is the house style: no ruleset turns the rule on, but a consumer can still enable it by ID,
+    // and oxlint runs it, as it runs the shipped core rule beside it.
     it('keeps no-use-before-define available to enable in oxlint but unshipped, beside a shipped core rule', () => {
       const routesById = Object.fromEntries(
         ['no-dupe-class-members', 'no-use-before-define'].map((id) => {
@@ -278,8 +274,7 @@ describe('the catalog, src/generated/routing.json', () => {
       ).toStrictEqual(['house/no-classic-loops'])
     })
 
-    // Owner, 2026-10-10: no ruleset turns these on, but each engine still has them, so a consumer can
-    // enable one by ID, as they can the shipped rules beside them.
+    // No ruleset turns these on, but each engine still has them, so a consumer can enable one by ID.
     it('keeps the dropped rules of installed plugins available to enable but unshipped, beside the rules that replace them', () => {
       const shippedRulesetById = Object.fromEntries(
         [
@@ -307,9 +302,8 @@ describe('the catalog, src/generated/routing.json', () => {
       })
     })
 
-    // The bans are always on; the catalog carries each to the engine that runs it, house's from the
-    // installed house plugin. oxlint skips ban-ts-comment in a JS file, so ESLint runs it
-    // (spec-merge-model.md, 3.2).
+    // The bans are always on; house's comes from the installed house plugin. oxlint skips ban-ts-comment
+    // in a JS file, so ESLint runs it.
     it('routes both suppression bans to ESLint, each with its shipped options', () => {
       const bans = Object.fromEntries(
         ['@typescript-eslint/ban-ts-comment', 'house/no-suppressions'].map((id) => {
@@ -328,7 +322,6 @@ describe('the catalog, src/generated/routing.json', () => {
       })
     })
 
-    // Owner, 2026-10-14 (q-r2-class-helper-ruleset, lib-structure): a libs ruleset of its own.
     it('ships house/require-class-helper in class-names, run by ESLint at its defaults, related to no other rule', () => {
       const { engine, shipped } = routeOf('house/require-class-helper', catalog)
 
@@ -338,10 +331,9 @@ describe('the catalog, src/generated/routing.json', () => {
       })
     })
 
-    // eslint-plugin-n 18.4.1 reads tsconfig.json's aliases for a TS file alone; enhanced-resolve's own
-    // `tsconfig` option, given to our copy of n/no-unpublished-import, reads them for a JS file too
-    // (decisions.md, 2026-10-14 "fix round 5 review"). Owner, 2026-10-14 (r2-d59):
-    // n/no-extraneous-import no longer ships; import-x/no-extraneous-dependencies reports the same.
+    // eslint-plugin-n 18.4.1 reads tsconfig.json's aliases for a TS file alone; enhanced-resolve's
+    // `tsconfig` option reads them for a JS file too. import-x/no-extraneous-dependencies reports what
+    // n/no-extraneous-import did.
     it("ships n/no-unpublished-import with enhanced-resolve's tsconfig option beside its allowModules, and n/no-extraneous-import not at all", () => {
       expect({
         'n/no-unpublished-import': shippedRuleOf(routeOf('n/no-unpublished-import', catalog)).options,
@@ -352,8 +344,7 @@ describe('the catalog, src/generated/routing.json', () => {
       })
     })
 
-    // Owner, 2026-10-14 (round 2 of the duplicate cards): a dropped rule is in no list, but each engine
-    // still has it, so a team can turn it on by ID.
+    // A dropped rule is in no list, but each engine still has it, so a team can turn it on by ID.
     it('keeps each round 2 drop a RuleId, shipped in no ruleset', () => {
       const shippedOrUnknown = ROUND_2_DROPS.flatMap(({ dropped }) => dropped).filter((id) => {
         const route = catalog.rules.get(id)
@@ -363,8 +354,7 @@ describe('the catalog, src/generated/routing.json', () => {
       expect(shippedOrUnknown).toStrictEqual([])
     })
 
-    // Owner, 2026-10-14 (r2-d7's note): for oxlint use oxlint, for ESLint use ESLint. Each rule a drop
-    // leaves reporting that oxlint runs, ESLint takes over without oxlint, or stands in for.
+    // Each rule a drop leaves reporting that oxlint runs, ESLint takes over without oxlint, or stands in for.
     it('has ESLint take over, or stand in for, each rule a round 2 drop leaves reporting that oxlint runs', () => {
       const lostWithoutOxlint = ROUND_2_DROPS.flatMap(({ stillReporting }) => stillReporting).filter((id) => {
         const route = catalog.rules.get(id)
@@ -376,8 +366,8 @@ describe('the catalog, src/generated/routing.json', () => {
       expect(lostWithoutOxlint).toStrictEqual([])
     })
 
-    // The fix of each writes an API Node 22 lacks (questions.md "Parked"): shipped off until a category
-    // for the newest language features, enabled by Node version, exists.
+    // The fix of each writes an API Node 22 lacks: shipped off until a category for the newest language
+    // features, enabled by Node version, exists.
     it('keeps each modern-js rule whose fix needs a newer Node a RuleId run by ESLint, shipped in no ruleset', () => {
       const routesById = Object.fromEntries(
         RULES_NEEDING_NEWER_NODE.map((id) => {

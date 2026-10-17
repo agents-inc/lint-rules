@@ -1,8 +1,6 @@
-// The shipped rules oxlint's version of which is measurably worse than ESLint's, so ESLint runs them
-// beside oxlint too (decisions.md, "Owner 2026-10-14"; spec-merge-model.md, 3.2, the 19 its open
-// point 5 recommends): oxlint skips the JS files ESLint's version reports in, or refuses an option
-// ESLint's version takes and then loads no part of the config (measured, oxlint 1.87). Since
-// 2026-10-14, also the untyped rules split by types (spec-data.md, D5).
+// Shipped rules whose oxlint version is measurably worse, so ESLint runs them beside oxlint too:
+// oxlint skips the JS files ESLint's version reports in, or refuses an option ESLint's takes and then
+// loads no part of the config (measured, oxlint 1.87).
 
 /** By the file types oxlint skips: a finding ESLint's version reports in a .js file. */
 const SKIPPED_FILE_TYPES = ['@typescript-eslint/ban-ts-comment', '@typescript-eslint/no-this-alias', '@typescript-eslint/triple-slash-reference']
@@ -28,9 +26,8 @@ const REFUSED_OPTIONS = [
 ]
 
 /**
- * By type information: the untyped rule of a pair split by types (owner, 2026-10-14; spec-data.md,
- * D5). oxlint cannot tell which files have type information, so beside the typed rule its copy would
- * report twice there.
+ * By type information: the untyped rule of a pair split by types. oxlint cannot tell which files have
+ * type information, so beside the typed rule its copy would report twice there.
  */
 const SPLIT_BY_TYPES = ['no-constant-condition', 'no-implied-eval', 'unicorn/no-await-in-promise-methods']
 

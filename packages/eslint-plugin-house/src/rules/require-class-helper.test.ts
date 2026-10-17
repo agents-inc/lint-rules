@@ -37,25 +37,15 @@ import { caseBuildersFor } from '../__tests__/factories/rule-case-factories.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
 
-// Owner, 2026-10-10: className and class are a literal, a name or lookup, or a call to a class
-// helper; classes composed inline are reported. A helper's own arguments are not the target.
-// Owner, 2026-10-11 and 2026-10-14: classNames and classnames are helpers too, a ternary choosing one
-// of two classes stays reported, and a call to a function whose name ends in `Variants`, as cva-made
-// functions are named, passes like a helper call. Our reading, not the owner's words: that holds
-// whatever the helpers option names, or a team that lists its own helper would lose it.
-//
-// One shape the owner's wording reports is silent here, from the ~/dev measurement: a template with
-// nothing interpolated, which is a string literal in backticks and composes nothing.
-//
-// No invalid case declares an `output` or `suggestions`: the tester then fails any fix or
-// suggestion the rule offers. Which helper a file imports is not the rule's to guess.
+// A template with nothing interpolated composes nothing, so it is silent. No invalid case declares
+// `output` or `suggestions`, so the tester fails any fix the rule offers.
 const FILENAME = 'require-class-helper.tsx'
 const OTHER_HELPER = 'joinClasses'
 const DEFAULT_HELPERS_AS_THE_MESSAGE_LISTS_THEM = 'cn, clsx, cx, cva, twMerge, classNames, classnames'
 const { invalidCase, validCase } = caseBuildersFor(FILENAME)
 
-// The valid array's type does not reach a case built inside .map, so those cases name the rule's
-// options outright. Left to infer from a case with no options, they would be `readonly unknown[]`.
+// The valid array's type does not reach a case built inside .map, so those cases name the options
+// type outright.
 type RequireClassHelperOptions = ESLintUtils.InferOptionsTypeFromRule<
   (typeof housePlugin.rules)['require-class-helper']
 >

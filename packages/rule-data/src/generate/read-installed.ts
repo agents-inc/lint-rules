@@ -46,7 +46,6 @@ type OxlintRuleListing = { scope: string; value: string; type_aware: boolean; ca
 
 type RuleWithMeta = { meta?: { deprecated?: unknown; docs?: object | undefined } | undefined }
 
-/** A rule ID and the module bound to it. */
 type RuleBinding = { readonly id: string; readonly rule: RuleWithMeta }
 
 const OXLINT_PACKAGE = 'oxlint'

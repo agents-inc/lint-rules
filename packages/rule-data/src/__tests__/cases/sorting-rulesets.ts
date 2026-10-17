@@ -1,8 +1,6 @@
-// Owner, 2026-10-15: the rulesets that sort code are opt-in, since a new repo gets bombarded with
-// sorting reports. `init` leaves them out of the config it writes and names them in a comment that
-// says they conflict with a formatter that sorts the same code (decisions.md).
+// The rulesets that sort code are opt-in: `init` leaves them out and warns they conflict with a
+// formatter that sorts.
 
-/** The rulesets that sort code, each opt-in. */
 export const SORTING_RULESETS: readonly string[] = ['import-order', 'ordering']
 
 /** Each rule of the sorting rulesets, by ruleset: every one reorders code. */

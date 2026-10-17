@@ -1,9 +1,6 @@
-// Code that draws each rule data/oxlint-file-types.json guards, written into a file of each type
-// (oxlint-file-types.integration.test.ts). A .vue or .svelte file holds it in a TypeScript script
-// block and an .astro file in its frontmatter, as the data counts their scripts TypeScript. Each
-// trigger names the file types whose parser refuses its code (measured, oxlint 1.87): there neither
-// the guard nor the rule can be seen, and nothing depends on either, as the rule cannot draw a
-// finding from code its file cannot hold.
+// Code that draws each rule data/oxlint-file-types.json guards, written into a file of each type (a
+// .vue or .svelte script block, an .astro frontmatter). Each trigger names the file types whose parser
+// refuses its code (measured, oxlint 1.87).
 
 /** A file type oxlint is given: an extension it lints by default, or a kind of declaration file. */
 export type FileType = (typeof LINTED_EXTENSIONS)[number] | keyof typeof DECLARATION_FILE_TYPES

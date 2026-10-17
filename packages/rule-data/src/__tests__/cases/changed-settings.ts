@@ -2,9 +2,7 @@ import type { Engine } from '../../catalog.ts'
 import { consumerConfigFiles } from '../../consumer-config-files.ts'
 import type { CaseFile } from '../rule-case-runs.ts'
 
-// Code for changed-settings.integration.test.ts: each rule whose settings, engine or ruleset the
-// owner's answers of 2026-10-14 changed (docs/work/spec-data.md, D3 and D5 to D8), with files it must
-// stay silent in and files it must still report in, under the settings the catalog ships.
+// Files each changed rule must stay silent in and still report in, under the settings the catalog ships.
 
 /** A rule run with the settings it ships, on the engines that may run it. */
 export type RuleCase = {
@@ -30,7 +28,6 @@ export type StubPackage = { readonly name: string; readonly declarations: string
 
 const FIND_QUERY_TYPES = ['Role', 'LabelText', 'PlaceholderText', 'Text', 'DisplayValue', 'AltText', 'Title', 'TestId']
 
-/** testing-library's async queries: findBy and findAllBy of each query type. */
 export const FIND_QUERIES: readonly string[] = FIND_QUERY_TYPES.flatMap((queryType) => [`findBy${queryType}`, `findAllBy${queryType}`])
 
 /** user-event 14's methods, each returning a promise. */
@@ -57,14 +54,9 @@ export const USER_EVENT_METHODS: readonly string[] = [
 const OUR_PACKAGE = '@agents-inc/lint-rules'
 
 /**
- * The packages the typed fixtures import beside the installed vitest and @types/node. Each declares
- * its async helpers in the shape the real package does (@testing-library/dom 10.4.0, user-event
- * 14.5.2), since the shape decides which `allowForKnownSafeCalls` specifier reaches a call: dom's
- * helpers and `screen`'s queries are named functions and methods; user-event's default export holds
- * named functions, but the session `userEvent.setup()` returns is a mapped type, so its methods are
- * anonymous (`__type`). Parameters and results are simplified: the rule reads only that each
- * returns a promise. Measured with typescript-eslint 8.71.1: every testing-library case file below
- * has the same outcome under these stubs as under the real packages.
+ * Stubs of packages the typed fixtures import, each declaring its async helpers in the real package's
+ * shape, which decides which `allowForKnownSafeCalls` specifier reaches a call: user-event's session
+ * methods are anonymous (`__type`). Measured with typescript-eslint 8.71.1 to match the real packages.
  */
 export const STUB_PACKAGES: readonly StubPackage[] = [
   {
@@ -121,9 +113,8 @@ export const TYPED_PROJECT_TSCONFIG = {
 }
 
 /**
- * The fixtures' own manifest: n/no-deprecated-api reads the Node versions a project supports from it,
- * our floor; n/no-unpublished-import reads it as a package npm may publish, no `private` and no
- * `files`, that lists our package under devDependencies alone, as `init` leaves one.
+ * The fixtures' manifest, publishable, with our package under devDependencies as `init` leaves it:
+ * n/no-deprecated-api reads its Node floor and n/no-unpublished-import its publishability.
  */
 export const PROJECT_MANIFEST = {
   name: 'changed-settings-fixtures',
@@ -166,11 +157,8 @@ const REGEXP_LEGACY_STATICS = ['$1', '$2', '$3', '$4', '$5', '$6', '$7', '$8', '
 
 const UTIL_TYPE_CHECKS = ['isArray', 'isBoolean', 'isBuffer', 'isDate', 'isError', 'isFunction', 'isNull', 'isNullOrUndefined', 'isNumber', 'isObject', 'isPrimitive', 'isRegExp', 'isString', 'isSymbol', 'isUndefined']
 
-// The APIs of a sample of n/no-deprecated-api's documented list, one or more from each module, that
-// both rules report for Node 22.18 and a { from: "package" } specifier silences in no-deprecated
-// (measured, @types/node 22.20.5, eslint-plugin-n 18.4.1). Measured and left out: crypto.fips, which
-// both report and no package specifier reaches (its value is a boolean), and the APIs only one of
-// the two reports.
+// A sample of n/no-deprecated-api's list that both rules report for Node 22.18 and a { from: "package" }
+// specifier silences (measured, @types/node 22.20.5, eslint-plugin-n 18.4.1).
 const NODE_API_FILES: readonly DeprecatedApiFile[] = [
   nodeApiFile('buffer-constructor', "import { Buffer } from 'node:buffer'\nexport const made = new Buffer(1)\n"),
   nodeApiFile('slow-buffer', "import { SlowBuffer } from 'node:buffer'\nexport const made = new SlowBuffer(1)\n"),
@@ -336,8 +324,7 @@ export class Panel extends Component {
 }
 `
 
-// A helper unicorn does not know to be pure: from eslint-plugin-unicorn 78 the rule accepts vite's
-// and vitest's defineConfig() itself, in every file (measured).
+// unicorn does not know this helper to be pure; from v78 it accepts defineConfig() itself (measured).
 const DEFAULT_EXPORTED_CALL = `import { createConfig } from 'build-tool'
 export default createConfig({})
 `
@@ -351,9 +338,9 @@ const NESTED_PACKAGE = 'apps/web'
 
 const NBSP = ' '
 
-/** The rules whose options or files the owner changed (spec-data.md, D3). */
+/** The rules whose options or files changed. */
 export const CHANGED_SETTING_CASES: readonly RuleCase[] = [
-  // r2-d4: componentWillMount is reported as its UNSAFE_ alias is.
+  // componentWillMount is reported as its UNSAFE_ alias is.
   {
     rule: 'react/no-unsafe',
     silentIn: [
@@ -393,20 +380,18 @@ export class Card extends Component {
       },
     ],
   },
-  // r2-d19
   {
     rule: 'react/jsx-no-bind',
     silentIn: [{ path: 'src/bound.jsx', source: 'export const Save = ({ save }) => <button onClick={save.bind(null)}>Save</button>\n' }],
     reportedIn: [{ path: 'src/function.jsx', source: 'export const Save = ({ save }) => <button onClick={function () { save() }}>Save</button>\n' }],
   },
-  // r2-d46: the specific rule reports each of these (DUPLICATES_LEFT_TO_THE_SPECIFIC_RULE).
+  // The specific rule reports each of these (DUPLICATES_LEFT_TO_THE_SPECIFIC_RULE).
   ...specificRulesOf(DEPRECATED_API_FILES).map((specificRule) => ({
     rule: '@typescript-eslint/no-deprecated',
     subject: `the APIs ${specificRule} reports`,
     silentIn: DEPRECATED_API_FILES.filter(({ reportedBy }) => reportedBy === specificRule).map(({ path, source }) => ({ path, source })),
     reportedIn: [OWN_DEPRECATED_FUNCTION],
   })),
-  // r2-d62
   {
     rule: '@typescript-eslint/no-floating-promises',
     subject: "testing-library's async helpers",
@@ -419,15 +404,15 @@ export class Card extends Component {
     silentIn: VITEST_ASSERTION_FILES,
     reportedIn: [OWN_UNAWAITED_PROMISE],
   },
-  // r2-d62: `__type` is the name of every anonymous function type; `from: "package"` keeps the
-  // user-event and vitest entries to those two packages' own.
+  // `__type` is the name of every anonymous function type; `from: "package"` keeps the user-event and
+  // vitest entries to those packages' own.
   {
     rule: '@typescript-eslint/no-floating-promises',
     subject: "an anonymous function type of the file's own, beside the packages' anonymous ones",
     silentIn: [userEventFile('click'), ...VITEST_ASSERTION_FILES],
     reportedIn: [OWN_ANONYMOUSLY_TYPED_PROMISE],
   },
-  // r2-d62: story files, the storybook rules' files.
+  // Story files, the storybook rules' files.
   {
     rule: 'testing-library/await-async-events',
     silentIn: [
@@ -436,7 +421,6 @@ export class Card extends Component {
     ],
     reportedIn: [{ path: 'src/button.test.tsx', source: UNAWAITED_USER_EVENT }],
   },
-  // r2-d63
   {
     rule: 'testing-library/no-dom-import',
     silentIn: [
@@ -445,13 +429,13 @@ export class Card extends Component {
     ],
     reportedIn: [{ path: 'src/button.test.tsx', source: DOM_IMPORT }],
   },
-  // r2-d67: oxlint skips regular expressions already; ESLint's own default does not.
+  // oxlint skips regular expressions already; ESLint's own default does not.
   {
     rule: 'no-irregular-whitespace',
     silentIn: [{ path: 'src/regexp.js', source: `export const spaced = /a${NBSP}b/u\n` }],
     reportedIn: [{ path: 'src/statements.js', source: `export const first = 1;${NBSP}export const second = 2\n` }],
   },
-  // r2-d71: without oxlint, ESLint runs typescript-eslint's version on TS files.
+  // Without oxlint, ESLint runs typescript-eslint's version on TS files.
   {
     rule: 'no-unused-vars',
     silentIn: ['js', 'ts'].map((extension) => ({
@@ -473,7 +457,7 @@ export class Card extends Component {
 `,
     })),
   },
-  // r2-c11: the class's own name is allowed; super is still preferred.
+  // The class's own name is allowed; super is still preferred.
   {
     rule: 'unicorn/class-reference-in-static-methods',
     silentIn: [
@@ -503,13 +487,12 @@ export class Counter extends Base {
       },
     ],
   },
-  // r2-c14
   {
     rule: 'no-void',
     silentIn: [{ path: 'src/statement.js', source: 'export function run(save) {\n  void save()\n}\n' }],
     reportedIn: [{ path: 'src/expression.js', source: 'export const nothing = void 0\n' }],
   },
-  // r2-c17: a class error boundary is the one class React needs.
+  // A class error boundary is the one class React needs.
   {
     rule: 'functional/no-classes',
     silentIn: [
@@ -542,7 +525,7 @@ export class Boundary extends Component {
     ],
     reportedIn: [{ path: 'src/plain.js', source: 'export class Plain {}\n' }],
   },
-  // r2-c17-this: error-boundary files, told apart by name.
+  // Error-boundary files, told apart by name.
   {
     rule: 'functional/no-this-expressions',
     silentIn: [
@@ -551,7 +534,6 @@ export class Boundary extends Component {
     ],
     reportedIn: [{ path: 'src/panel.tsx', source: CLASS_WITH_THIS }],
   },
-  // r2-n4
   {
     rule: 'sonarjs/function-name',
     silentIn: [
@@ -569,19 +551,18 @@ export class Card extends Component {
     ],
     reportedIn: [{ path: 'src/snake-method.js', source: 'export class Card {\n  bad_name() {}\n}\n' }],
   },
-  // r2-n5: a route group's folder.
+  // A route group's folder.
   {
     rule: 'check-file/folder-naming-convention',
     silentIn: [{ path: 'src/(group)/page.ts', source: 'export const page = 1\n' }],
     reportedIn: [{ path: 'src/a!b/page.ts', source: 'export const page = 1\n' }],
   },
-  // q-r2-array-literal-assertions
   {
     rule: '@typescript-eslint/consistent-type-assertions',
     silentIn: [{ path: 'src/annotated.ts', source: 'export const names: string[] = []\n' }],
     reportedIn: [{ path: 'src/asserted.ts', source: 'export const names = [] as string[]\n' }],
   },
-  // q71: tool config files.
+  // Tool config files.
   {
     rule: 'unicorn/no-top-level-side-effects',
     silentIn: [
@@ -590,8 +571,7 @@ export class Card extends Component {
     ],
     reportedIn: [{ path: 'src/setup.ts', source: DEFAULT_EXPORTED_CALL }],
   },
-  // The files a consumer writes for us, which import our package, in a package npm may publish:
-  // check right after init reported them (spec-answers2.md, item 4).
+  // The files a consumer writes for us, which import our package, in a package npm may publish.
   {
     rule: 'n/no-unpublished-import',
     subject: 'the files a consumer writes for us',
@@ -601,7 +581,7 @@ export class Card extends Component {
     ]),
     reportedIn: [{ path: 'src/app.ts', source: IMPORTS_OUR_PACKAGE }],
   },
-  // q79: Svelte's runes and store subscriptions are no globals; ESLint reads no .svelte file.
+  // Svelte's runes and store subscriptions are no globals; ESLint reads no .svelte file.
   {
     rule: 'no-undef',
     silentIn: [{ path: 'src/counter.svelte', source: '<script>\n  const doubled = $count * 2\n</script>\n', onlyIn: 'oxlint' }],
@@ -609,41 +589,37 @@ export class Card extends Component {
   },
 ]
 
-/** Each API no-deprecated leaves to the more specific rule, which still reports it (r2-d46). */
+/** Each API no-deprecated leaves to the more specific rule, which still reports it. */
 export const DUPLICATES_LEFT_TO_THE_SPECIFIC_RULE: readonly RuleCase[] = specificRulesOf(DEPRECATED_API_FILES).map((rule) => ({
   rule,
   silentIn: [],
   reportedIn: DEPRECATED_API_FILES.filter(({ reportedBy }) => reportedBy === rule).map(({ path, source }) => ({ path, source })),
 }))
 
-/** Rules moved to ESLint or newly shipped (D5, D8): each fires there, and stays silent beside. */
+/** Rules moved to ESLint or newly shipped: each fires there, and stays silent beside. */
 export const MOVED_OR_ADDED_CASES: readonly RuleCase[] = [
-  // r2-d41
   {
     rule: 'no-constant-condition',
     silentIn: [{ path: 'src/variable.js', source: 'export function run(ready) {\n  if (ready) {\n    return 1\n  }\n  return 0\n}\n' }],
     reportedIn: [{ path: 'src/literal.js', source: 'export function run() {\n  if (true) {\n    return 1\n  }\n  return 0\n}\n' }],
   },
-  // r2-d40
   {
     rule: 'unicorn/no-await-in-promise-methods',
     silentIn: [{ path: 'src/promise.js', source: 'export async function run(load) {\n  return Promise.all([load()])\n}\n' }],
     reportedIn: [{ path: 'src/awaited.js', source: 'export async function run(load) {\n  return Promise.all([await load()])\n}\n' }],
   },
-  // q-r6. ESLint's rule knows setTimeout only as a declared global, and these fixtures declare no
-  // runtime's globals, so the calls reach it through globalThis.
+  // ESLint's rule knows setTimeout only as a declared global, and these fixtures declare no runtime's
+  // globals, so the calls reach it through globalThis.
   {
     rule: 'no-implied-eval',
     silentIn: [{ path: 'src/callback.js', source: 'export function later(run) {\n  globalThis.setTimeout(() => run(), 1)\n}\n' }],
     reportedIn: [{ path: 'src/string.js', source: "export function later() {\n  globalThis.setTimeout('run()', 1)\n}\n" }],
   },
-  // q-r6
   {
     rule: 'consistent-return',
     silentIn: [{ path: 'src/always.js', source: 'export function pick(ready) {\n  if (ready) {\n    return 1\n  }\n  return 0\n}\n' }],
     reportedIn: [{ path: 'src/sometimes.js', source: 'export function pick(ready) {\n  if (ready) {\n    return 1\n  }\n  return\n}\n' }],
   },
-  // q-r2-class-helper-ruleset
   {
     rule: 'house/require-class-helper',
     silentIn: [{ path: 'src/helper.jsx', source: "export const Card = ({ wide }) => <div className={cn('card', wide && 'wide')} />\n" }],
@@ -658,9 +634,9 @@ function suppressedFile(path: string, line: string, suppressedName: string): Cas
   return { path, source: `export function run(items, element, use) {\n  // eslint-disable-next-line ${suppressedName}\n  ${line}\n}\n` }
 }
 
-/** The suppression rules, and the renamed rules oxlint runs, on oxlint (D7). */
+/** The suppression rules, and the renamed rules oxlint runs, on oxlint. */
 export const SUPPRESSION_AND_RENAMED_CASES: readonly RuleCase[] = [
-  // q-r1: every blanket form; a comment naming a rule is no blanket.
+  // Every blanket form; a comment naming a rule is no blanket.
   {
     rule: 'unicorn/no-abusive-eslint-disable',
     engines: ['oxlint'],
@@ -672,7 +648,7 @@ export const SUPPRESSION_AND_RENAMED_CASES: readonly RuleCase[] = [
       { path: 'src/oxlint-next-line.js', source: '// oxlint-disable-next-line\nexport const value = 1\n' },
     ],
   },
-  // my-renamed-in-eslint: beside oxlint, a suppression names oxlint's spelling; ours does not reach oxlint (a measured limit).
+  // Beside oxlint, a suppression names oxlint's spelling; ours does not reach oxlint (a measured limit).
   {
     rule: 'unicorn/no-for-each',
     engines: ['oxlint'],
@@ -699,7 +675,7 @@ export const SUPPRESSION_AND_RENAMED_CASES: readonly RuleCase[] = [
   },
 ]
 
-/** The oxlint rules ESLint stands in for without oxlint (D6): code both must report, and code both must leave. */
+/** The oxlint rules ESLint stands in for without oxlint: code both must report, and code both must leave. */
 export const STAND_IN_CASES: readonly StandInCase[] = [
   // unicorn's rule reports only where the receiver is proven a string; oxc's reports any receiver.
   {

@@ -1,8 +1,5 @@
-// Code each option only typescript-eslint's version of a twin pair takes changes the report on
-// (oxlint-refused-options.integration.test.ts): typescript-eslint's version reports it one way with
-// the option and another without, and oxlint's copy of the core rule owes the same change wherever
-// data/oxlint-refused-options.json does not list the option's key (D11: a decided setting is never
-// silently dropped). Each line that draws a finding is noted beside the fixture.
+// Code whose report changes with each option only typescript-eslint's version of a twin pair takes.
+// oxlint's copy owes the same change unless data/oxlint-refused-options.json lists the option's key.
 
 /** What a fixture's report is: the lines the rule reports, or the file's text after each engine's safe fixes. */
 export type ReportKind = 'findings' | 'fixed text'
@@ -22,7 +19,6 @@ export type ExtensionOnlyOptionFixture = {
   readonly reportOf: ReportKind
 }
 
-/** A file the fixtures' sources import from. */
 export const IMPORTED_FILE = { name: 'one.ts', source: 'export const one = 1\n' } as const
 
 export const EXTENSION_ONLY_OPTION_FIXTURES: readonly ExtensionOnlyOptionFixture[] = [

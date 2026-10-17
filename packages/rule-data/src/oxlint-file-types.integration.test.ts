@@ -25,10 +25,8 @@ import { setUpTempDir } from './__tests__/temp-dirs.ts'
 import { fileTypesOxlintRunsTheRuleIn } from './oxlint-file-types.ts'
 import { oxlintPluginOf } from './rule-id-parts.ts'
 
-// data/oxlint-file-types.json, checked against the installed oxlint: each rule it guards, its code
-// written into a file of every type, reports in exactly the file types the data says oxlint runs it
-// in and in none it says the rule's guard skips, but where the file cannot hold the code. One
-// oxlint run per file type, each rule turned on only in its own files.
+// data/oxlint-file-types.json against the installed oxlint: each guarded rule reports in exactly the
+// file types the data says, but where the file cannot hold the code. One oxlint run per file type.
 
 const OXLINT_TIMEOUT_MS = 60_000
 const RULES_CONFIG = 'rules.oxlintrc.json'
@@ -39,7 +37,6 @@ const UNGUARDED_RULE = 'no-debugger'
 
 const GUARDED_RULES: readonly string[] = oxlintFileTypes.guards.flatMap(({ rules }) => rules)
 
-/** What oxlint made of each rule's file of each type. */
 type OutcomesByRule = ReadonlyMap<string, ReadonlyMap<FileType, TriggerOutcome>>
 
 function triggerOf(rule: string): RuleTrigger {
@@ -60,7 +57,6 @@ function silentTypesOf({ silentIn }: RuleTrigger): readonly FileType[] {
   return silentIn === undefined ? [] : silentIn.types
 }
 
-/** The file types the data says oxlint runs the rule in. */
 function typesTheDataRunsTheRuleIn(rule: string): FileType[] {
   return fileTypesWrittenTheRuleRunsIn(fileTypesOxlintRunsTheRuleIn(rule))
 }
@@ -142,8 +138,7 @@ describe('data/oxlint-file-types.json', () => {
     expect(oxlintFileTypes.guards.flatMap(({ skips }) => skips.filter((extension) => !linted.includes(extension)))).toStrictEqual([])
   })
 
-  // A trigger silent where the data says oxlint runs its rule must be silent for a reason the
-  // data does not record: one it records would belong in the rule's guard.
+  // A reason the data records would belong in the rule's guard.
   it("keeps each rule's silent file types among those the data says oxlint runs it in", () => {
     expect(
       GUARDED_RULES.flatMap((rule) => silentTypesOf(triggerOf(rule)).filter((type) => !typesTheDataRunsTheRuleIn(rule).includes(type)).map((type) => `${rule}: ${type}`)),

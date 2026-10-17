@@ -11,11 +11,9 @@ type Frame = FunctionFrame & { calls: TSESTree.CallExpression[] }
 
 const RULE_NAME = 'no-create-context-in-render'
 const CREATE_CONTEXT = 'createContext'
-// Only these modules' `createContext` is React's. `node:vm` exports one too, and a Solid component
-// body runs once, so "on every render" would be false about it.
+// `node:vm` exports a createContext too, and a Solid component body runs only once.
 const REACT_MODULE = /^(preact(\/compat)?|react|use-context-selector)$/
-// Hooks that keep their first argument: `useMemo(() => createContext(null), [])` and
-// `useRef(createContext(null))` hold one context for the component's life.
+// Hooks that keep their first argument for the component's life.
 const STABLE_HOOKS: ReadonlySet<string> = new Set(['useMemo', 'useState', 'useRef'])
 
 function isRetainedByStableHook(node: FunctionNode | TSESTree.CallExpression): boolean {
@@ -25,8 +23,7 @@ function isRetainedByStableHook(node: FunctionNode | TSESTree.CallExpression): b
   return name !== null && STABLE_HOOKS.has(name)
 }
 
-// Bare `createContext(…)`, or `React.createContext(…)`. The member form is pinned to `React`:
-// `vm.createContext(sandbox)` is a real Node API.
+// The member form is pinned to `React`: `vm.createContext(sandbox)` is a real Node API.
 function createContextForm(callee: TSESTree.Expression): 'bare' | 'namespaced' | null {
   if (callee.type === AST_NODE_TYPES.Identifier) return callee.name === CREATE_CONTEXT ? 'bare' : null
   const isNamespaced =
@@ -47,15 +44,14 @@ function isReactImport(definition: TSESLint.Scope.Definition): boolean {
   )
 }
 
-// A `createContext` the file declares, or imports from anywhere but React, is someone else's.
-// One that resolves nowhere is React's own, off the UMD global.
+// A `createContext` the file declares or imports from elsewhere is someone else's; an unresolved
+// one is React's UMD global.
 function isReactCreateContextIn(scope: TSESLint.Scope.Scope): boolean {
   const variable = ASTUtils.findVariable(scope, CREATE_CONTEXT)
   return variable === null || variable.defs.every(isReactImport)
 }
 
-// React re-runs a hook, and a PascalCase function that renders JSX, on every render. A PascalCase
-// name alone also fits a factory, whose context genuinely cannot move.
+// A PascalCase name alone also fits a factory, whose context genuinely cannot move.
 function rendererNameOf(frame: Frame): string | null {
   const name = functionNameOf(frame.node)
   if (name !== null && isHookName(name)) return name
@@ -63,7 +59,7 @@ function rendererNameOf(frame: Frame): string | null {
 }
 
 // Not fixable: hoisting is safe only when the default value closes over nothing in the component.
-// Reads the callee text, so `createContext as createCtx` and `ReactModule.createContext` go unseen.
+// Reads the callee text, so `createContext as createCtx` goes unseen.
 export const noCreateContextInRender = ESLintUtils.RuleCreator.withoutDocs<[], 'inRender'>({
   meta: {
     type: 'problem',
@@ -94,8 +90,7 @@ export const noCreateContextInRender = ESLintUtils.RuleCreator.withoutDocs<[], '
         }
         return
       }
-      // Any other function is re-created and re-run with whatever encloses it, so its calls belong
-      // to that: a helper inside a component, but not the same helper at module scope.
+      // Any other function runs with whatever encloses it: a helper inside a component, not one at module scope.
       const enclosing = stack.at(-1)
       if (enclosing === undefined || isRetainedByStableHook(frame.node)) return
       enclosing.calls.push(...frame.calls)
@@ -110,7 +105,6 @@ export const noCreateContextInRender = ESLintUtils.RuleCreator.withoutDocs<[], '
       CallExpression(node) {
         if (!callsReactCreateContext(node) || isRetainedByStableHook(node)) return
         const frame = stack.at(-1)
-        // No frame is module scope, where it belongs.
         if (frame !== undefined) frame.calls.push(node)
       },
     }

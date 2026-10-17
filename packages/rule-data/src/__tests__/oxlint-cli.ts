@@ -18,7 +18,6 @@ export type OxlintJsonLabel = { readonly span: { readonly line: number } }
 /** A diagnostic in oxlint's JSON report: a rule's finding links to the rule's page, a parse error links nowhere. */
 export type OxlintJsonDiagnostic = { readonly filename: string; readonly url?: string; readonly labels: readonly OxlintJsonLabel[] }
 
-/** oxlint's JSON report: its diagnostics, and how many files it linted. */
 export type OxlintJsonReport = { readonly diagnostics: readonly OxlintJsonDiagnostic[]; readonly number_of_files: number }
 
 /** What the installed oxlint made of a run reporting as JSON: its report, or its refusal to load the config, with what it printed. */

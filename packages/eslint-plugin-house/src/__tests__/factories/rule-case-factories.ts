@@ -20,9 +20,7 @@ type CaseBuilders = {
   ) => InvalidTestCase<MessageIds, Options>
 }
 
-/**
- * Code the rule must stay silent on. Without a `filename` the tester lints it as `react.tsx`.
- */
+/** Code the rule must stay silent on, linted as `react.tsx` unless `filename` says otherwise. */
 export function buildValidCase<Options extends readonly unknown[]>(
   name: string,
   code: string,
@@ -32,9 +30,8 @@ export function buildValidCase<Options extends readonly unknown[]>(
 }
 
 /**
- * Code the rule must report. `errors` has no default: every invalid case states each report it
- * expects, by messageId and line. A fixable rule's case also states its `output`, one entry per fix
- * pass; the tester fails a fix nobody declared.
+ * Code the rule must report. Every report, and a fixable rule's `output` for each fix pass, is
+ * stated: the tester fails a fix nobody declared.
  */
 export function buildInvalidCase<MessageIds extends string, Options extends readonly unknown[]>(
   name: string,
@@ -44,10 +41,7 @@ export function buildInvalidCase<MessageIds extends string, Options extends read
   return { name, code, ...fields }
 }
 
-/**
- * buildValidCase and buildInvalidCase for a test file whose cases all lint as one `filename`. A
- * case's own `filename` still wins.
- */
+/** The case builders for a file whose cases all lint as one `filename`; a case's own still wins. */
 export function caseBuildersFor(filename: string): CaseBuilders {
   return {
     validCase: (name, code, fields = {}) => buildValidCase(name, code, { filename, ...fields }),

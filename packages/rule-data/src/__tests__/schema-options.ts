@@ -1,8 +1,6 @@
 import { isObject } from '../is-object.ts'
 
-// What a rule's JSON schema lets its options be, read for the checks of data/oxlint-refused-options.json
-// against the installed oxlint and typescript-eslint (oxlint-refused-options.integration.test.ts):
-// each list of options one value at a time, and the options one schema takes that another does not.
+// What a rule's JSON schema lets its options be, for oxlint-refused-options.integration.test.ts.
 
 /** A list of options a schema takes, and the keys its objects set: one value varied, each position before it at its first value. */
 export type OptionList = { readonly options: readonly unknown[]; readonly keys: readonly string[] }
@@ -20,10 +18,8 @@ const A_NUMBER = 1
 const A_STRING = 'x'
 
 /**
- * Each list of options the schema takes, varying one value at a time: each enum value, true and
- * false, a number, a string, an empty array and an array of each item value, an empty object and
- * an object of each property value, at any depth; each position after the values of the positions
- * before it at their first. A schema given as an array lists its positions, as ESLint reads it.
+ * Each list of options the schema takes, varying one value at a time at any depth, every earlier
+ * position at its first value. A schema given as an array lists its positions, as ESLint reads it.
  */
 export function optionListsTheSchemaTakes(schema: unknown): OptionList[] {
   const root = asTheRuleReadsIt(schema)
@@ -126,7 +122,6 @@ function withoutItems(path: string): string {
   return path.endsWith(ITEMS_PATH) ? path.slice(0, -ITEMS_PATH.length) : path
 }
 
-/** The keys of every object of the list. */
 function keysSetBy(options: readonly unknown[]): string[] {
   return options.flatMap((option) => (isObject(option) && !Array.isArray(option) ? Object.keys(option) : []))
 }

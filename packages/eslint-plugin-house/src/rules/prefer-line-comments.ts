@@ -35,7 +35,6 @@ function lineCommentBodyOf(comment: TSESTree.Comment): string[] {
     .filter((line, index, lines) => line !== '' || (index > 0 && index < lines.length - 1))
 }
 
-// The `//` lines that replace the block, indented as it was.
 function lineCommentsReplacing(text: string, comment: TSESTree.Comment): Replacement {
   const [start, end] = comment.range
   const lineStart = lineStartOf(text, start)

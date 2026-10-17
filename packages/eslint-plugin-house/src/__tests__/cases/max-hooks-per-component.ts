@@ -28,15 +28,14 @@ export function Panel() {
 }
 `
 
-// An option case that gives both keys pins the one not under test: the default limit, or an empty
-// ignore list, which counts the same as the default for the seven-hook component: it calls neither
-// useCallback nor useMemo.
+// Pins the key not under test. The seven-hook fixture calls no memo hook, so an empty ignore
+// list counts as the default.
 export const DEFAULT_HOOK_LIMIT = 7
 export const LIMIT_BELOW_SEVEN = 6
 
 export const hookCalledFourTimesInNineHookComponent = 'useState'
 
-// Nine hooks, but it renders no JSX itself: a provider handing back its children.
+// Renders no JSX itself.
 export const pascalCaseProviderWithNineHooks = `import { useContext, useEffect, useId, useRef, useState } from 'react'
 const Ctx = {} as never
 export function SessionProvider({ children }: { readonly children: unknown }) {
@@ -55,7 +54,6 @@ export function SessionProvider({ children }: { readonly children: unknown }) {
 }
 `
 
-// Nine hooks and JSX, in a function whose name starts lowercase: a render helper, not a component.
 export const camelCaseRenderHelperWithNineHooks = `import { useContext, useEffect, useId, useRef, useState } from 'react'
 const Ctx = {} as never
 export function renderPanel() {

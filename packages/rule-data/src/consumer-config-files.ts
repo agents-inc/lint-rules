@@ -1,7 +1,6 @@
 /**
- * The files a consumer writes for this package. The rules those files break ship with these names,
- * under any directory, among their ignores in data/rules.json. Imports nothing, so lint-rules can
- * take the names without loading the catalog.
+ * The files a consumer writes for this package, among the ignores of the rules they break. Imports
+ * nothing, so lint-rules can take the names without loading the catalog.
  */
 export const consumerConfigFiles = {
   lintRules: 'agents-inc.lint.mts',

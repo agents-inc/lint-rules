@@ -80,9 +80,8 @@ function isFocusableElement(element: TSESTree.JSXOpeningElement): boolean {
   return tag === 'input' && !hasLiteralHiddenType(element)
 }
 
-// The JSX an expression renders as children, without descending into it. Arrow bodies count
-// (`items.map(i => <button />)`); a JSX element's own attributes do not: `<Modal footer={<button />}>`
-// may render that button anywhere.
+// The JSX an expression renders as children, without descending into it. A JSX attribute's value
+// (`<Modal footer={<button />}>`) may render anywhere, so it does not count.
 function jsxRenderedBy(node: TSESTree.Node): RenderedJsx[] {
   if (node.type === AST_NODE_TYPES.JSXElement || node.type === AST_NODE_TYPES.JSXFragment) return [node]
   return childNodesOf(node).flatMap(jsxRenderedBy)
@@ -94,14 +93,13 @@ function renderedChildrenOf(child: TSESTree.JSXChild): RenderedJsx[] {
   return []
 }
 
-// An inert or always-hidden ancestor already covers its subtree, and is where the fix belongs. A
-// dynamic `aria-hidden={busy}` hides only sometimes, so it covers nothing.
+// An inert or always-hidden ancestor already covers its subtree; a dynamic `aria-hidden={busy}` does not.
 function coversItsSubtree(node: TSESTree.Node): boolean {
   return node.type === AST_NODE_TYPES.JSXElement && (isInert(node.openingElement) || isAriaHidden(node.openingElement))
 }
 
-// Descendants only: the focusable control is usually a sibling of a decorative aria-hidden wrapper,
-// and that is correct code. An inert element prunes its subtree, because inert is inherited.
+// Descendants only: a focusable sibling of a decorative aria-hidden wrapper is correct code. Inert
+// is inherited, so an inert element prunes its subtree.
 function firstFocusableDescendant(element: RenderedJsx): TSESTree.JSXOpeningElement | null {
   for (const candidate of element.children.flatMap(renderedChildrenOf)) {
     if (candidate.type === AST_NODE_TYPES.JSXElement) {

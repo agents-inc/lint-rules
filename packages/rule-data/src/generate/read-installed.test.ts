@@ -8,11 +8,9 @@ import {
 import { eslintPlugins } from '../eslint-plugins.ts'
 import { readEslintRules } from './read-installed.ts'
 
-// A plugin may bind one rule module to two names: @eslint-react 5.24.10 registers 53 of its rules
-// as both `x-no-missing-key` and `no-missing-key`. Both names are rule IDs, yet one rule, so the
-// generator records each name's others, and a team running one beside ours is the same rule twice
-// (decisions.md, round 6, applying questions.md #42). Factory modules carry no meta: neither
-// deprecated nor typed.
+// A plugin may bind one rule module to two names (@eslint-react's `x-no-missing-key` and
+// `no-missing-key`): both are rule IDs, yet one rule. Factory modules carry no meta: neither deprecated
+// nor typed.
 
 const NO_CORE_RULES = buildCoreRulesBindingModules([])
 

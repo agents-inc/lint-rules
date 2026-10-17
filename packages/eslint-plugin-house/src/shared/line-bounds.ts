@@ -1,5 +1,4 @@
-// Where the line holding `index` starts. `index` is where a comment or token starts, never a line
-// break: a break at `index` would be read as the start of the line after it.
+// `index` is never a line break: a break at `index` would be read as the start of the next line.
 export function lineStartOf(text: string, index: number): number {
   return text.lastIndexOf('\n', index) + 1
 }

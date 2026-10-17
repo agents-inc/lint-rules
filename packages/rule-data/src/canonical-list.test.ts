@@ -149,7 +149,6 @@ describe('the canonical list, data/rules.json', () => {
       expect(typeAwareOxlintRules).toStrictEqual([])
     })
 
-    // Owner, 2026-10-10: a rule is turned on by its ruleset, or always, whatever rulesets are listed.
     it('has no rule with both or neither of a ruleset and alwaysOn: true, so each is turned on exactly one way', () => {
       const misplaced = canonicalRules
         .filter((rule) => {
@@ -174,13 +173,12 @@ describe('the canonical list, data/rules.json', () => {
       expect(unassigned).toStrictEqual([])
     })
 
-    // Owner, 2026-10-14: where one rule's findings are a subset of another's in a different ruleset,
-    // the narrow one is left out wherever the broad one is on (spec-data.md, 2.6).
+    // The narrow rule is left out wherever its cover in another ruleset is on.
     it('has no "covered by" that does not hold: each rule and its cover shipped, in rulesets of their own, the cover left out nowhere', () => {
       expect(coveredByOffenders(parsedCanonicalRules)).toStrictEqual([])
     })
 
-    // Owner, 2026-10-14: an untyped rule is off where its typed partner runs with type information.
+    // An untyped rule is off where its typed partner runs with type information.
     it('has no "split by types" that does not hold: an untyped and a typed rule, both shipped, run by ESLint on every file, each typed rule named once', () => {
       expect(splitByTypesOffenders(parsedCanonicalRules)).toStrictEqual([])
     })
@@ -206,8 +204,7 @@ describe('the canonical list, data/rules.json', () => {
     })
   })
 
-  // In the editor merges our runtimes' globals go only where a rule of ours that reads them runs
-  // (owner 2026-10-14, questions.md #68; spec-core.md, 2.6).
+  // The editor merges give our runtimes' globals only where a rule of ours that reads them runs.
   describe("the rules our runtimes' globals serve", () => {
     it('are marked on no-undef alone', () => {
       const marked = Object.fromEntries(
@@ -218,8 +215,7 @@ describe('the canonical list, data/rules.json', () => {
     })
   })
 
-  // Where oxlint's version of a rule is measurably worse than ESLint's, ESLint runs it, with the
-  // reason in rules.json (decisions.md, "Owner 2026-10-14"; spec-merge-model.md, 3.3).
+  // Where oxlint's version is measurably worse, ESLint runs the rule, with the reason in rules.json.
   describe('the rules routed to ESLint for a measured reason', () => {
     it("are exactly those oxlint's version is measurably worse at, each giving its reason", () => {
       const withAReason = canonicalRules.filter((rule) => typeof eslintBecauseOf(rule) === 'string' && eslintBecauseOf(rule) !== '').map((rule) => rule.id)
@@ -250,8 +246,7 @@ describe('the canonical list, data/rules.json', () => {
   })
 
   describe('pinned entries', () => {
-    // oxlint's react plugin runs it under react/, but refuses an option ESLint's version takes, so
-    // ESLint runs it (spec-merge-model.md, 3.2).
+    // oxlint runs it under react/, but refuses an option ESLint's version takes.
     it('keys the hooks rule by its ESLint ID, ESLint running it', () => {
       const { engine, oxlintName, ruleset } = canonicalEntryFor('react-hooks/rules-of-hooks')
 
@@ -266,8 +261,8 @@ describe('the canonical list, data/rules.json', () => {
       expect(canonicalRules.map((rule) => rule.id)).not.toContain('react/rules-of-hooks')
     })
 
-    // oxlint knows both unicorn rules only by their old names. Owner, 2026-10-14: oxlint runs them
-    // where it is on, and beside oxlint a suppression comment names oxlint's spelling (spec-data.md, D7).
+    // oxlint knows both unicorn rules only by their old names; beside oxlint a suppression comment names
+    // oxlint's spelling.
     it("keys the dataset rule by unicorn's current name and runs it in oxlint, under the old name oxlint has", () => {
       const { engine, oxlintName, ruleset } = canonicalEntryFor('unicorn/dom-node-dataset')
 
@@ -292,8 +287,7 @@ describe('the canonical list, data/rules.json', () => {
       expect(canonicalRules.map((rule) => rule.id)).not.toContain('unicorn/prefer-dom-node-dataset')
     })
 
-    // Hoisting is the house style (owner, 2026-10-10), so neither engine's spelling of the rule that
-    // forbids it ships, while the core rule beside it in correctness still does.
+    // Hoisting is the house style, so neither spelling of the rule forbidding it ships.
     it('does not ship no-use-before-define under either spelling, and still ships no-dupe-class-members', () => {
       const shippedIds = new Set(canonicalRules.map((rule) => rule.id))
 
@@ -321,8 +315,8 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // Folders named in an option are one project's layout: with `scripts/**` listed, every module
-    // under a consumer's scripts/ was reported as needing a shebang, and lint:fix added one.
+    // Folders named in an option are one project's layout: `scripts/**` made lint:fix add a shebang to
+    // every module under a consumer's scripts/.
     it('ships n/hashbang naming no executable folders, keeping only ignoreUnpublished, while its sibling keeps its option', () => {
       expect({
         'n/hashbang': canonicalEntryFor('n/hashbang').options,
@@ -333,8 +327,7 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // Owner, 2026-10-10: classic loops are banned and for…of is allowed, which
-    // functional/no-loop-statements, banning both, could not say.
+    // Classic loops are banned and for…of is allowed, which functional/no-loop-statements could not say.
     it('ships house/no-classic-loops in declarative, run by ESLint on every file with no options', () => {
       const { engine, oxlintName, ruleset, options, typed, files, ignores } = canonicalEntryFor('house/no-classic-loops')
 
@@ -349,8 +342,7 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // Owner, 2026-10-10: each dropped rule is covered by the shipped rule paired with it here, or
-    // conflicted with it (unicorn/prefer-type-literal-last against sort-union-types).
+    // Each dropped rule is covered by the shipped rule paired with it here, or conflicted with it.
     it('ships none of the dropped rules, and ships each rule that replaces one', () => {
       expect(
         Object.fromEntries(
@@ -376,8 +368,6 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // Owner, 2026-10-14 (round 2 of the duplicate cards): each dropped rule's findings are reported by
-    // the shipped rule beside it, or it conflicted with that rule.
     it('ships none of the round 2 drops, and ships each rule a drop leaves reporting', () => {
       const shippedIds = new Set(canonicalRules.map(({ id }) => id))
 
@@ -387,9 +377,8 @@ describe('the canonical list, data/rules.json', () => {
       }).toStrictEqual({ stillShipped: [], reportingButUnshipped: [] })
     })
 
-    // Object types last, then null and undefined: `{ a: 1 } | null` stays as written. Mapped types
-    // match perfectionist's object selector, and void its nullish one, so a custom group keeps each
-    // with the other types. lint-rules' sort-union-types.integration.test.ts runs the fix.
+    // Mapped types match perfectionist's object selector and void its nullish one, so a custom group keeps
+    // them with the other types. lint-rules' sort-union-types.integration.test.ts runs the fix.
     it('ships perfectionist/sort-union-types sorting object types last and null and undefined after them', () => {
       expect(canonicalEntryFor('perfectionist/sort-union-types').options).toStrictEqual([
         {
@@ -425,8 +414,7 @@ describe('the canonical list, data/rules.json', () => {
       ])
     })
 
-    // Owner, 2026-10-10: suppression comments are banned, and removing rulesets never removes the
-    // bans; a consumer can still turn either off by ID in rules.
+    // Removing rulesets never removes the bans; a consumer can still turn either off by ID in rules.
     it('ships exactly the two suppression bans always on, in no ruleset', () => {
       expect(canonicalRules.filter((rule) => rule.alwaysOn === true).map((rule) => rule.id)).toStrictEqual([
         '@typescript-eslint/ban-ts-comment',
@@ -450,8 +438,7 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // A description no longer buys @ts-expect-error a pass: all three suppress type errors outright.
-    // oxlint skips it in a JS file, so ESLint runs it (spec-merge-model.md, 3.2).
+    // oxlint skips it in a JS file, so ESLint runs it.
     it('ships @typescript-eslint/ban-ts-comment always on, run by ESLint, banning @ts-expect-error, @ts-ignore and @ts-nocheck outright', () => {
       const { engine, oxlintName, ruleset, alwaysOn, options, files, ignores } = canonicalEntryFor(
         '@typescript-eslint/ban-ts-comment',
@@ -478,9 +465,8 @@ describe('the canonical list, data/rules.json', () => {
       ])
     })
 
-    // Owner, 2026-10-14 (q-r1): unicorn's rule moves to oxlint, which reports a blanket comment of
-    // either engine's (measured, oxlint 1.87); where suppressions are banned, house/no-suppressions
-    // reports every comment.
+    // oxlint reports a blanket comment of either engine's (measured, oxlint 1.87); where suppressions are
+    // banned, house/no-suppressions reports every comment.
     it("runs unicorn/no-abusive-eslint-disable in oxlint under its own name, only where suppressions are allowed", () => {
       const { engine, oxlintName, ruleset, whenSuppressions } = canonicalEntryFor('unicorn/no-abusive-eslint-disable')
 
@@ -492,8 +478,7 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // Owner, 2026-10-14 (r2-d22): tied to allowSuppressions; where suppressions are banned,
-    // house/no-suppressions reports the comment already.
+    // Where suppressions are banned, house/no-suppressions reports the comment already.
     it('runs react-hooks/rule-suppression in oxlint only where suppressions are allowed', () => {
       const { engine, oxlintName, ruleset, whenSuppressions } = canonicalEntryFor('react-hooks/rule-suppression')
 
@@ -505,7 +490,7 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // Owner, 2026-10-10: a loop whose body can run only once is a bug, or `const [first] = items` in disguise.
+    // A loop whose body can run only once is a bug, or `const [first] = items` in disguise.
     it('ships no-unreachable-loop in correctness, run by oxlint at its defaults on every file', () => {
       const { engine, oxlintName, ruleset, options, typed, files, ignores } = canonicalEntryFor('no-unreachable-loop')
 
@@ -530,8 +515,6 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // Owner, 2026-10-14 (q-r2-class-helper-ruleset): a libs ruleset of its own, for teams composing
-    // classes through a helper.
     it('ships house/require-class-helper in class-names, run by ESLint untyped on every file at its defaults', () => {
       const { engine, oxlintName, ruleset, options, typed, files, ignores } = canonicalEntryFor('house/require-class-helper')
 
@@ -546,8 +529,7 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // Orchestrator's call, 2026-10-15 (decisions.md, carded): import-x/first places imports above other
-    // code and sorts nothing, so it moved from the opt-in import-order to modules, which init lists.
+    // import-x/first places imports and sorts nothing, so it is in modules, not the opt-in import-order.
     it('ships import-x/first in modules, run by oxlint as import/first at its defaults', () => {
       const { engine, oxlintName, ruleset, options, typed } = canonicalEntryFor('import-x/first')
 
@@ -560,13 +542,11 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // Owner, 2026-10-14 (q70): off for Node code, read as moving it to the browser runtime (spec-data.md, 7.7).
     it('ships no-implicit-globals in the browser runtime', () => {
       expect(shippedRulesetOf('no-implicit-globals')).toBe('browser')
     })
 
-    // Owner, 2026-10-14 (q-r6): the core versions reach JS files and TS files outside every tsconfig,
-    // where the typed versions cannot run.
+    // The core versions reach JS files and TS files outside every tsconfig, where the typed ones cannot run.
     it('ships consistent-return in correctness and no-implied-eval in security, each run by ESLint untyped at its defaults', () => {
       const entries = Object.fromEntries(
         ['consistent-return', 'no-implied-eval'].map((id) => {
@@ -584,8 +564,7 @@ describe('the canonical list, data/rules.json', () => {
 })
 
 describe('the ruleset definitions, data/ruleset-definitions.json', () => {
-  // Owner, 2026-10-15: the two rulesets that sort code are opt-in; `init` reads `optIn`, and names
-  // each ruleset whose `sortsCode` is true in its formatter warning.
+  // `init` reads `optIn`, and names each ruleset whose `sortsCode` is true in its formatter warning.
   it("defines the owner's rulesets, in the owner's order, each in its list, domain and env, opt-in and sorting code exactly where it sorts code", () => {
     expect(rulesetDefinitions).toStrictEqual([
       ...QUALITY_RULESETS.map((name) => ({ name, list: 'quality', domain: null, env: null, optIn: isSortingRuleset(name), sortsCode: isSortingRuleset(name) })),
@@ -596,8 +575,7 @@ describe('the ruleset definitions, data/ruleset-definitions.json', () => {
     ])
   })
 
-  // They are opt-in because they sort, so a rule that sorts nothing would leave every new repo
-  // with it: import-x/first, which only places imports above other code, moved to modules.
+  // A rule that sorts nothing would leave the opt-in, and so every new repo, without it.
   it('puts in the rulesets that sort code exactly the rules that reorder code', () => {
     const rulesByRuleset = Object.fromEntries(
       SORTING_RULESETS.map((ruleset) => [ruleset, canonicalRules.filter((rule) => rule.ruleset === ruleset).map(({ id }) => id)]),

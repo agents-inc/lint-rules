@@ -30,7 +30,6 @@ const WORD_START_AFTER_LOWERCASE = /(?<=[a-z\d])(?=[A-Z])/g
 const WORD_START_AFTER_ACRONYM = /(?<=[A-Z])(?=[A-Z][a-z])/g
 const WORD_SEPARATOR = '-'
 const BARREL_STEM = 'index'
-// What a file named for a hook looks like under each case, and the name to suggest for one.
 const FILENAME_CONVENTIONS: Record<FilenameCase, FilenameConvention> = {
   camelCase: { isHookFileStem: isHookName, hookFileStemOf: (hookName) => hookName },
   'kebab-case': { isHookFileStem: (stem) => KEBAB_CASE_HOOK_NAME.test(stem), hookFileStemOf: kebabCaseOf },
@@ -104,7 +103,7 @@ function defaultExportName(declaration: TSESTree.ExportDefaultDeclaration['decla
   return declaration.type === AST_NODE_TYPES.Identifier ? declaration.name : null
 }
 
-// The longest hook name: the composed hook the others feed. Only a hint for the message.
+// The composed hook the others feed. Only a hint for the message.
 function longestName(names: readonly string[]): string {
   return names.reduce((longest, name) => (name.length > longest.length ? name : longest))
 }
@@ -148,7 +147,6 @@ export const hookFileNaming = ESLintUtils.RuleCreator.withoutDocs<Options, 'rena
       'Program:exit'(node) {
         const hooks = exportedValues.filter(isHookName)
         if (hooks.length === 0) return
-        // A module that also exports a component is a component module.
         if (exportedValues.some(isComponentName)) return
         context.report({
           node,

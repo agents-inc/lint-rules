@@ -6,10 +6,8 @@ import { ESLINT_STAND_INS } from './__tests__/cases/rule-relations.ts'
 import { standInOffenders } from './__tests__/stand-in-offenders.ts'
 import { catalog } from './catalog.ts'
 
-// Without oxlint, ESLint takes over each oxlint-run rule it has a version of. For a shipped oxlint
-// rule ESLint has no version of, the owner chose an ESLint rule that reports the same code (#55,
-// r2-d49-51): ESLint states that stand-in in its place. changed-settings.integration.test.ts runs each
-// pair on the same code.
+// For a shipped oxlint rule ESLint has no version of, ESLint states a stand-in that reports the same
+// code; changed-settings.integration.test.ts runs each pair on that code.
 
 describe('the ESLint stand-ins, data/eslint-stand-ins.json, read through the catalog', () => {
   it('stand in for exactly the oxlint rules the owner chose one for, each with the reason that starts with its card or questions.md number', () => {

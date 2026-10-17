@@ -6,8 +6,7 @@ import { ROUND_2_DROPS, RULES_NEEDING_NEWER_NODE } from './__tests__/cases/round
 import { catalog } from './catalog.ts'
 import { pluginPrefixOf } from './rule-id-parts.ts'
 
-// Owner, 2026-10-10: a durable list of the rules under consideration. A rule is in one state at a
-// time: shipped (data/rules.json), considered (here), or neither.
+// A rule is in one state at a time: shipped (data/rules.json), considered (here), or neither.
 
 const CANDIDATE_STATUSES: ReadonlySet<string> = new Set(['considering', 'recommended', 'parked', 'needs-owner'])
 const RECORDED_DATE = /^\d{4}-\d{2}-\d{2}$/u
@@ -79,7 +78,7 @@ describe('the considering list, data/rule-candidates.json', () => {
   })
 
   describe('pinned entries', () => {
-    // Owner, 2026-10-10: too early. A value a design needs stays custom until a token exists for it.
+    // Too early: a value a design needs stays custom until a token exists for it.
     it('considers shadcn/no-arbitrary-values, whose plugin we do not install, so it is no RuleId', () => {
       expect({
         status: candidateFor('shadcn/no-arbitrary-values').status,
@@ -87,15 +86,14 @@ describe('the considering list, data/rule-candidates.json', () => {
       }).toStrictEqual({ status: 'considering', isRuleId: false })
     })
 
-    // Owner, 2026-10-11 (third sweep): shipped off until a category for the newest language features,
-    // enabled by Node version, exists.
+    // Shipped off until a category for the newest language features, enabled by Node version, exists.
     it('parks each modern-js rule whose fix writes an API Node 22 lacks', () => {
       expect(candidates.filter(({ id }) => RULES_NEEDING_NEWER_NODE.includes(id)).map(({ id, status }) => [id, status])).toStrictEqual(
         RULES_NEEDING_NEWER_NODE.map((id) => [id, 'parked']),
       )
     })
 
-    // Owner, 2026-10-14: a rule dropped as a duplicate or a conflict is in no list.
+    // A rule dropped as a duplicate or a conflict is in no list.
     it('considers none of the round 2 drops', () => {
       const dropped = new Set(ROUND_2_DROPS.flatMap(({ dropped: ids }) => ids))
 

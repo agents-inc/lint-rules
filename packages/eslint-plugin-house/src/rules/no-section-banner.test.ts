@@ -132,8 +132,7 @@ houseRuleTester.run('no-section-banner', housePlugin.rules['no-section-banner'],
         output: declarationsWithoutComment,
       },
     ),
-    // The banner's line break becomes the deletion's: the blanks on both sides of the comment go,
-    // and the code after it starts a line indented like the line the comment started on.
+    // The blanks on both sides go, and the code after starts a line indented like the comment's.
     invalidCase(
       'keeps the two statements on separate lines when deleting a block banner spanning lines between them',
       multiLineBlockBannerBetweenStatements,

@@ -35,7 +35,6 @@ export type RoutedShippedRule = TurnedOnBy &
     readonly readsRuntimeGlobals?: true
   }
 
-/** A route as the generated routing writes it. */
 export type RoutingEntry = Omit<RuleRoute, 'shipped'> & { shipped: RoutedShippedRule | null }
 
 /** One entry of `data/rules.json`: a rule we ship on, in its ruleset or always, on its engine. */
@@ -51,18 +50,13 @@ export type CanonicalRule = {
    */
   whenSuppressions?: BySuppressionMode<CanonicalSuppressionModeSetting>
   engine: Engine
-  /**
-   * Why ESLint runs a rule oxlint has an untyped version of: where oxlint's version is measurably
-   * worse, the reason and its measurement (decisions.md, "Owner 2026-10-14").
-   */
+  /** Why ESLint runs a rule oxlint has an untyped version of: the reason oxlint's is worse, and its measurement. */
   eslintBecause?: string
   /** oxlint's name for the rule, present exactly when oxlint runs it. */
   oxlintName?: string
   options: readonly unknown[]
   typed: boolean
-  /** Only these files, when the rule is not for every file. */
   files?: readonly string[]
-  /** Never these files. */
   ignores?: readonly string[]
   /**
    * The shipped rule in another ruleset whose findings include this one's: this rule is left out

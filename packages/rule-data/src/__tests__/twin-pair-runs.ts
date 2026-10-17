@@ -100,7 +100,6 @@ export function oxlintReportOn(projectDir: string, pair: TwinPairRoutedToOxlint,
   return { outcome: 'reported', report: linesOf(diagnosticLinesIn(run.report)) }
 }
 
-/** The line of each diagnostic in oxlint's JSON report. */
 function diagnosticLinesIn({ diagnostics }: OxlintJsonReport): number[] {
   return diagnostics.flatMap(({ labels: [firstLabel] }) => (firstLabel === undefined ? [] : [firstLabel.span.line]))
 }

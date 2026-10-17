@@ -15,12 +15,10 @@ type ParentLink = { child: TSESTree.Node; parent: TSESTree.Node }
 
 const RULE_NAME = 'no-unstable-list-keys'
 
-// Functions that mint a fresh id on every call, compared lowercased: the same generator is spelled
-// randomUUID, uuidv4 and ObjectId across packages. Math.random() and Date.now() are left to
-// sonarjs/no-uniq-key, so one key is not reported twice.
+// Compared lowercased: one generator is spelled randomUUID, uuidv4 and ObjectId across packages.
+// Math.random() and Date.now() are left to sonarjs/no-uniq-key, so a key is not reported twice.
 const ID_MINTERS: readonly string[] = ['randomuuid', 'uuid', 'uuidv4', 'nanoid', 'cuid', 'objectid']
-// Objects that host a generator. A member call mints only on one of these: `node.uuid()` reads back
-// an id the node already carries.
+// A member call mints only on one of these: `node.uuid()` reads back an id the node already carries.
 const MINTER_HOSTS: ReadonlySet<string> = new Set(['crypto', 'uuid', 'nanoid', 'cuid', 'bson', 'types'])
 const UUID_HOST = 'uuid'
 // uuid's v3 and v5 hash their input, so the same row gets the same id: a stable key.
@@ -32,15 +30,13 @@ function isFunctionBoundary(node: TSESTree.Node): boolean {
   return isFunctionNode(node) || node.type === AST_NODE_TYPES.TSEmptyBodyFunctionExpression
 }
 
-// Each ancestor with the node it was reached from, nearest first. Stops at the Program, whose
-// `parent` is null at runtime although its type says undefined.
+// Nearest first. Stops at the Program, whose `parent` is null at runtime although typed undefined.
 function parentLinksOf(node: TSESTree.Node): ParentLink[] {
   if (node.type === AST_NODE_TYPES.Program) return []
   return [{ child: node, parent: node.parent }, ...parentLinksOf(node.parent)]
 }
 
-// The `key` attribute the call sits in. A function boundary ends the search: `key={() => uuid()}`
-// mints nothing during reconciliation.
+// A function boundary ends the search: `key={() => uuid()}` mints nothing during reconciliation.
 function keyAttributeAround(node: TSESTree.Node): TSESTree.JSXAttribute | null {
   for (const { child, parent } of parentLinksOf(node)) {
     if (isFunctionBoundary(parent)) return null
@@ -73,7 +69,6 @@ function isHostedMinter(host: string, method: string, minterNames: ReadonlySet<s
   return minterNames.has(methodName) || (hostName === UUID_HOST && UUID_FACTORIES.has(methodName))
 }
 
-// The generator a callee names, as written so the message can quote it, or null.
 function minterNamedBy(callee: TSESTree.Expression, minterNames: ReadonlySet<string>): string | null {
   if (callee.type === AST_NODE_TYPES.Identifier) return minterNames.has(callee.name.toLowerCase()) ? callee.name : null
   if (callee.type !== AST_NODE_TYPES.MemberExpression || callee.property.type !== AST_NODE_TYPES.Identifier) return null

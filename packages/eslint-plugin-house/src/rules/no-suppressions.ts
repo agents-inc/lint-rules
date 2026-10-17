@@ -17,8 +17,8 @@ const SUPPRESSION_LABELS: ReadonlySet<string> = new Set([
 const RULE_CONFIG_LABEL = 'eslint'
 const WORD_END = /\s|$/u
 
-// The engines read a directive's label as the comment's first word, so a ` -- reason` after it is
-// irrelevant, and prose that only names a directive (`// eslint-disabled until…`) is not one.
+// The engines read a directive's label as the comment's first word, so a ` -- reason` is irrelevant
+// and prose naming a directive (`// eslint-disabled until…`) is not one.
 function labelOf(comment: TSESTree.Comment): string {
   const text = comment.value.trimStart()
   return text.slice(0, text.search(WORD_END))

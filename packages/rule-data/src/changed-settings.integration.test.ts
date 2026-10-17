@@ -30,16 +30,13 @@ import {
 import { setUpTempDir } from './__tests__/temp-dirs.ts'
 import { type Engine, type RuleRoute, catalog, routeOf } from './catalog.ts'
 
-// The owner's answers of 2026-10-14 changed these rules' options, files, engines and rulesets
-// (docs/work/spec-data.md, D3 and D5 to D8). Each rule runs here as it ships, its settings read from
-// the catalog, through the real engines: silent where the change allows the code, still reporting
-// beside it. A rule oxlint runs is run in ESLint too, which runs it without oxlint.
+// Each changed rule runs as it ships, through the real engines: silent where the change allows the code,
+// still reporting beside it. A rule oxlint runs is run in ESLint too, which runs it without oxlint.
 
 const ENGINES_TIMEOUT_MS = 120_000
 const TYPES_OF_NODE = '@types/node'
 const VITEST = 'vitest'
 
-/** Each engine's outcome on each file it read. */
 type OutcomesByEngine = Readonly<Record<string, Readonly<Record<string, FileOutcome>>>>
 
 const requireFromHere = createRequire(import.meta.url)
@@ -139,8 +136,7 @@ describe('the rules whose settings, engine or ruleset the owner changed on 2026-
     )
   })
 
-  // @typescript-eslint/no-deprecated no longer reports a legacy API a more specific rule reports
-  // (r2-d46), so the specific rule is the one report left.
+  // no-deprecated leaves a legacy API to a more specific rule, so that rule's is the one report left.
   describe('a legacy API no-deprecated leaves to a more specific rule', () => {
     it.each(DUPLICATES_LEFT_TO_THE_SPECIFIC_RULE.map((ruleCase, index) => ({ ...ruleCase, folder: `duplicates-${String(index)}` })))(
       '$rule still reports each one',
@@ -177,8 +173,8 @@ describe('the rules whose settings, engine or ruleset the owner changed on 2026-
     )
   })
 
-  // Without oxlint, ESLint states a stand-in for each of these (#55, r2-d49-51): it must report the
-  // code oxlint's rule reports, and leave the code oxlint's rule leaves.
+  // Without oxlint, ESLint states a stand-in for each of these: it must report, and leave, the code
+  // oxlint's rule does.
   describe('an oxlint rule ESLint has no version of, and its ESLint stand-in', () => {
     async function standInOutcomesOf(folder: string, { oxlintRule, silentIn, reportedIn }: StandInCase): Promise<{ readonly actual: OutcomesByEngine; readonly expected: OutcomesByEngine }> {
       const route = routeOf(oxlintRule, catalog)

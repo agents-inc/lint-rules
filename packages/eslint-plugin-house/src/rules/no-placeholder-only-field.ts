@@ -22,8 +22,8 @@ function tagNameOf(name: TSESTree.JSXTagNameExpression): string | null {
   return name.type === AST_NODE_TYPES.JSXIdentifier ? name.name : null
 }
 
-// `<label>Email <input placeholder="…" /></label>` is labelled implicitly. Any wrapper whose name ends
-// in "label" (<Label>, <FormLabel>, <Form.Label>) is taken at its word.
+// A field inside a `<label>` is labelled implicitly, and any wrapper whose name ends in "label" is
+// taken at its word.
 function isLabelElement(node: TSESTree.Node): boolean {
   if (node.type !== AST_NODE_TYPES.JSXElement) return false
   const tagName = tagNameOf(node.openingElement.name)

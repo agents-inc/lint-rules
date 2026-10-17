@@ -24,8 +24,7 @@ import { housePlugin } from '../index.ts'
 
 const { invalidCase, validCase } = caseBuildersFor('no-classic-loops.ts')
 
-// No invalid case declares an `output` or `suggestions`: the tester then fails any fix or
-// suggestion the rule offers, which is how "no autofix" is pinned.
+// No invalid case declares `output` or `suggestions`, so the tester fails any fix the rule offers.
 houseRuleTester.run('no-classic-loops', housePlugin.rules['no-classic-loops'], {
   valid: [
     validCase('stays silent on a for…of loop', forOfLoop),

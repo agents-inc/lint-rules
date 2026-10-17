@@ -5,8 +5,8 @@ import { unqualifiedTagOf } from '../shared/jsx-elements.ts'
 
 type BoundaryTag = 'a' | 'button' | 'form'
 
-// What each boundary may not contain. The same-tag pairs are the ones the HTML parser re-emits as
-// siblings; the form controls inside a button stay put but cannot be operated.
+// The same-tag pairs are the ones the HTML parser re-emits as siblings; form controls inside a
+// button stay put but cannot be operated.
 const FORBIDDEN_INSIDE: Readonly<Record<BoundaryTag, ReadonlySet<string>>> = {
   button: new Set(['button', 'input', 'select', 'textarea']),
   a: new Set(['a']),
@@ -27,8 +27,8 @@ function isHiddenInput(tag: string, element: TSESTree.JSXElement): boolean {
   return tag === 'input' && hasLiteralHiddenType(element.openingElement)
 }
 
-// An `<a>` is a link only with an href; without one it is a styled span. This misses `<a><a href/></a>`,
-// which the parser also re-emits, to stay off those spans.
+// Without an href an `<a>` is a styled span. This misses `<a><a href/></a>`, which the parser also
+// re-emits, to stay off those spans.
 function boundaryOf(tag: string, element: TSESTree.JSXElement): BoundaryTag | null {
   if (tag === 'a') return findJsxAttribute(element.openingElement, 'href') === null ? null : 'a'
   return tag === 'button' || tag === 'form' ? tag : null
@@ -50,8 +50,7 @@ export const noNestedInteractive = ESLintUtils.RuleCreator.withoutDocs<[], 'hand
     defaultOptions: [],
   },
   create(context) {
-    // Enclosing boundaries, innermost last. Nesting is read lexically: JSX passed as a prop or
-    // through a portal is treated as rendering in place.
+    // Innermost last. Read lexically: JSX passed as a prop or through a portal counts as rendered in place.
     const boundaries: BoundaryTag[] = []
 
     const reportNesting = (tag: string, element: TSESTree.JSXElement): void => {

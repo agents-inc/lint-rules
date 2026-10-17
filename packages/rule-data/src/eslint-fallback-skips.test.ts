@@ -5,13 +5,11 @@ import { type RuleRoute, catalog } from './catalog.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
 import { pluginPrefixOf } from './rule-id-parts.ts'
 
-// Without oxlint, the editor ESLint part takes over each shipped oxlint-run rule ESLint has a
-// version of, unless the skip list names it: a rule whose fixture does not fire in ESLint, or one
-// the owner decided against. lint-rules proves the rest fire (eslint-fallback.integration.test.ts).
+// Without oxlint, the ESLint part takes over each shipped oxlint-run rule ESLint has a version of,
+// unless the skip list names it. lint-rules proves the rest fire (eslint-fallback.integration.test.ts).
 
-// Owner, 2026-10-11 (questions.md #39): without oxlint, a moved core rule a current typescript-eslint
-// rule extends is not skipped. The ESLint part runs the extension on TS files and the core rule on
-// JS files.
+// A moved core rule a current typescript-eslint rule extends is not skipped: the ESLint part runs the
+// extension on TS files and the core rule on JS files.
 
 const idsWithAnEslintVersion: ReadonlySet<string> = new Set(
   inventory.rules.flatMap(({ id, eslint }) => (eslint === null ? [] : [id])),

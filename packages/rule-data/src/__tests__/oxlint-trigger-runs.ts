@@ -31,7 +31,6 @@ export function outcomesOf(report: OxlintJsonReport, files: readonly string[]): 
   return new Map(files.map((file) => [file, unparsed.has(file) ? 'cannot parse' : reported.has(file) ? 'reports' : 'silent']))
 }
 
-/** The installed oxlint over the paths given, from the project's folder, with the config file given: its JSON report. */
 export function runOxlintJson(projectDir: string, configFile: string, paths: readonly string[]): OxlintJsonReport {
   const run = oxlintJsonRun(projectDir, configFile, paths)
   if (run.outcome === 'refused') throw new Error(`oxlint could not lint with ${configFile}: ${run.output}`)

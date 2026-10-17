@@ -9,8 +9,8 @@ type PendingCall = { node: TSESTree.CallExpression; enclosingFunctions: readonly
 
 const RULE_NAME = 'no-create-object-url-in-render'
 const EVENT_PROP = /^on[A-Z]/
-// Calls whose function argument runs later. Hooks (`use[A-Z]`) are deferred too, which covers the
-// lazy `useState(() => URL.createObjectURL(b))`: the fix for the eager form this rule reports.
+// Calls whose function argument runs later. Hooks count, which covers the lazy
+// `useState(() => URL.createObjectURL(b))` this rule's fix asks for.
 const DEFERRED_CALLS: ReadonlySet<string> = new Set([
   'addEventListener',
   'setTimeout',
@@ -63,14 +63,12 @@ function isDeferredCallArgument(fn: FunctionNode): boolean {
   return name !== null && (isHookName(name) || DEFERRED_CALLS.has(name))
 }
 
-// Off the render path, which is where the call belongs.
 function isDeferred(fn: FunctionNode): boolean {
   return isEventHandler(fn) || isDeferredCallArgument(fn)
 }
 
-// Walks outward from the innermost enclosing function. A callback that renders JSX is render
-// position too (`items.map(f => <img src={URL.createObjectURL(f)} />)`), so the walk continues to the
-// component it renders into; any other function runs on demand and ends it.
+// A callback that renders JSX is render position too, so the walk continues to the component it
+// renders into; any other function runs on demand and ends it.
 function runsOnEveryRender(enclosingFunctions: readonly FunctionFrame[]): boolean {
   for (const frame of enclosingFunctions.toReversed()) {
     if (isDeferred(frame.node)) return false
@@ -80,8 +78,8 @@ function runsOnEveryRender(enclosingFunctions: readonly FunctionFrame[]): boolea
   return false
 }
 
-// Not fixable: the fix revokes the previous URL on cleanup, and where that belongs depends on the
-// component. Unnamed components, class render methods and custom hook bodies go unreported.
+// Not fixable: where the cleanup revoking the URL belongs depends on the component. Unnamed
+// components, class render methods and custom hook bodies go unreported.
 export const noCreateObjectUrlInRender = ESLintUtils.RuleCreator.withoutDocs<[], 'inRender'>({
   meta: {
     type: 'problem',

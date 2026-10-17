@@ -20,14 +20,10 @@ import {
   typescriptEslintReportOn,
 } from './__tests__/twin-pair-runs.ts'
 
-// data/oxlint-refused-options.json, checked against the installed oxlint and typescript-eslint, as
-// oxlint-file-types.integration.test.ts checks the file types. Beside oxlint, a twin pair's setting
-// decided by typescript-eslint's version is handed to oxlint's copy of the core rule (D10), unless
-// its options hold a key the data lists (D11). So oxlint must load every option typescript-eslint's
-// version takes under any other key: refusing one, it loads none of the config. And an option only
-// typescript-eslint's version takes must change oxlint's report as it changes typescript-eslint's,
-// or be listed: oxlint accepting it and doing nothing drops the setting silently (decisions.md,
-// 2026-10-12 "fix round 2, after its review"). Each option list is given to oxlint one at a time.
+// data/oxlint-refused-options.json against the installed engines. Beside oxlint a twin pair's setting
+// goes to oxlint's copy of the core rule unless the data lists its key, so oxlint must load every other
+// option typescript-eslint's version takes, and an option only that version takes must change oxlint's
+// report the same way or be listed. Each option list is given to oxlint one at a time.
 
 const ENGINES_TIMEOUT_MS = 240_000
 const OPTIONS_CONFIG = 'options.oxlintrc.json'
@@ -142,8 +138,7 @@ describe("the options typescript-eslint's version of each twin pair takes, given
     expect(outcomes.filter(({ typescriptEslint: { added, removed } }) => added.length === 0 && removed.length === 0).map(({ fixture }) => nameOf(fixture))).toStrictEqual([])
   })
 
-  // D11 (decisions.md, 2026-10-12 "fix round 2, after its review"): an option oxlint loads but does
-  // not honour counts as refused, so the data lists it and the decided setting stays in ESLint.
+  // An option oxlint loads but does not honour counts as refused, so the setting stays in ESLint.
   it("are honoured by oxlint on each fixture as typescript-eslint honours them, exactly where the data does not list the option's key", () => {
     expect(Object.fromEntries(outcomes.map((outcome) => [nameOf(outcome.fixture), isHonoured(outcome)]))).toStrictEqual(
       Object.fromEntries(outcomes.map(({ fixture }) => [nameOf(fixture), !isListed(pairOf(fixture.coreRule), fixture.key)])),

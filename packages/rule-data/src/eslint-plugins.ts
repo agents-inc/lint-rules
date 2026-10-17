@@ -57,11 +57,10 @@ export const eslintPlugins: Readonly<Record<string, ESLint.Plugin>> = {
 }
 
 /**
- * A plugin whose types do not show an `ESLint.Plugin` with rules, checked at load to be a plugin of
- * rules instead. Some publish no types; the jsx-a11y fork's declarations give its default export its
- * configs alone; storybook's break under `exactOptionalPropertyTypes`; rules built with
- * `@typescript-eslint/utils` (house) have a readonly `defaultOptions`, which ESLint's type rejects;
- * react-hooks nests its flat configs under `configs.flat`, which ESLint's type rejects too.
+ * A plugin whose types do not show an `ESLint.Plugin` with rules, checked at load instead: some publish
+ * no types, the jsx-a11y fork types only its configs, storybook's break under
+ * `exactOptionalPropertyTypes`, and house's readonly `defaultOptions` and react-hooks' `configs.flat`
+ * do not fit ESLint's type.
  */
 function checkedPlugin(prefix: string, loaded: unknown): ESLint.Plugin {
   if (!isPluginOfRules(loaded)) {

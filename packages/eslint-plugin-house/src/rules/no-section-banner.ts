@@ -6,8 +6,7 @@ import type { Replacement } from '../shared/replacement.ts'
 const BANNER = /^\s*[-=*_#~]{4,}\s*$/
 // A title between two runs of one banner character each: `--- Setup ---`, `=== Section ===`.
 const TITLED_BANNER = /^\s*([-=*_#~])\1+\s+\S(?:.*\S)?\s+([-=*_#~])\2+\s*$/
-// At least one of a titled banner's runs is three long. `--` is a dash in prose, so two-character
-// runs on both sides, as in `-- XY Charts --`, are too weak a signal to delete on.
+// At least one run is three long: `--` is a dash in prose, too weak a signal to delete on.
 const LONG_EDGE_RUN = /^\s*([-=*_#~])\1{2,}|([-=*_#~])\2{2,}\s*$/
 const LABEL =
   /^\s*(component|components|config|constants?|effects?|exports?|handlers?|helpers?|hooks?|imports?|interfaces?|internal|main|private|props|public api|render|setup|state|styles?|types?|utils?)\s*(?::\s*)?$/i
@@ -48,10 +47,8 @@ function spansLines(comment: TSESTree.Comment): boolean {
 }
 
 /**
- * The comment goes with the blanks before it. A comment alone on its line takes its line break too, so
- * no blank line is left behind; one that trails code keeps it, or the next line would join this one.
- * One spanning lines between code on both sides is a line break to the parser, which can end a
- * statement after `return`: it becomes a line break, indented like the line it started on.
+ * The comment goes with the blanks before it, and with its line break when alone on its line. One
+ * spanning lines between code is a line break to the parser (it can end a `return`), so it becomes one.
  */
 function replacementOf(text: string, comment: TSESTree.Comment): Replacement {
   const [commentStart, commentEnd] = comment.range
