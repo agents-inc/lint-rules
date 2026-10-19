@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import type { RuleRoute } from '../catalog.ts'
-import { buildEslintRoute, buildOxlintRoute, buildShippedRule } from './factories/inventory-factories.ts'
+import { buildEslintRoute, buildOxlintRoute } from './factories/inventory-factories.ts'
+import { buildShippedRule } from './factories/shipped-rule-factories.ts'
 import { type StandInSources, standInOffenders } from './stand-in-offenders.ts'
 
 const SKIP_REASON = 'its fixture does not fire in ESLint'

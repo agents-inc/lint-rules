@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest'
 
 import candidates from '../data/rule-candidates.json' with { type: 'json' }
 import canonicalRules from '../data/rules.json' with { type: 'json' }
+import { CANDIDATE_STATUSES, NOT_REVIEWED_WHY, UNSHIPPED_STATUSES } from './__tests__/cases/candidate-states.ts'
+import { DROPPED_RULES } from './__tests__/cases/dropped-rules.ts'
 import { ROUND_2_DROPS, RULES_NEEDING_NEWER_NODE } from './__tests__/cases/round-2-drops.ts'
 import { catalog } from './catalog.ts'
 import { pluginPrefixOf } from './rule-id-parts.ts'
 
-// A rule is in one state at a time: shipped (data/rules.json), considered (here), or neither.
+// A rule is in one state at a time: shipped (data/rules.json), or here, as a rule we may ship, one we
+// decided against, or one nobody has reviewed. Every installed rule we do not ship is here.
 
-const CANDIDATE_STATUSES: ReadonlySet<string> = new Set(['considering', 'recommended', 'parked', 'needs-owner'])
+const STATUSES: ReadonlySet<string> = new Set([...CANDIDATE_STATUSES, ...UNSHIPPED_STATUSES])
 const RECORDED_DATE = /^\d{4}-\d{2}-\d{2}$/u
 
 const shippedIds: ReadonlySet<string> = new Set(canonicalRules.map((rule) => rule.id))
@@ -26,7 +29,7 @@ function isFilledIn(value: unknown): boolean {
   return typeof value === 'string' && value.trim() !== ''
 }
 
-describe('the considering list, data/rule-candidates.json', () => {
+describe('the rules we do not ship, data/rule-candidates.json', () => {
   describe('offenders, each list empty', () => {
     it('has no ID out of strictly ascending order, so none is listed twice', () => {
       const ids = candidates.map((candidate) => candidate.id)
@@ -38,9 +41,9 @@ describe('the considering list, data/rule-candidates.json', () => {
       expect(outOfOrder).toStrictEqual([])
     })
 
-    it('has no status other than considering, recommended, parked or needs-owner', () => {
+    it('has no status other than considering, recommended, parked, needs-owner, dropped or not-reviewed', () => {
       const unknownStatus = candidates
-        .filter((candidate) => !CANDIDATE_STATUSES.has(candidate.status))
+        .filter((candidate) => !STATUSES.has(candidate.status))
         .map((candidate) => `${candidate.id} (${String(candidate.status)})`)
 
       expect(unknownStatus).toStrictEqual([])
@@ -75,6 +78,23 @@ describe('the considering list, data/rule-candidates.json', () => {
 
       expect(unknownToInstalled).toStrictEqual([])
     })
+
+    // A plugin or engine upgrade that adds rules fails here, each new RuleId named.
+    it('has no installed rule we do not ship without an entry', () => {
+      const candidateIds = new Set(candidates.map(({ id }) => id))
+      const unrecorded = [...catalog.rules.values()].filter(({ id, shipped }) => shipped === null && !candidateIds.has(id)).map(({ id }) => id)
+
+      expect(unrecorded).toStrictEqual([])
+    })
+
+    it('has no not-reviewed entry whose reason is other than "not reviewed yet"', () => {
+      expect(candidates.filter(({ status, why }) => status === 'not-reviewed' && why !== NOT_REVIEWED_WHY).map(({ id }) => id)).toStrictEqual([])
+    })
+
+    // Who decided is on the dropped entries alone: the others are no decision.
+    it('has no entry but a dropped one naming the card or decision behind it', () => {
+      expect(candidates.filter((entry) => entry.status !== 'dropped' && 'decidedBy' in entry).map(({ id }) => id)).toStrictEqual([])
+    })
   })
 
   describe('pinned entries', () => {
@@ -93,11 +113,17 @@ describe('the considering list, data/rule-candidates.json', () => {
       )
     })
 
-    // A rule dropped as a duplicate or a conflict is in no list.
-    it('considers none of the round 2 drops', () => {
+    // A later sweep sees why each was dropped, and does not propose it again unknowingly.
+    it('records as dropped exactly the rules decided against, each naming the card or decision that dropped it', () => {
+      const dropped = candidates.filter(({ status }) => status === 'dropped').map((entry) => [entry.id, 'decidedBy' in entry ? entry.decidedBy : 'no card named'])
+
+      expect(Object.fromEntries(dropped)).toStrictEqual(DROPPED_RULES)
+    })
+
+    it('records each round 2 drop as dropped', () => {
       const dropped = new Set(ROUND_2_DROPS.flatMap(({ dropped: ids }) => ids))
 
-      expect(candidates.filter(({ id }) => dropped.has(id)).map(({ id }) => id)).toStrictEqual([])
+      expect(candidates.filter(({ id }) => dropped.has(id)).map(({ id, status }) => [id, status])).toStrictEqual([...dropped].toSorted().map((id) => [id, 'dropped']))
     })
   })
 })

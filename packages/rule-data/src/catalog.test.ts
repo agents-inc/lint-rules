@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import rulesetDefinitions from '../data/ruleset-definitions.json' with { type: 'json' }
 import { RULES_UNICORN_78_ADDS } from './__tests__/cases/plugin-upgrades.ts'
 import { ROUND_2_DROPS, RULES_NEEDING_NEWER_NODE } from './__tests__/cases/round-2-drops.ts'
-import { isSortingRuleset } from './__tests__/cases/sorting-rulesets.ts'
-import { buildEslintRoute, buildOxlintRoute, buildShippedRule } from './__tests__/factories/inventory-factories.ts'
+import { isOptInRuleset, isSortingRuleset } from './__tests__/cases/sorting-rulesets.ts'
+import { TEST_FILE_GLOBS } from './__tests__/cases/test-file-globs.ts'
+import { buildEslintRoute, buildOxlintRoute } from './__tests__/factories/inventory-factories.ts'
+import { buildShippedRule } from './__tests__/factories/shipped-rule-factories.ts'
 import { negatedShippedGlobsIn } from './__tests__/negated-globs.ts'
 import { coreRulesExtendedMoreThanOnce, twinsSharedByShippedRules } from './__tests__/twin-offenders.ts'
 import { typescriptEslintExtensions } from './__tests__/typescript-eslint-extensions.ts'
@@ -168,12 +170,19 @@ describe('the catalog, src/generated/routing.json', () => {
       })
     })
 
-    it('gives every shipped rule both, each an ID or null', () => {
-      const withoutBoth = routes
-        .filter(({ shipped }) => shipped !== null && !(isRelationValue(shipped.coveredBy) && isRelationValue(shipped.splitByTypesWith)))
+    // A relation of the oxlint part alone: the editor ESLint part without oxlint keeps both rules.
+    it('parses "covered in oxlint by" as the other rule\'s ID on jsx-a11y/html-has-lang, and as null on every other shipped rule', () => {
+      const coveredInOxlint = routes.flatMap(({ id, shipped }) => (shipped !== null && shipped.coveredInOxlintBy !== null ? [[id, shipped.coveredInOxlintBy]] : []))
+
+      expect(coveredInOxlint).toStrictEqual([['jsx-a11y/html-has-lang', 'jsx-a11y/lang']])
+    })
+
+    it('gives every shipped rule each relation, an ID or null', () => {
+      const withoutEach = routes
+        .filter(({ shipped }) => shipped !== null && ![shipped.coveredBy, shipped.coveredInOxlintBy, shipped.splitByTypesWith].every(isRelationValue))
         .map(({ id }) => id)
 
-      expect(withoutBoth).toStrictEqual([])
+      expect(withoutEach).toStrictEqual([])
     })
   })
 
@@ -194,9 +203,9 @@ describe('the catalog, src/generated/routing.json', () => {
   })
 
   describe('the rulesets', () => {
-    it("carries each ruleset's optIn and sortsCode, both true on the rulesets that sort code and false on every other", () => {
+    it("carries each ruleset's optIn and sortsCode, both true on the rulesets that sort code, optIn alone on tailwind and browser-targets, and both false on every other", () => {
       expect(catalog.rulesets.map(({ name, optIn, sortsCode }) => [name, optIn, sortsCode])).toStrictEqual(
-        rulesetDefinitions.map(({ name }) => [name, isSortingRuleset(name), isSortingRuleset(name)]),
+        rulesetDefinitions.map(({ name }) => [name, isOptInRuleset(name), isSortingRuleset(name)]),
       )
     })
   })
@@ -260,7 +269,7 @@ describe('the catalog, src/generated/routing.json', () => {
       expect(routesById).toStrictEqual({
         'no-dupe-class-members': {
           engine: 'oxlint',
-          shipped: { ruleset: 'correctness', options: [], files: null, ignores: null, coveredBy: null, splitByTypesWith: null, readsRuntimeGlobals: false },
+          shipped: { ruleset: 'correctness', options: [], files: null, ignores: null, coveredBy: null, coveredInOxlintBy: null, splitByTypesWith: null, readsRuntimeGlobals: false },
         },
         'no-use-before-define': { engine: 'oxlint', shipped: null },
       })
@@ -322,12 +331,30 @@ describe('the catalog, src/generated/routing.json', () => {
       })
     })
 
+    // Where suppressions are banned, a test and a type test may still assert a type error, with a
+    // description; @ts-ignore and @ts-nocheck stay banned there.
+    it("gives @typescript-eslint/ban-ts-comment its setting in test and type-test files where suppressions are banned, with those files' globs", () => {
+      const shipped = shippedRuleOf(routeOf('@typescript-eslint/ban-ts-comment', catalog))
+
+      expect('whenSuppressions' in shipped ? shipped.whenSuppressions : 'not decided by allowSuppressions').toStrictEqual({
+        banned: { options: [{ 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true }] },
+        allowed: { options: [{ 'ts-expect-error': 'allow-with-description', 'ts-ignore': true, 'ts-nocheck': true }] },
+        bannedInTestFiles: { files: TEST_FILE_GLOBS, options: [{ 'ts-expect-error': 'allow-with-description', 'ts-ignore': true, 'ts-nocheck': true }] },
+      })
+    })
+
+    it('gives a test-file setting to no other rule allowSuppressions decides', () => {
+      const withATestFileSetting = routes.filter(({ shipped }) => shipped !== null && 'whenSuppressions' in shipped && 'bannedInTestFiles' in shipped.whenSuppressions).map(({ id }) => id)
+
+      expect(withATestFileSetting).toStrictEqual(['@typescript-eslint/ban-ts-comment'])
+    })
+
     it('ships house/require-class-helper in class-names, run by ESLint at its defaults, related to no other rule', () => {
       const { engine, shipped } = routeOf('house/require-class-helper', catalog)
 
       expect({ engine, shipped }).toStrictEqual({
         engine: 'eslint',
-        shipped: { ruleset: 'class-names', options: [], files: null, ignores: null, coveredBy: null, splitByTypesWith: null, readsRuntimeGlobals: false },
+        shipped: { ruleset: 'class-names', options: [], files: null, ignores: null, coveredBy: null, coveredInOxlintBy: null, splitByTypesWith: null, readsRuntimeGlobals: false },
       })
     })
 
@@ -344,7 +371,7 @@ describe('the catalog, src/generated/routing.json', () => {
       })
     })
 
-    // A dropped rule is in no list, but each engine still has it, so a team can turn it on by ID.
+    // Each engine still has a dropped rule, so a team can turn it on by ID.
     it('keeps each round 2 drop a RuleId, shipped in no ruleset', () => {
       const shippedOrUnknown = ROUND_2_DROPS.flatMap(({ dropped }) => dropped).filter((id) => {
         const route = catalog.rules.get(id)

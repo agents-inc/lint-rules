@@ -17,7 +17,11 @@
     "./oxlint-file-types": "./src/oxlint-file-types.ts",
     "./oxlint-refused-options": "./src/oxlint-refused-options.ts",
     "./rule-id-parts": "./src/rule-id-parts.ts",
+    "./test-support/look-ups-written-out": "./src/__tests__/look-ups-written-out.ts",
+    "./test-support/oxlint-cli": "./src/__tests__/oxlint-cli.ts",
     "./test-support/routed-to-eslint-for-a-reason": "./src/__tests__/cases/routed-to-eslint-for-a-reason.ts",
+    "./test-support/shipped-rule-factories": "./src/__tests__/factories/shipped-rule-factories.ts",
+    "./test-support/stand-in-cases": "./src/__tests__/cases/stand-ins.ts",
     "./test-support/typescript-eslint-extensions": "./src/__tests__/typescript-eslint-extensions.ts"
   },
   "dependencies": {

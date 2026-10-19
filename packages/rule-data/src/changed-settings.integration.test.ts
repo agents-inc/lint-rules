@@ -10,12 +10,12 @@ import {
   MOVED_OR_ADDED_CASES,
   PROJECT_MANIFEST,
   type RuleCase,
-  STAND_IN_CASES,
-  type StandInCase,
+  type StubPackage,
   STUB_PACKAGES,
   SUPPRESSION_AND_RENAMED_CASES,
   TYPED_PROJECT_TSCONFIG,
 } from './__tests__/cases/changed-settings.ts'
+import { STAND_IN_CASES, type StandInCase } from './__tests__/cases/stand-ins.ts'
 import {
   type CaseFile,
   type FileOutcome,
@@ -61,6 +61,19 @@ function inFolder(folder: string, files: readonly CaseFile[]): CaseFile[] {
   return files.map((file) => ({ ...file, path: `${folder}/${file.path}` }))
 }
 
+/** Writes each package under the folder's `node_modules`, as a package manager installs it. */
+async function writeStubPackages(folder: string, packages: readonly StubPackage[]): Promise<void> {
+  await Promise.all(
+    packages.map(async ({ name, declarations, module }) => {
+      const packageDir = join(folder, 'node_modules', name)
+      await mkdir(packageDir, { recursive: true })
+      await writeFile(join(packageDir, 'package.json'), JSON.stringify({ name, version: '0.0.0', types: 'index.d.ts' }))
+      await writeFile(join(packageDir, 'index.d.ts'), declarations)
+      if (module !== undefined) await writeFile(join(packageDir, 'index.js'), module)
+    }),
+  )
+}
+
 function readBy(engine: Engine, files: readonly CaseFile[]): CaseFile[] {
   return files.filter(({ onlyIn }) => onlyIn === undefined || onlyIn === engine)
 }
@@ -77,7 +90,7 @@ function owedOutcomesByEngine(engines: readonly Engine[], silentIn: readonly Cas
   return Object.fromEntries(engines.map((engine) => [engine, owedOutcomes(readBy(engine, silentIn), readBy(engine, reportedIn))]))
 }
 
-describe('the rules whose settings, engine or ruleset the owner changed on 2026-10-14, run as the catalog ships them', () => {
+describe('the rules whose settings, engine or ruleset the owner changed, run as the catalog ships them', () => {
   const projectDir = setUpTempDir('rule-data-changed-settings-')
 
   async function outcomesOn(engine: Engine, route: RuleRoute, settings: RuleSettings, files: readonly CaseFile[], configFile: string): Promise<Readonly<Record<string, FileOutcome>>> {
@@ -90,11 +103,12 @@ describe('the rules whose settings, engine or ruleset the owner changed on 2026-
   }
 
   /** The case's rule with its shipped settings, on each engine given or each that may run it. */
-  async function outcomesOfCase(folder: string, { rule, engines, silentIn, reportedIn }: RuleCase): Promise<{ readonly actual: OutcomesByEngine; readonly expected: OutcomesByEngine }> {
+  async function outcomesOfCase(folder: string, { rule, engines, silentIn, reportedIn, packages = [] }: RuleCase): Promise<{ readonly actual: OutcomesByEngine; readonly expected: OutcomesByEngine }> {
     const route = routeOf(rule, catalog)
     const settings = shippedSettingsOf(route)
     const silent = inFolder(folder, silentIn)
     const reported = inFolder(folder, reportedIn)
+    await writeStubPackages(join(projectDir(), folder), packages)
     await writeCaseFiles(projectDir(), [...silent, ...reported])
     const runOn = engines ?? enginesThatMayRun(route)
     const actual = Object.fromEntries(
@@ -112,14 +126,7 @@ describe('the rules whose settings, engine or ruleset the owner changed on 2026-
     await mkdir(join(projectDir(), 'node_modules', '@types'), { recursive: true })
     await symlink(dirname(requireFromHere.resolve(`${TYPES_OF_NODE}/package.json`)), join(projectDir(), 'node_modules', TYPES_OF_NODE))
     await symlink(dirname(requireFromHere.resolve(`${VITEST}/package.json`)), join(projectDir(), 'node_modules', VITEST))
-    await Promise.all(
-      STUB_PACKAGES.map(async ({ name, declarations }) => {
-        const packageDir = join(projectDir(), 'node_modules', name)
-        await mkdir(packageDir, { recursive: true })
-        await writeFile(join(packageDir, 'package.json'), JSON.stringify({ name, version: '0.0.0', types: 'index.d.ts' }))
-        await writeFile(join(packageDir, 'index.d.ts'), declarations)
-      }),
-    )
+    await writeStubPackages(projectDir(), STUB_PACKAGES)
     await writeFile(join(projectDir(), 'tsconfig.json'), JSON.stringify(TYPED_PROJECT_TSCONFIG))
     await writeFile(join(projectDir(), 'package.json'), JSON.stringify(PROJECT_MANIFEST))
   })

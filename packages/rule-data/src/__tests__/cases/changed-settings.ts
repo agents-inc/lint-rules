@@ -14,17 +14,15 @@ export type RuleCase = {
   readonly engines?: readonly Engine[]
   readonly silentIn: readonly CaseFile[]
   readonly reportedIn: readonly CaseFile[]
+  /** Packages the case's files resolve before the project's own: written to the `node_modules` of the case's folder. */
+  readonly packages?: readonly StubPackage[]
 }
 
-/** An oxlint rule ESLint has no version of, and the code its ESLint stand-in must report as it does. */
-export type StandInCase = {
-  readonly oxlintRule: string
-  readonly silentIn: readonly CaseFile[]
-  readonly reportedIn: readonly CaseFile[]
-}
-
-/** A package the typed fixtures import that the repo does not install: its manifest's name, and its declarations. */
-export type StubPackage = { readonly name: string; readonly declarations: string }
+/**
+ * A package the fixtures import that the repo does not install: its manifest's name, its declarations,
+ * and, for a rule that resolves the import as Node does (import-x without a TypeScript resolver), its module.
+ */
+export type StubPackage = { readonly name: string; readonly declarations: string; readonly module?: string }
 
 const FIND_QUERY_TYPES = ['Role', 'LabelText', 'PlaceholderText', 'Text', 'DisplayValue', 'AltText', 'Title', 'TestId']
 
@@ -93,6 +91,38 @@ export default userEvent
   {
     name: OUR_PACKAGE,
     declarations: 'export declare function defineLintRules(config: object): object\n',
+  },
+  // Not in the fixtures' manifest.
+  {
+    name: 'vite',
+    declarations: 'export interface Plugin {\n  readonly name: string\n}\nexport declare function defineConfig(config: object): object\n',
+    module: 'export function defineConfig(config) {\n  return config\n}\n',
+  },
+]
+
+/**
+ * Vitest 3.2.4 as no-floating-promises sees it: `.resolves` and `.rejects` typed by @vitest/expect's
+ * `Promisify`, written as 3.2.4 declares it (Vitest 5, which the repo installs, types them otherwise).
+ */
+const VITEST_3_PACKAGES: readonly StubPackage[] = [
+  {
+    name: 'vitest',
+    declarations: "import type { ExpectStatic } from '@vitest/expect'\nexport declare const expect: ExpectStatic\n",
+  },
+  {
+    name: '@vitest/expect',
+    declarations: `type Promisify<O> = { [K in keyof O]: O[K] extends (...args: infer A) => infer R ? Promisify<O[K]> & ((...args: A) => Promise<R>) : O[K] }
+export type PromisifyAssertion<T> = Promisify<Assertion<T>>
+export interface Assertion<T> {
+  toBe(expected: T): void
+  toThrow(expected?: string): void
+  resolves: PromisifyAssertion<T>
+  rejects: PromisifyAssertion<T>
+}
+export interface ExpectStatic {
+  <T>(actual: T): Assertion<T>
+}
+`,
   },
 ]
 
@@ -337,6 +367,37 @@ export const config = defineLintRules({})
 const NESTED_PACKAGE = 'apps/web'
 
 const NBSP = ' '
+
+/** The same source in a file of each form the test-file globs name: a test, a spec, one under `__tests__`, and the two type tests. */
+function inEachTestFile(source: string, extension: string): CaseFile[] {
+  return [`src/a.test.${extension}`, `src/a.spec.${extension}`, `src/__tests__/a.${extension}`, `src/a.test-d.${extension}`, `src/a.spec-d.${extension}`].map((path) => ({ path, source }))
+}
+
+/** A rule that judges test code by source-code standards: silent on its code in each test file, still reporting it in a source file. */
+function skippingTestFiles(rule: string, source: string): RuleCase {
+  return { rule, subject: 'test and type-test files', silentIn: inEachTestFile(source, 'ts'), reportedIn: [{ path: 'src/a.ts', source }] }
+}
+
+const LONG_FUNCTION = `export function total(): number {
+${Array.from({ length: 22 }, (_, index) => `  const part${String(index)} = ${String(index)}`).join('\n')}
+  return ${Array.from({ length: 22 }, (_, index) => `part${String(index)}`).join(' + ')}
+}
+`
+
+const STACK_PUSH = 'export function add(stack: number[], item: number): void {\n  stack.push(item)\n}\n'
+
+// The plugin takes any function named render… for Testing Library's.
+const RENDERER_NAMED_LIKE_A_RENDER = 'declare function rendererNameOf(frame: object): string\nexport const renderer = rendererNameOf({})\n'
+
+const UNAWAITED_VITEST_3_ASSERTIONS: readonly CaseFile[] = [
+  { path: 'src/resolves.test.ts', source: "import { expect } from 'vitest'\nexport function check(loaded: Promise<number>): void {\n  expect(loaded).resolves.toBe(1)\n}\n" },
+  { path: 'src/rejects.test.ts', source: "import { expect } from 'vitest'\nexport function check(loaded: Promise<number>): void {\n  expect(loaded).rejects.toThrow('failed')\n}\n" },
+]
+
+/** A string held under the given name. */
+function nonBooleanNamedFile(name: string): CaseFile {
+  return { path: `src/non-boolean-${name}.js`, source: `export const ${name} = 'x'\n` }
+}
 
 /** The rules whose options or files changed. */
 export const CHANGED_SETTING_CASES: readonly RuleCase[] = [
@@ -587,6 +648,99 @@ export class Card extends Component {
     silentIn: [{ path: 'src/counter.svelte', source: '<script>\n  const doubled = $count * 2\n</script>\n', onlyIn: 'oxlint' }],
     reportedIn: [{ path: 'src/value.js', source: 'export const value = undeclared\n' }],
   },
+  // A name written all in lower or upper case, as a command or a format is; a mixed-case slip is still fixed.
+  {
+    rule: 'unicorn/comment-content',
+    silentIn: [
+      { path: 'src/lowercase.js', source: '// run git before the release\nexport const step = 1\n' },
+      { path: 'src/uppercase.js', source: '// read the JSON file\nexport const step = 1\n' },
+    ],
+    reportedIn: [{ path: 'src/mixed-case.js', source: '// push to Github\nexport const step = 1\n' }],
+  },
+  // The keyword, as array-type asks for readonly string[]; Readonly<…> around a named type stays allowed.
+  {
+    rule: 'functional/readonly-type',
+    silentIn: [
+      { path: 'src/keyword.ts', source: 'export type Run = { readonly code: number }\n' },
+      { path: 'src/named.ts', source: 'type Props = { code: number }\nexport type Run = Readonly<Props>\n' },
+    ],
+    reportedIn: [{ path: 'src/generic.ts', source: 'export type Run = Readonly<{ code: number }>\n' }],
+  },
+  {
+    rule: 'no-unused-vars',
+    subject: 'a key left out of a copy',
+    silentIn: ['js', 'ts'].map((extension) => ({ path: `src/rest.${extension}`, source: 'export const withoutFlag = ({ flag, ...entry }) => entry\n' })),
+    reportedIn: ['js', 'ts'].map((extension) => ({ path: `src/destructured.${extension}`, source: 'export const pick = ({ flag }) => 1\n' })),
+  },
+  // btn is a default replacement, which the allowed names leave in force.
+  {
+    rule: 'unicorn/name-replacements',
+    silentIn: [
+      { path: 'src/dist.js', source: "export const distDir = 'dist'\n" },
+      { path: 'src/repo.js', source: 'export function gitRepoAt(path) {\n  return path\n}\n' },
+      { path: 'src/dirs.js', source: 'export const workspaceDirs = []\n' },
+      { path: 'src/envs.js', source: 'export const envs = []\n' },
+    ],
+    reportedIn: [{ path: 'src/btn.js', source: 'export const btn = 1\n' }],
+  },
+  {
+    rule: 'functional/no-expression-statements',
+    subject: 'a call that returns nothing',
+    silentIn: [{ path: 'src/write.ts', source: "import { writeFileSync } from 'node:fs'\nexport function save(path: string, text: string): void {\n  writeFileSync(path, text)\n}\n" }],
+    reportedIn: [{ path: 'src/push.ts', source: STACK_PUSH }],
+  },
+  {
+    rule: 'import-x/no-extraneous-dependencies',
+    subject: 'a type-only import',
+    silentIn: [{ path: 'src/listed-type.ts', source: "import type { defineLintRules } from '@agents-inc/lint-rules'\nexport type Define = typeof defineLintRules\n" }],
+    reportedIn: [{ path: 'src/unlisted-type.ts', source: "import type { Plugin } from 'vite'\nexport type Plugins = Plugin[]\n" }],
+  },
+  // A first word ending in s is a verb (runs, uses) or a plural noun; is, has, was, does and requires are still checked.
+  {
+    rule: 'unicorn/consistent-boolean-name',
+    silentIn: [
+      { path: 'src/verb.js', source: 'export const runsOnEveryRender = true\n' },
+      { path: 'src/plural.js', source: 'export const suppressionsAllowed = true\n' },
+    ],
+    reportedIn: [
+      { path: 'src/noun.js', source: 'export const typeAware = true\n' },
+      { path: 'src/not-a-boolean.js', source: "export const isOneOf = 'x'\n" },
+      ...['hasItems', 'wasSent', 'doesFit', 'requiresAuth'].map(nonBooleanNamedFile),
+    ],
+  },
+  // vitest/valid-expect reports them, and autofixes them.
+  {
+    rule: '@typescript-eslint/no-floating-promises',
+    subject: "Vitest 3's async assertions",
+    silentIn: UNAWAITED_VITEST_3_ASSERTIONS,
+    reportedIn: [OWN_UNAWAITED_PROMISE],
+    packages: VITEST_3_PACKAGES,
+  },
+  // A test is made of statements, and fixture code held in strings: these judge it by source-code standards.
+  skippingTestFiles('functional/no-expression-statements', STACK_PUSH),
+  skippingTestFiles('functional/no-return-void', 'export function log(text: string): void {\n  console.log(text)\n}\n'),
+  skippingTestFiles('sonarjs/max-lines-per-function', LONG_FUNCTION),
+  skippingTestFiles('unicorn/no-incorrect-template-string-interpolation', 'export const markup = (children: string) => `<Dialog>{children}</Dialog>`\n'),
+  skippingTestFiles('sonarjs/no-undefined-assignment', 'export const expected = { outside: undefined }\n'),
+  skippingTestFiles('@typescript-eslint/no-unsafe-type-assertion', 'export const narrowed = (value: { a: number } | string) => value as string\n'),
+  skippingTestFiles('unicorn/prefer-await', "export const tagged = (run: Promise<void>) => run.then(() => 'done' as const)\n"),
+  skippingTestFiles('functional/no-classes', 'export class Runner {}\n'),
+  skippingTestFiles('functional/no-this-expressions', 'export const counter = {\n  count: 0,\n  next() {\n    return this.count\n  },\n}\n'),
+  skippingTestFiles('sonarjs/file-name-differ-from-class', 'export default class Runner {}\n'),
+  {
+    rule: 'testing-library/render-result-naming-convention',
+    subject: 'source files',
+    silentIn: [
+      { path: 'src/a.ts', source: RENDERER_NAMED_LIKE_A_RENDER },
+      { path: 'src/a.tsx', source: RENDERER_NAMED_LIKE_A_RENDER },
+    ],
+    reportedIn: [
+      { path: 'src/a.test.tsx', source: RENDERER_NAMED_LIKE_A_RENDER },
+      { path: 'src/__tests__/a.tsx', source: RENDERER_NAMED_LIKE_A_RENDER },
+      { path: 'src/a.test-d.ts', source: RENDERER_NAMED_LIKE_A_RENDER },
+      { path: 'src/a.stories.tsx', source: RENDERER_NAMED_LIKE_A_RENDER },
+    ],
+  },
 ]
 
 /** Each API no-deprecated leaves to the more specific rule, which still reports it. */
@@ -624,6 +778,11 @@ export const MOVED_OR_ADDED_CASES: readonly RuleCase[] = [
     rule: 'house/require-class-helper',
     silentIn: [{ path: 'src/helper.jsx', source: "export const Card = ({ wide }) => <div className={cn('card', wide && 'wide')} />\n" }],
     reportedIn: [{ path: 'src/template.jsx', source: 'export const Card = ({ wide }) => <div className={`card ${wide}`} />\n' }],
+  },
+  {
+    rule: 'default-case-last',
+    silentIn: [{ path: 'src/default-last.js', source: "export function pick(kind) {\n  switch (kind) {\n    case 'a':\n      return 1\n    default:\n      return 0\n  }\n}\n" }],
+    reportedIn: [{ path: 'src/default-first.js', source: "export function pick(kind) {\n  switch (kind) {\n    default:\n      return 0\n    case 'a':\n      return 1\n  }\n}\n" }],
   },
 ]
 
@@ -672,35 +831,5 @@ export const SUPPRESSION_AND_RENAMED_CASES: readonly RuleCase[] = [
       { path: 'src/set-attribute.js', source: `export function run(element) {\n  ${DATASET_WRITE}\n}\n` },
       suppressedFile('src/suppressed-by-our-name.js', DATASET_WRITE, 'unicorn/dom-node-dataset'),
     ],
-  },
-]
-
-/** The oxlint rules ESLint stands in for without oxlint: code both must report, and code both must leave. */
-export const STAND_IN_CASES: readonly StandInCase[] = [
-  // unicorn's rule reports only where the receiver is proven a string; oxc's reports any receiver.
-  {
-    oxlintRule: 'oxc/bad-char-at-comparison',
-    silentIn: [{ path: 'src/one-character.js', source: "export const isA = (value) => String(value).charAt(0) === 'a'\n" }],
-    reportedIn: [{ path: 'src/two-characters.js', source: "export const isAb = (value) => String(value).charAt(0) === 'ab'\n" }],
-  },
-  {
-    oxlintRule: 'oxc/bad-comparison-sequence',
-    silentIn: [{ path: 'src/joined.js', source: 'export const between = (a, b, c) => a < b && b < c\n' }],
-    reportedIn: [{ path: 'src/chained.js', source: 'export const between = (a, b, c) => a < b < c\n' }],
-  },
-  {
-    oxlintRule: 'oxc/double-comparisons',
-    silentIn: [{ path: 'src/single.js', source: 'export const atMost = (x, y) => x <= y\n' }],
-    reportedIn: [{ path: 'src/double.js', source: 'export const atMost = (x, y) => x === y || x < y\n' }],
-  },
-  {
-    oxlintRule: 'oxc/erasing-op',
-    silentIn: [{ path: 'src/identity.js', source: 'export const same = (x) => x * 1\n' }],
-    reportedIn: [{ path: 'src/erasing.js', source: 'export const zero = (x) => x * 0\n' }],
-  },
-  {
-    oxlintRule: 'oxc/misrefactored-assign-op',
-    silentIn: [{ path: 'src/added.js', source: 'export function grow(total, step) {\n  total += step\n  return total\n}\n' }],
-    reportedIn: [{ path: 'src/misrefactored.js', source: 'export function grow(total, step) {\n  total += total + step\n  return total\n}\n' }],
   },
 ]

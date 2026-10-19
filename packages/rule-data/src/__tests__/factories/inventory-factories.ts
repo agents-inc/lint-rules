@@ -1,4 +1,4 @@
-import type { OxlintCategory, RuleRoute, ShippedRule } from '../../catalog.ts'
+import type { OxlintCategory, RuleRoute } from '../../catalog.ts'
 import type {
   EslintImplementation,
   Inventory,
@@ -7,7 +7,6 @@ import type {
   OxlintImplementation,
 } from '../../generate/build-inventory.ts'
 import type { CanonicalRule, RoutingEntry } from '../../generate/build-routing.ts'
-import type { SettingBySuppressionMode } from '../../turned-on-by.ts'
 import type {
   InstalledEngines,
   InstalledEslintRule,
@@ -19,14 +18,6 @@ const ESLINT_VERSION = '10.12.0'
 const FIXED_VERSIONS: InventoryVersions = { oxlint: OXLINT_VERSION, eslint: ESLINT_VERSION, eslintPlugins: {} }
 // No join or route reads a rule's category, so both oxlint factories file it under one, alike.
 const OXLINT_CATEGORY: OxlintCategory = 'correctness'
-const SHIPPED_DEFAULTS: Omit<ShippedRule, 'ruleset' | 'alwaysOn' | 'whenSuppressions'> = {
-  options: [],
-  files: null,
-  ignores: null,
-  coveredBy: null,
-  splitByTypesWith: null,
-  readsRuntimeGlobals: false,
-}
 
 /**
  * What the generator reads from the installed engines: exactly these rules. Joining them never
@@ -91,25 +82,9 @@ export function buildEslintImplementation(fields: EslintImplementation): EslintI
 export function buildCanonicalRule(
   id: string,
   fields: Pick<CanonicalRule, 'engine' | 'options' | 'ruleset' | 'typed'> &
-    Partial<Pick<CanonicalRule, 'alwaysOn' | 'coveredBy' | 'files' | 'ignores' | 'oxlintName' | 'readsRuntimeGlobals' | 'splitByTypesWith' | 'whenSuppressions'>>,
+    Partial<Pick<CanonicalRule, 'alwaysOn' | 'coveredBy' | 'coveredInOxlintBy' | 'files' | 'ignores' | 'oxlintName' | 'readsRuntimeGlobals' | 'splitByTypesWith' | 'whenSuppressions'>>,
 ): CanonicalRule {
   return { id, assignment: { confidence: 'high', by: 'plugin' }, ...fields }
-}
-
-/** A route's `shipped`: turned on by its ruleset, with no options, on every file, related to no other rule, served by none of our runtime globals, unless given. */
-export function buildShippedRule(
-  ruleset: string,
-  fields: Partial<Pick<ShippedRule, 'coveredBy' | 'files' | 'ignores' | 'options' | 'readsRuntimeGlobals' | 'splitByTypesWith'>> = {},
-): ShippedRule {
-  return { ruleset, ...SHIPPED_DEFAULTS, ...fields }
-}
-
-/** A route's `shipped` for a rule `allowSuppressions` decides: its setting in each mode, its options, on every file. */
-export function buildShippedRuleDecidedBySuppressions(
-  whenSuppressions: SettingBySuppressionMode,
-  fields: Partial<Pick<ShippedRule, 'options'>> = {},
-): ShippedRule {
-  return { whenSuppressions, ...SHIPPED_DEFAULTS, ...fields }
 }
 
 /** The route of a rule oxlint runs: oxlint never has type information, so `typed` is false. */

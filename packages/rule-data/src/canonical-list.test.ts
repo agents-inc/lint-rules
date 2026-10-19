@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest'
 import canonicalRules from '../data/rules.json' with { type: 'json' }
 import rulesetDefinitions from '../data/ruleset-definitions.json' with { type: 'json' }
 import { ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON } from './__tests__/cases/routed-to-eslint-for-a-reason.ts'
+import { DROPPED_ON_2026_10_16 } from './__tests__/cases/dropped-rules.ts'
 import { ROUND_2_DROPS } from './__tests__/cases/round-2-drops.ts'
-import { COVERED_BY, SPLIT_BY_TYPES_WITH } from './__tests__/cases/rule-relations.ts'
-import { isSortingRuleset, RULES_THAT_SORT, SORTING_RULESETS } from './__tests__/cases/sorting-rulesets.ts'
-import { coveredByOffenders, splitByTypesOffenders } from './__tests__/relation-offenders.ts'
+import { COVERED_BY, COVERED_IN_OXLINT_BY, FILES_LEFT_UNCOVERED_BY_CARD, SPLIT_BY_TYPES_WITH } from './__tests__/cases/rule-relations.ts'
+import { isOptInRuleset, isSortingRuleset, RULES_THAT_SORT, SORTING_RULESETS } from './__tests__/cases/sorting-rulesets.ts'
+import { NAMES_TEST_FILES, RULES_SKIPPING_TEST_FILES, STORY_FILE_GLOB, TEST_FILE_GLOBS } from './__tests__/cases/test-file-globs.ts'
+import { coveredByOffenders, coveredInOxlintByOffenders, filesLeftUncovered, splitByTypesOffenders } from './__tests__/relation-offenders.ts'
+import { catalog } from './catalog.ts'
 import { canonicalRules as parsedCanonicalRules } from './generate/canonical-rules.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
 import { canonicalIdOf } from './rule-id-parts.ts'
@@ -32,13 +35,25 @@ const QUALITY_RULESETS = [
 ]
 
 const LIBS_RULESETS_BY_DOMAIN = {
-  ui: ['react'],
-  testing: ['vitest', 'testing-library', 'storybook'],
+  ui: ['react', 'nextjs', 'react-ssr'],
+  testing: ['vitest', 'testing-library', 'storybook', 'playwright', 'jest-dom'],
   forms: ['react-hook-form'],
-  styling: ['css-modules', 'class-names'],
+  styling: ['css-modules', 'class-names', 'tailwind'],
+  data: ['tanstack-query', 'drizzle'],
+  routing: ['tanstack-router'],
+  validation: ['zod'],
+  auth: ['jsonwebtoken'],
 }
 
-const RUNTIME_RULESETS = ['node', 'browser']
+// browser-targets needs a browser target, so it sets no globals: browser does that.
+const RUNTIME_RULESETS = [
+  { name: 'node', env: 'node' },
+  { name: 'browser', env: 'browser' },
+  { name: 'browser-targets', env: null },
+]
+
+// Created empty, so a team can list each before its first rule arrives.
+const LIBRARY_RULESETS_CREATED_EMPTY = ['nextjs', 'react-ssr', 'playwright', 'jest-dom', 'tailwind', 'tanstack-query', 'drizzle', 'tanstack-router', 'zod', 'jsonwebtoken', 'browser-targets']
 
 const definedRulesetNames = new Set(rulesetDefinitions.map((definition) => definition.name))
 const inventoryById = new Map(inventory.rules.map((rule) => [rule.id, rule]))
@@ -178,15 +193,43 @@ describe('the canonical list, data/rules.json', () => {
       expect(coveredByOffenders(parsedCanonicalRules)).toStrictEqual([])
     })
 
+    // The covered rule is left out only where oxlint runs both.
+    it('has no "covered in oxlint by" that does not hold: each rule and its cover shipped, run by oxlint and turned on by a ruleset, the cover left out nowhere', () => {
+      expect(coveredInOxlintByOffenders(parsedCanonicalRules)).toStrictEqual([])
+    })
+
+    // A rule's files or ignores that name test files name every form, Vitest's type tests among them.
+    it('has no files or ignores list naming test files without every test-file glob, or with one spelled otherwise', () => {
+      const offenders = canonicalRules.flatMap(({ id, files, ignores }) =>
+        Object.entries({ files, ignores }).flatMap(([key, globs]) => {
+          const testFileGlobs = (globs ?? []).filter((glob) => NAMES_TEST_FILES.test(glob))
+          const missing = testFileGlobs.length === 0 ? [] : TEST_FILE_GLOBS.filter((glob) => !testFileGlobs.includes(glob))
+          const otherSpellings = testFileGlobs.filter((glob) => !TEST_FILE_GLOBS.includes(glob))
+          return [...missing.map((glob) => `${id} ${key}: lacks ${glob}`), ...otherSpellings.map((glob) => `${id} ${key}: names ${glob}`)]
+        }),
+      )
+
+      expect(offenders).toStrictEqual([])
+    })
+
     // An untyped rule is off where its typed partner runs with type information.
     it('has no "split by types" that does not hold: an untyped and a typed rule, both shipped, run by ESLint on every file, each typed rule named once', () => {
       expect(splitByTypesOffenders(parsedCanonicalRules)).toStrictEqual([])
     })
   })
 
-  describe('the relations between shipped rules the owner chose on 2026-10-14', () => {
-    it('records "covered by" on exactly the covered rules of the cards an (S) option was chosen on, each naming its cover', () => {
+  describe('the relations between shipped rules the owner chose', () => {
+    it('records "covered by" on exactly the covered rules the owner\'s cards left out beside their cover, each naming its cover', () => {
       expect(namedByRelation(({ coveredBy }) => coveredBy)).toStrictEqual(COVERED_BY)
+    })
+
+    it('records "covered in oxlint by" on exactly the rule the <html lang> card left out where oxlint runs both, naming the rule left reporting', () => {
+      expect(namedByRelation(({ coveredInOxlintBy }) => coveredInOxlintBy)).toStrictEqual(COVERED_IN_OXLINT_BY)
+    })
+
+    // A covered rule is left out wherever its cover is listed, so where the cover does not run nothing reports.
+    it("leaves files uncovered only as an owner's card decides, each set of files named", () => {
+      expect(filesLeftUncovered(parsedCanonicalRules).toSorted()).toStrictEqual(Object.values(FILES_LEFT_UNCOVERED_BY_CARD).flat().toSorted())
     })
 
     it('records "split by types" on exactly the untyped rules of the cards a (T) option was chosen on, each naming its typed partner', () => {
@@ -195,8 +238,9 @@ describe('the canonical list, data/rules.json', () => {
 
     it('gives each relation a reason', () => {
       const unexplained = parsedCanonicalRules
-        .flatMap(({ id, coveredBy, splitByTypesWith }) => [
+        .flatMap(({ id, coveredBy, coveredInOxlintBy, splitByTypesWith }) => [
           ...(coveredBy !== undefined && coveredBy.because.trim() === '' ? [`${id} covered by ${coveredBy.rule}`] : []),
+          ...(coveredInOxlintBy !== undefined && coveredInOxlintBy.because.trim() === '' ? [`${id} covered in oxlint by ${coveredInOxlintBy.rule}`] : []),
           ...(splitByTypesWith !== undefined && splitByTypesWith.because.trim() === '' ? [`${id} split by types with ${splitByTypesWith.rule}`] : []),
         ])
 
@@ -298,7 +342,7 @@ describe('the canonical list, data/rules.json', () => {
       ).toStrictEqual(['no-dupe-class-members'])
     })
 
-    it("runs max-lines on JSX files only, skipping hooks, tests and stories, as the gate's ESLint config did", () => {
+    it("runs max-lines on JSX files only, skipping hooks, tests, type tests and stories, as the gate's ESLint config did", () => {
       const { engine, options, files, ignores } = canonicalEntryFor('max-lines')
 
       expect({ engine, options, files, ignores }).toStrictEqual({
@@ -310,6 +354,7 @@ describe('the canonical list, data/rules.json', () => {
           '**/use-*.{tsx,jsx}',
           '**/*.{test,spec}.{ts,tsx,js,jsx}',
           '**/__tests__/**',
+          '**/*.{test,spec}-d.{ts,tsx,js,jsx}',
           '**/*.stories.{ts,tsx,js,jsx}',
         ],
       })
@@ -438,13 +483,14 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // oxlint skips it in a JS file, so ESLint runs it.
-    it('ships @typescript-eslint/ban-ts-comment always on, run by ESLint, banning @ts-expect-error, @ts-ignore and @ts-nocheck outright', () => {
-      const { engine, oxlintName, ruleset, alwaysOn, options, files, ignores } = canonicalEntryFor(
+    // oxlint skips it in a JS file, so ESLint runs it. A type test asserts a type error with a
+    // description-bearing @ts-expect-error, which TypeScript fails where it suppresses nothing.
+    it('ships @typescript-eslint/ban-ts-comment always on, run by ESLint, banning @ts-expect-error, @ts-ignore and @ts-nocheck outright, but for @ts-expect-error with a description in test and type-test files', () => {
+      const { engine, oxlintName, ruleset, alwaysOn, options, files, ignores, whenSuppressions } = canonicalEntryFor(
         '@typescript-eslint/ban-ts-comment',
       )
 
-      expect({ engine, oxlintName, ruleset, alwaysOn, options, files, ignores }).toStrictEqual({
+      expect({ engine, oxlintName, ruleset, alwaysOn, options, files, ignores, whenSuppressions }).toStrictEqual({
         engine: 'eslint',
         oxlintName: undefined,
         ruleset: undefined,
@@ -452,6 +498,11 @@ describe('the canonical list, data/rules.json', () => {
         options: [{ 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true }],
         files: undefined,
         ignores: undefined,
+        whenSuppressions: {
+          banned: 'on',
+          allowed: { options: [{ 'ts-expect-error': 'allow-with-description', 'ts-ignore': true, 'ts-nocheck': true }] },
+          bannedInTestFiles: { options: [{ 'ts-expect-error': 'allow-with-description', 'ts-ignore': true, 'ts-nocheck': true }] },
+        },
       })
     })
 
@@ -529,21 +580,58 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // import-x/first places imports and sorts nothing, so it is in modules, not the opt-in import-order.
-    it('ships import-x/first in modules, run by oxlint as import/first at its defaults', () => {
+    // It sorts nothing, but the owner keeps it with the import rules: a team that does not opt in to
+    // import-order goes without it.
+    it('ships import-x/first in import-order, run by oxlint as import/first at its defaults', () => {
       const { engine, oxlintName, ruleset, options, typed } = canonicalEntryFor('import-x/first')
 
       expect({ engine, oxlintName, ruleset, options, typed }).toStrictEqual({
         engine: 'oxlint',
         oxlintName: 'import/first',
-        ruleset: 'modules',
+        ruleset: 'import-order',
         options: [],
         typed: false,
       })
     })
 
-    it('ships no-implicit-globals in the browser runtime', () => {
-      expect(shippedRulesetOf('no-implicit-globals')).toBe('browser')
+    // Back for every team where the opt-in ordering ruleset is not listed; with it, sort-switch-case
+    // reports the same switch too.
+    it('ships default-case-last in conventions, run by oxlint at its defaults', () => {
+      const { engine, oxlintName, ruleset, options, typed, files, ignores } = canonicalEntryFor('default-case-last')
+
+      expect({ engine, oxlintName, ruleset, options, typed, files, ignores }).toStrictEqual({
+        engine: 'oxlint',
+        oxlintName: 'default-case-last',
+        ruleset: 'conventions',
+        options: [],
+        typed: false,
+        files: undefined,
+        ignores: undefined,
+      })
+    })
+
+    // Each reported only code written so on purpose, or wrote code another rule reports; a team can
+    // still turn one on by ID.
+    it('ships none of the rules turned off for every team on 2026-10-16, each still a RuleId', () => {
+      expect(DROPPED_ON_2026_10_16.map((id) => [id, { shipped: shippedRulesetOf(id), isRuleId: catalog.rules.has(id) }])).toStrictEqual(
+        DROPPED_ON_2026_10_16.map((id) => [id, { shipped: null, isRuleId: true }]),
+      )
+    })
+
+    // A test is made of statements, and fixture code held in strings: these judge it by source-code standards.
+    it('skips test and type-test files in exactly the rules that judge code by standards a test cannot meet', () => {
+      const skipping = canonicalRules.filter(({ ignores }) => TEST_FILE_GLOBS.every((glob) => (ignores ?? []).includes(glob))).map(({ id }) => id)
+
+      expect(skipping.toSorted()).toStrictEqual(RULES_SKIPPING_TEST_FILES.toSorted())
+    })
+
+    // The plugin takes any function named render… for Testing Library's.
+    it('runs every testing-library rule in test, type-test and story files only', () => {
+      const testingLibraryRules = canonicalRules.filter(({ id }) => id.startsWith('testing-library/'))
+
+      expect(Object.fromEntries(testingLibraryRules.map(({ id, files }) => [id, files]))).toStrictEqual(
+        Object.fromEntries(testingLibraryRules.map(({ id }) => [id, [...TEST_FILE_GLOBS, STORY_FILE_GLOB]])),
+      )
     })
 
     // The core versions reach JS files and TS files outside every tsconfig, where the typed ones cannot run.
@@ -565,18 +653,23 @@ describe('the canonical list, data/rules.json', () => {
 
 describe('the ruleset definitions, data/ruleset-definitions.json', () => {
   // `init` reads `optIn`, and names each ruleset whose `sortsCode` is true in its formatter warning.
-  it("defines the owner's rulesets, in the owner's order, each in its list, domain and env, opt-in and sorting code exactly where it sorts code", () => {
+  it("defines the owner's rulesets, in the owner's order, each in its list, domain and env, opt-in where it sorts code and on tailwind and browser-targets, sorting code exactly where it sorts code", () => {
     expect(rulesetDefinitions).toStrictEqual([
-      ...QUALITY_RULESETS.map((name) => ({ name, list: 'quality', domain: null, env: null, optIn: isSortingRuleset(name), sortsCode: isSortingRuleset(name) })),
+      ...QUALITY_RULESETS.map((name) => ({ name, list: 'quality', domain: null, env: null, optIn: isOptInRuleset(name), sortsCode: isSortingRuleset(name) })),
       ...Object.entries(LIBS_RULESETS_BY_DOMAIN).flatMap(([domain, names]) =>
-        names.map((name) => ({ name, list: 'libs', domain, env: null, optIn: isSortingRuleset(name), sortsCode: isSortingRuleset(name) })),
+        names.map((name) => ({ name, list: 'libs', domain, env: null, optIn: isOptInRuleset(name), sortsCode: isSortingRuleset(name) })),
       ),
-      ...RUNTIME_RULESETS.map((name) => ({ name, list: 'runtimes', domain: null, env: name, optIn: isSortingRuleset(name), sortsCode: isSortingRuleset(name) })),
+      ...RUNTIME_RULESETS.map(({ name, env }) => ({ name, list: 'runtimes', domain: null, env, optIn: isOptInRuleset(name), sortsCode: isSortingRuleset(name) })),
     ])
   })
 
-  // A rule that sorts nothing would leave the opt-in, and so every new repo, without it.
-  it('puts in the rulesets that sort code exactly the rules that reorder code', () => {
+  it('holds no rule yet in the library rulesets created empty', () => {
+    expect(canonicalRules.filter(({ ruleset }) => ruleset !== undefined && LIBRARY_RULESETS_CREATED_EMPTY.includes(ruleset)).map(({ id }) => id)).toStrictEqual([])
+  })
+
+  // A rule that sorts nothing would leave the opt-in, and so every new repo, without it: import-x/first
+  // alone is there by the owner's choice.
+  it('puts in the rulesets that sort code exactly the rules that reorder code, and import-x/first', () => {
     const rulesByRuleset = Object.fromEntries(
       SORTING_RULESETS.map((ruleset) => [ruleset, canonicalRules.filter((rule) => rule.ruleset === ruleset).map(({ id }) => id)]),
     )

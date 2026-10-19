@@ -81,7 +81,6 @@ export const ROUND_2_DROPS: readonly Drop[] = [
     stillReporting: ['house/no-classic-loops', 'unicorn/no-array-front-mutation', 'require-unicode-regexp', 'perfectionist/sort-objects', 'functional/no-classes'],
   },
   { dropped: ['n/no-extraneous-import', 'n/no-extraneous-require'], stillReporting: ['import-x/no-extraneous-dependencies'] },
-  { dropped: ['default-case-last'], stillReporting: ['perfectionist/sort-switch-case'] },
   // Dropped as noise, with nothing in its place.
   { dropped: ['import-x/no-rename-default'], stillReporting: [] },
   // Their oxc twins report beside oxlint, and stand in for them without it.

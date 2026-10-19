@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import type { RuleRoute } from '../catalog.ts'
-import { buildEslintRoute, buildOxlintRoute, buildShippedRule, buildShippedRuleDecidedBySuppressions } from './factories/inventory-factories.ts'
+import { buildEslintRoute, buildOxlintRoute } from './factories/inventory-factories.ts'
+import { buildShippedRule, buildShippedRuleDecidedBySuppressions } from './factories/shipped-rule-factories.ts'
 import { type CaseFile, UNSHIPPED_RULE_SETTINGS, eslintBlocksOf, eslintOutcomesOf, oxlintOutcomesOf, shippedSettingsOf, writeCaseFiles } from './rule-case-runs.ts'
 import { setUpTempDir } from './temp-dirs.ts'
 

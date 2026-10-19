@@ -2,21 +2,25 @@ import { describe, expect, it } from 'vitest'
 
 import type { CanonicalRule } from '../generate/build-routing.ts'
 import { buildCanonicalRule } from './factories/inventory-factories.ts'
-import { coveredByOffenders, splitByTypesOffenders } from './relation-offenders.ts'
+import { coveredByOffenders, coveredInOxlintByOffenders, filesLeftUncovered, splitByTypesOffenders } from './relation-offenders.ts'
 
 const BECAUSE = 'card: why'
 
 /** A shipped rule ESLint runs untyped on every file, in the ruleset given, related to no other rule unless given. */
-function eslintRule(id: string, ruleset: string, fields: Partial<Pick<CanonicalRule, 'alwaysOn' | 'coveredBy' | 'files' | 'ignores' | 'splitByTypesWith' | 'typed' | 'whenSuppressions'>> = {}): CanonicalRule {
+function eslintRule(id: string, ruleset: string, fields: Partial<Pick<CanonicalRule, 'alwaysOn' | 'coveredBy' | 'coveredInOxlintBy' | 'files' | 'ignores' | 'splitByTypesWith' | 'typed' | 'whenSuppressions'>> = {}): CanonicalRule {
   return buildCanonicalRule(id, { engine: 'eslint', ruleset, options: [], typed: false, ...fields })
 }
 
-function oxlintRule(id: string, ruleset: string, fields: Partial<Pick<CanonicalRule, 'coveredBy' | 'splitByTypesWith'>> = {}): CanonicalRule {
+function oxlintRule(id: string, ruleset: string, fields: Partial<Pick<CanonicalRule, 'alwaysOn' | 'coveredBy' | 'coveredInOxlintBy' | 'ignores' | 'splitByTypesWith'>> = {}): CanonicalRule {
   return buildCanonicalRule(id, { engine: 'oxlint', oxlintName: id, ruleset, options: [], typed: false, ...fields })
 }
 
 function coveredBy(rule: string): Pick<CanonicalRule, 'coveredBy'> {
   return { coveredBy: { rule, because: BECAUSE } }
+}
+
+function coveredInOxlintBy(rule: string): Pick<CanonicalRule, 'coveredInOxlintBy'> {
+  return { coveredInOxlintBy: { rule, because: BECAUSE } }
 }
 
 function splitByTypesWith(rule: string): Pick<CanonicalRule, 'splitByTypesWith'> {
@@ -86,6 +90,143 @@ describe('coveredByOffenders', () => {
       'a/narrow covered by b/middle: the cover is covered by another rule',
       'd/narrow covered by e/untyped: the cover splits by types with another rule',
     ])
+  })
+})
+
+describe('coveredInOxlintByOffenders', () => {
+  it('names nothing for an oxlint rule covered in oxlint by another oxlint rule, in its own ruleset or another', () => {
+    const rules = [
+      oxlintRule('a/narrow', 'accessibility', coveredInOxlintBy('b/broad')),
+      oxlintRule('b/broad', 'accessibility'),
+      oxlintRule('c/narrow', 'correctness', coveredInOxlintBy('d/broad')),
+      oxlintRule('d/broad', 'accessibility'),
+    ]
+
+    expect(coveredInOxlintByOffenders(rules)).toStrictEqual([])
+  })
+
+  it('names a cover that does not ship, beside one that does', () => {
+    const rules = [oxlintRule('a/narrow', 'accessibility', coveredInOxlintBy('b/unshipped')), oxlintRule('c/narrow', 'accessibility', coveredInOxlintBy('d/broad')), oxlintRule('d/broad', 'accessibility')]
+
+    expect(coveredInOxlintByOffenders(rules)).toStrictEqual(['a/narrow covered in oxlint by b/unshipped: the cover does not ship'])
+  })
+
+  it('names a covered rule and a cover run by ESLint, beside a pair oxlint runs', () => {
+    const rules = [
+      eslintRule('a/in-eslint', 'accessibility', coveredInOxlintBy('b/broad')),
+      oxlintRule('b/broad', 'accessibility'),
+      oxlintRule('c/narrow', 'accessibility', coveredInOxlintBy('d/in-eslint')),
+      eslintRule('d/in-eslint', 'accessibility'),
+      oxlintRule('e/narrow', 'accessibility', coveredInOxlintBy('b/broad')),
+    ]
+
+    expect(coveredInOxlintByOffenders(rules)).toStrictEqual([
+      'a/in-eslint covered in oxlint by b/broad: the covered rule is run by ESLint',
+      'c/narrow covered in oxlint by d/in-eslint: the cover is run by ESLint',
+    ])
+  })
+
+  it('names a covered rule and a cover turned on by no ruleset, beside a pair each in a ruleset', () => {
+    const rules = [
+      oxlintRule('a/always', 'accessibility', { alwaysOn: true, ...coveredInOxlintBy('b/broad') }),
+      oxlintRule('b/broad', 'accessibility'),
+      oxlintRule('c/narrow', 'accessibility', coveredInOxlintBy('d/always')),
+      oxlintRule('d/always', 'accessibility', { alwaysOn: true }),
+      oxlintRule('e/narrow', 'accessibility', coveredInOxlintBy('b/broad')),
+    ]
+
+    expect(coveredInOxlintByOffenders(rules)).toStrictEqual([
+      'a/always covered in oxlint by b/broad: the covered rule is turned on by no ruleset',
+      'c/narrow covered in oxlint by d/always: the cover is turned on by no ruleset',
+    ])
+  })
+
+  it('names a rule covering itself', () => {
+    const rules = [oxlintRule('a/narrow', 'accessibility', coveredInOxlintBy('a/narrow'))]
+
+    expect(coveredInOxlintByOffenders(rules)).toStrictEqual([
+      'a/narrow covered in oxlint by a/narrow: the cover is covered in oxlint by another rule',
+      'a/narrow covered in oxlint by a/narrow: the rule covers itself',
+    ])
+  })
+
+  it('names a cover left out in turn, in oxlint or by a cover of its own, beside a cover that is neither', () => {
+    const rules = [
+      oxlintRule('a/narrow', 'accessibility', coveredInOxlintBy('b/middle')),
+      oxlintRule('b/middle', 'accessibility', coveredInOxlintBy('c/broad')),
+      oxlintRule('c/broad', 'accessibility'),
+      oxlintRule('d/narrow', 'accessibility', coveredInOxlintBy('e/covered')),
+      oxlintRule('e/covered', 'correctness', coveredBy('f/broad')),
+      eslintRule('f/broad', 'declarative'),
+    ]
+
+    expect(coveredInOxlintByOffenders(rules)).toStrictEqual([
+      'a/narrow covered in oxlint by b/middle: the cover is covered in oxlint by another rule',
+      'd/narrow covered in oxlint by e/covered: the cover is covered by another rule',
+    ])
+  })
+})
+
+describe('filesLeftUncovered', () => {
+  it('names nothing for a cover that runs wherever the rule it covers does: neither scoped, both scoped alike, or the rule alone scoped', () => {
+    const rules = [
+      oxlintRule('a/narrow', 'correctness', coveredBy('b/broad')),
+      eslintRule('b/broad', 'declarative'),
+      eslintRule('c/narrow', 'correctness', { files: ['**/*.ts'], ignores: ['**/*.test.ts'], ...coveredBy('d/broad') }),
+      eslintRule('d/broad', 'declarative', { files: ['**/*.ts'], ignores: ['**/*.test.ts'] }),
+      eslintRule('e/narrow', 'correctness', { files: ['**/*.test.ts'], ...coveredBy('b/broad') }),
+    ]
+
+    expect(filesLeftUncovered(rules)).toStrictEqual([])
+  })
+
+  it('names each glob a cover skips that the rule it covers does not, beside a glob both skip', () => {
+    const rules = [
+      eslintRule('a/narrow', 'correctness', { ignores: ['**/*.d.ts'], ...coveredBy('b/broad') }),
+      eslintRule('b/broad', 'declarative', { ignores: ['**/*.d.ts', '**/*.test.ts', '**/__tests__/**'] }),
+    ]
+
+    expect(filesLeftUncovered(rules)).toStrictEqual(['a/narrow covered by b/broad: the cover skips **/*.test.ts', 'a/narrow covered by b/broad: the cover skips **/__tests__/**'])
+  })
+
+  it('names a cover run only on files the rule it covers is not limited to, beside a cover limited as the rule is', () => {
+    const rules = [
+      eslintRule('a/narrow', 'correctness', coveredBy('b/ts-only')),
+      eslintRule('b/ts-only', 'declarative', { files: ['**/*.ts'] }),
+      eslintRule('c/narrow', 'correctness', { files: ['**/*.ts'], ...coveredBy('b/ts-only') }),
+      eslintRule('d/narrow', 'correctness', { files: ['**/*.ts', '**/*.tsx'], ...coveredBy('b/ts-only') }),
+    ]
+
+    expect(filesLeftUncovered(rules)).toStrictEqual(['a/narrow covered by b/ts-only: the cover runs only on **/*.ts', 'd/narrow covered by b/ts-only: the cover runs only on **/*.ts'])
+  })
+
+  it('names a typed cover of an untyped rule, beside a typed cover of a typed rule and an untyped cover of a typed rule', () => {
+    const rules = [
+      eslintRule('a/untyped', 'correctness', coveredBy('b/typed')),
+      eslintRule('b/typed', 'declarative', { typed: true }),
+      eslintRule('c/typed', 'correctness', { typed: true, ...coveredBy('b/typed') }),
+      eslintRule('d/typed', 'correctness', { typed: true, ...coveredBy('e/untyped') }),
+      eslintRule('e/untyped', 'declarative'),
+    ]
+
+    expect(filesLeftUncovered(rules)).toStrictEqual(['a/untyped covered by b/typed: the cover runs only where types are known'])
+  })
+
+  it('names what a cover in oxlint skips, beside a cover in oxlint skipping nothing', () => {
+    const rules = [
+      oxlintRule('a/narrow', 'accessibility', coveredInOxlintBy('b/broad')),
+      oxlintRule('b/broad', 'accessibility', { ignores: ['**/*.test.tsx'] }),
+      oxlintRule('c/narrow', 'accessibility', coveredInOxlintBy('d/broad')),
+      oxlintRule('d/broad', 'accessibility'),
+    ]
+
+    expect(filesLeftUncovered(rules)).toStrictEqual(['a/narrow covered in oxlint by b/broad: the cover skips **/*.test.tsx'])
+  })
+
+  it('names nothing for a cover that does not ship, which the offenders name', () => {
+    const rules = [eslintRule('a/narrow', 'correctness', coveredBy('b/unshipped'))]
+
+    expect(filesLeftUncovered(rules)).toStrictEqual([])
   })
 })
 

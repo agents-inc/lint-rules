@@ -196,6 +196,37 @@ describe('buildRouting', () => {
     })
   })
 
+  // A relation of the oxlint part alone, which the catalog reads as it reads "covered by".
+  describe('a rule covered in oxlint by another', () => {
+    const inventory = buildInventory(
+      ['jsx-a11y/html-has-lang', 'jsx-a11y/lang'].map((id) =>
+        buildInventoryRule(id, {
+          oxlint: buildOxlintImplementation(id.replace('jsx-a11y/', 'jsx_a11y/'), { oxlintPlugin: 'jsx_a11y', typeAware: false, eslintAliases: [] }),
+          eslint: UNTYPED_ESLINT_VERSION,
+        }),
+      ),
+    )
+
+    it('carries the ID of the rule covering it in oxlint, and leaves the field out of a rule covered by none', () => {
+      const canonicalRules = [
+        buildCanonicalRule('jsx-a11y/html-has-lang', {
+          engine: 'oxlint',
+          oxlintName: 'jsx_a11y/html-has-lang',
+          ruleset: 'accessibility',
+          options: [],
+          typed: false,
+          coveredInOxlintBy: { rule: 'jsx-a11y/lang', because: 'card: oxlint reports every case of it' },
+        }),
+        buildCanonicalRule('jsx-a11y/lang', { engine: 'oxlint', oxlintName: 'jsx_a11y/lang', ruleset: 'accessibility', options: [], typed: false }),
+      ]
+
+      expect(buildRouting({ inventory, canonicalRules }).map(({ id, shipped }) => [id, shipped])).toStrictEqual([
+        ['jsx-a11y/html-has-lang', { ruleset: 'accessibility', options: [], files: null, ignores: null, coveredInOxlintBy: 'jsx-a11y/lang' }],
+        ['jsx-a11y/lang', { ruleset: 'accessibility', options: [], files: null, ignores: null }],
+      ])
+    })
+  })
+
   // rules.json marks each rule our runtimes' globals serve; routing carries the mark only where
   // rules.json gives it.
   describe("whether our runtimes' globals serve a rule", () => {

@@ -1,11 +1,12 @@
 // The rulesets that sort code are opt-in: `init` leaves them out and warns they conflict with a
-// formatter that sorts.
+// formatter that sorts. Two that sort nothing are opt-in too.
 
 export const SORTING_RULESETS: readonly string[] = ['import-order', 'ordering']
 
-/** Each rule of the sorting rulesets, by ruleset: every one reorders code. */
+/** Each rule of the sorting rulesets, by ruleset: every one reorders code but import-x/first, which the owner keeps in import-order. */
 export const RULES_THAT_SORT = {
   'import-order': [
+    'import-x/first',
     'import-x/order',
     'perfectionist/sort-export-attributes',
     'perfectionist/sort-exports',
@@ -36,7 +37,15 @@ export const RULES_THAT_SORT = {
   ],
 }
 
-/** Whether the ruleset is one that sorts code, which gives both its `optIn` and its `sortsCode`. */
+/** The opt-in rulesets that sort nothing: strict design tokens, and the browser-support checks, which need a browser target. */
+export const OPT_IN_RULESETS_THAT_SORT_NOTHING: readonly string[] = ['tailwind', 'browser-targets']
+
+/** Whether the ruleset is one that sorts code, which gives its `sortsCode`. */
 export function isSortingRuleset(ruleset: string): boolean {
   return SORTING_RULESETS.includes(ruleset)
+}
+
+/** Whether `init` leaves the ruleset out of a new config: one that sorts code, or one of the two that sort nothing. */
+export function isOptInRuleset(ruleset: string): boolean {
+  return isSortingRuleset(ruleset) || OPT_IN_RULESETS_THAT_SORT_NOTHING.includes(ruleset)
 }
