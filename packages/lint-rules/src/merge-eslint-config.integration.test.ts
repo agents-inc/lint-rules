@@ -35,6 +35,8 @@ import {
   fatalMessagesIn,
   runEslintCli,
 } from './__tests__/engine-clis.ts'
+import { A_DEPRECATED_CONSTANT_PASSED_ON, RE_EXPORTING_ITSELF } from './__tests__/cases/check-sources.ts'
+import { moduleText } from './__tests__/factories/check-factories.ts'
 import { buildEveryRulesetLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import {
   buildPackageJsonListingOthers,
@@ -200,6 +202,24 @@ describe('a team giving no type information, merged with the editor part', () =>
       teamAlone: ofTheRule(findingsOf(runs, 'teamAlone')),
       merged: ofTheRule(findingsOf(runs, 'merged')),
     }).toStrictEqual({ teamAlone: [], merged: [`${FLOATING_PROMISE_FILE}:4 @typescript-eslint/no-floating-promises`] })
+  })
+})
+
+// typescript-eslint's no-deprecated, which our part runs where the team turns it on nowhere, followed a
+// re-export cycle for good, so the merged run never ended.
+describe("a team on typescript-eslint's recommended config, merged with the editor part, beside a file re-exporting a name from itself", () => {
+  const filesWritten = { [RE_EXPORTING_ITSELF.file]: RE_EXPORTING_ITSELF.lines, ...A_DEPRECATED_CONSTANT_PASSED_ON }
+  const runs = setUpTeamProjectRuns(
+    buildPackageJsonListingOxlint(),
+    teamOnRecommended,
+    Object.fromEntries(Object.entries(filesWritten).map(([file, lines]) => [file, moduleText(...lines)])),
+  )
+
+  it('lints, reporting the deprecated name where it is passed on and where it is read, and none in the file re-exporting from itself', () => {
+    expect(findingsOf(runs, 'merged').filter((finding) => finding.rule === '@typescript-eslint/no-deprecated').map(describeFinding)).toStrictEqual([
+      'src/passed-on.ts:1 @typescript-eslint/no-deprecated',
+      'src/read.ts:3 @typescript-eslint/no-deprecated',
+    ])
   })
 })
 
