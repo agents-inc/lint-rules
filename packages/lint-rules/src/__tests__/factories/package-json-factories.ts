@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { PackageJsonFile } from '../../core/package-json-files.ts'
 import { INSTALLED_OXLINT, type TempProjects } from '../temp-projects.ts'
 
 export type DependencyField = 'dependencies' | 'devDependencies'
@@ -37,6 +38,7 @@ export const OXLINT_SCHEMA_FILE = 'configuration_schema.json'
 const INSTALLED_OXLINT_DIR = 'node_modules/oxlint'
 const ESLINT = 'eslint'
 export const INSTALLED_ESLINT_MANIFEST = 'node_modules/eslint/package.json'
+export const PACKAGE_JSON_FILE_PATH = '/project/package.json'
 
 export function oxlintPeerRange(): string {
   const range = lintRulesManifest().peerDependencies[OXLINT]
@@ -159,4 +161,17 @@ export function buildInstalledPackageExportingItsEntryAlone(name: string): Reado
     [`node_modules/${name}/package.json`]: `${JSON.stringify({ name, version: '1.0.0', exports: { '.': './index.js' } })}\n`,
     [`node_modules/${name}/index.js`]: 'module.exports = {}\n',
   }
+}
+
+/** A fake install of React: its manifest and a module exporting its version, as eslint-plugin-react's `detect` reads it. */
+export function buildInstalledReactFiles(version: string): Readonly<Record<string, string>> {
+  return {
+    'node_modules/react/package.json': `${JSON.stringify({ name: 'react', version, main: 'index.js' })}\n`,
+    'node_modules/react/index.js': `module.exports = { version: '${version}' }\n`,
+  }
+}
+
+/** As readPackageJsonFile gives a manifest: each field it reads unset unless given. */
+export function buildPackageJsonFile(fields: Partial<PackageJsonFile> = {}): PackageJsonFile {
+  return { path: PACKAGE_JSON_FILE_PATH, version: undefined, dependencies: undefined, devDependencies: undefined, peerDependencies: undefined, ...fields }
 }

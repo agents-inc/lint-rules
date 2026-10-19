@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { foundOr } from '@workspace/rule-data/collections'
 import { isRecord } from './is-record.ts'
 import { directoriesUpFrom } from './paths-from-a-folder.ts'
 
@@ -25,8 +26,7 @@ export function nearestPackageJsonPath(dir: string): string | undefined {
 
 /** The nearest package.json above this module, in src and in dist alike. */
 export function ourPackageJsonFile(): PackageJsonFile {
-  const nearest = nearestPackageJsonPath(dirname(fileURLToPath(import.meta.url)))
-  if (nearest === undefined) throw new Error(`${THIS_PACKAGE} found no package.json of its own`)
+  const nearest = foundOr(nearestPackageJsonPath(dirname(fileURLToPath(import.meta.url))), `${THIS_PACKAGE} found no package.json of its own`)
   return readPackageJsonFile(nearest)
 }
 
@@ -50,13 +50,13 @@ export function listsPackage(field: unknown, packageName: string): boolean {
 /** Throws, naming the file, when it gives none. */
 export function rangeListedIn(file: PackageJsonFile, field: unknown, packageName: string): string {
   const range = isRecord(field) ? field[packageName] : undefined
-  if (typeof range !== 'string') throw new Error(`${file.path}: lists no version range for ${packageName}`)
+  if (typeof range !== 'string') throw new TypeError(`${file.path}: lists no version range for ${packageName}`)
   return range
 }
 
 /** Throws, naming the file, when it gives none. */
 export function versionOf(file: PackageJsonFile): string {
-  if (typeof file.version !== 'string') throw new Error(`${file.path}: gives no version`)
+  if (typeof file.version !== 'string') throw new TypeError(`${file.path}: gives no version`)
   return file.version
 }
 
