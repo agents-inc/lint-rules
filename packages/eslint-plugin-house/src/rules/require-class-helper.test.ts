@@ -1,4 +1,5 @@
 import type { ESLintUtils } from '@typescript-eslint/utils'
+import { describe, expect, it } from 'vitest'
 
 import {
   callToAClassNameGetter,
@@ -10,9 +11,11 @@ import {
   callWithVariantsMidName,
   classAttribute,
   classNameFromCallTo,
+  cnCallModule,
   composingInsideHelperArguments,
   composingOutsideClassAttributes,
   concatenatedClasses,
+  concatenatedClassesModule,
   DEFAULT_CLASS_HELPERS,
   joinedArrayOfClasses,
   logicalClasses,
@@ -28,12 +31,14 @@ import {
   ternaryAddingAClass,
   ternaryChoosingOneClass,
   variantsCallBesideACnCall,
+  variantsCallModule,
   variantsCallThroughAnObject,
   variantsCallWithATernaryArgument,
   variantsCallWithNoArguments,
   variantsCallWithOptions,
 } from '../__tests__/cases/require-class-helper.ts'
 import { caseBuildersFor } from '../__tests__/factories/rule-case-factories.ts'
+import { lintWithHouseRule } from '../__tests__/house-linter.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
 
@@ -42,6 +47,10 @@ import { housePlugin } from '../index.ts'
 const FILENAME = 'require-class-helper.tsx'
 const OTHER_HELPER = 'joinClasses'
 const DEFAULT_HELPERS_AS_THE_MESSAGE_LISTS_THEM = 'cn, clsx, cx, cva, twMerge, classNames, classnames'
+const RULE_NAME = 'require-class-helper'
+const RULE_ID = 'house/require-class-helper'
+const JAVASCRIPT_FILENAME = 'require-class-helper.js'
+const MESSAGE_ON_CLASS_NAME = `Give className a string, a name, or a call to a class helper (${DEFAULT_HELPERS_AS_THE_MESSAGE_LISTS_THEM}) or to a cva-made function whose name ends in \`Variants\`, and compose classes inside that call. A helper drops empty, false and undefined parts; composed by hand they render as stray spaces or the class "undefined".`
 const { invalidCase, validCase } = caseBuildersFor(FILENAME)
 
 // The valid array's type does not reach a case built inside .map, so those cases name the options
@@ -186,4 +195,32 @@ houseRuleTester.run('require-class-helper', housePlugin.rules['require-class-hel
       errors: [{ messageId: 'useClassHelper', line: 2 }],
     }),
   ],
+})
+
+describe('require-class-helper message, as ESLint renders it', () => {
+  it('names the default helpers and the Variants ending of a cva-made function', () => {
+    const messages = lintWithHouseRule(RULE_NAME, [], concatenatedClassesModule, JAVASCRIPT_FILENAME)
+
+    expect(messages.map(({ ruleId, message }) => ({ ruleId, message }))).toStrictEqual([
+      { ruleId: RULE_ID, message: MESSAGE_ON_CLASS_NAME },
+    ])
+  })
+
+  it('stays silent on a call to a function whose name ends in Variants', () => {
+    expect(lintWithHouseRule(RULE_NAME, [], variantsCallModule, JAVASCRIPT_FILENAME)).toStrictEqual([])
+  })
+})
+
+describe('require-class-helper options, as ESLint checks them', () => {
+  it('accepts a helpers option and applies it: a call to cn is reported when helpers names others', () => {
+    const messages = lintWithHouseRule(RULE_NAME, [{ helpers: [OTHER_HELPER] }], cnCallModule, JAVASCRIPT_FILENAME)
+
+    expect(messages.map(({ ruleId }) => ruleId)).toStrictEqual([RULE_ID])
+  })
+
+  it('refuses an option key other than helpers', () => {
+    expect(() =>
+      lintWithHouseRule(RULE_NAME, [{ helper: [OTHER_HELPER] }], cnCallModule, JAVASCRIPT_FILENAME),
+    ).toThrowError(/Unexpected property "helper"/)
+  })
 })

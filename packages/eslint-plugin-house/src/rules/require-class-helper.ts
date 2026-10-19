@@ -72,7 +72,7 @@ export const requireClassHelper = ESLintUtils.RuleCreator.withoutDocs<Options, '
     },
     messages: {
       useClassHelper:
-        'Give {{attribute}} a string, a name, or a call to a class helper ({{helpers}}), and compose classes inside that call. A helper drops empty, false and undefined parts; composed by hand they render as stray spaces or the class "undefined".',
+        'Give {{attribute}} a string, a name, or a call to a class helper ({{helpers}}) or to a cva-made function whose name ends in `Variants`, and compose classes inside that call. A helper drops empty, false and undefined parts; composed by hand they render as stray spaces or the class "undefined".',
     },
     schema: [stringListOptionSchema('helpers')],
     defaultOptions: [{ helpers: DEFAULT_CLASS_HELPERS }],

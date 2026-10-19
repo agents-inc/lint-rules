@@ -196,3 +196,19 @@ export const variantsCallBesideACnCall = `export function Toolbar({ className }:
   )
 }
 `
+
+// These three are plain JavaScript: ESLint's default parser reads no types.
+export const concatenatedClassesModule = `export function NavTree({ className }) {
+  return <ul className={'nav-tree ' + className}>items</ul>
+}
+`
+
+export const variantsCallModule = `export function Button({ variant, className }) {
+  return <button className={buttonVariants({ variant, className })}>Save</button>
+}
+`
+
+export const cnCallModule = `export function Badge({ className }) {
+  return <span className={cn('badge', className)}>new</span>
+}
+`
