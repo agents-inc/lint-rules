@@ -20,14 +20,19 @@ export type QualityRulesetName =
   | "tests"
 
 export type LibsRulesets = {
-  readonly "ui"?: readonly ("react")[]
-  readonly "testing"?: readonly ("vitest" | "testing-library" | "storybook")[]
+  readonly "ui"?: readonly ("react" | "nextjs" | "react-ssr")[]
+  readonly "testing"?: readonly ("vitest" | "testing-library" | "storybook" | "playwright" | "jest-dom")[]
   readonly "forms"?: readonly ("react-hook-form")[]
-  readonly "styling"?: readonly ("css-modules" | "class-names")[]
+  readonly "styling"?: readonly ("css-modules" | "class-names" | "tailwind")[]
+  readonly "data"?: readonly ("tanstack-query" | "drizzle")[]
+  readonly "routing"?: readonly ("tanstack-router")[]
+  readonly "validation"?: readonly ("zod")[]
+  readonly "auth"?: readonly ("jsonwebtoken")[]
 }
 
 export type RuntimeRulesetName =
   | "node"
   | "browser"
+  | "browser-targets"
 
 export type LanguageRulesetName = never

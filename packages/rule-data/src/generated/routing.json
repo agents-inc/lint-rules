@@ -2454,6 +2454,20 @@
               "ts-nocheck": true
             }
           ]
+        },
+        "bannedInTestFiles": {
+          "files": [
+            "**/*.{test,spec}.{ts,tsx,js,jsx}",
+            "**/__tests__/**",
+            "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+          ],
+          "options": [
+            {
+              "ts-expect-error": "allow-with-description",
+              "ts-ignore": true,
+              "ts-nocheck": true
+            }
+          ]
         }
       },
       "options": [
@@ -3306,6 +3320,11 @@
               "from": "package",
               "package": "vitest",
               "name": "__type"
+            },
+            {
+              "from": "package",
+              "package": "@vitest/expect",
+              "name": "Promisify"
             }
           ]
         }
@@ -3655,7 +3674,8 @@
       "files": null,
       "ignores": [
         "**/*.{test,spec}.{ts,tsx,js,jsx}",
-        "**/__tests__/**"
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
       ]
     }
   },
@@ -4182,7 +4202,11 @@
       "ruleset": "type-safety",
       "options": [],
       "files": null,
-      "ignores": null
+      "ignores": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      ]
     }
   },
   {
@@ -5328,7 +5352,12 @@
       "eslint-plugin-eslint/default-case-last",
       "eslint/default-case-last"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "conventions",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "default-param-last",
@@ -5512,7 +5541,11 @@
         }
       ],
       "files": null,
-      "ignores": null
+      "ignores": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      ]
     }
   },
   {
@@ -5535,13 +5568,20 @@
     "oxlintSpellings": [],
     "shipped": {
       "ruleset": "declarative",
-      "options": [],
+      "options": [
+        {
+          "ignoreVoid": true
+        }
+      ],
       "files": [
         "**/*.ts"
       ],
       "ignores": [
         "**/use[A-Z]*.ts",
-        "**/use-*.ts"
+        "**/use-*.ts",
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
       ]
     }
   },
@@ -5606,7 +5646,10 @@
       ],
       "ignores": [
         "**/use[A-Z]*.ts",
-        "**/use-*.ts"
+        "**/use-*.ts",
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
       ]
     }
   },
@@ -5623,7 +5666,10 @@
       "options": [],
       "files": null,
       "ignores": [
-        "**/*{ErrorBoundary,error-boundary}*.{ts,tsx,js,jsx}"
+        "**/*{ErrorBoundary,error-boundary}*.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
       ]
     }
   },
@@ -5705,7 +5751,9 @@
     "oxlintSpellings": [],
     "shipped": {
       "ruleset": "conventions",
-      "options": [],
+      "options": [
+        "keyword"
+      ],
       "files": null,
       "ignores": null
     }
@@ -6195,7 +6243,7 @@
       "import/first"
     ],
     "shipped": {
-      "ruleset": "modules",
+      "ruleset": "import-order",
       "options": [],
       "files": null,
       "ignores": null
@@ -6487,7 +6535,11 @@
     "oxlintSpellings": [],
     "shipped": {
       "ruleset": "modules",
-      "options": [],
+      "options": [
+        {
+          "includeTypes": true
+        }
+      ],
       "files": null,
       "ignores": null
     }
@@ -8248,7 +8300,8 @@
       "ruleset": "accessibility",
       "options": [],
       "files": null,
-      "ignores": null
+      "ignores": null,
+      "coveredInOxlintBy": "jsx-a11y/lang"
     }
   },
   {
@@ -8768,6 +8821,7 @@
         "**/use-*.{tsx,jsx}",
         "**/*.{test,spec}.{ts,tsx,js,jsx}",
         "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
         "**/*.stories.{ts,tsx,js,jsx}"
       ]
     }
@@ -9688,7 +9742,8 @@
       "ruleset": "correctness",
       "options": [],
       "files": null,
-      "ignores": null
+      "ignores": null,
+      "coveredBy": "sonarjs/no-nested-assignment"
     }
   },
   {
@@ -10289,12 +10344,7 @@
       "eslint/no-implicit-globals",
       "no-implicit-globals"
     ],
-    "shipped": {
-      "ruleset": "browser",
-      "options": [],
-      "files": null,
-      "ignores": null
-    }
+    "shipped": null
   },
   {
     "id": "no-implied-eval",
@@ -11588,7 +11638,8 @@
       "ruleset": "redundancy",
       "options": [
         {
-          "caughtErrors": "none"
+          "caughtErrors": "none",
+          "ignoreRestSiblings": true
         }
       ],
       "files": null,
@@ -12311,7 +12362,8 @@
       "ruleset": "performance",
       "options": [],
       "files": null,
-      "ignores": null
+      "ignores": null,
+      "coveredBy": "functional/immutable-data"
     }
   },
   {
@@ -13775,7 +13827,8 @@
       "files": null,
       "ignores": [
         "**/*.{test,spec}.{ts,tsx,js,jsx}",
-        "**/__tests__/**"
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
       ]
     }
   },
@@ -13827,7 +13880,8 @@
         "**/playwright/**",
         "**/e2e/**",
         "**/*.{test,spec}.{ts,tsx,js,jsx}",
-        "**/__tests__/**"
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
       ]
     }
   },
@@ -17400,7 +17454,8 @@
       "files": null,
       "ignores": [
         "**/*.{test,spec}.{ts,tsx,js,jsx}",
-        "**/__tests__/**"
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
       ]
     }
   },
@@ -17785,7 +17840,11 @@
       "ruleset": "naming",
       "options": [],
       "files": null,
-      "ignores": null
+      "ignores": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      ]
     }
   },
   {
@@ -17885,12 +17944,7 @@
     "typed": true,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": {
-      "ruleset": "complexity",
-      "options": [],
-      "files": null,
-      "ignores": null
-    }
+    "shipped": null
   },
   {
     "id": "sonarjs/future-reserved-words",
@@ -18113,7 +18167,11 @@
         }
       ],
       "files": null,
-      "ignores": null
+      "ignores": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      ]
     }
   },
   {
@@ -18593,12 +18651,7 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": {
-      "ruleset": "tests",
-      "options": [],
-      "files": null,
-      "ignores": null
-    }
+    "shipped": null
   },
   {
     "id": "sonarjs/no-empty-test-title",
@@ -19218,12 +19271,7 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": {
-      "ruleset": "security",
-      "options": [],
-      "files": null,
-      "ignores": null
-    }
+    "shipped": null
   },
   {
     "id": "sonarjs/no-parameter-reassignment",
@@ -19522,7 +19570,11 @@
       "ruleset": "conventions",
       "options": [],
       "files": null,
-      "ignores": null
+      "ignores": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      ]
     }
   },
   {
@@ -20249,12 +20301,7 @@
     "typed": true,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": {
-      "ruleset": "correctness",
-      "options": [],
-      "files": null,
-      "ignores": null
-    }
+    "shipped": null
   },
   {
     "id": "sonarjs/super-linear-regex",
@@ -20906,7 +20953,12 @@
           "eventModule": "userEvent"
         }
       ],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": [
         "**/*.stories.{ts,tsx,js,jsx,mjs}",
         "**/.storybook/**"
@@ -20924,7 +20976,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -20939,7 +20996,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -20970,7 +21032,12 @@
           ]
         }
       ],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -20985,7 +21052,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21010,7 +21082,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null,
       "coveredBy": "sonarjs/no-debug-commands-in-ui-tests"
     }
@@ -21026,7 +21103,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": [
         "**/*.stories.{ts,tsx,js,jsx,mjs}",
         "**/.storybook/**"
@@ -21044,7 +21126,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21059,7 +21146,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21078,7 +21170,12 @@
           "allowContainerFirstChild": true
         }
       ],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21093,7 +21190,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21108,7 +21210,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21123,7 +21230,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21138,7 +21250,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21153,7 +21270,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21168,7 +21290,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21183,7 +21310,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21198,7 +21330,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21213,7 +21350,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21238,7 +21380,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21253,7 +21400,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21349,7 +21501,12 @@
           ]
         }
       ],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21364,7 +21521,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21379,7 +21541,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21394,7 +21561,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21409,7 +21581,12 @@
     "shipped": {
       "ruleset": "testing-library",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      ],
       "ignores": null
     }
   },
@@ -21494,7 +21671,11 @@
     "oxlintSpellings": [],
     "shipped": {
       "ruleset": "comments",
-      "options": [],
+      "options": [
+        {
+          "checkUniformCase": false
+        }
+      ],
       "files": null,
       "ignores": null
     }
@@ -21532,7 +21713,13 @@
     "oxlintSpellings": [],
     "shipped": {
       "ruleset": "naming",
-      "options": [],
+      "options": [
+        {
+          "ignore": [
+            "^_*(?!(?:is|has|was|does|requires)[A-Z0-9])[a-z]+s[A-Z0-9]"
+          ]
+        }
+      ],
       "files": null,
       "ignores": null
     }
@@ -22015,12 +22202,15 @@
             "dest": false,
             "dev": false,
             "dir": false,
+            "dirs": false,
+            "dist": false,
             "doc": false,
             "docs": false,
             "e": false,
             "el": false,
             "elem": false,
             "env": false,
+            "envs": false,
             "err": false,
             "evt": false,
             "fn": false,
@@ -22046,6 +22236,7 @@
             "props": false,
             "ref": false,
             "refs": false,
+            "repo": false,
             "req": false,
             "res": false,
             "ret": false,
@@ -22836,7 +23027,11 @@
       "ruleset": "correctness",
       "options": [],
       "files": null,
-      "ignores": null
+      "ignores": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      ]
     }
   },
   {
@@ -23205,12 +23400,7 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": {
-      "ruleset": "comments",
-      "options": [],
-      "files": null,
-      "ignores": null
-    }
+    "shipped": null
   },
   {
     "id": "unicorn/no-mismatched-map-key",
@@ -23968,12 +24158,7 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": {
-      "ruleset": "complexity",
-      "options": [],
-      "files": null,
-      "ignores": null
-    }
+    "shipped": null
   },
   {
     "id": "unicorn/no-unreadable-object-destructuring",
@@ -24083,12 +24268,7 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": {
-      "ruleset": "correctness",
-      "options": [],
-      "files": null,
-      "ignores": null
-    }
+    "shipped": null
   },
   {
     "id": "unicorn/no-unused-builtin-method-return",
@@ -24811,7 +24991,11 @@
       "ruleset": "modern-js",
       "options": [],
       "files": null,
-      "ignores": null
+      "ignores": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      ]
     }
   },
   {
@@ -26060,12 +26244,7 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": {
-      "ruleset": "conventions",
-      "options": [],
-      "files": null,
-      "ignores": null
-    }
+    "shipped": null
   },
   {
     "id": "unicorn/prefer-short-escape-sequences",
