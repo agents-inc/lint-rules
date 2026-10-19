@@ -1,5 +1,6 @@
 import { relative, resolve, sep } from 'node:path'
 import { type Catalog, isOxlintRoute, routeOf } from '@workspace/rule-data'
+import { foundOr } from '@workspace/rule-data/collections'
 import type { ESLint, Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
 import {
@@ -153,8 +154,8 @@ function ourBlockWithin(block: Linter.Config, { within, rules }: Within<RulesWhe
 
 /** Globs ANDed with the block's own, ignores after its own. */
 function scopeWithin(block: Linter.Config, { files, ignores }: FilesAndIgnores, name: string): Linter.Config {
-  const { files: ourFiles, ignores: ourIgnores = [] } = block
-  if (ourFiles === undefined) throw new Error(`${name}: every block of ours names its files`)
+  const { ignores: ourIgnores = [] } = block
+  const ourFiles = foundOr(block.files, `${name}: every block of ours names its files`)
   const allIgnores = [...ourIgnores, ...ignores]
   return {
     name,
@@ -183,9 +184,7 @@ function ourSettingsBeside(base: Linter.Config, teamBlocks: readonly Linter.Conf
 }
 
 function ourSettingsIn(base: Linter.Config): NonNullable<Linter.Config['settings']> {
-  const { settings } = base
-  if (settings === undefined) throw new Error(`${nameOf(base)}: our base block gives our settings`)
-  return settings
+  return foundOr(base.settings, `${nameOf(base)}: our base block gives our settings`)
 }
 
 function whereTheTeamGivesAnyOf(paths: readonly SettingPath[], teamBlocks: readonly Linter.Config[], tsconfigRootDir: string): FilesCondition {
@@ -199,8 +198,7 @@ function givesAnything(block: Linter.Config): boolean {
 }
 
 function nameOf({ name }: Linter.Config): string {
-  if (name === undefined) throw new Error('a block of ours has no name')
-  return name
+  return foundOr(name, 'a block of ours has no name')
 }
 
 /** A team's `files` or `ignores` may hold a function, which no glob can stand for: the block is read as applying wherever it may, so ours stays out of every file the team's setting may reach. */

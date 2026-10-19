@@ -1,3 +1,4 @@
+import { foundOr } from '@workspace/rule-data/collections'
 import type { Linter } from 'eslint'
 import { sortedUnique } from './build-oxlint-config.ts'
 import { asFilesEntry, JS_AND_TS_FILES, matchesOnlyJsAndTs } from './eslint-file-types.ts'
@@ -45,9 +46,7 @@ export function eachWithin<T extends Where>(items: readonly T[]): Within<T>[] {
 }
 
 export function whereOf(group: readonly Where[]): FilesCondition {
-  const [first] = group
-  if (first === undefined) throw new Error('a group holds at least one item')
-  return first.where
+  return foundOr(group.at(0), 'a group holds at least one item').where
 }
 
 function namesOffGroupedByWhere(offs: readonly NamesOffWhere[]): NamesOffWhere[] {
@@ -82,8 +81,7 @@ function ignoresKey(ignores: readonly string[]): Pick<Linter.Config, 'ignores'> 
 /** Every file, then each entry's glob taken back, then every file of another extension. Null where ignores cannot say it. */
 function ignoresAlone(files: readonly (readonly string[])[]): string[] | null {
   const entries = files.map(splitByExtensions)
-  const [first] = entries
-  if (first === undefined) throw new Error('a block naming files names at least one entry')
+  const first = foundOr(entries.at(0), 'a block naming files names at least one entry')
   if (!entries.every(asksOneGlobAtMost) || !entries.every((entry) => keyOfExtensions(entry.extensions) === keyOfExtensions(first.extensions))) return null
   const eachEntrysGlobTakenBack = entries.every(({ others }) => others.length === 1)
     ? [EVERY_FILE_IGNORED, ...entries.flatMap(({ others }) => others).map(negationOf)]

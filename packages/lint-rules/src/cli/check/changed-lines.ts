@@ -1,3 +1,4 @@
+import { foundOr } from '@workspace/rule-data/collections'
 import { linesOf } from '../text-lines.ts'
 
 /** `wholeFile` where the file is new to git. */
@@ -31,8 +32,8 @@ export function addedSpanOf(line: string): AddedSpan | null {
   const groups = HUNK_HEADER.exec(line)?.groups
   if (groups === undefined) return null
   const { start, count } = groups
-  if (start === undefined) throw new Error(`a hunk header with no start line: ${line}`)
-  return { start: Number(start), count: count === undefined ? ONE_LINE : Number(count) }
+  const startLine = foundOr(start, `a hunk header with no start line: ${line}`)
+  return { start: Number(startLine), count: count === undefined ? ONE_LINE : Number(count) }
 }
 
 function linesAddedByHunkHeader(line: string): number[] {

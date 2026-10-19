@@ -8,7 +8,7 @@ import type { ESLint, Rule } from 'eslint'
 import { builtinRules } from 'eslint/use-at-your-own-risk'
 
 import type { OxlintCategory } from '../catalog.ts'
-import { compareCodeUnits } from '../collections.ts'
+import { compareCodeUnits, foundOr } from '../collections.ts'
 import { eslintPlugins } from '../eslint-plugins.ts'
 import { isObject } from '../is-object.ts'
 import { parseOxlintCategory } from '../parse-names.ts'
@@ -80,11 +80,7 @@ async function prefixWithInstalledVersion(prefix: string): Promise<readonly [str
 }
 
 function packageNameOf(prefix: string): string {
-  const packageName = eslintPluginPackageNames[prefix]
-  if (packageName === undefined) {
-    throw new Error(`the plugin registered as ${prefix} has no package name in eslint-plugin-package-names.ts`)
-  }
-  return packageName
+  return foundOr(eslintPluginPackageNames[prefix], `the plugin registered as ${prefix} has no package name in eslint-plugin-package-names.ts`)
 }
 
 async function readOxlintRules(): Promise<readonly InstalledOxlintRule[]> {
@@ -162,8 +158,7 @@ function otherIdsBoundTo(rule: RuleWithMeta, id: string, bindings: readonly Rule
 }
 
 function rulesOf(prefix: string, plugin: ESLint.Plugin): NonNullable<ESLint.Plugin['rules']> {
-  if (plugin.rules === undefined) throw new Error(`the plugin registered as ${prefix} has no rules`)
-  return plugin.rules
+  return foundOr(plugin.rules, `the plugin registered as ${prefix} has no rules`)
 }
 
 function installedEslintRule(id: string, rule: RuleWithMeta, sameModuleAs: readonly string[]): InstalledEslintRule {
@@ -214,7 +209,5 @@ async function readManifest(packageName: string): Promise<object> {
 }
 
 function manifestPathOf(packageName: string): string {
-  const path = findPackageJSON(packageName, import.meta.url)
-  if (path === undefined) throw new Error(`${packageName} is not installed`)
-  return path
+  return foundOr(findPackageJSON(packageName, import.meta.url), `${packageName} is not installed`)
 }

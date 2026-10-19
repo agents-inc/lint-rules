@@ -1,3 +1,4 @@
+import { foundOr } from '@workspace/rule-data/collections'
 import { eitherOf, type FilesCondition, filesIgnoredBy } from './file-conditions.ts'
 import {
   everyFileUnderFoldersMatching,
@@ -254,10 +255,7 @@ function isUnder(path: string, folder: string): boolean {
 }
 
 function lastSegmentOf(path: string): string {
-  const segments = segmentsOf(path)
-  const last = segments.at(-1)
-  if (last === undefined) throw new Error('a path has at least one part')
-  return last
+  return foundOr(segmentsOf(path).at(-1), 'a path has at least one part')
 }
 
 function segmentsOf(path: string): string[] {

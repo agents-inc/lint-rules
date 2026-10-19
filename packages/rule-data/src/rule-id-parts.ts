@@ -1,6 +1,6 @@
 import oxlintScopes from '../data/oxlint-scopes.json' with { type: 'json' }
 
-import { compareCodeUnits } from './collections.ts'
+import { compareCodeUnits, foundOr } from './collections.ts'
 
 type OxlintScope = {
   oxlintPlugin: string
@@ -122,11 +122,7 @@ function scopeOf(oxlintName: string): OxlintScope {
 }
 
 function scopeNamed(scope: string, oxlintName: string): OxlintScope {
-  const found = scopeByName.get(scope)
-  if (found === undefined) {
-    throw new Error(`oxlint scope "${scope}" (of ${oxlintName}) is not in data/oxlint-scopes.json`)
-  }
-  return found
+  return foundOr(scopeByName.get(scope), `oxlint scope "${scope}" (of ${oxlintName}) is not in data/oxlint-scopes.json`)
 }
 
 function partsOfOxlintName(oxlintName: string): OxlintNameParts {

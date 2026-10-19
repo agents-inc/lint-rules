@@ -1,3 +1,4 @@
+import { foundOr } from '@workspace/rule-data/collections'
 import { extensionsNamedBy, isNegated, literalGlobOf, negationOf, pathNamedBy, withoutNegation } from './globs.ts'
 import { readOnce } from './read-once.ts'
 
@@ -149,9 +150,7 @@ function keyOfTerm(term: FilesTerm): string {
 }
 
 function ignoresShared(terms: readonly FilesTerm[]): readonly string[] {
-  const [first] = terms
-  if (first === undefined) throw new Error('a group of terms holds at least one term')
-  return first.none
+  return foundOr(terms.at(0), 'a group of terms holds at least one term').none
 }
 
 function termOfEvery(terms: readonly FilesTerm[]): FilesTerm {

@@ -1,4 +1,5 @@
 import { type Catalog, type OxlintCategory, type OxlintRule, routeOf, ruleIdsOxlintRunsTypeAware } from '@workspace/rule-data'
+import { foundOr } from '@workspace/rule-data/collections'
 import type { AllowWarnDeny, DummyRuleMap, ExternalPluginEntry, OxlintConfig, OxlintOverride, RuleCategories } from 'oxlint'
 import { type OxlintPlugin, oxlintPluginNamed, sortedUnique, toOxlintPlugin } from './build-oxlint-config.ts'
 import { ruleIdsNamedInEslint } from './catalog-lookups.ts'
@@ -227,9 +228,7 @@ function pluginsListedBy({ plugins = [] }: OxlintOverride): ReadonlySet<OxlintPl
 }
 
 function pluginNamed(name: string): OxlintPlugin {
-  const plugin = builtinPluginNamed(name)
-  if (plugin === undefined) throw new Error(`"${name}" names no plugin of oxlint's`)
-  return plugin
+  return foundOr(builtinPluginNamed(name), `"${name}" names no plugin of oxlint's`)
 }
 
 function builtinPluginNamed(name: string): OxlintPlugin | undefined {
@@ -247,8 +246,8 @@ function withoutThePackageNaming(name: string): string {
   if (match === null) return name
   const { scope, scopedName, name: unscopedName } = namedGroupsOf(match)
   if (unscopedName !== undefined) return unscopedName
-  if (scope === undefined) throw new Error(`${name}: a plugin package's name matched without its scope`)
-  return scopedName === undefined ? scope : `${scope}${SCOPE_SEPARATOR}${scopedName}`
+  const packageScope = foundOr(scope, `${name}: a plugin package's name matched without its scope`)
+  return scopedName === undefined ? packageScope : `${packageScope}${SCOPE_SEPARATOR}${scopedName}`
 }
 
 function overridesIn(configs: readonly OxlintConfig[]): OxlintOverride[] {
@@ -323,9 +322,7 @@ function spellingUnder(plugin: OxlintPlugin, ruleName: string): string {
 
 /** Every key the merge writes is a spelling oxlint has, so a miss throws. */
 export function oxlintRuleSpelled(spelling: string, bySpelling: OxlintRulesBySpelling): OxlintRule {
-  const rule = bySpelling.get(spelling)
-  if (rule === undefined) throw new Error(`${spelling}: no rule oxlint has is spelled so`)
-  return rule
+  return foundOr(bySpelling.get(spelling), `${spelling}: no rule oxlint has is spelled so`)
 }
 
 /** The catalog records oxlint's own plugin name for each rule. */

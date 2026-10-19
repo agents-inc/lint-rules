@@ -1,3 +1,4 @@
+import { foundOr } from '@workspace/rule-data/collections'
 import type { OxlintOverride } from 'oxlint'
 import type { FilesCondition, FilesTerm } from './file-conditions.ts'
 import {
@@ -44,9 +45,8 @@ export function filesLess(files: readonly string[], excludeFiles: readonly strin
 }
 
 function filesOfAlike(alike: readonly WrittenTerm[]): OverrideFiles {
-  const [first] = alike
-  if (first === undefined) throw new Error('a group of written terms holds at least one')
-  return filesLess([...new Set(alike.map(({ glob }) => glob))], first.excludeFiles)
+  const { excludeFiles } = foundOr(alike.at(0), 'a group of written terms holds at least one')
+  return filesLess([...new Set(alike.map(({ glob }) => glob))], excludeFiles)
 }
 
 /** A glob naming files in the config's folder alone goes first in `files`. None where its globs match no file together. */

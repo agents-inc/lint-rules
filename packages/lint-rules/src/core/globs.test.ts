@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { literalGlobOf, normalizeGlob, pathNamedBy } from './globs.ts'
+import { filesOfExtensions, literalGlobOf, normalizeGlob, pathNamedBy } from './globs.ts'
 
 describe('normalizeGlob', () => {
   it('lets a slash-free glob match at any depth', () => {
@@ -33,5 +33,19 @@ describe('pathNamedBy', () => {
 
   it('names no path for a glob matching more than one', () => {
     expect(pathNamedBy('app/*/page.tsx')).toBeNull()
+  })
+})
+
+describe('filesOfExtensions', () => {
+  it('names one extension without braces, as minimatch matches no file by a one-item brace list', () => {
+    expect(filesOfExtensions(['ts'])).toBe('**/*.ts')
+  })
+
+  it('names several extensions in one brace list, in the order given', () => {
+    expect(filesOfExtensions(['vue', 'svelte'])).toBe('**/*.{vue,svelte}')
+  })
+
+  it('refuses no extension', () => {
+    expect(() => filesOfExtensions([])).toThrow(new Error('a glob of files by their extensions names at least one'))
   })
 })

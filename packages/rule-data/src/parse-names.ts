@@ -1,4 +1,5 @@
 import type { Engine, OxlintCategory, RulesetList } from './catalog.ts'
+import { foundOr } from './collections.ts'
 
 const ENGINES: readonly Engine[] = ['oxlint', 'eslint']
 
@@ -23,9 +24,5 @@ export const parseOxlintCategory = oneOf(OXLINT_CATEGORIES, `an oxlint category 
 
 /** A parser taking each allowed name as itself, and refusing any other as not being `what`. */
 function oneOf<Name extends string>(allowed: readonly Name[], what: string): (value: string) => Name {
-  return (value) => {
-    const name = allowed.find((candidate) => candidate === value)
-    if (name === undefined) throw new Error(`"${value}" is not ${what}`)
-    return name
-  }
+  return (value) => foundOr(allowed.find((candidate) => candidate === value), `"${value}" is not ${what}`)
 }

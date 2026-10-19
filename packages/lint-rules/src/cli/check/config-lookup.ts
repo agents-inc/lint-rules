@@ -2,6 +2,7 @@ import { existsSync, realpathSync } from 'node:fs'
 import { findPackageJSON } from 'node:module'
 import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { foundOr } from '@workspace/rule-data/collections'
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import { configErrorIn } from '../../core/config-error.ts'
 import { type EslintPart, isEslintPart } from '../../core/editor-parts.ts'
@@ -17,8 +18,10 @@ const MODULE_NOT_FOUND = 'ERR_MODULE_NOT_FOUND'
 
 /** Searches up to the git top level; throws where there is none. */
 export function nearestConfig(cwd: string, gitTopLevel: string): FoundConfig {
-  const folder = foldersUpTo(realpathSync(cwd), gitTopLevel).find((candidate) => existsSync(join(candidate, CONFIG_FILE)))
-  if (folder === undefined) throw new Error(noConfig(cwd, gitTopLevel, CONFIG_FILE))
+  const folder = foundOr(
+    foldersUpTo(realpathSync(cwd), gitTopLevel).find((candidate) => existsSync(join(candidate, CONFIG_FILE))),
+    noConfig(cwd, gitTopLevel, CONFIG_FILE),
+  )
   return { path: join(folder, CONFIG_FILE), folder }
 }
 
@@ -42,9 +45,7 @@ export async function eslintPartExportedBy({ path }: FoundConfig): Promise<Eslin
 
 function packageJsonTheConfigImports(configPath: string): string {
   try {
-    const found = findPackageJSON(THIS_PACKAGE, pathToFileURL(configPath))
-    if (found === undefined) throw new Error(notInstalled(CONFIG_FILE, THIS_PACKAGE))
-    return found
+    return foundOr(findPackageJSON(THIS_PACKAGE, pathToFileURL(configPath)), notInstalled(CONFIG_FILE, THIS_PACKAGE))
   } catch (error) {
     if (hasErrorCode(error, MODULE_NOT_FOUND)) throw new Error(notInstalled(CONFIG_FILE, THIS_PACKAGE), { cause: error })
     throw error
