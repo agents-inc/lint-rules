@@ -418,3 +418,18 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   reused or imperative code declarative and shared ("now that we have a well covered code base"); then wait for the
   owner's next answers, which inform the next tests. Docs as concise as possible. Extends the 2026-10-14 "make the tests
   DRY" to-do to all code.
+- Owner 2026-10-17 (spec-answers-3 open points). O1, in the owner's words: the config "lives in package a and Claude was
+  started in package a and then used to make changes to app b … it points to this linting setup and should use it
+  everywhere. As for editor config that will probably only apply to where this was defined … it should be very simple".
+  Reading (carded): `check` applies the config's rules to every changed file in the repo; patterns not tied to a folder
+  (`**/…`, `*.ext`) reach every package; folder-anchored ones (`src/**`) stay where the config sits; the editor merges stay
+  local. O2: no docs line on oxlint `options` (oxlint's own error is enough).
+- Owner 2026-10-17, restating O1: the agent config of the folder an AI is opened in applies to every file it changes
+  in the monorepo, other packages' configs included, with no convoluted logic; only the editor setup is tied to its
+  package. Orchestrator's design (spec item 13 rewritten): `check` runs both engines from the git top level with that one
+  config, prefixing folder-anchored patterns with the config folder's path; no second build, no config search.
+- Correction 2026-10-18 to the entry above: `check` runs oxlint from the git top level, as designed, but ESLint
+  from the config's folder, with the config as built, for the files in that folder, and from the git top level, with
+  the prefixed config, for the rest (`eslintEngineByFolder`). Run from the git top level, ESLint read what it resolves
+  from its `cwd` (import-x's `devDependencies` globs) from there, which changed what the files in the config's folder
+  drew; the spec keeps their output as it was (lane B's call, fix round 2).
