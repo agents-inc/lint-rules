@@ -1,7 +1,7 @@
 import { catalog } from '@workspace/rule-data'
+import { STAND_IN_CASES, type StandInCase } from '@workspace/rule-data/test-support/stand-in-cases'
 import { ESLint, type Linter } from 'eslint'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { STAND_IN_FIXTURES, type StandInFixture } from './__tests__/cases/eslint-stand-ins.ts'
 import { eslintFindingsIn } from './__tests__/engine-clis.ts'
 import { buildLintRules, buildTwoSetLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { lintRulesPackageVersion } from './__tests__/factories/package-json-factories.ts'
@@ -13,29 +13,33 @@ import { editorPartsOf } from './core/editor-parts.ts'
 import { mergeEslintPart } from './core/merge-eslint-config.ts'
 import { eslintPluginRegistry } from './eslint-plugin-registry.ts'
 
-// Without oxlint, ESLint stands in for five oxc rules with unicorn rules; beside oxlint, and in the
-// agent build, oxlint runs the oxc rule and no stand-in is stated.
+// Without oxlint, ESLint stands in for oxc rules, on the code rule-data measured both reporting; beside
+// oxlint, and in the agent build, oxlint runs the oxc rule and no stand-in is stated.
 
-// The rulesets shipping the five oxc rules.
+// The rulesets shipping the oxc rules with a stand-in.
 const SHIPPING_THE_OXC_RULES = { quality: ['correctness', 'redundancy'] }
 
-/** The fixture file of each stand-in, by the oxc rule's ID: `src/` and the oxc rule's name. */
-function fixtureFileOf({ oxlintRule }: StandInFixture): string {
-  return `src/${oxlintRule.replace('/', '-')}.js`
-}
+/** A file of a case, in a folder of the oxc rule's name, so no two cases' files meet. */
+type FixtureFile = { readonly path: string; readonly source: string; readonly standIn: string }
 
 /** The rule the catalog records standing in for the oxlint-only rule without oxlint. */
-function standInOf({ oxlintRule }: StandInFixture): string {
+function standInOf({ oxlintRule }: StandInCase): string {
   const standIn = catalog.eslintStandIns.get(oxlintRule)
   if (standIn === undefined) throw new Error(`${oxlintRule}: the catalog records no ESLint stand-in for it`)
   return standIn
 }
 
-const STAND_IN_IDS: ReadonlySet<string> = new Set(STAND_IN_FIXTURES.map(standInOf))
-const FIXTURE_FILES = STAND_IN_FIXTURES.map(fixtureFileOf)
+function fixtureFilesOf(standInCase: StandInCase): FixtureFile[] {
+  const folder = `src/${standInCase.oxlintRule.replace('/', '-')}`
+  return standInCase.reportedIn.map(({ path, source }) => ({ path: `${folder}/${path}`, source, standIn: standInOf(standInCase) }))
+}
+
+const FIXTURES = STAND_IN_CASES.flatMap(fixtureFilesOf)
+const STAND_IN_IDS: ReadonlySet<string> = new Set(FIXTURES.map(({ standIn }) => standIn))
+const FIXTURE_FILES = FIXTURES.map(({ path }) => path)
 
 const tempProjects = setUpTempProjects()
-const PROJECT_DIR = tempProjects.create({ files: Object.fromEntries(STAND_IN_FIXTURES.map((standIn) => [fixtureFileOf(standIn), standIn.fixture])) })
+const PROJECT_DIR = tempProjects.create({ files: Object.fromEntries(FIXTURES.map(({ path, source }) => [path, source])) })
 
 /** Each fixture file's findings of a stand-in, by rule ID, sorted. */
 async function standInsReportedWith(config: Linter.Config[]): Promise<Readonly<Record<string, readonly string[]>>> {
@@ -60,7 +64,7 @@ const NONE_IN_ANY_FIXTURE = Object.fromEntries(FIXTURE_FILES.map((file) => [file
 
 describe('the ESLint stand-ins for oxc rules, each on its fixture', () => {
   it('fire, each on its own fixture alone, through the ESLint merge of a project without oxlint', async () => {
-    expect(await standInsReportedWith(editorMergeOf(false))).toStrictEqual(Object.fromEntries(STAND_IN_FIXTURES.map((standIn) => [fixtureFileOf(standIn), [standInOf(standIn)]])))
+    expect(await standInsReportedWith(editorMergeOf(false))).toStrictEqual(Object.fromEntries(FIXTURES.map(({ path, standIn }) => [path, [standIn]])))
   })
 
   it('are stated by no block of the ESLint merge of a project with oxlint, which runs the oxc rules', async () => {
@@ -82,6 +86,6 @@ describe('the stand-in fixtures', () => {
   })
 
   it("cover exactly the real catalog's stand-ins", () => {
-    expect(STAND_IN_FIXTURES.map(({ oxlintRule }) => oxlintRule).toSorted()).toStrictEqual(standInsOfTheCatalog)
+    expect(STAND_IN_CASES.map(({ oxlintRule }) => oxlintRule).toSorted()).toStrictEqual(standInsOfTheCatalog)
   })
 })
