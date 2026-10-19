@@ -7,7 +7,7 @@
   // cannot load; erasableSyntaxOnly rejects the syntax (enums, namespaces) it cannot strip.
   "compilerOptions": {
     "target": "ES2023",
-    "lib": ["ES2023"],
+    "lib": ["ES2024", "ES2025.Collection", "ES2025.Iterator"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "types": ["node"],
