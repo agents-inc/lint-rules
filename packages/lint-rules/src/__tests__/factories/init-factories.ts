@@ -47,13 +47,15 @@ export type InitWriteOrder = 'package.json first' | 'config first'
 
 export type InitFilesState = { readonly entries: readonly string[]; readonly packageJson: string }
 
-/** The gate's list and common generated files, in the `**\/` form. */
+/** The gate's list, generated folders and common generated files, in the `**\/` form. */
 export const INIT_IGNORES = [
   '**/build/**',
   '**/coverage/**',
   '**/dist/**',
   '**/.next/**',
   '**/.yarn/**',
+  '**/generated/**',
+  '**/__generated__/**',
   '**/*.d.ts',
   '**/*.gen.*',
   '**/*.min.js',
@@ -62,6 +64,8 @@ export const INIT_IGNORES = [
 
 /** Opt-in, so init names them in quality's comment, with the formatter warning. */
 export const SORTING_RULESETS: readonly string[] = ['import-order', 'ordering']
+/** init names each in its own list's comment. */
+const OPT_IN_RULESETS: readonly string[] = [...SORTING_RULESETS, 'tailwind', 'browser-targets']
 
 const NO_OPT_IN: readonly string[] = []
 /** What init's comment says after the opt-in rulesets that sort code. */
@@ -86,17 +90,24 @@ export function initListsOf(rulesets: LintRules['agentRulesets']): InitLists {
   }
 }
 
-/** Every ruleset but the sorting ones, which quality's comment names with the formatter warning. */
+/** Every ruleset but the opt-in ones, which their list's comment names, the sorting ones with the formatter warning. */
 export function initListsOfTheCatalog(): InitLists {
+  const { quality, libs, runtimes, languages } = initListsOf(EVERY_RULESET)
   return {
-    ...initListsOf(EVERY_RULESET),
-    quality: { listed: EVERY_RULESET.quality.filter((name) => !SORTING_RULESETS.includes(name)), optIn: SORTING_RULESETS, sortsCode: SORTING_RULESETS },
+    quality: withTheOptInNamedApart(quality),
+    libs: libs.map((domainList) => ({ ...domainList, ...withTheOptInNamedApart(domainList) })),
+    runtimes: withTheOptInNamedApart(runtimes),
+    languages: withTheOptInNamedApart(languages),
   }
 }
+
+/** TypeScript 6 loads Node's types only where a tsconfig lists them; this loads them for the file. */
+const NODE_TYPES_REFERENCE = '/// <reference types="node" />'
 
 /** As the spec lays it out: two-space indent, single quotes, trailing commas, no semicolons. */
 export function initConfigTextListing({ quality, libs, runtimes, languages }: InitLists): string {
   return moduleText(
+    NODE_TYPES_REFERENCE,
     "import { defineLintRules } from '@agents-inc/lint-rules'",
     '',
     'const config = defineLintRules({',
@@ -134,6 +145,14 @@ export function initConfigTextListing({ quality, libs, runtimes, languages }: In
 /** A package.json's text, laid out as given, each value as JSON.stringify writes it but a value written as is. */
 export function packageJsonTextIn(fields: PackageJsonObject, layout: JsonLayout): string {
   return `${objectText(fields, 0, layout)}${layout.finalNewline ? layout.eol : ''}`
+}
+
+function withTheOptInNamedApart({ listed }: InitList): InitList {
+  return {
+    listed: listed.filter((name) => !OPT_IN_RULESETS.includes(name)),
+    optIn: listed.filter((name) => OPT_IN_RULESETS.includes(name)),
+    sortsCode: listed.filter((name) => SORTING_RULESETS.includes(name)),
+  }
 }
 
 function flatListLines(key: string, { listed, optIn, sortsCode = NO_OPT_IN }: InitList): string[] {
@@ -193,8 +212,9 @@ export function filesStateOf(projectDir: string): InitFilesState {
 
 export type PackageManagerLines = { readonly install: string; readonly runner: string }
 
-export const NPM: PackageManagerLines = { install: 'npm install', runner: 'npx' }
-export const BUN: PackageManagerLines = { install: 'bun install', runner: 'bunx' }
+// Commands that run the installed bin and never download a package of that name.
+export const NPM: PackageManagerLines = { install: 'npm install', runner: 'npx --no' }
+export const BUN: PackageManagerLines = { install: 'bun install', runner: 'bun run' }
 export const PNPM: PackageManagerLines = { install: 'pnpm install', runner: 'pnpm exec' }
 export const YARN: PackageManagerLines = { install: 'yarn install', runner: 'yarn' }
 
@@ -216,6 +236,9 @@ export function initStdout(entry: 'added' | 'kept', { install, runner }: Package
 export function outsideGitNote(folder: string): string {
   return `init: note: ${folder} is not in a git repository, and check needs one.\n`
 }
+
+/** Where git cannot be started. */
+export const GIT_COULD_NOT_RUN_NOTE = 'init: note: git could not be run, and check needs it.\n'
 
 /** Where no package.json up to the git top level lists @types/node. */
 export const TYPES_NODE_NOTE =

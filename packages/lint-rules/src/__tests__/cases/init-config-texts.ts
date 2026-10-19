@@ -22,7 +22,8 @@ export const CATALOG_WITH_OPT_IN_RULESETS: readonly InitRulesetDefinition[] = [
   buildRulesetDefinition({ name: 'json', list: 'languages' }),
 ]
 
-export const TEXT_WITH_OPT_IN_RULESETS = `import { defineLintRules } from '@agents-inc/lint-rules'
+export const TEXT_WITH_OPT_IN_RULESETS = `/// <reference types="node" />
+import { defineLintRules } from '@agents-inc/lint-rules'
 
 const config = defineLintRules({
   tsconfigRootDir: import.meta.dirname,
@@ -64,6 +65,8 @@ const config = defineLintRules({
     '**/dist/**',
     '**/.next/**',
     '**/.yarn/**',
+    '**/generated/**',
+    '**/__generated__/**',
     '**/*.d.ts',
     '**/*.gen.*',
     '**/*.min.js',
@@ -95,7 +98,8 @@ export const CATALOG_WITH_AN_EMPTY_FLAT_LIST: readonly InitRulesetDefinition[] =
   buildRulesetDefinition({ name: 'deno', list: 'runtimes', env: 'deno', optIn: true }),
 ]
 
-export const TEXT_WITH_AN_EMPTY_FLAT_LIST = `import { defineLintRules } from '@agents-inc/lint-rules'
+export const TEXT_WITH_AN_EMPTY_FLAT_LIST = `/// <reference types="node" />
+import { defineLintRules } from '@agents-inc/lint-rules'
 
 const config = defineLintRules({
   tsconfigRootDir: import.meta.dirname,
@@ -125,6 +129,8 @@ const config = defineLintRules({
     '**/dist/**',
     '**/.next/**',
     '**/.yarn/**',
+    '**/generated/**',
+    '**/__generated__/**',
     '**/*.d.ts',
     '**/*.gen.*',
     '**/*.min.js',
@@ -164,7 +170,8 @@ export const CATALOG_WITH_SORTING_RULESETS: readonly InitRulesetDefinition[] = [
   buildRulesetDefinition({ name: 'json-key-order', list: 'languages', sortsCode: true }),
 ]
 
-export const TEXT_WITH_SORTING_RULESETS = `import { defineLintRules } from '@agents-inc/lint-rules'
+export const TEXT_WITH_SORTING_RULESETS = `/// <reference types="node" />
+import { defineLintRules } from '@agents-inc/lint-rules'
 
 const config = defineLintRules({
   tsconfigRootDir: import.meta.dirname,
@@ -205,6 +212,8 @@ const config = defineLintRules({
     '**/dist/**',
     '**/.next/**',
     '**/.yarn/**',
+    '**/generated/**',
+    '**/__generated__/**',
     '**/*.d.ts',
     '**/*.gen.*',
     '**/*.min.js',
@@ -236,7 +245,8 @@ export const CATALOG_WITH_A_DOMAIN_TO_QUOTE: readonly InitRulesetDefinition[] = 
   buildRulesetDefinition({ name: 'query', list: 'libs', domain: 'data-fetching' }),
 ]
 
-export const TEXT_WITH_A_DOMAIN_TO_QUOTE = `import { defineLintRules } from '@agents-inc/lint-rules'
+export const TEXT_WITH_A_DOMAIN_TO_QUOTE = `/// <reference types="node" />
+import { defineLintRules } from '@agents-inc/lint-rules'
 
 const config = defineLintRules({
   tsconfigRootDir: import.meta.dirname,
@@ -268,6 +278,8 @@ const config = defineLintRules({
     '**/dist/**',
     '**/.next/**',
     '**/.yarn/**',
+    '**/generated/**',
+    '**/__generated__/**',
     '**/*.d.ts',
     '**/*.gen.*',
     '**/*.min.js',

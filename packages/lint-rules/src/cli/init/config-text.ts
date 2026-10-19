@@ -14,11 +14,15 @@ const IGNORES = [
   '**/dist/**',
   '**/.next/**',
   '**/.yarn/**',
+  '**/generated/**',
+  '**/__generated__/**',
   '**/*.d.ts',
   '**/*.gen.*',
   '**/*.min.js',
   '**/mockServiceWorker.js',
 ]
+// TypeScript 6 loads Node's types only where a tsconfig lists them, and the file reads import.meta.dirname.
+const NODE_TYPES_REFERENCE = '/// <reference types="node" />'
 const FORMATTER_WARNING =
   "each sorts code, so it conflicts with a formatter that sorts the same code (Biome, oxfmt's sortImports, a Prettier sort plugin): use one or the other."
 const INDENT = '  '
@@ -32,6 +36,7 @@ const BARE_KEY = /^[A-Za-z_$][\w$]*$/u
  */
 export function initConfigText(definitions: readonly RulesetDefinition[]): string {
   return textOfLines([
+    NODE_TYPES_REFERENCE,
     `import { defineLintRules } from ${quoted(THIS_PACKAGE)}`,
     '',
     'const config = defineLintRules({',

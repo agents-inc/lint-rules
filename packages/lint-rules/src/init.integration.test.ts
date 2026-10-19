@@ -5,20 +5,23 @@ import { A_LITERAL_THROWN, AN_IMPORT_BELOW_CODE, AN_IMPORT_OF_OUR_PACKAGE, NAMED
 import { ESLINT_CONFIG_TEXT, OXLINT_CONFIG_TEXT } from './__tests__/cases/consumer-files-as-plan-md-shows.ts'
 import { PACKAGE_JSON_EDITS, PACKAGE_JSON_LISTING_US } from './__tests__/cases/init-package-json-edits.ts'
 import { autofixedFilesIn, findingsIn, findingsInFile } from './__tests__/check-output.ts'
-import { EXIT, runCheck, runInit } from './__tests__/cli-runs.ts'
+import { CLI_FILE, EXIT, runCheck, runCommandLine, runInit, RUNS_IN_THE_BACKGROUND, searchPathWithoutOurBin } from './__tests__/cli-runs.ts'
 import { importInNode, INSTALLED_TYPES_NODE, typeCheck } from './__tests__/config-file-loads.ts'
 import {
   checkConfigText,
+  checkedPackageFiles,
   CONFIG_FILE,
   DEBUGGER_STATEMENT,
   exportedConstant,
   moduleText,
   NESTED_PACKAGE,
   PACKAGE_JSON_FILE,
+  REDUNDANCY,
 } from './__tests__/factories/check-factories.ts'
 import {
   BUN,
   buildInitPackageJson,
+  GIT_COULD_NOT_RUN_NOTE,
   initConfigTextListing,
   initListsOf,
   initListsOfTheCatalog,
@@ -57,24 +60,24 @@ describe('init in a package in a git repo', () => {
     return { result, config: project.readIfWritten(CONFIG_FILE), packageJson: project.read(PACKAGE_JSON_FILE), status: gitStatusOf(project) }
   })
 
-  it("exits 0, printing the install command and the lines for the agents' instructions, and no note (q-i3, q-i5)", () => {
+  it("exits 0, printing the install command and the lines for the agents' instructions, and no note", () => {
     expect(run().result).toStrictEqual({ exitCode: EXIT.clean, signal: null, stdout: initStdout('added', NPM), stderr: '' })
   })
 
-  it('writes the agent set with every ruleset that is not opt-in, in data order, the sorting ones named only in a comment with the formatter warning, and the editor set empty (I-2, q-i6, q30a)', () => {
+  it('writes the agent set with every ruleset that is not opt-in, in data order, the sorting ones named only in a comment with the formatter warning, and the editor set empty', () => {
     expect(run().config).toBe(initConfigTextListing(initListsOfTheCatalog()))
   })
 
-  it('adds our package to devDependencies at a caret on our version, in order (q-i4)', () => {
+  it('adds our package to devDependencies at a caret on our version, in order', () => {
     expect(run().packageJson).toBe(npmPackageJsonText(buildInitPackageJson({ devDependencies: { [OUR_PACKAGE]: OUR_RANGE, ...TYPES_NODE_ENTRY } })))
   })
 
-  it('changes exactly the two files, as git status shows (I-9)', () => {
+  it('changes exactly the two files, as git status shows', () => {
     expect(run().status).toStrictEqual([` M ${PACKAGE_JSON_FILE}`, `?? ${CONFIG_FILE}`])
   })
 })
 
-describe('the package.json edit (I-1, I-7, q-i4)', () => {
+describe('the package.json edit', () => {
   const EDITS = [...PACKAGE_JSON_EDITS.map((edit) => ({ ...edit, entry: 'added' as const })), ...PACKAGE_JSON_LISTING_US]
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) =>
@@ -97,7 +100,7 @@ describe('the package.json edit (I-1, I-7, q-i4)', () => {
   })
 })
 
-describe('the file init writes, loaded (I-3, q-i9)', () => {
+describe('the file init writes, loaded', () => {
   const TSCONFIG_INCLUDING_THE_CONFIG = `${JSON.stringify(buildTsconfig({ include: [CONFIG_FILE] }))}\n`
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
@@ -122,9 +125,8 @@ describe('the file init writes, loaded (I-3, q-i9)', () => {
     expect({ init: init.exitCode, imported }).toStrictEqual({ init: EXIT.clean, imported: { exitCode: 0, stdout: 'eslint oxlint\n', stderr: '' } })
   })
 
-  // KNOWN GAP: TypeScript 6 loads no @types package `compilerOptions.types` does not list, so tsc reports
-  // TS2339 on import.meta.dirname even with @types/node installed.
-  it.fails('type-checks with tsc in a project that has @types/node', () => {
+  // TypeScript 6 loads no @types package `compilerOptions.types` does not list; the file's reference loads Node's.
+  it('type-checks with tsc in a project that has @types/node', () => {
     const { init, typeChecked } = runs().withTypes
 
     expect({ init: init.exitCode, typeChecked }).toStrictEqual({ init: EXIT.clean, typeChecked: { exitCode: 0, stdout: '', stderr: '' } })
@@ -141,7 +143,7 @@ describe('the file init writes, loaded (I-3, q-i9)', () => {
   })
 })
 
-describe('check right after init, the config untracked (I-4, X6)', () => {
+describe('check right after init, the config untracked', () => {
   // Pairwise over four choices: a private or a published package, a tsconfig that includes the
   // config or one that does not, the opt-in comment or none, @types/node or none. With the comment,
   // the file is the one init wrote; without it, the team listed the opt-in rulesets and dropped it.
@@ -154,11 +156,17 @@ describe('check right after init, the config untracked (I-4, X6)', () => {
   const PUBLISHED_VARIANTS_NO_TSCONFIG_TAKES_IN = [
     { kind: 'published, tsconfig not including it, no opt-in comment, @types/node', isPrivate: false, includesConfig: false, optInComment: false, typesNode: true },
   ]
-  const PUBLISHED_VARIANTS_A_TSCONFIG_TAKES_IN = [
+  const PUBLISHED_VARIANTS_A_TSCONFIG_TAKES_IN_WITH_NODE_TYPES = [
     { kind: 'published, tsconfig including it, an opt-in comment, @types/node', isPrivate: false, includesConfig: true, optInComment: true, typesNode: true },
+  ]
+  const PUBLISHED_VARIANTS_A_TSCONFIG_TAKES_IN_WITHOUT_NODE_TYPES = [
     { kind: 'published, tsconfig including it, an opt-in comment, no @types/node', isPrivate: false, includesConfig: true, optInComment: true, typesNode: false },
   ]
-  const PUBLISHED_VARIANTS = [...PUBLISHED_VARIANTS_NO_TSCONFIG_TAKES_IN, ...PUBLISHED_VARIANTS_A_TSCONFIG_TAKES_IN]
+  const PUBLISHED_VARIANTS = [
+    ...PUBLISHED_VARIANTS_NO_TSCONFIG_TAKES_IN,
+    ...PUBLISHED_VARIANTS_A_TSCONFIG_TAKES_IN_WITH_NODE_TYPES,
+    ...PUBLISHED_VARIANTS_A_TSCONFIG_TAKES_IN_WITHOUT_NODE_TYPES,
+  ]
   const VARIANTS = [...PRIVATE_VARIANTS_NO_TSCONFIG_TAKES_IN, ...PRIVATE_VARIANTS_A_TSCONFIG_TAKES_IN, ...PUBLISHED_VARIANTS]
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) =>
@@ -186,8 +194,8 @@ describe('check right after init, the config untracked (I-4, X6)', () => {
     expect(checkAfterInit(kind)).toStrictEqual({ init: EXIT.clean, check: EXIT.clean, findings: [] })
   })
 
-  // KNOWN GAP: where a tsconfig takes the config in, TypeScript 6 types `import.meta.dirname` as an
-  // error, so check reports @typescript-eslint/no-unsafe-assignment at line 4 right after init.
+  // KNOWN GAP: without @types/node, which init's note asks for, `import.meta.dirname` is an error type where a
+  // tsconfig takes the config in, so check reports @typescript-eslint/no-unsafe-assignment at line 5.
   it.fails.each(PRIVATE_VARIANTS_A_TSCONFIG_TAKES_IN)('reports nothing in agents-inc.lint.mts: $kind', ({ kind }) => {
     expect(checkAfterInit(kind)).toStrictEqual({ init: EXIT.clean, check: EXIT.clean, findings: [] })
   })
@@ -198,8 +206,12 @@ describe('check right after init, the config untracked (I-4, X6)', () => {
     expect(checkAfterInit(kind)).toStrictEqual({ init: EXIT.clean, check: EXIT.clean, findings: [] })
   })
 
+  it.each(PUBLISHED_VARIANTS_A_TSCONFIG_TAKES_IN_WITH_NODE_TYPES)('reports nothing in agents-inc.lint.mts: $kind', ({ kind }) => {
+    expect(checkAfterInit(kind)).toStrictEqual({ init: EXIT.clean, check: EXIT.clean, findings: [] })
+  })
+
   // KNOWN GAP: the one above, in a published package too.
-  it.fails.each(PUBLISHED_VARIANTS_A_TSCONFIG_TAKES_IN)('reports nothing in agents-inc.lint.mts: $kind', ({ kind }) => {
+  it.fails.each(PUBLISHED_VARIANTS_A_TSCONFIG_TAKES_IN_WITHOUT_NODE_TYPES)('reports nothing in agents-inc.lint.mts: $kind', ({ kind }) => {
     expect(checkAfterInit(kind)).toStrictEqual({ init: EXIT.clean, check: EXIT.clean, findings: [] })
   })
 
@@ -238,11 +250,11 @@ describe("check right after init in a package npm may publish, the team's config
   })
 })
 
-describe('the sorting rulesets, opt-in: check in a project as init left it, beside one that lists them (owner, 2026-10-15)', () => {
+describe('the sorting rulesets, opt-in: check in a project as init left it, beside one that lists them', () => {
   // Three files an agent adds: an array the program reads in order (perfectionist/sort-arrays, in
   // ordering; check withholds its fix and reports it), named imports out of order
   // (perfectionist/sort-named-imports, in import-order; check fixes them), and an import below other
-  // code (import-x/first, in modules, which init lists).
+  // code (import-x/first, in import-order too).
   const UNITS_FILE = 'src/units.ts'
   const IMPORTS_FILE = 'src/imports.ts'
   const FIRST_FILE = 'src/first.ts'
@@ -278,17 +290,17 @@ describe('the sorting rulesets, opt-in: check in a project as init left it, besi
     listingThem: checkAfterInit(tempProjects, initConfigTextListing(initListsOf(EVERY_RULESET))),
   }))
 
-  it('sorts nothing and reports no sorting where the config is as init wrote it, and still reports the import below other code', () => {
+  it('sorts nothing and reports nothing where the config is as init wrote it, the import below other code included', () => {
     expect(runs().asInitLeftIt).toStrictEqual({
       init: EXIT.clean,
-      exitCode: EXIT.findings,
-      findings: [`${FIRST_FILE}:2 import-x/first`],
+      exitCode: EXIT.clean,
+      findings: [],
       autofixed: [],
       texts: ADDED_FILES,
     })
   })
 
-  it('sorts the imports and reports the array where the config lists both sorting rulesets, and reports the import below other code there too', () => {
+  it('sorts the imports and reports the array where the config lists both sorting rulesets, and reports the import below other code', () => {
     expect(runs().listingThem).toStrictEqual({
       init: EXIT.clean,
       exitCode: EXIT.findings,
@@ -299,7 +311,7 @@ describe('the sorting rulesets, opt-in: check in a project as init left it, besi
   })
 })
 
-describe('init where it refuses (I-5, I-6, q-i1, q-i2)', () => {
+describe('init where it refuses', () => {
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
     const configExists = createGitProject(tempProjects, {
       repo: 'committed',
@@ -320,7 +332,7 @@ describe('init where it refuses (I-5, I-6, q-i1, q-i2)', () => {
     }
   })
 
-  it('exits 1 and changes neither file where agents-inc.lint.mts exists (q-i1)', () => {
+  it('exits 1 and changes neither file where agents-inc.lint.mts exists', () => {
     const { dir, result, configBefore, configAfter, packageJsonAfter } = runs().configExists
 
     expect({ result, configAfter, packageJsonAfter }).toStrictEqual({
@@ -338,7 +350,7 @@ describe('init where it refuses (I-5, I-6, q-i1, q-i2)', () => {
   it.each([
     { kind: 'no package.json at all', made: () => runs().noPackageJson },
     { kind: 'a package.json only in the folder above', made: () => runs().onlyAbove },
-  ])('exits 2 and writes nothing where the folder has no package.json: $kind (q-i2)', ({ made }) => {
+  ])('exits 2 and writes nothing where the folder has no package.json: $kind', ({ made }) => {
     const { dir, result, entries } = made()
 
     expect({ result, entries }).toStrictEqual({
@@ -355,7 +367,7 @@ describe('init where it refuses (I-5, I-6, q-i1, q-i2)', () => {
   it.each([
     { kind: 'not valid JSON', problem: 'not valid JSON', made: () => runs().notJson, text: '{ "name": "consumer-project",\n' },
     { kind: 'a JSON array', problem: 'not a JSON object', made: () => runs().anArray, text: '[]\n' },
-  ])('exits 2, naming the file, and writes nothing where package.json is $kind (q-i2)', ({ problem, made, text }) => {
+  ])('exits 2, naming the file, and writes nothing where package.json is $kind', ({ problem, made, text }) => {
     const { path, result, entries, text: textAfter } = made()
 
     expect({ result, entries, textAfter }).toStrictEqual({
@@ -366,7 +378,7 @@ describe('init where it refuses (I-5, I-6, q-i1, q-i2)', () => {
   })
 })
 
-describe('init outside a git repo (I-8, q-i8)', () => {
+describe('init outside a git repo', () => {
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, { repo: 'not a repo', files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_WITH_TYPES } })
     return { dir: project.dir, result: runInit(project.dir), entries: entriesUnder(project.dir) }
@@ -382,7 +394,7 @@ describe('init outside a git repo (I-8, q-i8)', () => {
   })
 })
 
-describe('the package manager init names (I-10, q-i5)', () => {
+describe('the package manager init names', () => {
   const CASES = [
     { kind: 'bun.lock', lockfiles: ['bun.lock'], above: [], nested: false, repo: 'committed', expected: BUN },
     { kind: 'bun.lockb', lockfiles: ['bun.lockb'], above: [], nested: false, repo: 'committed', expected: BUN },
@@ -420,7 +432,61 @@ describe('the package manager init names (I-10, q-i5)', () => {
   })
 })
 
-describe('the @types/node note (I-11, q-i9)', () => {
+describe('the command init names, as an agent runs it, for npm and bun', () => {
+  // Both run the project's bin and never download a package of its name; with none, npx asks the registry
+  // (network, as packed-install does) and installs nothing.
+  const MANAGERS = [
+    { kind: 'npm', runner: NPM.runner },
+    { kind: 'bun', runner: BUN.runner },
+  ]
+  const BIN = 'node_modules/.bin/agents-inc-lint'
+  // npm's own cache, where npx would install, no notice of a newer npm on stderr, and no bin of ours on PATH but the project's.
+  const runnerEnvFor = (cache: string): Readonly<Record<string, string>> => ({
+    npm_config_cache: cache,
+    npm_config_update_notifier: 'false',
+    PATH: searchPathWithoutOurBin(),
+  })
+  const NPX_INSTALLS_UNDER = '_npx'
+  // How npm and bun exit where no package or script has the name.
+  const NOTHING_TO_RUN = 1
+  const emptyFolder = setUpEmptyFolders()
+
+  const runs = setUpRunsBeforeTheSuite((tempProjects) => {
+    // Its config committed, so check has nothing to check.
+    const installed = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY) })
+    installed.linkAbove(BIN, CLI_FILE)
+    const notInstalled = createGitProject(tempProjects, { repo: 'committed', files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_WITH_TYPES }, linkedPackages: [] })
+    return MANAGERS.map(({ kind, runner }) => {
+      const npmCache = emptyFolder()
+      const env = runnerEnvFor(npmCache)
+      const withoutTheBin = runCommandLine(notInstalled.dir, runner, ['agents-inc-lint', 'check'], { env })
+      return {
+        kind,
+        withTheBin: runCommandLine(installed.dir, runner, ['agents-inc-lint', 'check'], { env }),
+        theBinRunDirectly: runCheck(installed.dir),
+        withoutTheBin: { exitCode: withoutTheBin.exitCode, stderr: withoutTheBin.stderr, installed: entriesUnder(npmCache).some((entry) => entry.startsWith(NPX_INSTALLS_UNDER)) || notInstalled.exists('node_modules') },
+      }
+    })
+  }, RUNS_IN_THE_BACKGROUND)
+
+  it.each(MANAGERS)("runs our check where the bin is installed, printing what the bin prints run directly, and exits 0: $kind's $runner", ({ kind }) => {
+    const { withTheBin, theBinRunDirectly } = runMadeFor(runs(), kind)
+
+    expect(withTheBin).toStrictEqual({ ...theBinRunDirectly, exitCode: EXIT.clean })
+  })
+
+  it("exits 1 without installing anything where no bin is installed, with npm's npx --no, beside the run where one is", () => {
+    const { exitCode, installed } = runMadeFor(runs(), 'npm').withoutTheBin
+
+    expect({ exitCode, installed }).toStrictEqual({ exitCode: NOTHING_TO_RUN, installed: false })
+  })
+
+  it('exits 1 saying no script has that name where no bin is installed, with bun run, beside the run where one is', () => {
+    expect(runMadeFor(runs(), 'bun').withoutTheBin).toStrictEqual({ exitCode: NOTHING_TO_RUN, stderr: 'error: Script not found "agents-inc-lint"\n', installed: false })
+  })
+})
+
+describe('the @types/node note', () => {
   const CASES = [
     { kind: 'the package lists it under devDependencies', root: null, packageJson: A_PACKAGE_WITH_TYPES, above: null, nested: false, noted: false },
     { kind: 'the package lists it under dependencies', root: null, packageJson: buildInitPackageJson({ dependencies: TYPES_NODE_ENTRY }), above: null, nested: false, noted: false },
@@ -480,7 +546,7 @@ describe('init in a package whose folder at the repo root is named with two lead
   })
 })
 
-describe('the ignores init writes, in check (I-12, q-i7, q77)', () => {
+describe('the ignores init writes, in check', () => {
   // Each file fires a rule oxlint runs (no-debugger) and one ESLint runs (no-throw-literal), so each
   // is reported where nothing ignores it, `*.min.js` too, which oxlint never lints.
   const IGNORED = [
@@ -495,12 +561,14 @@ describe('the ignores init writes, in check (I-12, q-i7, q77)', () => {
     'src/routeTree.gen.ts',
     'src/schema.gen.js',
     'src/types.d.ts',
+    'src/generated/a.ts',
+    'src/__generated__/a.ts',
   ]
-  const NEAR_MISS = 'src/distance.ts'
+  const NEAR_MISSES = ['src/distance.ts', 'src/generated-x/a.ts']
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
     const writeTheFiles = (project: ReturnType<typeof createGitProject>): void =>
-      [...IGNORED, NEAR_MISS].forEach((file) => project.write(file, moduleText(exportedConstant('generated'), DEBUGGER_STATEMENT, A_LITERAL_THROWN)))
+      [...IGNORED, ...NEAR_MISSES].forEach((file) => project.write(file, moduleText(exportedConstant('generated'), DEBUGGER_STATEMENT, A_LITERAL_THROWN)))
     const initialised = createGitProject(tempProjects, { repo: 'committed', files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_WITH_TYPES } })
     const init = runInit(initialised.dir)
     writeTheFiles(initialised)
@@ -512,14 +580,14 @@ describe('the ignores init writes, in check (I-12, q-i7, q77)', () => {
     return { init, withInitsIgnores: runCheck(initialised.dir), withNoIgnores: runCheck(ignoringNothing.dir) }
   })
 
-  it("reports nothing in a file under any pattern init's ignores list, in either engine, and reports the near miss", () => {
+  it("reports nothing in a file under any pattern init's ignores list, in either engine, and reports each near miss", () => {
     const { init, withInitsIgnores } = runs()
 
     expect({
       init: init.exitCode,
       inIgnoredFiles: IGNORED.flatMap((file) => findingsInFile(withInitsIgnores.stdout, file)),
-      nearMissReported: findingsInFile(withInitsIgnores.stdout, NEAR_MISS).includes(`${NEAR_MISS}:2 no-debugger`),
-    }).toStrictEqual({ init: EXIT.clean, inIgnoredFiles: [], nearMissReported: true })
+      nearMissesUnreported: NEAR_MISSES.filter((file) => !findingsInFile(withInitsIgnores.stdout, file).includes(`${file}:2 no-debugger`)),
+    }).toStrictEqual({ init: EXIT.clean, inIgnoredFiles: [], nearMissesUnreported: [] })
   })
 
   it('reports each of those files where the config ignores nothing, so each pattern is what keeps its file out', () => {
@@ -532,7 +600,7 @@ describe('the ignores init writes, in check (I-12, q-i7, q77)', () => {
   })
 })
 
-describe('init where what it prints cannot be worked out, before it writes anything (spec-cli.md "I: init", step 4)', () => {
+describe('init where what it prints cannot be worked out, before it writes anything', () => {
   const emptyFolder = setUpEmptyFolders()
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
@@ -548,11 +616,11 @@ describe('init where what it prints cannot be worked out, before it writes anyth
         entries: entriesUnder(brokenRoot.pathOf(NESTED_PACKAGE)),
         packageJson: brokenRoot.read(`${NESTED_PACKAGE}/${PACKAGE_JSON_FILE}`),
       },
-      noGit: { dir: noGit.dir, result: runInit(noGit.dir, { env: { PATH: emptyFolder() } }), entries: entriesUnder(noGit.dir) },
+      noGit: { result: runInit(noGit.dir, { env: { PATH: emptyFolder() } }), entries: entriesUnder(noGit.dir) },
     }
   })
 
-  it('exits 2 naming a package.json above the folder that is not valid JSON, which the @types/node note reads, and writes nothing (q-i2, q-i9)', () => {
+  it('exits 2 naming a package.json above the folder that is not valid JSON, which the @types/node note reads, and writes nothing', () => {
     const { rootPackageJson, result, entries, packageJson } = runs().brokenRoot
 
     expect({ result, entries, packageJson }).toStrictEqual({
@@ -562,17 +630,17 @@ describe('init where what it prints cannot be worked out, before it writes anyth
     })
   })
 
-  it('writes both files where git is not installed, as it does outside a git repo, notes that check needs one, and exits 0 (q-i8)', () => {
-    const { dir, result, entries } = runs().noGit
+  it('writes both files where git cannot be run, as it does outside a git repo, notes that git could not be run and check needs it, and exits 0', () => {
+    const { result, entries } = runs().noGit
 
     expect({ result, entries }).toStrictEqual({
-      result: { exitCode: EXIT.clean, signal: null, stdout: initStdout('added', NPM), stderr: outsideGitNote(dir) },
+      result: { exitCode: EXIT.clean, signal: null, stdout: initStdout('added', NPM), stderr: GIT_COULD_NOT_RUN_NOTE },
       entries: [CONFIG_FILE, PACKAGE_JSON_FILE],
     })
   })
 })
 
-describe('init in a folder it cannot write to (I-14)', () => {
+describe('init in a folder it cannot write to', () => {
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, { repo: 'not a repo', files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_WITH_TYPES } })
     chmodSync(project.dir, 0o555)

@@ -4,10 +4,11 @@ import type { PackageManagerCommands } from './texts.ts'
 
 type Lockfile = { readonly name: string; readonly commands: PackageManagerCommands }
 
-const BUN: PackageManagerCommands = { install: 'bun install', runner: 'bunx' }
+// Each runner runs the installed bin and never downloads a package of its name.
+const BUN: PackageManagerCommands = { install: 'bun install', runner: 'bun run' }
 const PNPM: PackageManagerCommands = { install: 'pnpm install', runner: 'pnpm exec' }
 const YARN: PackageManagerCommands = { install: 'yarn install', runner: 'yarn' }
-const NPM: PackageManagerCommands = { install: 'npm install', runner: 'npx' }
+const NPM: PackageManagerCommands = { install: 'npm install', runner: 'npx --no' }
 
 // In one folder, the first of these that is there names the package manager.
 const LOCKFILES: readonly Lockfile[] = [
