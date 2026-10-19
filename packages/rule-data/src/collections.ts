@@ -1,3 +1,9 @@
+/** What a look-up found, or an Error with the message where it found nothing: only `undefined` is a miss. */
+export function foundOr<Found>(found: Found | undefined, missMessage: string): Found {
+  if (found !== undefined) return found
+  throw new Error(missMessage)
+}
+
 /** Plain code-unit order, the order `<` gives: stable across machines, unlike `localeCompare`. */
 export function compareCodeUnits(left: string, right: string): number {
   if (left < right) return -1
