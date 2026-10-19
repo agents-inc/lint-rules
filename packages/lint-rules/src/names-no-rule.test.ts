@@ -11,7 +11,7 @@ import { namesARuleInEachKindOfString, namesRulesOnlyInComments } from './__test
 
 const SOURCE_DIR = fileURLToPath(new URL('.', import.meta.url))
 const TYPESCRIPT_SOURCE = /\.ts$/u
-const TEST_SOURCE = /(?:\.test\.ts|\.type-test\.ts)$|^__tests__\//u
+const TEST_SOURCE = /(?:\.test\.ts|\.test-d\.ts)$|^__tests__\//u
 // The published entry points: a scan that misses them has read the wrong directory.
 const ENTRY_POINTS = ['eslint.ts', 'index.ts', 'oxlint.ts']
 

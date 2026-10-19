@@ -11,7 +11,7 @@
   "mutate": [
     "packages/lint-rules/src/**/*.ts",
     "!packages/lint-rules/src/**/*.test.ts",
-    "!packages/lint-rules/src/**/*.type-test.ts",
+    "!packages/lint-rules/src/**/*.test-d.ts",
     "!packages/lint-rules/src/__tests__/**"
   ],
   "disableTypeChecks": "packages/lint-rules/src/core/**/*.ts",

@@ -109,6 +109,14 @@ defineLintRules({
   agentRulesets: { ...allowed.agentRulesets, libs: { testing: ['vitest', 'react'] } },
 })
 
+defineLintRules({ ...allowed, agentRulesets: { ...allowed.agentRulesets, libs: { data: ['drizzle'] } } })
+
+defineLintRules({
+  ...allowed,
+  // @ts-expect-error zod belongs to the validation domain, not data
+  agentRulesets: { ...allowed.agentRulesets, libs: { data: ['zod'] } },
+})
+
 defineLintRules({
   ...allowed,
   editorRulesets: {

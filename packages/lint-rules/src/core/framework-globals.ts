@@ -31,8 +31,8 @@ export type TestRunnerEnvs = { readonly files: readonly string[]; readonly envs:
 const BRACE_SEPARATOR = ','
 const TEST_FILE_EXTENSIONS = `{${[...JS_AND_TS_EXTENSIONS].join(BRACE_SEPARATOR)}}`
 
-/** Read-only, in test files whatever rulesets are listed: `*.test.*`, `*.spec.*` and anything under `__tests__`. */
+/** Read-only, in test files whatever rulesets are listed: `*.test.*`, `*.spec.*`, Vitest's type tests (`*.test-d.*`, `*.spec-d.*`) and anything under `__tests__`. */
 export const TEST_RUNNER_GLOBALS: TestRunnerEnvs = {
-  files: [`**/*.{test,spec}.${TEST_FILE_EXTENSIONS}`, `**/__tests__/**/*.${TEST_FILE_EXTENSIONS}`],
+  files: [`**/*.{test,spec}.${TEST_FILE_EXTENSIONS}`, `**/*.{test,spec}-d.${TEST_FILE_EXTENSIONS}`, `**/__tests__/**/*.${TEST_FILE_EXTENSIONS}`],
   envs: ['vitest', 'jest'],
 }
