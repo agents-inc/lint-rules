@@ -1,3 +1,4 @@
+import { buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import { describe, expect, it } from 'vitest'
 import { GLOBALS_OXLINT_OVERRIDES } from '../__tests__/cases/svelte-components.ts'
 import {
@@ -8,7 +9,6 @@ import {
   buildPluginRegistry,
   buildQualityRuleset,
   buildRuntimeRuleset,
-  buildShippedRule,
 } from '../__tests__/factories/catalog-factories.ts'
 import { buildFileOverride, buildLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { setUpEslintConfigOracle } from '../__tests__/eslint-config-oracle.ts'

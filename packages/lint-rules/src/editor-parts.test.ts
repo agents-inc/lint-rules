@@ -1,13 +1,7 @@
 import type { Catalog, RuleRoute } from '@workspace/rule-data'
+import { buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import { describe, expect, it } from 'vitest'
-import {
-  buildCatalog,
-  buildEslintRoute,
-  buildOxlintRoute,
-  buildPluginRegistry,
-  buildQualityRuleset,
-  buildShippedRule,
-} from './__tests__/factories/catalog-factories.ts'
+import { buildCatalog, buildEslintRoute, buildOxlintRoute, buildPluginRegistry, buildQualityRuleset } from './__tests__/factories/catalog-factories.ts'
 import {
   buildEveryRulesetLintRules,
   buildLintRules,

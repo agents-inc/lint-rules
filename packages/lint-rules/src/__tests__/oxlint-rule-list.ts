@@ -1,5 +1,4 @@
-import { spawnSync } from 'node:child_process'
-import { oxlintBin } from '../cli/check/oxlint-run.ts'
+import { oxlintCliOutputIn } from '@workspace/rule-data/test-support/oxlint-cli'
 import { oxlintPluginListedAs } from './oxlint-rule-keys.ts'
 
 /** One rule as `oxlint --rules -f json` prints it: its plugin as `scope` (`jsx_a11y`), its name as `value`. */
@@ -12,8 +11,8 @@ export function pluginsInTheInstalledOxlintsRuleOrder(): string[] {
 }
 
 function installedOxlintRules(): readonly ListedRule[] {
-  const { status, stdout, stderr } = spawnSync(process.execPath, [oxlintBin(), '--rules', '-f', 'json'], { encoding: 'utf8' })
-  if (status !== 0) throw new Error(`oxlint --rules exited ${String(status)}: ${stderr}`)
+  const { exitCode, stdout, stderr } = oxlintCliOutputIn(process.cwd(), ['--rules', '-f', 'json'])
+  if (exitCode !== 0) throw new Error(`oxlint --rules exited ${String(exitCode)}: ${stderr}`)
   // Parse boundary: oxlint's JSON rule list.
   return JSON.parse(stdout) as ListedRule[]
 }

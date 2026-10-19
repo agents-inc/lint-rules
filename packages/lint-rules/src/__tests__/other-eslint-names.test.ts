@@ -1,11 +1,6 @@
+import { buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import { describe, expect, it } from 'vitest'
-import {
-  buildCatalog,
-  buildEslintRoute,
-  buildOxlintRoute,
-  buildQualityRuleset,
-  buildShippedRule,
-} from './factories/catalog-factories.ts'
+import { buildCatalog, buildEslintRoute, buildOxlintRoute, buildQualityRuleset } from './factories/catalog-factories.ts'
 import {
   eslintNamesOf,
   sameModuleNamesOf,

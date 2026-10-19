@@ -5,7 +5,10 @@ import { dirname, join } from 'node:path'
 import { isObject } from '../is-object.ts'
 
 // oxlint's package exports no path to its CLI; the CLI sits at bin/oxlint beside its manifest.
-export const OXLINT_BIN = join(dirname(createRequire(import.meta.url).resolve('oxlint/package.json')), 'bin', 'oxlint')
+const OXLINT_BIN = join(dirname(createRequire(import.meta.url).resolve('oxlint/package.json')), 'bin', 'oxlint')
+
+/** What the installed oxlint printed to each stream, and its exit code, unread. */
+export type OxlintCliOutput = { readonly exitCode: number | null; readonly stdout: string; readonly stderr: string }
 
 /** What the installed oxlint made of a config file: the native rule names it resolved, or its refusal. */
 export type PrintedOxlintConfig =
@@ -23,12 +26,16 @@ export type OxlintJsonReport = { readonly diagnostics: readonly OxlintJsonDiagno
 /** What the installed oxlint made of a run reporting as JSON: its report, or its refusal to load the config, with what it printed. */
 export type OxlintJsonRun = { readonly outcome: 'reported'; readonly report: OxlintJsonReport } | { readonly outcome: 'refused'; readonly output: string }
 
+/** The installed oxlint CLI, from the folder given, over the arguments given. */
+export function oxlintCliOutputIn(cwd: string, args: readonly string[]): OxlintCliOutput {
+  const { status, stdout, stderr } = spawnSync(process.execPath, [OXLINT_BIN, ...args], { cwd, encoding: 'utf8' })
+  return { exitCode: status, stdout, stderr }
+}
+
 /** Runs the installed oxlint with `--print-config`, which resolves every rule key without linting. */
 export function printOxlintConfig(configPath: string): PrintedOxlintConfig {
-  const { status, stdout, stderr } = spawnSync(process.execPath, [OXLINT_BIN, '-c', configPath, '--print-config'], {
-    encoding: 'utf8',
-  })
-  if (status !== 0) return { status: 'refused', output: `${stdout}${stderr}` }
+  const { exitCode, stdout, stderr } = oxlintCliOutputIn(process.cwd(), ['-c', configPath, '--print-config'])
+  if (exitCode !== 0) return { status: 'refused', output: `${stdout}${stderr}` }
   return { status: 'loaded', ruleNames: printedRuleNamesOf(stdout) }
 }
 
@@ -43,7 +50,7 @@ export function printedRuleNamesOf(printed: string): readonly string[] {
 
 /** The installed oxlint, from the folder given, with the config file given, over the arguments given (paths, and any flag such as `--fix`), reporting as JSON. */
 export function oxlintJsonRun(cwd: string, configFile: string, args: readonly string[]): OxlintJsonRun {
-  const { stdout, stderr } = spawnSync(process.execPath, [OXLINT_BIN, '-c', configFile, '-f', 'json', ...args], { cwd, encoding: 'utf8' })
+  const { stdout, stderr } = oxlintCliOutputIn(cwd, ['-c', configFile, '-f', 'json', ...args])
   // oxlint prints something other than JSON when it cannot load the config.
   if (!stdout.trimStart().startsWith('{')) return { outcome: 'refused', output: `${stdout}${stderr}` }
   return { outcome: 'reported', report: parseOxlintJsonReport(stdout) }
