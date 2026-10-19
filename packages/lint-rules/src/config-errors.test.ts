@@ -1,12 +1,14 @@
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { oxlintPartOf } from './__tests__/agent-configs.ts'
+import { VALUES_DESCRIBED_BY_KIND } from './__tests__/cases/values-described-by-kind.ts'
 import {
   buildConsumerLintRulesWithoutAgentRulesets,
   buildConsumerLintRulesWithoutEditorRulesets,
   buildConsumerLintRulesWithoutTsconfigRootDir,
   buildEveryRulesetLintRules,
   EMPTY_TSCONFIG_ROOT_DIR,
+  GLOBS_GIVEN_FOR_SUPPRESSIONS,
 } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOxlint, createProjectListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildTeamOxlintConfig } from './__tests__/factories/team-config-factories.ts'
@@ -89,6 +91,13 @@ describe('tsconfigRootDir in agents-inc.lint.mts', () => {
     )
   })
 
+  it.each(VALUES_DESCRIBED_BY_KIND)('is refused when it is $given, describing it', ({ value, described }) => {
+    // @ts-expect-error tsconfigRootDir is a string
+    expect(() => defineLintRules({ ...validLintRules, tsconfigRootDir: value })).toThrowError(
+      new Error(`agents-inc.lint.mts: tsconfigRootDir: ${described} is not a string`),
+    )
+  })
+
   it.each(refusedValues)('is refused $refused, naming the file, the key, the value and the condition it fails', ({ value, reason }) => {
     expect(() => defineLintRules({ ...validLintRules, tsconfigRootDir: value })).toThrowError(
       new Error(`agents-inc.lint.mts: tsconfigRootDir: "${value}" ${reason}`),
@@ -97,6 +106,39 @@ describe('tsconfigRootDir in agents-inc.lint.mts', () => {
 
   it('is accepted as the absolute path of an existing folder', () => {
     expect(() => defineLintRules({ ...validLintRules, tsconfigRootDir: projectDir })).not.toThrow()
+  })
+})
+
+describe('allowSuppressions in agents-inc.lint.mts', () => {
+  it.each(VALUES_DESCRIBED_BY_KIND)('is refused when it is $given, describing it', ({ value, described }) => {
+    // @ts-expect-error allowSuppressions is true or false
+    expect(() => defineLintRules({ ...validLintRules, allowSuppressions: value })).toThrowError(
+      new Error(`agents-inc.lint.mts: allowSuppressions: ${described} is not true or false`),
+    )
+  })
+
+  it("is refused in a file override when it is an object, describing it, with the index of the entry in the path", () => {
+    // @ts-expect-error allowSuppressions is true or false
+    expect(() => defineLintRules({ ...validLintRules, fileOverrides: [{ files: ['legacy/**'], allowSuppressions: GLOBS_GIVEN_FOR_SUPPRESSIONS }] })).toThrowError(
+      new Error('agents-inc.lint.mts: fileOverrides[0].allowSuppressions: an object is not true or false'),
+    )
+  })
+
+  it.each([[true], [false]])('is accepted as %s', (allowSuppressions) => {
+    expect(() => defineLintRules({ ...validLintRules, allowSuppressions })).not.toThrow()
+  })
+})
+
+describe('a library ruleset in agents-inc.lint.mts', () => {
+  it('is accepted in its own domain', () => {
+    expect(() => defineLintRules({ ...validLintRules, agentRulesets: { ...validLintRules.agentRulesets, libs: { data: ['drizzle'] } } })).not.toThrow()
+  })
+
+  it("is refused in another domain, naming the domain", () => {
+    // @ts-expect-error zod belongs to the validation domain, not data
+    expect(() => defineLintRules({ ...validLintRules, agentRulesets: { ...validLintRules.agentRulesets, libs: { data: ['zod'] } } })).toThrowError(
+      new Error('agents-inc.lint.mts: agentRulesets.libs.data: "zod" is not a data ruleset'),
+    )
   })
 })
 

@@ -1,4 +1,5 @@
 import { type Catalog, isOxlintRoute, routeOf, type RuleRoute } from '@workspace/rule-data'
+import { foundOr } from '@workspace/rule-data/collections'
 import { optionKeysOxlintRefuses } from '@workspace/rule-data/oxlint-refused-options'
 import { currentExtensionsOf, twinsOf } from './catalog-lookups.ts'
 import { TS_FILES } from './eslint-file-types.ts'
@@ -10,7 +11,7 @@ import {
   type RuleLayers,
   type RuleSetting,
   type RuleSettings,
-  resolveRuleLayers,
+  resolveRuleLayersBesideOxlint,
   settingsWithout,
   shippedScopeOf,
   suppressionRulesOf,
@@ -79,9 +80,9 @@ function coreRulesNamedBy(route: RuleRoute, catalog: Catalog): RuleRoute[] {
     .filter((core) => extensionsOfACoreRuleRoutedToOxlint(core, catalog).some(({ id }) => id === route.id))
 }
 
-/** Sub-agents always run oxlint, so each twin pair is decided as beside oxlint. */
+/** Sub-agents always run oxlint, so the rules are resolved, and each twin pair decided, as beside oxlint. */
 export function agentBuildLayersOf(lintRules: LintRulesInput, catalog: Catalog): RuleLayers {
-  return layersWithEachTwinPairDecidedBesideOxlint(resolveRuleLayers(lintRules, catalog), catalog)
+  return layersWithEachTwinPairDecidedBesideOxlint(resolveRuleLayersBesideOxlint(lintRules, catalog), catalog)
 }
 
 /** Beside oxlint, oxlint runs the pair where it runs the core rule. Where the deciding part states one name, the other takes its setting; where it states both, TS files take the extension's setting and the rest the core rule's. Where oxlint refuses or ignores an option, ESLint runs the extension on TS files instead. */
@@ -181,8 +182,7 @@ function settingsTaking(settings: RuleSettings, { pair: { core, extension }, by,
 /** The top level holds only rules turned on, so it keeps the core rule out of TS files as it keeps it out of its ignores; an entry states it off there. */
 function withTsFilesLeftToEslint(settings: RuleSettings, core: RuleRoute, offs: SettingsTaking['offs']): RuleSettings {
   if (offs === 'stated') return { ...settings, [core.id]: OFF_ON_TS_FILES }
-  const topLevelSetting = settings[core.id]
-  if (topLevelSetting === undefined) throw new Error(`${core.id}: in force at the top level, so the top level runs it`)
+  const topLevelSetting = foundOr(settings[core.id], `${core.id}: in force at the top level, so the top level runs it`)
   return { ...settings, [core.id]: withTsFilesIgnored(topLevelSetting) }
 }
 

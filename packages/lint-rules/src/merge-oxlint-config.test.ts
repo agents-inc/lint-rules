@@ -55,6 +55,18 @@ const ROOT_LISTING_EVERY_PLUGIN_OF_OURS: OxlintConfig['plugins'] = ['oxc', 'prom
 // dist/**, and the test files no-non-null-assertion ships ignoring.
 const FILES_READ = ['src/a.ts', 'src/f.tsx', 'src/f.test.tsx', 'lib/b.ts', 'lib/m.tsx', 'dist/c.ts', 'dist/d.tsx']
 const RUNNING_SEVERITIES: ReadonlySet<string | undefined> = new Set(['warn', 'error'])
+const REACT_VERSION = '18.3.0'
+const TEAMS_REACT_VERSION = '16.2.0'
+const TEAM_LINK_COMPONENT = 'Link'
+const TEAM_NEXT_ROOT_DIRS = ['apps/web']
+// Each is no object where oxlint takes one, and oxlint alone refuses it (measured, oxlint 1.87).
+const SETTINGS_OXLINT_REFUSES = [
+  { what: 'they are null', settings: null },
+  { what: 'they are a string', settings: TEAMS_REACT_VERSION },
+  { what: 'the react settings are null', settings: { react: null } },
+  { what: 'the react settings are the version alone', settings: { react: TEAMS_REACT_VERSION } },
+  { what: 'the react settings are an array', settings: { react: [TEAMS_REACT_VERSION] } },
+]
 
 const TEAM_CONFIG = buildTeamOxlintConfig({
   plugins: ['import'],
@@ -260,8 +272,9 @@ describe('mergeOxlintConfig, given a team config setting every key', () => {
     }).toStrictEqual({ firstInLine: ['none of these', 'ours'], own: ["the team's"] })
   })
 
-  it("keeps the team's options, with unused disable directives unreported, which ESLint's suppressions would be", () => {
-    expect(merged().options).toStrictEqual({ typeAware: false, reportUnusedDisableDirectives: 'off' })
+  // oxlint refuses options in any config below the one it starts from, so an option of ours there would stop it linting.
+  it("keeps the team's options as written, adding none", () => {
+    expect(merged().options).toStrictEqual({ typeAware: false })
   })
 
   // The team's root states eslint/no-debugger, which oxlint reads as our no-debugger.
@@ -486,12 +499,48 @@ describe('mergeOxlintConfig, given a rule our ESLint part runs that oxlint has, 
   })
 })
 
-// The team's options and env stand where it sets them; ours fill the rest.
+// The react ruleset expects React 18.3 or later, so our version goes beside the team's other react settings,
+// and the team's own version stands.
+describe("mergeOxlintConfig, given the team's settings", () => {
+  it('gives React 18.3.0 where the team gives no settings', () => {
+    expect(mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, {}, buildTeamOxlintConfig()).settings).toStrictEqual({ react: { version: REACT_VERSION } })
+  })
+
+  it("gives React 18.3.0 beside the team's other react settings, keeping its other plugins' settings", () => {
+    const teamConfig = buildTeamOxlintConfig({ settings: { react: { linkComponents: [TEAM_LINK_COMPONENT] }, next: { rootDir: TEAM_NEXT_ROOT_DIRS } } })
+
+    expect(mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, {}, teamConfig).settings).toStrictEqual({
+      react: { linkComponents: [TEAM_LINK_COMPONENT], version: REACT_VERSION },
+      next: { rootDir: TEAM_NEXT_ROOT_DIRS },
+    })
+  })
+
+  it("keeps the team's React version where it gives one", () => {
+    const teamConfig = buildTeamOxlintConfig({ settings: { react: { version: TEAMS_REACT_VERSION, linkComponents: [TEAM_LINK_COMPONENT] } } })
+
+    expect(mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, {}, teamConfig).settings).toStrictEqual({
+      react: { version: TEAMS_REACT_VERSION, linkComponents: [TEAM_LINK_COMPONENT] },
+    })
+  })
+
+  it.each(SETTINGS_OXLINT_REFUSES)('leaves the settings as the team wrote them, for oxlint to refuse, where $what', ({ settings }) => {
+    // @ts-expect-error a config imported from .oxlintrc.json is untyped, so it can hold settings oxlint's type refuses
+    const teamConfig = buildTeamOxlintConfig({ settings })
+
+    expect(mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, {}, teamConfig).settings).toStrictEqual(settings)
+  })
+})
+
+// The team's options stand as written, and its env where it sets it; ours fill the rest of the env.
 describe('mergeOxlintConfig, given the options and env of the team', () => {
   it('keeps unused disable directives as the team reports them, where it sets that', () => {
     const config = mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, {}, buildTeamOxlintConfig({ options: { reportUnusedDisableDirectives: 'warn' } }))
 
     expect(config.options).toStrictEqual({ reportUnusedDisableDirectives: 'warn' })
+  })
+
+  it('gives no options where the team gives none', () => {
+    expect(mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, {}, buildTeamOxlintConfig()).options).toBeUndefined()
   })
 
   it("keeps the env key the team's root sets, and our runtime's beside it, in every file", () => {

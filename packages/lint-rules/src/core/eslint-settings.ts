@@ -3,6 +3,7 @@ import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescrip
 import { JS_AND_TS_EXTENSIONS } from './eslint-file-types.ts'
 import { isRecord } from './is-record.ts'
 import type { ProjectFacts } from './project-facts.ts'
+import { REACT_VERSION } from './react-version.ts'
 
 type Settings = NonNullable<Linter.Config['settings']>
 
@@ -49,23 +50,18 @@ const IMPORT_X_SETTINGS_PREFIX = 'import-x'
 const IMPORT_X_EXTENSIONS = `${IMPORT_X_SETTINGS_PREFIX}/extensions`
 const TS_AND_JS_EXTENSIONS_IMPORT_X_PARSES = ['.ts', '.tsx', '.cts', '.mts', '.js', '.jsx', '.cjs', '.mjs']
 
-// Without a version eslint-plugin-react warns on every run. Where no React is installed, `detect` warns too,
-// so the latest version is given outright instead.
-const DETECT_THE_INSTALLED_REACT = 'detect'
-const REACT_VERSION_ASSUMED_WITHOUT_REACT = '999.999.999'
-
 /** A setting of ours under a key not here yields to none. */
 const TEAM_SETTINGS_YIELDED_TO: ReadonlyMap<string, readonly SettingPath[]> = new Map([
   [IMPORT_X_RESOLVER_NEXT, [IMPORT_X_RESOLVER_NEXT, ...IMPORT_X_LEGACY_RESOLVERS].map(wholeSettingAt)],
 ])
 
-export function buildEslintSettings({ reactIsInstalled, tsconfigFiles }: ProjectFacts): Settings {
+export function buildEslintSettings({ tsconfigFiles }: ProjectFacts): Settings {
   return {
     [IMPORT_X_RESOLVER_NEXT]: [typeScriptResolverOf(tsconfigFiles)],
     [IMPORT_X_EXTENSIONS]: TS_AND_JS_EXTENSIONS_IMPORT_X_PARSES,
     immutability: { overrides: IMMUTABILITY_TYPE_OVERRIDES },
     [ESLINT_PLUGIN_N_SETTINGS_KEY]: { tryExtensions: nTryExtensions() },
-    react: { version: reactIsInstalled ? DETECT_THE_INSTALLED_REACT : REACT_VERSION_ASSUMED_WITHOUT_REACT },
+    react: { version: REACT_VERSION },
   }
 }
 

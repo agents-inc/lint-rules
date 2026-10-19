@@ -2,6 +2,7 @@
 // `validateLintRules` narrows it.
 
 import type { SuppressionMode } from '@workspace/rule-data'
+import { quotedOrDescribed } from './value-descriptions.ts'
 
 const SEVERITIES = ['error', 'warn', 'off'] as const
 
@@ -90,7 +91,7 @@ export function severityOf(entry: RuleEntryInput): Severity | null {
 }
 
 export function describeSeverity(entry: RuleEntryInput): string {
-  return String(severityGivenBy(entry))
+  return quotedOrDescribed(severityGivenBy(entry))
 }
 
 /** Null for a severity alone, which keeps the options in force. */
@@ -108,7 +109,7 @@ export function isAllowSuppressionsValue(value: unknown): value is boolean | und
 /** Null where it is left out, so the earlier mode stands. */
 export function suppressionModeSetBy(allowSuppressions: unknown): SuppressionMode | null {
   if (!isAllowSuppressionsValue(allowSuppressions)) {
-    throw new Error(`allowSuppressions: "${String(allowSuppressions)}" is not true or false`)
+    throw new Error(`allowSuppressions: ${quotedOrDescribed(allowSuppressions)} is not true or false`)
   }
   if (allowSuppressions === undefined) return null
   return allowSuppressions ? 'allowed' : 'banned'
@@ -118,8 +119,9 @@ export function listedRulesetNames({ quality, libs, runtimes, languages = [] }: 
   return new Set([...quality, ...Object.values(libs).flat(), ...runtimes, ...languages])
 }
 
-function severityGivenBy(entry: RuleEntryInput): unknown {
-  return typeof entry === 'string' ? entry : entry[0]
+/** Types are stripped, so the entry may be no string and no array. */
+function severityGivenBy(entry: unknown): unknown {
+  return Array.isArray(entry) ? entry[0] : entry
 }
 
 function isSeverity(value: unknown): value is Severity {

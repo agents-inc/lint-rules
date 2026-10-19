@@ -34,7 +34,7 @@ const RULES_THE_TEMPLATES_BREAK = ['perfectionist/sort-objects', 'unicorn/no-top
 const RULES_WHOSE_IGNORES_NAME_THEM = ['n/no-unpublished-import', ...RULES_THE_TEMPLATES_BREAK]
 const A_TYPED_RULE = '@typescript-eslint/no-floating-promises'
 
-// KNOWN GAP: where the tsconfig leaves the consumer's TS files out, they get no typed rule:
+// Where the tsconfig leaves the consumer's TS files out, they get no typed rule, as decided:
 // typescript-eslint's default project, set up once per process, broke multi-project runs.
 const TSCONFIGS = [
   { includes: 'only src/', tsconfig: buildTsconfig({ include: ['src'] }), takesInTheTwo: false },
@@ -56,9 +56,6 @@ describe.each(TSCONFIGS)('the files a consumer writes for us, beside a tsconfig 
     teamOxlintConfig: {},
     runsTheAgentOxlintConfig: true,
   })
-  // A run that failed before the suite throws in every other test here, which no it.fails hides.
-  const itWhereTheTsconfigTakesThemIn = takesInTheTwo ? it : it.fails
-
   /** The template rules reported on the file, once each; a parse error, whose rule ID is null, as null. */
   function parseErrorsAndTemplateRulesReportedOn(file: string): (string | null)[] {
     const reported = ruleIdsOn(runs(), 'agent', file)
@@ -102,9 +99,12 @@ describe.each(TSCONFIGS)('the files a consumer writes for us, beside a tsconfig 
     },
   )
 
-  itWhereTheTsconfigTakesThemIn.each(TS_FILES_WE_HAVE_A_CONSUMER_WRITE)('run on %s every typed rule a .mts file in src/ gets', (file) => {
-    expect(typedRulesRunOn(file)).toStrictEqual(typedRulesRunOn(MTS_FILE_IN_SRC))
-  })
+  it.each(TS_FILES_WE_HAVE_A_CONSUMER_WRITE)(
+    takesInTheTwo ? 'run on %s every typed rule a .mts file in src/ gets' : 'run no typed rule on %s, which the tsconfig leaves out',
+    (file) => {
+      expect(typedRulesRunOn(file)).toStrictEqual(takesInTheTwo ? typedRulesRunOn(MTS_FILE_IN_SRC) : [])
+    },
+  )
 
   it('fire a typed rule on a file in src/, which the project service parses', () => {
     expect(ruleIdsOn(runs(), 'agent', FLOATING_PROMISE_IN_SRC)).toContain(A_TYPED_RULE)

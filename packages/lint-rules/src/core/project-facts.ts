@@ -2,7 +2,6 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import ts from 'typescript'
-import { resolvedFrom } from './package-json-files.ts'
 import { filesTakenInByAConfig, tsconfigWalkOf } from './ts-files-outside-every-tsconfig.ts'
 
 // Read once per build so the ESLint builders stay pure.
@@ -12,12 +11,8 @@ export type ProjectFacts = {
   readonly tsFilesOutsideEveryTsconfig: readonly string[]
   /** Absolute paths, outside node_modules and .git. */
   readonly tsconfigFiles: readonly string[]
-  /** eslint-plugin-react's `detect` requires it. */
-  readonly reactIsInstalled: boolean
 }
 
-// eslint-plugin-react 7.37.5's `detect` resolves `react` itself.
-const REACT = 'react'
 const RELATIVE_SPECIFIER = /^\.\.?\//u
 // ts.preProcessFile's first flag: read the file's imports.
 const READ_IMPORTS = true
@@ -31,7 +26,6 @@ export function projectFactsOf(tsconfigRootDir: string): ProjectFacts {
   return {
     tsFilesOutsideEveryTsconfig: walk.tsFilesOutsideEveryTsconfig.filter((file) => !foundThroughAnImport.has(file)),
     tsconfigFiles: walk.tsconfigFiles,
-    reactIsInstalled: resolvedFrom(tsconfigRootDir, REACT) !== null,
   }
 }
 

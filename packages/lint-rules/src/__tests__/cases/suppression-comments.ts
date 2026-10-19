@@ -52,3 +52,11 @@ export const total: number = '1'
 export const bareTsExpectError = `// @ts-expect-error
 export const total: number = '1'
 `
+
+export const tsNocheck = `// @ts-nocheck
+export const total = 1
+`
+
+export const disableNextLineOverADebugger = `// eslint-disable-next-line no-debugger
+debugger
+`

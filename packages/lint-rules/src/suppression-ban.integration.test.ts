@@ -4,6 +4,7 @@ import {
   bareTsExpectError,
   CLASSIC_LOOP_LINE,
   describedTsExpectError,
+  disableNextLineOverADebugger,
   disableOfTheBanOverAClassicLoop,
   disableOverAClassicLoop,
   inlineConfigTurningTheBanOff,
@@ -12,6 +13,7 @@ import {
   sameLineDisableOfTheBan,
   suppressionOfARuleNobodyDefines,
   tsIgnore,
+  tsNocheck,
 } from './__tests__/cases/suppression-comments.ts'
 import { setUpEngineRun } from './__tests__/engine-run.ts'
 import { buildErrorOnItsRoutedEngine, buildEslintError } from './__tests__/factories/engine-error-factories.ts'
@@ -202,6 +204,48 @@ describe('suppressions allowed by allowSuppressions: true', () => {
   // directive silences, and no warning that it has no effect.
   it('adds no warning of its own to a blanket /* eslint-disable */: ESLint reads the directive', () => {
     expect(allowed.eslintMessagesOn('src/disable-over-a-loop.ts')).toStrictEqual([])
+  })
+})
+
+// A type test asserts a type error with @ts-expect-error, so in test and type-test files it passes with a
+// description while suppressions are banned. A team cannot undo that: rules cannot name the rule.
+describe('suppressions banned, in test and type-test files', () => {
+  const EACH_KIND_OF_TEST_FILE = ['src/a.test.ts', 'src/a.spec.ts', 'src/__tests__/a.ts', 'src/a.test-d.ts']
+  const testFiles = setUpEngineRun(
+    FIXTURES_DIR,
+    (projectDir) => defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { 'house/no-classic-loops': 'error' } })),
+    {
+      ...Object.fromEntries(EACH_KIND_OF_TEST_FILE.map((file) => [file, describedTsExpectError])),
+      'src/a.ts': describedTsExpectError,
+      'src/bare-ts-expect-error.test.ts': bareTsExpectError,
+      'src/ts-ignore.test.ts': tsIgnore,
+      'src/ts-nocheck.test.ts': tsNocheck,
+      'src/disable-next-line.test.ts': disableNextLineOverADebugger,
+      'src/named-disable-over-a-loop.test.ts': namedDisableOverAClassicLoop,
+    },
+  )
+
+  it('is loaded by ESLint with no fatal message on any file', () => {
+    expect(testFiles.eslintFatalMessages()).toStrictEqual([])
+  })
+
+  it.each(EACH_KIND_OF_TEST_FILE)('reports nothing for a // @ts-expect-error with a description in %s', (file) => {
+    expect(testFiles.errorsOn(file)).toStrictEqual([])
+  })
+
+  it('reports a // @ts-expect-error with a description in a file that is no test', () => {
+    expect(testFiles.errorsOn('src/a.ts')).toStrictEqual([buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)])
+  })
+
+  // The loop under the named disable is reported too, so ESLint reads no inline config in test files either.
+  it.each([
+    { comment: 'a // @ts-expect-error with no description', file: 'src/bare-ts-expect-error.test.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
+    { comment: 'a // @ts-ignore', file: 'src/ts-ignore.test.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
+    { comment: 'a // @ts-nocheck', file: 'src/ts-nocheck.test.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
+    { comment: 'an // eslint-disable-next-line', file: 'src/disable-next-line.test.ts', errors: BAN_REPORT_ON_LINE_1 },
+    { comment: 'an /* eslint-disable */ naming the loop rule, and the loop', file: 'src/named-disable-over-a-loop.test.ts', errors: BAN_AND_LOOP },
+  ])('reports $comment in a test file', ({ file, errors }) => {
+    expect(testFiles.errorsOn(file)).toStrictEqual(errors)
   })
 })
 

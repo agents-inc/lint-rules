@@ -1,27 +1,20 @@
-import { createRequire } from 'node:module'
 import { ESLint, type Linter } from 'eslint'
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest'
 import { agentConfigsOf } from './__tests__/agent-configs.ts'
 import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
+import { forgetWhatEslintPluginReactDetected } from './__tests__/eslint-plugin-react-version.ts'
 import { buildConsumerLintRules } from './__tests__/factories/lint-rules-factories.ts'
-import { buildPackageJsonListingOthers, packageJsonText } from './__tests__/factories/package-json-factories.ts'
+import { buildInstalledReactFiles, buildPackageJsonListingOthers, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { NO_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// Where `react` does not resolve from tsconfigRootDir, our settings give eslint-plugin-react the version
-// it assumes when detection fails, so it behaves the same and prints nothing. The plugin warns once per
-// process and caches the detected version, so each case resets both first, or a spy finding nothing
-// would prove nothing.
+// Our settings give eslint-plugin-react React 18.3.0, whatever the project installs, so it prints nothing.
+// The plugin warns once per process and caches the detected version, so each case resets both first, or a
+// spy finding nothing would prove nothing.
 
-/** The resets eslint-plugin-react exports beside the cache they clear. */
-type ReactVersionCache = { readonly resetWarningFlag: () => void; readonly resetDetectedVersion: () => void }
-
-// The plugin's own module, the one ESLint runs: no declaration file types what it exports.
-const reactVersionCache: ReactVersionCache = createRequire(import.meta.url)('eslint-plugin-react/lib/util/version')
-
-const VERSION_ASSUMED_WITHOUT_REACT = '999.999.999'
+const REACT_VERSION = '18.3.0'
 const DETECT = 'detect'
 const MISSING_REACT_WARNING =
   'Warning: React version was set to "detect" in eslint-plugin-react settings, but the "react" package is not installed. Assuming latest React version for linting.'
@@ -35,12 +28,6 @@ const REACT_LISTED = { quality: [], libs: { ui: ['react'] } } as const
 const BLOCK_READING_THE_REACT_VERSION: Linter.Config = { name: 'test/reads-the-react-version', files: ['**/*.jsx'], rules: { 'react/no-render-return-value': 'error' } }
 const BLOCK_DETECTING_THE_REACT_VERSION: Linter.Config = { name: 'test/detects-the-react-version', settings: { react: { version: DETECT } } }
 
-/** A fake install of React: its manifest and a module exporting its version, as `detect` reads it. */
-const REACT_INSTALLED_FILES = {
-  'node_modules/react/package.json': `${JSON.stringify({ name: 'react', version: INSTALLED_REACT_VERSION, main: 'index.js' })}\n`,
-  'node_modules/react/index.js': `module.exports = { version: '${INSTALLED_REACT_VERSION}' }\n`,
-}
-
 type Build = { readonly build: string; readonly configOf: (projectDir: string) => Linter.Config[] }
 
 // The project lists no oxlint, so the editor merge has no third config to read.
@@ -53,7 +40,7 @@ const tempProjects = setUpTempProjects()
 const { calculatedConfigInProjectFor } = setUpEslintConfigOracle()
 const PROJECT_WITHOUT_REACT = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOthers()), [JSX_FILE]: JSX_SOURCE } })
 const PROJECT_WITH_REACT = tempProjects.create({
-  files: { 'package.json': packageJsonText(buildPackageJsonListingOthers()), [JSX_FILE]: JSX_SOURCE, ...REACT_INSTALLED_FILES },
+  files: { 'package.json': packageJsonText(buildPackageJsonListingOthers()), [JSX_FILE]: JSX_SOURCE, ...buildInstalledReactFiles(INSTALLED_REACT_VERSION) },
 })
 
 function definedIn(projectDir: string): ReturnType<typeof defineLintRules> {
@@ -76,8 +63,7 @@ describe("eslint-plugin-react's React version, as our settings give it", () => {
   let printed: MockInstance<typeof console.error>
 
   beforeEach(() => {
-    reactVersionCache.resetWarningFlag()
-    reactVersionCache.resetDetectedVersion()
+    forgetWhatEslintPluginReactDetected()
     printed = vi.spyOn(console, 'error').mockImplementation(() => undefined)
   })
 
@@ -104,10 +90,10 @@ describe("eslint-plugin-react's React version, as our settings give it", () => {
     expect(printed.mock.calls).toStrictEqual([])
   })
 
-  it.each(BUILDS)('is the version the plugin assumes without React, and detect where React is installed, in the $build', async ({ configOf }) => {
+  it.each(BUILDS)('is React 18.3.0 whether React is installed or not, in the $build', async ({ configOf }) => {
     expect({
       withoutReact: await reactSettingFor(PROJECT_WITHOUT_REACT, configOf(PROJECT_WITHOUT_REACT)),
       withReact: await reactSettingFor(PROJECT_WITH_REACT, configOf(PROJECT_WITH_REACT)),
-    }).toStrictEqual({ withoutReact: { version: VERSION_ASSUMED_WITHOUT_REACT }, withReact: { version: DETECT } })
+    }).toStrictEqual({ withoutReact: { version: REACT_VERSION }, withReact: { version: REACT_VERSION } })
   })
 })

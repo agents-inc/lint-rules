@@ -1,3 +1,4 @@
+import { buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import { describe, expect, it } from 'vitest'
 import {
   buildCatalog,
@@ -6,7 +7,6 @@ import {
   buildOxlintRoute,
   buildQualityRuleset,
   buildRuntimeRuleset,
-  buildShippedRule,
 } from '../__tests__/factories/catalog-factories.ts'
 import { buildTwoSetFileOverride, buildTwoSetLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { validateLintRules } from './validate-lint-rules.ts'
@@ -156,6 +156,22 @@ describe('validateLintRules', () => {
 
       expect(() => validateLintRules(lintRules, catalog)).toThrowError(
         new Error('agents-inc.lint.mts: rules: invalid severity "warning" for "no-debugger"'),
+      )
+    })
+
+    // Types are stripped, so an entry may be anything: each is described as given, not by its text.
+    it.each([
+      { given: 'options with no severity before them', entry: [{ allow: true }], described: 'an object' },
+      { given: 'a severity inside an array', entry: [['error']], described: 'an array' },
+      { given: 'null', entry: null, described: 'null' },
+      { given: "ESLint's number for error", entry: 2, described: '"2"' },
+      { given: 'an object', entry: { severity: 'error' }, described: 'an object' },
+    ])('is refused when it is $given, describing it', ({ entry, described }) => {
+      // @ts-expect-error an entry is a severity, or an array led by one
+      const lintRules = buildTwoSetLintRules({}, { rules: { 'no-debugger': entry } })
+
+      expect(() => validateLintRules(lintRules, catalog)).toThrowError(
+        new Error(`agents-inc.lint.mts: rules: invalid severity ${described} for "no-debugger"`),
       )
     })
 

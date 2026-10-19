@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { defineLintRules } from '@agents-inc/lint-rules'
 
 const config = defineLintRules({

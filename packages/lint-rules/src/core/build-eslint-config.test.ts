@@ -1,5 +1,6 @@
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
 import type { RuleRoute } from '@workspace/rule-data'
+import { buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import type { ESLint, Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
@@ -14,7 +15,7 @@ import {
   buildPluginRegistry,
   buildQualityRuleset,
   buildRuntimeRuleset,
-  buildShippedRule,
+  buildSuppressionModeShippedRule,
 } from '../__tests__/factories/catalog-factories.ts'
 import { buildFileOverride, buildLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { setUpEslintConfigOracle } from '../__tests__/eslint-config-oracle.ts'
@@ -68,8 +69,8 @@ const SUPPRESSES_A_NAME_NEITHER_ENGINE_HAS_UNDER_A_REGISTERED_PREFIX =
 // eslint-import-resolver-typescript 4.4.5's IMPORT_RESOLVER_NAME.
 const TYPESCRIPT_RESOLVER_NAME = 'eslint-import-resolver-typescript'
 const IMPORT_X_EXTENSIONS = ['.ts', '.tsx', '.cts', '.mts', '.js', '.jsx', '.cjs', '.mjs']
-// eslint-plugin-react 7.37.5's ULTIMATE_LATEST_SEMVER: what it assumes where detection finds no React.
-const REACT_VERSION_ASSUMED_WITHOUT_REACT = '999.999.999'
+// The react ruleset expects React 18.3 or later, so both engines get that version.
+const REACT_VERSION = '18.3.0'
 
 // functional/prefer-immutable-types matches these as RegExps, which JSON could only hold as strings.
 const IMMUTABILITY_TYPE_OVERRIDES = [
@@ -325,8 +326,7 @@ describe('buildEslintConfig', () => {
       })
     })
 
-    // The project here installs no React.
-    it('carries the import-x TypeScript resolver and the extensions import-x reads, the immutability type overrides, the extensions eslint-plugin-n tries, ours first, and the React version eslint-plugin-react assumes without React', () => {
+    it('carries the import-x TypeScript resolver and the extensions import-x reads, the immutability type overrides, the extensions eslint-plugin-n tries, ours first, and React 18.3.0 for eslint-plugin-react', () => {
       const { settings } = blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'agents-inc/base')
 
       expect(settings).toStrictEqual({
@@ -336,7 +336,7 @@ describe('buildEslintConfig', () => {
         'import-x/extensions': IMPORT_X_EXTENSIONS,
         immutability: { overrides: IMMUTABILITY_TYPE_OVERRIDES },
         n: { tryExtensions: ['.js', '.mjs', '.cjs', '.jsx', '.ts', '.mts', '.cts', '.tsx', '.json', '.node'] },
-        react: { version: REACT_VERSION_ASSUMED_WITHOUT_REACT },
+        react: { version: REACT_VERSION },
       })
     })
 
@@ -502,14 +502,12 @@ describe('buildEslintConfig', () => {
         },
       )
 
-      // KNOWN GAP: the two config files at tsconfigRootDir should get the typed rules even where no tsconfig takes
-      // them in, which only a default project could give. The test above builds the same config, so a throwing
-      // build fails there rather than passing here.
-      it.fails.each(waysATypedRuleIsTurnedOn)('gives the two at tsconfigRootDir the typed rule where no tsconfig takes them in, when $how', async ({ lintRules, ruleId, severity }) => {
+      // Only a default project could give them one, which broke one ESLint run over several projects.
+      it.each(waysATypedRuleIsTurnedOn)('gives the two at tsconfigRootDir no typed rule where no tsconfig takes them in, when $how', async ({ lintRules, ruleId }) => {
         const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ tsFilesOutsideEveryTsconfig: CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG }))
         const severities = await Promise.all(ROOT_CONSUMER_CONFIG_FILES.map(async (file) => ({ file, severity: (await ruleSeverityFor(config, file, ruleId)) ?? 'off' })))
 
-        expect(severities).toStrictEqual(ROOT_CONSUMER_CONFIG_FILES.map((file) => ({ file, severity })))
+        expect(severities).toStrictEqual(ROOT_CONSUMER_CONFIG_FILES.map((file) => ({ file, severity: 'off' })))
       })
 
       it('and still runs the untyped rules on them', async () => {
@@ -1412,12 +1410,66 @@ describe('a rule split by types with another, as the data gives it', () => {
   })
 })
 
-// Whether React resolves comes from the project facts, so the settings stay pure.
 describe('buildEslintSettings', () => {
-  it('gives eslint-plugin-react detect where React is installed, and the version it assumes without React where it is not', () => {
+  it('gives eslint-plugin-react React 18.3.0', () => {
+    expect(buildEslintSettings(buildProjectFacts())['react']).toStrictEqual({ version: REACT_VERSION })
+  })
+})
+
+// Only the ESLint build writes a setting for test files, so the data routes each rule with one to ESLint.
+// The rule here is off where suppressions are allowed, so a test-file setting leaking out of a banning entry shows.
+describe('a rule allowSuppressions decides, given a setting for test files while suppressions are banned', () => {
+  // Slash-free, as ESLint matches only at the root unless it is given at any depth.
+  const STRICT_IN_TEST_FILES = { files: ['*.test.ts'], options: [{ level: 1 }] }
+  const SHIPPED_WITH_A_TEST_FILE_SETTING = {
+    ...buildSuppressionModeShippedRule(),
+    whenSuppressions: { banned: { options: [{ level: 2 }] }, allowed: 'off', bannedInTestFiles: STRICT_IN_TEST_FILES },
+  } as const
+  const strictAlone = buildPluginRegistry({ demo: ['strict'] })
+
+  const routedToEslint = buildCatalog({ rulesets: [], rules: [buildEslintRoute('demo/strict', { typed: false, shipped: SHIPPED_WITH_A_TEST_FILE_SETTING })] })
+
+  it('takes it in test files alone, at any depth, routed to ESLint', async () => {
+    const config = buildEslintConfig(buildLintRules({}), routedToEslint, strictAlone, buildProjectFacts())
+
     expect({
-      reactInstalled: buildEslintSettings(buildProjectFacts({ reactIsInstalled: true }))['react'],
-      noReact: buildEslintSettings(buildProjectFacts())['react'],
-    }).toStrictEqual({ reactInstalled: { version: 'detect' }, noReact: { version: REACT_VERSION_ASSUMED_WITHOUT_REACT } })
+      testFile: await ruleEntryFor(config, 'src/a.test.ts', 'demo/strict'),
+      otherFile: await ruleEntryFor(config, 'src/a.ts', 'demo/strict'),
+    }).toStrictEqual({ testFile: [ERROR, { level: 1 }], otherFile: [ERROR, { level: 2 }] })
+  })
+
+  it("takes it in an entry's test files alone, where the entry bans suppressions under a top level allowing them", async () => {
+    const lintRules = buildLintRules({}, { allowSuppressions: true, fileOverrides: [buildFileOverride(['strict/**'], { allowSuppressions: false })] })
+    const config = buildEslintConfig(lintRules, routedToEslint, strictAlone, buildProjectFacts())
+
+    // Off where suppressions are allowed, so no block states it outside the entry.
+    expect({
+      entryTestFile: await ruleEntryFor(config, 'strict/a.test.ts', 'demo/strict'),
+      entryOtherFile: await ruleEntryFor(config, 'strict/a.ts', 'demo/strict'),
+      testFileOutsideTheEntry: await ruleEntryFor(config, 'src/a.test.ts', 'demo/strict'),
+    }).toStrictEqual({ entryTestFile: [ERROR, { level: 1 }], entryOtherFile: [ERROR, { level: 2 }], testFileOutsideTheEntry: undefined })
+  })
+
+  it("names the test files' block of an entry under the entry's name, as the top level's is under its own, as ESLint's config inspector shows them", () => {
+    const blockNamesOf = (lintRules: ReturnType<typeof buildLintRules>): (string | undefined)[] =>
+      buildEslintConfig(lintRules, routedToEslint, strictAlone, buildProjectFacts())
+        .map(({ name }) => name)
+        .filter((name) => name?.endsWith('/demo/strict'))
+
+    expect({
+      topLevel: blockNamesOf(buildLintRules({})),
+      entry: blockNamesOf(buildLintRules({}, { allowSuppressions: true, fileOverrides: [buildFileOverride(['strict/**'], { allowSuppressions: false })] })),
+    }).toStrictEqual({ topLevel: ['agents-inc/test-files/demo/strict'], entry: ['agents-inc/file-overrides/0/test-files/demo/strict'] })
+  })
+
+  it('is refused routed to oxlint, naming the rule', () => {
+    const routedToOxlint = buildCatalog({
+      rulesets: [],
+      rules: [buildOxlintRoute('no-debugger', { oxlintName: 'no-debugger', oxlintPlugin: 'eslint', shipped: SHIPPED_WITH_A_TEST_FILE_SETTING })],
+    })
+
+    expect(() => buildEslintConfig(buildLintRules({}), routedToOxlint, strictAlone, buildProjectFacts())).toThrowError(
+      'no-debugger: given a setting for test files while suppressions are banned',
+    )
   })
 })

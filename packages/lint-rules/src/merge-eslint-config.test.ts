@@ -2138,8 +2138,7 @@ describe('a team block setting an import-x resolver whose basePath lies outside 
 
 // The team's language options, settings and linter options stand, key by key, in the files of the team
 // block setting them; ours apply elsewhere. The probed global is a Svelte rune, ours in every rune
-// module, as beside oxlint our runtime globals are nowhere in ESLint. The project lists no React, so
-// our React version is the one eslint-plugin-react assumes.
+// module, as beside oxlint our runtime globals are nowhere in ESLint.
 describe("the team's language options, settings and linter options", () => {
   const teamParser = buildTeamParser('team-parser')
   const teamConfig = [
@@ -2161,7 +2160,7 @@ describe("the team's language options, settings and linter options", () => {
         elsewhere: await languageOptionsAndSettingsIn(config, 'src/a.svelte.ts'),
       }).toStrictEqual({
         inTheTeamsFiles: { parser: 'team-parser', jsx: false, $state: 'off', reactVersion: '18.3' },
-        elsewhere: { parser: TYPESCRIPT_ESLINT_PARSER_NAME, jsx: true, $state: false, reactVersion: '999.999.999' },
+        elsewhere: { parser: TYPESCRIPT_ESLINT_PARSER_NAME, jsx: true, $state: false, reactVersion: '18.3.0' },
       })
     },
   )

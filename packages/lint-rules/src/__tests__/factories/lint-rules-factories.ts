@@ -35,7 +35,7 @@ export const EMPTY_TSCONFIG_ROOT_DIR = existingEmptyFolder(join(tmpdir(), EMPTY_
 
 const NO_RULESETS = { quality: [], libs: {}, runtimes: [] } as const satisfies Rulesets
 
-/** A ruleset added to the data and missing here turns gate-equivalence red; one removed is a type error. */
+/** A ruleset added to the data and missing here turns init's agent-set test red; one removed is a type error. */
 export const EVERY_RULESET = {
   quality: [
     'correctness',
@@ -57,12 +57,16 @@ export const EVERY_RULESET = {
     'tests',
   ],
   libs: {
-    ui: ['react'],
-    testing: ['vitest', 'testing-library', 'storybook'],
+    ui: ['react', 'nextjs', 'react-ssr'],
+    testing: ['vitest', 'testing-library', 'storybook', 'playwright', 'jest-dom'],
     forms: ['react-hook-form'],
-    styling: ['css-modules', 'class-names'],
+    styling: ['css-modules', 'class-names', 'tailwind'],
+    data: ['tanstack-query', 'drizzle'],
+    routing: ['tanstack-router'],
+    validation: ['zod'],
+    auth: ['jsonwebtoken'],
   },
-  runtimes: ['node', 'browser'],
+  runtimes: ['node', 'browser', 'browser-targets'],
   languages: [],
 } as const satisfies Rulesets
 
@@ -148,6 +152,9 @@ function qualityRulesetInBothSets(ruleset: NonNullable<Rulesets['quality']>[numb
 export const MODULES_IN_BOTH_SETS = qualityRulesetInBothSets('modules')
 export const CORRECTNESS_IN_BOTH_SETS = qualityRulesetInBothSets('correctness')
 export const REDUNDANCY_IN_BOTH_SETS = qualityRulesetInBothSets('redundancy')
+
+/** As a team might write allowSuppressions, meaning the files it allows them in. */
+export const GLOBS_GIVEN_FOR_SUPPRESSIONS = { files: ['src/**'] }
 
 export function buildEveryRulesetLintRules(tsconfigRootDir: string, fields: SharedFields = {}): LintRules {
   return { tsconfigRootDir, agentRulesets: EVERY_RULESET, editorRulesets: EVERY_RULESET, ...fields }

@@ -1,16 +1,17 @@
 import { type Catalog, isOxlintRoute, type OxlintRoute, routeOf, type RuleRoute, type SuppressionMode } from '@workspace/rule-data'
+import { foundOr } from '@workspace/rule-data/collections'
 import { pluginPrefixOf } from '@workspace/rule-data/rule-id-parts'
 import { type ESLint, Linter, type Rule } from 'eslint'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
-import { isEslintRoute, twinsOf } from './catalog-lookups.ts'
+import { isEslintRoute, isSuppressionRoute, type SuppressionRoute, twinsOf } from './catalog-lookups.ts'
 import { withCompatLayerWhereNeeded } from './eslint-compat.ts'
 import { asFilesEntry, CONSUMER_CONFIG_FILES, eslintGlobalIgnoresOf, filesMatchingAll, JS_AND_TS_FILES, matchesOnlyJsAndTs, TS_FILES } from './eslint-file-types.ts'
 import { type NamesOffWhere, offBlocksOf, rulesOff, twinsOffName } from './eslint-off-blocks.ts'
 import { buildEslintSettings } from './eslint-settings.ts'
 import { bothOf, EVERY_FILE, eitherOf, type FilesCondition, type FilesEntry, filesAndIgnoresOf, filesInScopeOf, globsOf, NO_FILE } from './file-conditions.ts'
 import { SVELTE_RUNES, TEST_RUNNER_GLOBALS } from './framework-globals.ts'
-import { literalGlobOf } from './globs.ts'
+import { literalGlobOf, normalizeGlob } from './globs.ts'
 import type { LintRulesInput } from './lint-rules-input.ts'
 import type { ProjectFacts } from './project-facts.ts'
 import {
@@ -25,6 +26,7 @@ import {
   ruleIdsOnIn,
   settingsOn,
   settingsWithout,
+  type SuppressionLayer,
   tsFileRulesOf,
 } from './resolve-rule-layers.ts'
 import {
@@ -149,6 +151,9 @@ type InlineConfigGuard = Pick<Linter.Config, 'linterOptions'>
 
 type GlobalsChange = { readonly name: string; readonly files: FilesCondition; readonly globals: Linter.Globals }
 
+/** A rule `allowSuppressions` decides, and the options it takes in test files while suppressions are banned. */
+type SettingInTestFiles = { readonly route: RuleRoute; readonly files: Globs; readonly options: readonly unknown[] }
+
 const BLOCK = 'agents-inc'
 const BASE_BLOCK = `${BLOCK}/base`
 const SVELTE_RUNES_BLOCK = `${BLOCK}/svelte-runes`
@@ -160,6 +165,7 @@ const OXLINT_RULES_OFF = 'oxlint-rules-off'
 const WITHOUT_TYPES = 'without-types'
 const TS_EXTENSIONS = 'ts-extensions'
 const TYPED_TS_EXTENSIONS = 'typed-ts-extensions'
+const TEST_FILES = 'test-files'
 // A plugin holding a do-nothing rule with another rule's meta, for ESLint to check options against.
 const OPTIONS_PROBE_PLUGIN = 'options-probe'
 const OPTIONS_PROBE_RULE = 'rule'
@@ -190,8 +196,7 @@ export function buildEslintConfig(
       ruleNamesRun: NO_RULE_NAMES,
       ruleNamesStubbed: oxlintRuleNamesByPrefix(catalog),
     }),
-    // The runner checks unused suppressions itself: each engine flags the other's as unused.
-    linterOptions: { reportUnusedDisableDirectives: 'off', noInlineConfig: readsNoDirectivesIn(layers.suppressionMode) },
+    linterOptions: agentLinterOptionsOf(layers.suppressionMode),
     settings: buildEslintSettings(projectFacts),
     typeInformation: { from: 'ours', tsconfigRootDir: lintRules.tsconfigRootDir, tsFilesOutsideEveryTsconfig: projectFacts.tsFilesOutsideEveryTsconfig },
     // Sub-agents always run oxlint, which runs every core rule ESLint would otherwise take over.
@@ -229,6 +234,8 @@ export function eslintBlocksBeforeTheOffSwitch(source: BlocksSource, catalog: Ca
   const splits = splitsByTypesIn(catalog)
   const entries = layers.fileOverrides.map((layer) => entryBlocksSourceOf(layer, { stated: topLevelStated, rules: topLevel }, splits, source, catalog))
   const runsTypedRule = runsAnyTypedRule([{ rules: topLevel, onTsFiles: topLevelOnTsFiles }, ...entries])
+  const inTestFiles = settingsInTestFilesWhileBanned(catalog)
+  const topLevelSuppressions: SuppressionLayer = { mode: layers.suppressionMode, rules: layers.rules }
   return {
     globalIgnores: globalIgnoresBlocks(eslintGlobalIgnoresOf(layers)),
     base: baseBlock(layers.env, eslintRuleMap(settingsPlaced('plain', topLevel.settings)), source),
@@ -239,7 +246,8 @@ export function eslintBlocksBeforeTheOffSwitch(source: BlocksSource, catalog: Ca
       ...typedBlocks(typeInformation, settingsPlaced('typed', topLevel.settings), untypedStatementsAtTheTopLevel(splits, topLevel), runsTypedRule),
       ...settingsPlaced('scoped', topLevel.settings).flatMap((scoped) => scopeBlocks(`${BLOCK}/scope`, [], scoped, topLevel, typeInformation)),
       ...blocksOnTsFilesAlone(`${BLOCK}/scope`, [], topLevelOnTsFiles, typeInformation),
-      ...entries.flatMap((entry, index) => fileOverrideBlocks(entry, index, source)),
+      ...blocksInTestFilesWhileBanned(`${BLOCK}/${TEST_FILES}`, [], topLevelSuppressions, inTestFiles, typeInformation),
+      ...entries.flatMap((entry, index) => fileOverrideBlocks(entry, index, source, inTestFiles)),
     ],
   }
 }
@@ -293,6 +301,11 @@ function ruleNameOfOxlintName(oxlintName: string): string {
 export function ruleNamesByPrefix(ruleIds: readonly string[]): ReadonlyMap<string, readonly string[]> {
   const pluginRules = ruleIds.flatMap(pluginRuleOf)
   return new Map(prefixesOf(pluginRules).map((prefix) => [prefix, ruleNamesUnder(prefix, pluginRules)]))
+}
+
+/** The base block's, which every JS and TS file of the agent build has unless an entry sets its own. The runner checks unused suppressions itself: each engine flags the other's as unused. */
+export function agentLinterOptionsOf(mode: SuppressionMode): Linter.LinterOptions {
+  return { reportUnusedDisableDirectives: 'off', noInlineConfig: readsNoDirectivesIn(mode) }
 }
 
 /** ESLint applies directives before any rule runs, so a blanket `eslint-disable` would switch the suppression ban off for its file (measured, ESLint 10.12). */
@@ -436,7 +449,7 @@ function ruleIgnoresOf({ route, setting }: EslintSetting, typeInformation: TypeI
 }
 
 /** The entry's rules and ruleset changes are merged first (`entryStatements`), so a rule the entry sets never also lands in a later scope block. */
-function fileOverrideBlocks({ layer, rules, onTsFiles, untyped }: EntryBlocksSource, index: number, source: BlocksSource): Linter.Config[] {
+function fileOverrideBlocks({ layer, rules, onTsFiles, untyped }: EntryBlocksSource, index: number, source: BlocksSource, inTestFiles: readonly SettingInTestFiles[]): Linter.Config[] {
   const entry: BlockScope = { name: `${BLOCK}/file-overrides/${index}`, files: filesMatchingAll([layer.files]), ignores: [] }
   const { settings } = rules
   return [
@@ -445,7 +458,40 @@ function fileOverrideBlocks({ layer, rules, onTsFiles, untyped }: EntryBlocksSou
     ...entryTypedBlocksIfNotEmpty(`${entry.name}/typed`, layer.files, { rules: settingsPlaced('typed', settings), untyped }, source.typeInformation),
     ...settingsPlaced('scoped', settings).flatMap((scoped) => scopeBlocks(`${entry.name}/scope`, [layer.files], scoped, rules, source.typeInformation)),
     ...blocksOnTsFilesAlone(`${entry.name}/scope`, [layer.files], onTsFiles, source.typeInformation),
+    ...blocksInTestFilesWhileBanned(`${entry.name}/${TEST_FILES}`, [layer.files], layer.suppressions, inTestFiles, source.typeInformation),
   ]
+}
+
+/** While suppressions are banned a test may still assert a type error: each rule with a setting for test files takes it there, after the layer's other blocks. */
+function blocksInTestFilesWhileBanned(
+  namePrefix: string,
+  layerFiles: readonly Globs[],
+  suppressions: SuppressionLayer | undefined,
+  inTestFiles: readonly SettingInTestFiles[],
+  typeInformation: TypeInformation,
+): Linter.Config[] {
+  if (suppressions === undefined || suppressions.mode !== 'banned') return []
+  return inTestFiles.flatMap((inTests) =>
+    scopeBlocks(namePrefix, [...layerFiles, inTests.files], layerSettingInTestFiles(inTests, suppressions.rules), NO_LAYER_RULES, typeInformation),
+  )
+}
+
+/** The layer's own setting of the rule, at the options it takes in test files. */
+function layerSettingInTestFiles({ route, options }: SettingInTestFiles, layerRules: RuleSettings): EslintSetting {
+  const setting = foundOr(layerRules[route.id], `${route.id}: allowSuppressions decides it, so the layer banning suppressions states it`)
+  return { route, setting: { ...setting, options } }
+}
+
+function settingsInTestFilesWhileBanned(catalog: Catalog): SettingInTestFiles[] {
+  return [...catalog.rules.values()].filter(isSuppressionRoute).flatMap(settingInTestFilesWhileBannedOf)
+}
+
+/** Only this build writes a setting for test files, so a rule with one must be routed to ESLint. */
+function settingInTestFilesWhileBannedOf(route: SuppressionRoute): SettingInTestFiles[] {
+  const { bannedInTestFiles } = route.shipped.whenSuppressions
+  if (bannedInTestFiles === undefined) return []
+  if (!isEslintRoute(route)) throw new Error(`${route.id}: given a setting for test files while suppressions are banned, which only the ESLint build writes, so the catalog must route it to ESLint`)
+  return [{ route, files: bannedInTestFiles.files.map(normalizeGlob), options: bannedInTestFiles.options }]
 }
 
 /** Beside oxlint, a layer stating both names of a twin pair gives the extension its setting on TS files alone, in a block per rule after the layer's others. */
@@ -684,9 +730,8 @@ function runningNothingWithMetaOf({ meta }: Rule.RuleModule): Rule.RuleModule {
 }
 
 function registeredRuleModule(ruleId: string, plugins: ReadonlyMap<string, ESLint.Plugin>): Rule.RuleModule {
-  const [pluginRule] = pluginRuleOf(ruleId)
-  if (pluginRule === undefined) throw new Error(`${ruleId}: a core rule, which no plugin registers`)
-  return ruleModuleOf(plugins.get(pluginRule.prefix), pluginRule.prefix, pluginRule.ruleName)
+  const { prefix, ruleName } = foundOr(pluginRuleOf(ruleId).at(0), `${ruleId}: a core rule, which no plugin registers`)
+  return ruleModuleOf(plugins.get(prefix), prefix, ruleName)
 }
 
 function settingsPlaced(placement: Placement, settings: readonly EslintSetting[]): EslintSetting[] {
@@ -766,9 +811,8 @@ function globalsSwitchedOff(droppedEnvs: readonly string[], remainingEnvs: reado
 }
 
 function globalsOfEnv(env: string): Readonly<Record<string, boolean>> {
-  const known = Object.entries(globals).find(([name]) => name === env)
-  if (known === undefined) throw new Error(`the globals package defines no env "${env}"`)
-  return known[1]
+  const [, envGlobals] = foundOr(Object.entries(globals).find(([name]) => name === env), `the globals package defines no env "${env}"`)
+  return envGlobals
 }
 
 /** ESLint refuses a suppression comment for a rule it has no definition of, so each oxlint-routed rule ESLint lacks gets a do-nothing stub. */
@@ -798,9 +842,7 @@ function withRulesOf(
 }
 
 function ruleModuleOf(plugin: ESLint.Plugin | undefined, prefix: string, ruleName: string): Rule.RuleModule {
-  const ruleModule = plugin?.rules?.[ruleName]
-  if (ruleModule === undefined) throw new Error(`${prefix}/${ruleName}: run in ESLint, yet our plugin under ${prefix} lacks it`)
-  return ruleModule
+  return foundOr(plugin?.rules?.[ruleName], `${prefix}/${ruleName}: run in ESLint, yet our plugin under ${prefix} lacks it`)
 }
 
 function namesUnder(prefix: string, namesByPrefix: ReadonlyMap<string, readonly string[]>): readonly string[] {

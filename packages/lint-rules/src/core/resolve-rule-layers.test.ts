@@ -1,8 +1,8 @@
+import { buildAlwaysOnShippedRule, buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import { describe, expect, it } from 'vitest'
-import type { Catalog, ShippedRule } from '@workspace/rule-data'
+import type { Catalog, RuleRoute, ShippedRule } from '@workspace/rule-data'
 import { blockNamed } from '../__tests__/eslint-config-reads.ts'
 import {
-  buildAlwaysOnShippedRule,
   buildCatalog,
   buildEslintRoute,
   buildLibsRuleset,
@@ -10,14 +10,13 @@ import {
   buildPluginRegistry,
   buildQualityRuleset,
   buildRuntimeRuleset,
-  buildShippedRule,
   buildSuppressionModeShippedRule,
 } from '../__tests__/factories/catalog-factories.ts'
 import { buildFileOverride, buildLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { buildProjectFacts } from '../__tests__/factories/project-facts-factories.ts'
 import { buildEslintConfig } from './build-eslint-config.ts'
 import { buildOxlintConfig } from './build-oxlint-config.ts'
-import { type FileOverrideLayer, resolveRuleLayers, type RuleSetting } from './resolve-rule-layers.ts'
+import { type FileOverrideLayer, resolveRuleLayers, resolveRuleLayersBesideOxlint, type RuleSetting } from './resolve-rule-layers.ts'
 
 const catalog = buildCatalog({
   rulesets: [
@@ -176,6 +175,16 @@ describe('resolveRuleLayers', () => {
           ignores: null,
         },
       })
+    })
+
+    // Read again after the config is checked, so a severity the check let through still throws, describing it.
+    it.each([
+      { given: 'a word that is no severity', entry: 'warning', described: '"warning"' },
+      { given: 'options with no severity before them', entry: [{ allow: true }], described: 'an object' },
+    ])('throw on $given', ({ entry, described }) => {
+      const lintRules = buildLintRules({ quality: ['correctness'] }, { rules: { eqeqeq: entry } })
+
+      expect(() => resolveRuleLayers(lintRules, catalog)).toThrowError(new Error(`invalid severity ${described} for "eqeqeq"`))
     })
   })
 
@@ -459,6 +468,114 @@ describe('a rule covered by another', () => {
       const catalog = catalogOf(COVER_SHIPPED, buildShippedRule('react', { coveredBy: COVERED }))
 
       expect(() => resolveRuleLayers(BOTH_LISTED, catalog)).toThrowError(`${COVERED}: covered by ${COVERED}`)
+    })
+  })
+})
+
+// Beside oxlint a rule is left out where a rule oxlint runs, which reports every case of it, is on; without
+// oxlint ESLint keeps both, its version of the cover reporting less.
+describe('a rule covered in oxlint by another', () => {
+  const COVER = 'jsx-a11y/lang'
+  const COVERED = 'jsx-a11y/html-has-lang'
+  const OTHER_ACCESSIBILITY_RULE = 'jsx-a11y/alt-text'
+  // Covers the cover, in a chain: a rule of the cover's ruleset.
+  const COVER_OF_THE_COVER = 'jsx-a11y/no-autofocus'
+  const SRC_FILES = 'src/**'
+  const ON: RuleSetting = { severity: 'error', options: [], files: null, ignores: null }
+  const OFF: RuleSetting = { severity: 'off', options: [], files: null, ignores: null }
+  const WARN: RuleSetting = { severity: 'warn', options: [], files: null, ignores: null }
+  const COVERED_SHIPPED = buildShippedRule('accessibility', { coveredInOxlintBy: COVER })
+  const COVER_SHIPPED = buildShippedRule('lang')
+  const ACCESSIBILITY_ALONE = { quality: ['accessibility'] }
+  const BOTH_RULESETS = { quality: ['accessibility', 'lang'] }
+
+  function oxlintRoute(id: string, shipped: ShippedRule | null): RuleRoute {
+    return buildOxlintRoute(id, { oxlintName: id.replace('jsx-a11y/', 'jsx_a11y/'), oxlintPlugin: 'jsx_a11y', shipped })
+  }
+
+  function catalogOf(cover: RuleRoute, covered: RuleRoute): Catalog {
+    return buildCatalog({
+      rulesets: [buildQualityRuleset('accessibility'), buildQualityRuleset('lang')],
+      rules: [cover, covered, oxlintRoute(OTHER_ACCESSIBILITY_RULE, buildShippedRule('accessibility')), oxlintRoute(COVER_OF_THE_COVER, buildShippedRule('lang'))],
+    })
+  }
+
+  const coveredCatalog = catalogOf(oxlintRoute(COVER, COVER_SHIPPED), oxlintRoute(COVERED, COVERED_SHIPPED))
+
+  function topLevelRuleIdsOf(resolve: typeof resolveRuleLayers, lintRules: Parameters<typeof resolveRuleLayers>[0]): string[] {
+    return Object.keys(resolve(lintRules, coveredCatalog).rules).toSorted()
+  }
+
+  describe('at the top level', () => {
+    it('is left out beside oxlint where its cover is on, and kept without oxlint', () => {
+      const lintRules = buildLintRules(BOTH_RULESETS)
+
+      expect({ besideOxlint: topLevelRuleIdsOf(resolveRuleLayersBesideOxlint, lintRules), withoutOxlint: topLevelRuleIdsOf(resolveRuleLayers, lintRules) }).toStrictEqual({
+        besideOxlint: [COVER, COVER_OF_THE_COVER, OTHER_ACCESSIBILITY_RULE].toSorted(),
+        withoutOxlint: [COVER, COVER_OF_THE_COVER, COVERED, OTHER_ACCESSIBILITY_RULE].toSorted(),
+      })
+    })
+
+    it("is kept beside oxlint where its cover's ruleset is not listed", () => {
+      expect(topLevelRuleIdsOf(resolveRuleLayersBesideOxlint, buildLintRules(ACCESSIBILITY_ALONE))).toStrictEqual([COVERED, OTHER_ACCESSIBILITY_RULE].toSorted())
+    })
+
+    it('comes back beside oxlint where the top-level rules turn its cover off', () => {
+      expect(topLevelRuleIdsOf(resolveRuleLayersBesideOxlint, buildLintRules(BOTH_RULESETS, { rules: { [COVER]: 'off' } }))).toStrictEqual(
+        [COVER_OF_THE_COVER, COVERED, OTHER_ACCESSIBILITY_RULE].toSorted(),
+      )
+    })
+
+    it('runs beside oxlint at the setting the top-level rules give it where they name it, its cover on beside it', () => {
+      const { rules } = resolveRuleLayersBesideOxlint(buildLintRules(BOTH_RULESETS, { rules: { [COVERED]: 'warn' } }), coveredCatalog)
+
+      expect({ covered: rules[COVERED], cover: rules[COVER] }).toStrictEqual({ covered: WARN, cover: ON })
+    })
+  })
+
+  describe('in an entry', () => {
+    function onlyEntryOf(resolve: typeof resolveRuleLayers, lintRules: Parameters<typeof resolveRuleLayers>[0]): Pick<FileOverrideLayer, 'rulesetChanges' | 'rules'> {
+      const [entry, ...rest] = resolve(lintRules, coveredCatalog).fileOverrides
+      if (entry === undefined || rest.length > 0) throw new Error('the config gives one entry')
+      return { rulesetChanges: entry.rulesetChanges, rules: entry.rules }
+    }
+
+    it("is left out beside oxlint of the files of an entry that adds its cover's ruleset, and kept there without oxlint", () => {
+      const lintRules = buildLintRules(ACCESSIBILITY_ALONE, { fileOverrides: [buildFileOverride([SRC_FILES], { rulesets: { quality: ['accessibility', 'lang'] } })] })
+
+      expect({ besideOxlint: onlyEntryOf(resolveRuleLayersBesideOxlint, lintRules), withoutOxlint: onlyEntryOf(resolveRuleLayers, lintRules) }).toStrictEqual({
+        besideOxlint: { rulesetChanges: { [COVER]: ON, [COVER_OF_THE_COVER]: ON, [COVERED]: OFF }, rules: {} },
+        withoutOxlint: { rulesetChanges: { [COVER]: ON, [COVER_OF_THE_COVER]: ON }, rules: {} },
+      })
+    })
+
+    it("comes back beside oxlint in the files of an entry whose lists drop its cover's ruleset", () => {
+      const lintRules = buildLintRules(BOTH_RULESETS, { fileOverrides: [buildFileOverride([SRC_FILES], { rulesets: { quality: ['accessibility'] } })] })
+
+      expect(onlyEntryOf(resolveRuleLayersBesideOxlint, lintRules)).toStrictEqual({ rulesetChanges: { [COVER]: OFF, [COVER_OF_THE_COVER]: OFF, [COVERED]: ON }, rules: {} })
+    })
+  })
+
+  // The data's tests guarantee a valid cover; the core still throws on a breach, naming both rules.
+  describe('a breach of the data', () => {
+    const BOTH_LISTED = buildLintRules(BOTH_RULESETS)
+
+    it.each([
+      { breach: 'ESLint runs the cover', cover: buildEslintRoute(COVER, { typed: false, shipped: COVER_SHIPPED }), covered: oxlintRoute(COVERED, COVERED_SHIPPED) },
+      { breach: 'ESLint runs the covered rule', cover: oxlintRoute(COVER, COVER_SHIPPED), covered: buildEslintRoute(COVERED, { typed: false, shipped: COVERED_SHIPPED }) },
+      { breach: 'the cover is on whatever rulesets are listed', cover: oxlintRoute(COVER, buildAlwaysOnShippedRule()), covered: oxlintRoute(COVERED, COVERED_SHIPPED) },
+      { breach: 'the covered rule is on whatever rulesets are listed', cover: oxlintRoute(COVER, COVER_SHIPPED), covered: oxlintRoute(COVERED, buildAlwaysOnShippedRule({ coveredInOxlintBy: COVER })) },
+      { breach: 'the cover is not shipped', cover: oxlintRoute(COVER, null), covered: oxlintRoute(COVERED, COVERED_SHIPPED) },
+      { breach: 'the cover is covered in oxlint itself', cover: oxlintRoute(COVER, buildShippedRule('lang', { coveredInOxlintBy: COVER_OF_THE_COVER })), covered: oxlintRoute(COVERED, COVERED_SHIPPED) },
+      { breach: 'the cover is covered itself', cover: oxlintRoute(COVER, buildShippedRule('lang', { coveredBy: COVER_OF_THE_COVER })), covered: oxlintRoute(COVERED, COVERED_SHIPPED) },
+    ])('is refused beside oxlint where $breach', ({ cover, covered }) => {
+      expect(() => resolveRuleLayersBesideOxlint(BOTH_LISTED, catalogOf(cover, covered))).toThrowError(`${COVERED}: covered in oxlint by ${COVER}`)
+    })
+
+    it('is none without oxlint, where the relation is not read', () => {
+      const catalog = catalogOf(buildEslintRoute(COVER, { typed: false, shipped: COVER_SHIPPED }), oxlintRoute(COVERED, COVERED_SHIPPED))
+
+      expect(Object.keys(resolveRuleLayers(BOTH_LISTED, catalog).rules).toSorted()).toStrictEqual([COVER, COVER_OF_THE_COVER, COVERED, OTHER_ACCESSIBILITY_RULE].toSorted())
     })
   })
 })

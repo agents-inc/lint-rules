@@ -1,10 +1,12 @@
 import { type Catalog, isOxlintRoute, type OxlintRoute, routeOf } from '@workspace/rule-data'
+import { foundOr } from '@workspace/rule-data/collections'
 import type { DummyRule, DummyRuleMap, OxlintConfig, OxlintEnv, OxlintGlobals, OxlintOverride, RuleCategories } from 'oxlint'
 import { TS_FILES } from './eslint-file-types.ts'
 import { bothOf, EVERY_FILE, type FilesCondition, filesInScopeOf } from './file-conditions.ts'
 import { type FrameworkEnv, OTHER_FRAMEWORK_ENVS, SVELTE_COMPONENT_GLOBALS, SVELTE_RUNES, TEST_RUNNER_GLOBALS } from './framework-globals.ts'
 import type { LintRulesInput } from './lint-rules-input.ts'
 import { overrideFilesOf } from './oxlint-override-files.ts'
+import { REACT_VERSION } from './react-version.ts'
 import {
   type EnvChanges,
   type FileOverrideLayer,
@@ -80,6 +82,7 @@ export function buildOxlintConfig(lintRules: LintRulesInput, catalog: Catalog): 
     env: oxlintEnvOf(layers),
     ignorePatterns: oxlintIgnorePatternsOf(layers),
     options: { reportUnusedDisableDirectives: 'off' },
+    settings: { react: { version: REACT_VERSION } },
     rules: topLevelRuleMap(layers, catalog),
     overrides: oxlintOverridesOf(layers, catalog),
   }
@@ -118,9 +121,7 @@ export function oxlintPluginsOf(ruleMaps: readonly RuleSettings[], catalog: Cata
 }
 
 export function toOxlintPlugin(name: string): OxlintPlugin {
-  const plugin = oxlintPluginNamed(name)
-  if (plugin === undefined) throw new Error(`"${name}" is not an oxlint plugin`)
-  return plugin
+  return foundOr(oxlintPluginNamed(name), `"${name}" is not an oxlint plugin`)
 }
 
 export function oxlintPluginNamed(name: string): OxlintPlugin | undefined {

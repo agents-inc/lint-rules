@@ -1,5 +1,6 @@
 import type { ESLint, Rule } from 'eslint'
 import type { Catalog, OxlintCategory, OxlintRule, RuleRoute, RulesetDefinition, ShippedRule } from '@workspace/rule-data'
+import { buildShippedRuleDecidedBySuppressions, type ShippedRuleFields } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import type { buildEslintConfig } from '../../core/build-eslint-config.ts'
 
 // Small catalogs, so a unit spec states exactly the rules and rulesets its assertion depends on.
@@ -58,33 +59,9 @@ export function buildLanguageRuleset(name: string): RulesetDefinition {
   return { name, list: 'languages', domain: null, env: null, optIn: NOT_OPT_IN, sortsCode: SORTS_NO_CODE }
 }
 
-type ShippedRuleFields = Partial<Omit<ShippedRule, 'ruleset'>>
-
-const SHIPPED_RULE_DEFAULTS: Required<ShippedRuleFields> = {
-  options: [],
-  files: null,
-  ignores: null,
-  coveredBy: null,
-  splitByTypesWith: null,
-  readsRuntimeGlobals: false,
-}
-
-/**
-* `options`, `files` and `ignores` default to none; covered by no rule, split by types with none, and reading no
-* runtime globals unless given.
-*/
-export function buildShippedRule(ruleset: string, fields: ShippedRuleFields = {}): ShippedRule {
-  return { ruleset, ...SHIPPED_RULE_DEFAULTS, ...fields }
-}
-
-/** On whatever rulesets are listed. */
-export function buildAlwaysOnShippedRule(fields: ShippedRuleFields = {}): ShippedRule {
-  return { alwaysOn: true, ...SHIPPED_RULE_DEFAULTS, ...fields }
-}
-
 /** On where suppressions are banned, the default, and off where allowed, as `house/no-suppressions` ships. */
 export function buildSuppressionModeShippedRule(fields: ShippedRuleFields = {}): ShippedRule {
-  return { whenSuppressions: { banned: { options: [] }, allowed: 'off' }, ...SHIPPED_RULE_DEFAULTS, ...fields }
+  return buildShippedRuleDecidedBySuppressions({ banned: { options: [] }, allowed: 'off' }, fields)
 }
 
 /** `shipped: null` is a rule that is available but in no ruleset: off until `rules` turns it on. */

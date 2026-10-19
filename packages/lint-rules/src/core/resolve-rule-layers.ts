@@ -1,4 +1,5 @@
-import { type Catalog, routeOf, type RuleRoute, type RulesetList, type ShippedRule, type SuppressionMode } from '@workspace/rule-data'
+import { type Catalog, type Engine, routeOf, type RuleRoute, type RulesetList, type ShippedRule, type SuppressionMode } from '@workspace/rule-data'
+import { foundOr, groupBy } from '@workspace/rule-data/collections'
 import { envOfRulesets, isSuppressionRoute, readsRuntimeGlobals, rulesetNamed, type SuppressionRoute } from './catalog-lookups.ts'
 import { formsOfAnIgnoresValue, normalizeGlob, normalizeGlobs } from './globs.ts'
 import {
@@ -14,7 +15,7 @@ import {
   severityOf,
   suppressionModeSetBy,
 } from './lint-rules-input.ts'
-import { readOnce } from './read-once.ts'
+import { type ReadsKept, readOnce } from './read-once.ts'
 
 export type RuleSetting = {
   readonly severity: Severity
@@ -82,20 +83,48 @@ type TopLevel = {
 
 type RulesetDrivenChanges = { readonly ruleIds: readonly string[]; readonly envs: ReadonlySet<string> }
 
+/** Each covered rule's covers: it is left out of a layer wherever one of them is on there. */
+type Covers = ReadonlyMap<string, readonly string[]>
+
+type CoverPair = { readonly covered: string; readonly cover: string }
+
+/** `bothRoutedTo`: the engine both rules must be routed to, null where either will do. */
+type CoverRelation = {
+  readonly named: string
+  readonly coverOf: (shipped: ShippedRule) => string | null
+  readonly bothRoutedTo: Engine | null
+}
+
+/** The relations in force where a part is built, and the covers they give, read once per catalog. */
+type CoverReading = { readonly inForce: readonly CoverRelation[]; readonly reads: ReadsKept<Catalog, Covers> }
+
 const RUNTIMES_LIST: RulesetList = 'runtimes'
 export const OFF_SETTING: RuleSetting = { severity: 'off', options: [], files: null, ignores: null }
 const UNSCOPED = { files: null, ignores: null } as const
 const SUPPRESSION_MODE_BY_DEFAULT: SuppressionMode = 'banned'
 
-const coversRead = new WeakMap<Catalog, ReadonlyMap<string, string>>()
+const COVERED_BY: CoverRelation = { named: 'covered by', coverOf: ({ coveredBy }) => coveredBy, bothRoutedTo: null }
+const COVERED_IN_OXLINT_BY: CoverRelation = { named: 'covered in oxlint by', coverOf: ({ coveredInOxlintBy }) => coveredInOxlintBy, bothRoutedTo: 'oxlint' }
+const WITHOUT_OXLINT: CoverReading = { inForce: [COVERED_BY], reads: new WeakMap<Catalog, Covers>() }
+const BESIDE_OXLINT: CoverReading = { inForce: [COVERED_BY, COVERED_IN_OXLINT_BY], reads: new WeakMap<Catalog, Covers>() }
 
+/** For an ESLint part without oxlint: a rule covered in oxlint by another stays, as ESLint's version of the cover reports less. */
 export function resolveRuleLayers(lintRules: LintRulesInput, catalog: Catalog): RuleLayers {
+  return resolveRuleLayersLeavingOut(lintRules, catalog, coversIn(catalog, WITHOUT_OXLINT))
+}
+
+/** oxlint reports every case of a rule covered in oxlint by another, so where it runs that rule is left out too. */
+export function resolveRuleLayersBesideOxlint(lintRules: LintRulesInput, catalog: Catalog): RuleLayers {
+  return resolveRuleLayersLeavingOut(lintRules, catalog, coversIn(catalog, BESIDE_OXLINT))
+}
+
+function resolveRuleLayersLeavingOut(lintRules: LintRulesInput, catalog: Catalog, covers: Covers): RuleLayers {
   const { rulesets, ignores = [], allowSuppressions, rules = {}, fileOverrides = [] } = lintRules
   const suppressionMode = topLevelSuppressionMode(allowSuppressions)
   const topLevel: TopLevel = {
     rulesets,
     rules,
-    rulesOn: rulesOnUnder(rulesets, rules, catalog),
+    rulesOn: rulesOnUnder(rulesets, rules, covers, catalog),
     env: envOfRulesets(listedRulesetNames(rulesets), catalog),
   }
   return {
@@ -104,7 +133,7 @@ export function resolveRuleLayers(lintRules: LintRulesInput, catalog: Catalog): 
     suppressionMode,
     rules: { ...topLevel.rulesOn, ...settingsOn(suppressionRulesIn(suppressionMode, catalog)) },
     statedInRules: Object.keys(rules).toSorted(),
-    fileOverrides: resolveFileOverrides(fileOverrides, topLevel, catalog),
+    fileOverrides: resolveFileOverrides(fileOverrides, topLevel, covers, catalog),
   }
 }
 
@@ -153,7 +182,7 @@ export function suppressionRulesOf(layer: FileOverrideLayer): RuleSettings {
   return layer.suppressions === undefined ? {} : layer.suppressions.rules
 }
 
-function topLevelSuppressionMode(allowSuppressions: unknown): SuppressionMode {
+export function topLevelSuppressionMode(allowSuppressions: unknown): SuppressionMode {
   const modeSet = suppressionModeSetBy(allowSuppressions)
   return modeSet === null ? SUPPRESSION_MODE_BY_DEFAULT : modeSet
 }
@@ -162,12 +191,13 @@ function topLevelSuppressionMode(allowSuppressions: unknown): SuppressionMode {
 function resolveFileOverrides(
   fileOverrides: readonly FileOverrideInput[],
   topLevel: TopLevel,
+  covers: Covers,
   catalog: Catalog,
 ): FileOverrideLayer[] {
   return fileOverrides.reduce<FileOverrideLayer[]>(
     (earlierLayers, fileOverride) => [
       ...earlierLayers,
-      resolveFileOverride(fileOverride, topLevel, changesMadeBy(earlierLayers), catalog),
+      resolveFileOverride(fileOverride, topLevel, changesMadeBy(earlierLayers), covers, catalog),
     ],
     [],
   )
@@ -177,12 +207,13 @@ function resolveFileOverride(
   { files, rulesets = {}, allowSuppressions, rules = {} }: FileOverrideInput,
   topLevel: TopLevel,
   earlierChanges: RulesetDrivenChanges,
+  covers: Covers,
   catalog: Catalog,
 ): FileOverrideLayer {
   // A list the entry gives replaces the top-level one whole (libs included); one it omits is inherited.
   const entryRulesets: RulesetsInput = { ...topLevel.rulesets, ...rulesets }
-  const entryRulesOn = rulesOnUnder(entryRulesets, topLevel.rules, catalog)
-  const restated = restatedBy(listsGivenBy(rulesets), earlierChanges, catalog)
+  const entryRulesOn = rulesOnUnder(entryRulesets, topLevel.rules, covers, catalog)
+  const restated = restatedBy(listsGivenBy(rulesets), earlierChanges, covers, catalog)
   return {
     files: files.map(normalizeGlob),
     env: envChanges(topLevel.env, envOfRulesets(listedRulesetNames(entryRulesets), catalog), restated.envs),
@@ -224,10 +255,11 @@ function changesMadeBy(earlierLayers: readonly FileOverrideLayer[]): RulesetDriv
 function restatedBy(
   listsGiven: ReadonlySet<string>,
   earlierChanges: RulesetDrivenChanges,
+  covers: Covers,
   catalog: Catalog,
 ): RulesetDrivenChanges {
   return {
-    ruleIds: earlierChanges.ruleIds.filter((id) => listsChanging(id, catalog).some((list) => listsGiven.has(list))),
+    ruleIds: earlierChanges.ruleIds.filter((id) => listsChanging(id, covers, catalog).some((list) => listsGiven.has(list))),
     envs: listsGiven.has(RUNTIMES_LIST) ? earlierChanges.envs : new Set(),
   }
 }
@@ -240,74 +272,89 @@ function listsGivenBy(rulesets: Partial<RulesetsInput>): ReadonlySet<string> {
   )
 }
 
-/** A covered rule's cover's list counts too, since listing that ruleset leaves the covered rule out. */
-function listsChanging(id: string, catalog: Catalog): RulesetList[] {
-  const cover = coverOf(id, catalog)
-  return [listOfRulesetRule(id, catalog), ...(cover === null ? [] : [listOfRulesetRule(cover, catalog)])]
+/** A covered rule's covers' lists count too, since listing their rulesets leaves the covered rule out. */
+function listsChanging(id: string, covers: Covers, catalog: Catalog): RulesetList[] {
+  return [id, ...coversOf(id, covers)].map((ruleId) => listOfRulesetRule(ruleId, catalog))
 }
 
 /** Only rules shipped in a ruleset change with it: an always-on rule is on under every ruleset, and `allowSuppressions` decides its own. */
 function listOfRulesetRule(id: string, catalog: Catalog): RulesetList {
   const { shipped } = routeOf(id, catalog)
-  if (shipped === null || shipped.ruleset === undefined) throw new Error(`${id}: changed by a ruleset, yet shipped in none`)
-  const ruleset = rulesetNamed(shipped.ruleset, catalog)
-  if (ruleset === undefined) throw new Error(`${id}: shipped in unknown ruleset "${shipped.ruleset}"`)
+  const rulesetName = foundOr(shipped?.ruleset, `${id}: changed by a ruleset, yet shipped in none`)
+  const ruleset = foundOr(rulesetNamed(rulesetName, catalog), `${id}: shipped in unknown ruleset "${rulesetName}"`)
   return ruleset.list
 }
 
-function rulesOnUnder(rulesets: RulesetsInput, rules: RuleSettingsInput, catalog: Catalog): RuleSettings {
+function rulesOnUnder(rulesets: RulesetsInput, rules: RuleSettingsInput, covers: Covers, catalog: Catalog): RuleSettings {
   const shippedRules = shippedRulesOnUnder(listedRulesetNames(rulesets), catalog)
   const settingsGiven = Object.entries(rules).map(([id, entry]): SettingEntry => [
     id,
     scopedSettingOf(id, entry, shippedRules, catalog),
   ])
-  return withoutCoveredRules(settingsOn({ ...shippedRules, ...Object.fromEntries(settingsGiven) }), rules, catalog)
+  return withoutCoveredRules(settingsOn({ ...shippedRules, ...Object.fromEntries(settingsGiven) }), rules, covers)
 }
 
-/** A rule is left out where the broader rule covering it is on, unless the top-level `rules` state it. A cover running in only some files still leaves the rule out of the whole layer (a known limit). */
-function withoutCoveredRules(rulesOn: RuleSettings, statedInRules: RuleSettingsInput, catalog: Catalog): RuleSettings {
-  return settingsKeeping(rulesOn, ({ id }) => !isLeftOutForItsCover(id, rulesOn, statedInRules, catalog))
+/** A rule is left out where a broader rule covering it is on, unless the top-level `rules` state it. A cover running in only some files still leaves the rule out of the whole layer (a known limit). */
+function withoutCoveredRules(rulesOn: RuleSettings, statedInRules: RuleSettingsInput, covers: Covers): RuleSettings {
+  return settingsKeeping(rulesOn, ({ id }) => !isLeftOutForItsCover(id, rulesOn, statedInRules, covers))
 }
 
-function isLeftOutForItsCover(id: string, rulesOn: RuleSettings, statedInRules: RuleSettingsInput, catalog: Catalog): boolean {
-  const cover = coverOf(id, catalog)
-  return cover !== null && Object.hasOwn(rulesOn, cover) && !Object.hasOwn(statedInRules, id)
+function isLeftOutForItsCover(id: string, rulesOn: RuleSettings, statedInRules: RuleSettingsInput, covers: Covers): boolean {
+  return coversOf(id, covers).some((cover) => Object.hasOwn(rulesOn, cover)) && !Object.hasOwn(statedInRules, id)
 }
 
-function coverOf(id: string, catalog: Catalog): string | null {
-  const cover = coversIn(catalog).get(id)
-  return cover === undefined ? null : cover
+function coversOf(id: string, covers: Covers): readonly string[] {
+  const found = covers.get(id)
+  return found === undefined ? [] : found
 }
 
 /** Read once per catalog; every covered rule is checked, and bad data throws. */
-function coversIn(catalog: Catalog): ReadonlyMap<string, string> {
-  return readOnce(coversRead, catalog, coversCheckedIn)
+function coversIn(catalog: Catalog, { inForce, reads }: CoverReading): Covers {
+  return readOnce(reads, catalog, () => coversCheckedIn(catalog, inForce))
 }
 
-function coversCheckedIn(catalog: Catalog): ReadonlyMap<string, string> {
-  return new Map([...catalog.rules.values()].flatMap((route) => coverEntryOf(route, catalog)))
+function coversCheckedIn(catalog: Catalog, inForce: readonly CoverRelation[]): Covers {
+  return coversByCoveredRule([...catalog.rules.values()].flatMap((covered) => coverPairsOf(covered, inForce, catalog)))
 }
 
-function coverEntryOf(covered: RuleRoute, catalog: Catalog): [string, string][] {
-  if (covered.shipped === null || covered.shipped.coveredBy === null) return []
-  const cover = routeOf(covered.shipped.coveredBy, catalog)
-  if (!isCoverAsTheDataGuarantees(covered, cover)) {
-    throw new Error(`${covered.id}: covered by ${cover.id}, so both ship in a ruleset and ${cover.id} is another rule, covered by none`)
+function coversByCoveredRule(pairs: readonly CoverPair[]): Covers {
+  const byCovered = groupBy(pairs, ({ covered }) => covered)
+  return new Map([...byCovered].map(([covered, pairsOfIt]) => [covered, pairsOfIt.map(({ cover }) => cover)]))
+}
+
+function coverPairsOf(covered: RuleRoute, inForce: readonly CoverRelation[], catalog: Catalog): CoverPair[] {
+  return inForce.flatMap((relation) => coverPairOf(covered, relation, inForce, catalog))
+}
+
+function coverPairOf(covered: RuleRoute, relation: CoverRelation, inForce: readonly CoverRelation[], catalog: Catalog): CoverPair[] {
+  const coverId = covered.shipped === null ? null : relation.coverOf(covered.shipped)
+  if (coverId === null) return []
+  const cover = routeOf(coverId, catalog)
+  if (!isCoverAsTheDataGuarantees(covered, cover, relation, inForce)) {
+    throw new Error(`${covered.id}: ${relation.named} ${cover.id}, so both ship in a ruleset${routingRequiredBy(relation)} and ${cover.id} is another rule, covered by none`)
   }
-  return [[covered.id, cover.id]]
+  return [{ covered: covered.id, cover: cover.id }]
 }
 
 /** An always-on or suppression rule would be on whatever is listed, and a chain would leave a rule out for a cover that is left out itself. */
-function isCoverAsTheDataGuarantees(covered: RuleRoute, cover: RuleRoute): boolean {
-  return shipsInARuleset(covered) && shipsInARuleset(cover) && isCoveredByNone(cover)
+function isCoverAsTheDataGuarantees(covered: RuleRoute, cover: RuleRoute, relation: CoverRelation, inForce: readonly CoverRelation[]): boolean {
+  return areRoutedAsTheRelationRequires(covered, cover, relation) && shipsInARuleset(covered) && shipsInARuleset(cover) && isCoveredByNone(cover, inForce)
+}
+
+function areRoutedAsTheRelationRequires(covered: RuleRoute, cover: RuleRoute, { bothRoutedTo }: CoverRelation): boolean {
+  return bothRoutedTo === null || [covered, cover].every(({ engine }) => engine === bothRoutedTo)
+}
+
+function routingRequiredBy({ bothRoutedTo }: CoverRelation): string {
+  return bothRoutedTo === null ? '' : `, ${bothRoutedTo} runs both,`
 }
 
 function shipsInARuleset({ shipped }: RuleRoute): boolean {
   return shipped !== null && shipped.ruleset !== undefined
 }
 
-function isCoveredByNone({ shipped }: RuleRoute): boolean {
-  return shipped === null || shipped.coveredBy === null
+function isCoveredByNone({ shipped }: RuleRoute, inForce: readonly CoverRelation[]): boolean {
+  return shipped === null || inForce.every(({ coverOf }) => coverOf(shipped) === null)
 }
 
 function shippedRulesOnUnder(listed: ReadonlySet<string>, catalog: Catalog): RuleSettings {
@@ -347,7 +394,7 @@ function severityAndOptions(
   catalog: Catalog,
 ): Pick<RuleSetting, 'severity' | 'options'> {
   const severity = severityOf(entry)
-  if (severity === null) throw new Error(`invalid severity "${describeSeverity(entry)}" for "${id}"`)
+  if (severity === null) throw new Error(`invalid severity ${describeSeverity(entry)} for "${id}"`)
   if (severity === 'off') return { severity, options: [] }
   const optionsGiven = optionsGivenBy(entry)
   if (optionsGiven === null) return { severity, options: optionsInForce(id, inForce, catalog) }

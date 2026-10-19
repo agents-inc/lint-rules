@@ -14,6 +14,7 @@ import {
   type TwoSetFileOverrideInput,
   type TwoSetLintRulesInput,
 } from './lint-rules-input.ts'
+import { quotedOrDescribed } from './value-descriptions.ts'
 
 type FlatRulesetList = Exclude<RulesetList, 'libs'>
 
@@ -37,7 +38,7 @@ export function validateLintRules(lintRules: TwoSetLintRulesInput, catalog: Cata
 /** Types are stripped, so the value may be missing or no string. A relative or missing folder would otherwise surface later as an error blaming another file, or as none. */
 function tsconfigRootDirProblems(tsconfigRootDir: unknown, path: string): string[] {
   if (tsconfigRootDir === undefined) return [`${path}: missing`]
-  if (typeof tsconfigRootDir !== 'string') return [`${path}: "${String(tsconfigRootDir)}" is not a string`]
+  if (typeof tsconfigRootDir !== 'string') return [`${path}: ${quotedOrDescribed(tsconfigRootDir)} is not a string`]
   if (!isAbsolute(tsconfigRootDir)) return [`${path}: "${tsconfigRootDir}" is not an absolute path`]
   if (!existsSync(tsconfigRootDir)) return [`${path}: "${tsconfigRootDir}" does not exist`]
   if (!statSync(tsconfigRootDir).isDirectory()) return [`${path}: "${tsconfigRootDir}" is not a folder`]
@@ -61,7 +62,7 @@ function fileOverrideProblems(entry: TwoSetFileOverrideInput, path: string, cata
 
 function allowSuppressionsProblems(allowSuppressions: unknown, path: string): string[] {
   if (isAllowSuppressionsValue(allowSuppressions)) return []
-  return [`${path}: "${String(allowSuppressions)}" is not true or false`]
+  return [`${path}: ${quotedOrDescribed(allowSuppressions)} is not true or false`]
 }
 
 function rulesetProblems(
@@ -111,7 +112,7 @@ function ruleSettingProblems(rules: RuleSettingsInput, path: string, catalog: Ca
     const route = catalog.rules.get(id)
     if (route === undefined) return [`${path}: unknown rule ID "${id}"`]
     if (isSuppressionRoute(route)) return [`${path}: "${id}" is set by allowSuppressions`]
-    if (severityOf(entry) === null) return [`${path}: invalid severity "${describeSeverity(entry)}" for "${id}"`]
+    if (severityOf(entry) === null) return [`${path}: invalid severity ${describeSeverity(entry)} for "${id}"`]
     return []
   })
 }

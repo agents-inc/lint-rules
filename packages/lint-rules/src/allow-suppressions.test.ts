@@ -71,6 +71,9 @@ const ALLOWED: SuppressionSettings = {
   hooksSuppressionRule: 'error',
 }
 
+// A test or type test may still assert a type error, with a description; every other suppression stays banned.
+const BANNED_IN_TEST_FILES: SuppressionSettings = { ...BANNED, tsCommentBan: ['error', BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR] }
+
 /** ESLint does not run the hooks rule without oxlint (eslint-fallback-skips.json). */
 const ALLOWED_WITHOUT_OXLINT: SuppressionSettings = { ...ALLOWED, hooksSuppressionRule: 'off' }
 
@@ -184,6 +187,22 @@ describe('allowSuppressions at the top level, in the agent build', () => {
   })
 })
 
+describe('allowSuppressions at the top level, in the agent build, in test and type-test files', () => {
+  const banned = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR)
+  const allowed = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, { allowSuppressions: true })
+
+  it.each([
+    { file: 'src/a.test.ts', config: 'banned', lintRules: banned, expected: BANNED_IN_TEST_FILES },
+    { file: 'src/a.spec.tsx', config: 'banned', lintRules: banned, expected: BANNED_IN_TEST_FILES },
+    { file: 'src/__tests__/a.ts', config: 'banned', lintRules: banned, expected: BANNED_IN_TEST_FILES },
+    { file: 'src/a.test-d.ts', config: 'banned', lintRules: banned, expected: BANNED_IN_TEST_FILES },
+    { file: 'src/a-test.ts', config: 'banned, in a file that only ends like a test', lintRules: banned, expected: BANNED },
+    { file: 'src/a.test.ts', config: 'allowed', lintRules: allowed, expected: ALLOWED },
+  ])('sets the suppression rules for $file, $config', async ({ lintRules, file, expected }) => {
+    expect(await suppressionSettingsFor(agentConfigsFor(lintRules), file)).toStrictEqual(expected)
+  })
+})
+
 describe('allowSuppressions in file overrides, in the agent build', () => {
   const allowedForLegacy = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
     fileOverrides: [{ files: ['legacy/**'], allowSuppressions: true }],
@@ -256,6 +275,15 @@ describe('allowSuppressions in file overrides, in the agent build', () => {
       config: 'an entry listing no rulesets under a top level banning them',
       lintRules: emptyRulesetsUnderBanned,
       expected: BANNED,
+    },
+    { file: 'legacy/a.test.ts', config: 'an entry allowing them under a top level banning them', lintRules: allowedForLegacy, expected: ALLOWED },
+    { file: 'strict/a.test.ts', config: 'an entry banning them under a top level allowing them', lintRules: bannedForStrict, expected: BANNED_IN_TEST_FILES },
+    { file: 'src/a.test.ts', config: 'an entry banning them under a top level allowing them', lintRules: bannedForStrict, expected: ALLOWED },
+    {
+      file: 'apps/web/a.test.ts',
+      config: 'apps/** allowing them, then apps/web/** banning them: the later entry wins',
+      lintRules: allowedForAppsThenBannedForWeb,
+      expected: BANNED_IN_TEST_FILES,
     },
   ])('sets the suppression rules for $file under $config', async ({ lintRules, file, expected }) => {
     expect(await suppressionSettingsFor(agentConfigsFor(lintRules), file)).toStrictEqual(expected)

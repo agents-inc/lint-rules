@@ -2,16 +2,18 @@ import { existsSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, extname, resolve } from 'node:path'
 import { isModuleNamespaceObject } from 'node:util/types'
+import { foundOr } from '@workspace/rule-data/collections'
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import type { Linter } from 'eslint'
 import type { OxlintConfig } from 'oxlint'
 import type { EslintPluginRegistry } from './build-eslint-config.ts'
-import { configErrorIn } from './config-error.ts'
+import { configErrorIn, configProblemIn } from './config-error.ts'
 import { keysAnOxlintConfigHolds } from './installed-oxlint.ts'
 import { isRecord } from './is-record.ts'
 import { parsedJsonc } from './jsonc.ts'
 import type { TeamEslintConfig } from './merge-eslint-config.ts'
 import { extendedBy, isAnObject } from './oxlint-config-reading.ts'
+import { describeValue } from './value-descriptions.ts'
 
 // Each merge reads the team's other-engine config with require(), so the merges stay synchronous. Two
 // configs merging and naming each other would be a module cycle Node refuses, so while a read runs, a
@@ -88,21 +90,13 @@ export function isInReadingMode(): boolean {
 }
 
 export function handOverToTheRead(handedOver: HandedOver): void {
-  const read = readsInProgress.at(-1)
-  if (read === undefined) throw new Error('a merge handed over a config with no read in progress')
+  const read = foundOr(readsInProgress.at(-1), 'a merge handed over a config with no read in progress')
   read.handedOver.push(handedOver)
 }
 
 /** Refused where left out or neither a path nor null; `requiredBecause` says why, where it is not always required. */
 export function pathOfTheOtherConfigGiven(given: unknown, other: OtherConfig, requiredBecause: string | null): string | null {
-  const path = isRecord(given) ? given[other.key] : undefined
-  if (path === undefined) {
-    const because = requiredBecause === null ? '' : `: ${requiredBecause}`
-    throw configErrorIn(
-      other.readBy,
-      `${other.merge} needs the path of your ${other.named} as its third argument, { ${other.key}: '${other.usualFile}' }, or { ${other.key}: null } if this project has none${because}`,
-    )
-  }
+  const path = foundOr(isRecord(given) ? given[other.key] : undefined, pathLeftOutProblem(other, requiredBecause))
   if (path === null || typeof path === 'string') return path
   throw configErrorIn(other.readBy, `${other.key} must be a path or null, and was given ${describeValue(path)}`)
 }
@@ -119,6 +113,14 @@ export function readTheTeamsEslintConfig(path: string | null, tsconfigRootDir: s
   if (path === null) return { blocks: [], ourPlugins: {} }
   const file = existingFileAt(path, tsconfigRootDir, TEAMS_ESLINT_CONFIG)
   return readOrRefuse(file, TEAMS_ESLINT_CONFIG, () => eslintConfigLoadedFrom(file))
+}
+
+function pathLeftOutProblem(other: OtherConfig, requiredBecause: string | null): string {
+  const because = requiredBecause === null ? '' : `: ${requiredBecause}`
+  return configProblemIn(
+    other.readBy,
+    `${other.merge} needs the path of your ${other.named} as its third argument, { ${other.key}: '${other.usualFile}' }, or { ${other.key}: null } if this project has none${because}`,
+  )
 }
 
 function existingFileAt(path: string, tsconfigRootDir: string, other: OtherConfig): string {
@@ -230,11 +232,4 @@ function eslintBlocksOf(config: unknown): readonly Linter.Config[] {
 /** Parse boundary: oxlint checks the rest itself when it loads the config. */
 function isOxlintConfig(value: unknown): value is OxlintConfig {
   return isRecord(value)
-}
-
-function describeValue(value: unknown): string {
-  if (Array.isArray(value)) return 'an array'
-  if (value === null) return 'null'
-  if (typeof value === 'object') return 'an object'
-  return `${typeof value} ${String(value)}`
 }

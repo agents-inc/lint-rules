@@ -1,3 +1,4 @@
+import { buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import { describe, expect, it } from 'vitest'
 import { GLOBALS_OXLINT_OVERRIDES } from '../__tests__/cases/svelte-components.ts'
 import {
@@ -7,7 +8,6 @@ import {
   buildOxlintRoute,
   buildQualityRuleset,
   buildRuntimeRuleset,
-  buildShippedRule,
 } from '../__tests__/factories/catalog-factories.ts'
 import { buildFileOverride, buildLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { oxlintSeverityFor } from '../__tests__/oxlint-config-oracle.ts'
@@ -105,7 +105,7 @@ const catalog = buildCatalog({
 })
 
 describe('buildOxlintConfig', () => {
-  it('returns a complete config: every category off, the plugins of its rules, env, ignores and options', () => {
+  it('returns a complete config: every category off, the plugins of its rules, env, ignores, options, and React 18.3.0 for the react plugin', () => {
     const lintRules = buildLintRules(
       { quality: ['correctness', 'complexity'], runtimes: ['node'] },
       { ignores: ['src/generated/**'] },
@@ -117,6 +117,7 @@ describe('buildOxlintConfig', () => {
       env: { builtin: true, es2024: true, node: true },
       ignorePatterns: ['**/node_modules/**', 'src/generated/**'],
       options: { reportUnusedDisableDirectives: 'off' },
+      settings: { react: { version: '18.3.0' } },
       rules: {
         eqeqeq: ['error', 'always'],
         'jsx_a11y/alt-text': ['error'],

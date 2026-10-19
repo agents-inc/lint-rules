@@ -1,6 +1,5 @@
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { buildInstalledPackageExportingItsEntryAlone } from '../__tests__/factories/package-json-factories.ts'
 import { buildTsconfig } from '../__tests__/factories/tsconfig-factories.ts'
 import { configFileText, esModuleRequiring, javaScriptRequiring, sourceImporting, standaloneSources } from '../__tests__/factories/tsconfig-layout-factories.ts'
 import { PARALLEL_LOAD_TIMEOUT_MS } from '../__tests__/parallel-load.ts'
@@ -15,7 +14,6 @@ const LINT_RULES_FILE = 'agents-inc.lint.mts'
 const OXLINT_CONFIG_FILE = 'oxlint.config.mts'
 const ESLINT_CONFIG_FILE = 'eslint.config.mjs'
 const BY_ITS_PATH = `./${LINT_RULES_FILE}`
-const REACT = 'react'
 // A folder whose name ends in .js, as a project named after a library may be.
 const FOLDER_NAMED_AS_A_JS_FILE = 'chart.js'
 
@@ -76,14 +74,5 @@ describe("projectFactsOf's TS files outside every tsconfig, beside the project s
       facts: projectFactsOf(root).tsFilesOutsideEveryTsconfig,
       projectService: tsFilesTheProjectServiceFindsNoProjectFor(root),
     }).toStrictEqual({ facts: outside, projectService: outside })
-  })
-})
-
-describe("projectFactsOf's reading of React, which eslint-plugin-react's detect resolves itself", () => {
-  it.each([
-    { where: 'react resolves from tsconfigRootDir', files: buildInstalledPackageExportingItsEntryAlone(REACT), reactIsInstalled: true },
-    { where: 'none resolves', files: {}, reactIsInstalled: false },
-  ])('reads it as installed or not where $where', ({ files, reactIsInstalled }) => {
-    expect(projectFactsOf(tempProjects.create({ files })).reactIsInstalled).toBe(reactIsInstalled)
   })
 })

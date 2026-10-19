@@ -19,7 +19,7 @@ import {
   sortedById,
   uniqueById,
 } from './__tests__/rules-on-engines.ts'
-import { isCoveredByAShippedRule } from './__tests__/shipped-covers.ts'
+import { isCoveredByAShippedRule, isCoveredInOxlintByAShippedRule } from './__tests__/shipped-covers.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG, NO_TEAM_ESLINT_CONFIG, writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
@@ -88,10 +88,13 @@ function shippedOptionsOf(route: RuleRoute): readonly unknown[] {
 describe('the editor parts of a project whose package.json lists oxlint, merged into empty team configs', () => {
   const merged = (): MergedEditorConfigs => mergedEditorConfigsOf(PROJECT_WITH_OXLINT)
 
+  // A rule covered in oxlint by another is left out wherever oxlint runs.
   it('run exactly the editor rules, each once, on its routed engine, with its options, suppressions allowed', () => {
     const configs = merged()
     const expected = sortedById([
-      ...shippedRoutesBesidesTheSuppressionRules().map((route) => onItsEngine(route.id, shippedOptionsOf(route))),
+      ...shippedRoutesBesidesTheSuppressionRules()
+        .filter((route) => !isCoveredInOxlintByAShippedRule(route))
+        .map((route) => onItsEngine(route.id, shippedOptionsOf(route))),
       onItsEngine('@typescript-eslint/ban-ts-comment', [BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR]),
       onItsEngine('unicorn/no-abusive-eslint-disable', []),
     ])

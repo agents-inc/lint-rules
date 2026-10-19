@@ -16,7 +16,7 @@ import { INSTALLED_OXLINT, installedPackage, type ProjectFiles, THIS_PACKAGE } f
 // Where the type information is ours, agents-inc.lint.mts and oxlint.config.mts get the typed rules
 // through the tsconfig taking them in, with no fatal parse error whatever its shape; the project
 // service finds an imported file through its importer.
-// KNOWN GAP: where no tsconfig takes them in, the two files get no typed rule. typescript-eslint's
+// Where no tsconfig takes them in, the two files get no typed rule, as decided: typescript-eslint's
 // default project, set up once per process by the first config it parses, made one process linting
 // several projects fail some with a fatal parse error, with a shipped default tsconfig too (measured).
 // Each project is linted in a process of its own, as projects in one process would share the first's
@@ -124,19 +124,20 @@ describe.each(LAYOUTS)("the consumer's config files at tsconfigRootDir, in $shap
     teamOxlintConfig: null,
     runsTheAgentOxlintConfig: false,
   })
-  // KNOWN GAP (see the top of the file): the typed rules are owed where no tsconfig takes the two in.
-  // A run that failed before the suite throws in the test beside this one, which no it.fails hides.
-  const itWhereATsconfigTakesThemIn = takesInTheTwo ? it : it.fails
-
   it.each(BUILDS)('draw no fatal message, in the %s build', (build) => {
     const { eslint, rootDir } = runs()
 
     expect(fatalMessagesIn(eslint[build], rootDir)).toStrictEqual([])
   })
 
-  itWhereATsconfigTakesThemIn.each(BUILDS)('draw the typed rule on the floating promise planted in each, in the %s build', (build) => {
-    expect(floatingPromisesIn(runs(), build).filter(isInOneOf(TS_FILES_WE_HAVE_A_CONSUMER_WRITE))).toStrictEqual(OWED_IN_THE_TWO)
-  })
+  it.each(BUILDS)(
+    takesInTheTwo
+      ? 'draw the typed rule on the floating promise planted in each, in the %s build'
+      : 'draw no typed finding on the floating promise planted in each, which no tsconfig takes in, in the %s build',
+    (build) => {
+      expect(floatingPromisesIn(runs(), build).filter(isInOneOf(TS_FILES_WE_HAVE_A_CONSUMER_WRITE))).toStrictEqual(takesInTheTwo ? OWED_IN_THE_TWO : [])
+    },
+  )
 
   it.each(BUILDS)("draw no typed finding in a nested package's consumer files no tsconfig takes in, in the %s build", (build) => {
     expect(floatingPromisesIn(runs(), build).filter(isInOneOf(untypedConsumerFiles))).toStrictEqual([])
@@ -146,12 +147,11 @@ describe.each(LAYOUTS)("the consumer's config files at tsconfigRootDir, in $shap
 // plan.md's files verbatim, every ruleset listed: the typed rules run on the two TS files and find
 // nothing, where a tsconfig takes them in and @types/node is installed.
 const VERBATIM_TSCONFIGS = [
-  // KNOWN GAP (see the top of the file): no typed rule runs on the two, which no tsconfig takes in.
-  { includes: 'only src/, listing types: node', tsconfig: buildTsconfigListingNodeTypes({ include: ['src'] }), takesInTheTwo: false, findsNothingOn: TS_FILES_WE_HAVE_A_CONSUMER_WRITE },
-  { includes: 'every TS file, listing types: node', tsconfig: buildTsconfigListingNodeTypes(), takesInTheTwo: true, findsNothingOn: TS_FILES_WE_HAVE_A_CONSUMER_WRITE },
-  // KNOWN GAP: TypeScript 6 loads no @types package a tsconfig does not list, so `import.meta.dirname`
-  // is an error type, which no-unsafe-assignment reports.
-  { includes: 'every TS file, listing no types', tsconfig: buildTsconfig(), takesInTheTwo: true, findsNothingOn: [OXLINT_CONFIG_FILE] },
+  // No typed rule runs on the two, which no tsconfig takes in (see the top of the file).
+  { includes: 'only src/, listing types: node', tsconfig: buildTsconfigListingNodeTypes({ include: ['src'] }), takesInTheTwo: false },
+  { includes: 'every TS file, listing types: node', tsconfig: buildTsconfigListingNodeTypes(), takesInTheTwo: true },
+  // TypeScript 6 loads no @types package a tsconfig does not list: agents-inc.lint.mts's reference to Node's types types `import.meta.dirname`.
+  { includes: 'every TS file, listing no types', tsconfig: buildTsconfig(), takesInTheTwo: true },
 ]
 
 function isTypedRule(ruleId: string | null): boolean {
@@ -160,7 +160,7 @@ function isTypedRule(ruleId: string | null): boolean {
   return route !== undefined && route.typed
 }
 
-describe.each(VERBATIM_TSCONFIGS)("plan.md's config files, beside a tsconfig that includes $includes, @types/node installed", ({ tsconfig, takesInTheTwo, findsNothingOn }) => {
+describe.each(VERBATIM_TSCONFIGS)("plan.md's config files, beside a tsconfig that includes $includes, @types/node installed", ({ tsconfig, takesInTheTwo }) => {
   const runs = setUpEslintRunsInItsOwnProcess({
     project: { fixturesDir: CONSUMER_FILES_DIR, files: { 'tsconfig.json': JSON.stringify(tsconfig) }, linkedPackages: [THIS_PACKAGE, TYPES_OF_NODE, INSTALLED_OXLINT] },
     tsconfigRootDir: '.',
@@ -169,17 +169,15 @@ describe.each(VERBATIM_TSCONFIGS)("plan.md's config files, beside a tsconfig tha
     runsTheAgentOxlintConfig: false,
   })
   const filesAndBuilds = TS_FILES_WE_HAVE_A_CONSUMER_WRITE.flatMap((file) => BUILDS.map((build) => ({ file, build })))
-  const itWhereATsconfigTakesThemIn = takesInTheTwo ? it : it.fails
 
-  itWhereATsconfigTakesThemIn.each(filesAndBuilds)('run the typed rules on $file, in the $build build', ({ file, build }) => {
-    expect(rulesRunOn(runs(), build, file).some(isTypedRule)).toBe(true)
-  })
+  it.each(filesAndBuilds)(
+    takesInTheTwo ? 'run the typed rules on $file, in the $build build' : 'run no typed rule on $file, which no tsconfig takes in, in the $build build',
+    ({ file, build }) => {
+      expect(rulesRunOn(runs(), build, file).some(isTypedRule)).toBe(takesInTheTwo)
+    },
+  )
 
-  it.each(filesAndBuilds.filter(({ file }) => findsNothingOn.includes(file)))('draw no typed finding on $file, in the $build build', ({ file, build }) => {
-    expect(ruleIdsOn(runs(), build, file).filter(isTypedRule)).toStrictEqual([])
-  })
-
-  it.fails.each(filesAndBuilds.filter(({ file }) => !findsNothingOn.includes(file)))('draw no typed finding on $file, in the $build build', ({ file, build }) => {
+  it.each(filesAndBuilds)('draw no typed finding on $file, in the $build build', ({ file, build }) => {
     expect(ruleIdsOn(runs(), build, file).filter(isTypedRule)).toStrictEqual([])
   })
 })

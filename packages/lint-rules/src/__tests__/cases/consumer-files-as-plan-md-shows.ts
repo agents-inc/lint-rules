@@ -74,7 +74,8 @@ export const PLANTED_FILE = 'src/planted.ts'
 export function agentsIncLintTextAsPlanMdShows({ tsconfigRootDir, editorRulesets }: AgentsIncLintKeys): string {
   const tsconfigRootDirLine = tsconfigRootDir === null ? '' : `  tsconfigRootDir: ${tsconfigRootDir},\n`
   const editorRulesetsLine = editorRulesets === null ? '' : `  editorRulesets: ${editorRulesets},${EDITOR_RULESETS_COMMENT}\n`
-  return `import { defineLintRules } from '@agents-inc/lint-rules'
+  return `/// <reference types="node" />
+import { defineLintRules } from '@agents-inc/lint-rules'
 
 const config = defineLintRules({
 ${tsconfigRootDirLine}

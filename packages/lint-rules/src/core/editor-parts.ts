@@ -12,6 +12,7 @@ import {
   type RuleSetting,
   type RuleSettings,
   resolveRuleLayers,
+  resolveRuleLayersBesideOxlint,
   ruleIdsOnIn,
   type StatedRule,
 } from './resolve-rule-layers.ts'
@@ -55,11 +56,11 @@ export function describePartGiven(given: unknown): string {
 }
 
 export function editorPartsOf(lintRules: TwoSetLintRulesInput, catalog: Catalog, usesOxlint: boolean): EditorParts {
-  const layers = resolveRuleLayers(editorSettingsOf(lintRules), catalog)
+  const settings = editorSettingsOf(lintRules)
   const { tsconfigRootDir } = lintRules
   return usesOxlint
-    ? partsBesideOxlint(tsconfigRootDir, layers, catalog)
-    : { eslint: eslintPartWithoutOxlint(tsconfigRootDir, layers, catalog), oxlint: undefined }
+    ? partsBesideOxlint(tsconfigRootDir, resolveRuleLayersBesideOxlint(settings, catalog), catalog)
+    : { eslint: eslintPartWithoutOxlint(tsconfigRootDir, resolveRuleLayers(settings, catalog), catalog), oxlint: undefined }
 }
 
 /** Suppressions are allowed everywhere in the editor set: people may keep theirs, only sub-agents may not. */

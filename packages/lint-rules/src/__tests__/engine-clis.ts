@@ -2,8 +2,9 @@ import { spawnSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, relative } from 'node:path'
+import type { OxlintCliOutput } from '@workspace/rule-data/test-support/oxlint-cli'
 import type { OxlintConfig } from 'oxlint'
-import { rawOxlintOutput } from './oxlint-raw-output.ts'
+import { rawOxlintOutput, rawOxlintOutputFindingItsConfigs } from './oxlint-raw-output.ts'
 import { projectPathOf } from './project-paths.ts'
 
 /** One ESLint message as `eslint -f json` prints it: `ruleId` null for a parse error or ESLint's own. */
@@ -110,7 +111,15 @@ export function runOxlintCli(projectDir: string, configFile: string, paths: read
 }
 
 export function oxlintCliOutcomeOf(projectDir: string, configFile: string, paths: readonly string[] = ['.']): OxlintCliOutcome {
-  const { exitCode, stdout, stderr } = rawOxlintOutput(projectDir, configFile, paths)
+  return outcomeOf(rawOxlintOutput(projectDir, configFile, paths))
+}
+
+/** Naming no config file, as a root git hook or CI runs oxlint. */
+export function oxlintCliOutcomeFindingItsConfigs(cwd: string, paths: readonly string[] = ['.']): OxlintCliOutcome {
+  return outcomeOf(rawOxlintOutputFindingItsConfigs(cwd, paths))
+}
+
+function outcomeOf({ exitCode, stdout, stderr }: OxlintCliOutput): OxlintCliOutcome {
   // oxlint prints something other than JSON when the config fails to load.
   if (!stdout.trimStart().startsWith('{')) return { outcome: 'refused', output: `${stdout}${stderr}` }
   // Parse boundary: oxlint's JSON report.

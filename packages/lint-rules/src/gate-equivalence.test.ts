@@ -15,12 +15,13 @@ import {
   sortedById,
   uniqueById,
 } from './__tests__/rules-on-engines.ts'
-import { isCoveredByAShippedRule } from './__tests__/shipped-covers.ts'
+import { isCoveredByAShippedRule, isCoveredInOxlintByAShippedRule } from './__tests__/shipped-covers.ts'
 import { defineLintRules } from './index.ts'
 
 // With every ruleset listed in the agent set, the agent build's two configs must run the canonical
 // list: each rule once, on its routed engine, with its shipped options. allowSuppressions decides the
-// suppression rules whatever is listed, so they are stated here per setting.
+// suppression rules whatever is listed, so they are stated here per setting; where it bans them, a block
+// of its own gives ban-ts-comment its setting in test files.
 const SUPPRESSION_RULE_IDS: ReadonlySet<string> = new Set([
   '@typescript-eslint/ban-ts-comment',
   'house/no-suppressions',
@@ -45,14 +46,16 @@ const SUPPRESSION_RULES_ALLOWED = [
   onItsEngine('react-hooks/rule-suppression', []),
   onItsEngine('unicorn/no-abusive-eslint-disable', []),
 ]
+const TEST_FILE_BAN_BLOCK = 'agents-inc/test-files/@typescript-eslint/ban-ts-comment'
+const IN_TEST_FILES_WHILE_BANNED = [onItsEngine('@typescript-eslint/ban-ts-comment', [BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR])]
 
 /**
  * Every shipped rule allowSuppressions does not decide, on its routed engine with its shipped options,
- * except each one another rule covers.
+ * except each one another rule covers, in both engines or, as the agent build always runs oxlint, in oxlint.
  */
 function shippedRulesBesidesTheSuppressionRules(): RuleOnEngine[] {
   return [...catalog.rules.values()].flatMap((rule) =>
-    rule.shipped === null || SUPPRESSION_RULE_IDS.has(rule.id) || isCoveredByAShippedRule(rule)
+    rule.shipped === null || SUPPRESSION_RULE_IDS.has(rule.id) || isCoveredByAShippedRule(rule) || isCoveredInOxlintByAShippedRule(rule)
       ? []
       : [{ id: rule.id, engine: rule.engine, options: rule.shipped.options }],
   )
@@ -63,40 +66,50 @@ describe.each([
     config: 'every ruleset listed, nothing overridden, suppressions banned as by default',
     lintRules: buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR),
     expected: sortedById([...shippedRulesBesidesTheSuppressionRules(), ...SUPPRESSION_RULES_BANNED]),
+    inTestFiles: IN_TEST_FILES_WHILE_BANNED,
   },
   {
     config: 'every ruleset listed, nothing overridden, allowSuppressions: true',
     lintRules: buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, { allowSuppressions: true }),
     expected: sortedById([...shippedRulesBesidesTheSuppressionRules(), ...SUPPRESSION_RULES_ALLOWED]),
+    inTestFiles: [],
   },
   {
     config: 'every ruleset listed in the agent set and none in the editor set, nothing overridden',
     lintRules: buildConsumerLintRules(EMPTY_TSCONFIG_ROOT_DIR, { agentRulesets: EVERY_RULESET }),
     expected: sortedById([...shippedRulesBesidesTheSuppressionRules(), ...SUPPRESSION_RULES_BANNED]),
+    inTestFiles: IN_TEST_FILES_WHILE_BANNED,
   },
   // The agent build reads the agent set only.
   {
     config: 'every ruleset listed in the editor set and none in the agent set, nothing overridden',
     lintRules: buildConsumerLintRules(EMPTY_TSCONFIG_ROOT_DIR, { editorRulesets: EVERY_RULESET }),
     expected: sortedById(SUPPRESSION_RULES_BANNED),
+    inTestFiles: IN_TEST_FILES_WHILE_BANNED,
   },
   {
     config: 'no ruleset listed, nothing overridden, suppressions banned as by default',
     lintRules: buildConsumerLintRules(EMPTY_TSCONFIG_ROOT_DIR, {}),
     expected: sortedById(SUPPRESSION_RULES_BANNED),
+    inTestFiles: IN_TEST_FILES_WHILE_BANNED,
   },
   {
     config: 'no ruleset listed, nothing overridden, allowSuppressions: true',
     lintRules: buildConsumerLintRules(EMPTY_TSCONFIG_ROOT_DIR, {}, { allowSuppressions: true }),
     expected: sortedById(SUPPRESSION_RULES_ALLOWED),
+    inTestFiles: [],
   },
-])('$config', ({ lintRules, expected }) => {
+])('$config', ({ lintRules, expected, inTestFiles }) => {
   const agentConfigs = agentConfigsOf(defineLintRules(lintRules))
   const onInOxlint = uniqueById(rulesOnInOxlint(agentConfigs.oxlint))
-  const onInEslint = uniqueById(rulesOnInEslint(agentConfigs.eslint))
+  const onInEslint = uniqueById(rulesOnInEslint(agentConfigs.eslint.filter(({ name }) => name !== TEST_FILE_BAN_BLOCK)))
 
   it('runs exactly these rules, each on its routed engine, with its options', () => {
     expect(uniqueById([...onInOxlint, ...onInEslint])).toStrictEqual(expected)
+  })
+
+  it('runs only ban-ts-comment in the block of its own for test files, as suppressions are set', () => {
+    expect(rulesOnInEslint(agentConfigs.eslint.filter(({ name }) => name === TEST_FILE_BAN_BLOCK))).toStrictEqual(inTestFiles)
   })
 
   it('runs no rule in both engines', () => {

@@ -1,11 +1,12 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
-import type { AllowWarnDeny, DummyRuleMap, OxlintConfig, OxlintEnv, OxlintGlobals, OxlintOverride } from 'oxlint'
+import type { DummyRuleMap, OxlintConfig, OxlintEnv, OxlintGlobals, OxlintOverride } from 'oxlint'
 import { type OxlintPlugin, sortedUnique } from './build-oxlint-config.ts'
 import { runtimeEnvsOf } from './catalog-lookups.ts'
 import { configErrorIn } from './config-error.ts'
 import type { OxlintPart } from './editor-parts.ts'
 import { bothOf, eitherOf, type FilesCondition, keyOfCondition } from './file-conditions.ts'
 import { EVERY_FILE_AT_ANY_DEPTH } from './globs.ts'
+import { isRecord } from './is-record.ts'
 import {
   ALWAYS_RUN,
   type CategorySeverities,
@@ -29,6 +30,7 @@ import {
   whereItApplies,
 } from './oxlint-config-reading.ts'
 import { filesLess, type OverrideFiles, overrideFilesOf } from './oxlint-override-files.ts'
+import { REACT_VERSION } from './react-version.ts'
 import { type RuleLayers, runtimeGlobalReadersOnIn } from './resolve-rule-layers.ts'
 import { ourLayersLeavingOut, rulesTheTeamSets, withEveryTwin } from './rules-the-team-sets.ts'
 import {
@@ -57,7 +59,7 @@ type FirstInLine = { readonly extendsKey: Pick<OxlintConfig, 'extends'>; readonl
 
 type GroupOfAlike<Item> = { readonly first: Item; readonly members: readonly Item[] }
 
-type OxlintOptions = NonNullable<OxlintConfig['options']>
+type OxlintSettings = NonNullable<OxlintConfig['settings']>
 
 type OnStatement = { readonly oxlintName: string; readonly entry: RuleEntry; readonly where: FilesCondition }
 
@@ -75,12 +77,9 @@ type EnvAndGlobals = Pick<OxlintOverride, 'env' | 'globals'>
 
 type RuntimeEnvApart = { readonly runtimeEnv: OxlintEnv; readonly others: EnvAndGlobals }
 
-// Each engine flags the other's suppressions as unused.
-const UNUSED_DIRECTIVES_UNREPORTED: AllowWarnDeny = 'off'
-
 const NOT_FOUND = -1
 
-/** Ours come first, on-statements only, since a later override beats the root and earlier overrides; a rule the team's oxlint or ESLint config sets anywhere is left to the team. Listing every plugin at the root changes what runs for the team, so that is undone first in line. */
+/** Ours come first, on-statements only, since a later override beats the root and earlier overrides; a rule the team's oxlint or ESLint config sets anywhere is left to the team. Listing every plugin at the root changes what runs for the team, so that is undone first in line. The team's options stand as written: oxlint refuses any option in a config below the one it starts from. */
 export function mergeOxlintPart(theirs: OxlintConfig, part: OxlintPart, catalog: Catalog, setByTheTeamsEslintConfig: readonly string[]): OxlintConfig {
   const bySpelling = oxlintRulesBySpelling(catalog)
   const team = teamResolutionOf(theirs, bySpelling)
@@ -92,7 +91,7 @@ export function mergeOxlintPart(theirs: OxlintConfig, part: OxlintPart, catalog:
     ...categorySwitchesOf(team, catalog),
   ]
   const copiesOfOurEslintRulesOff = offWhereTheRootRunsThem(copiesOxlintsDefaultRunsBesideOurEslintPart(theirs, part, setByTheTeam, catalog))
-  const { overrides = [], options, extends: extended = [], ...untouched } = theirs
+  const { overrides = [], settings, extends: extended = [], ...untouched } = theirs
   const extendedObjects = extended.filter(isAnObject).map((config) => withIgnoredStatementsDropped(config, team, bySpelling))
   const firstInLine = placedFirstInLine([...asTheTeamsConfigAloneRuns, ...copiesOfOurEslintRulesOff, ...ours], extendedObjects)
   return {
@@ -100,7 +99,7 @@ export function mergeOxlintPart(theirs: OxlintConfig, part: OxlintPart, catalog:
     plugins,
     ...firstInLine.extendsKey,
     overrides: [...firstInLine.overrides, ...overrides.map((override) => overrideWithIgnoredStatementsDropped(override, team, bySpelling))],
-    options: optionsKeepingTheTeams(options),
+    settings: withOurReactVersionUnlessTheTeamGivesOne(settings),
   }
 }
 
@@ -208,9 +207,13 @@ function holdInTheSameFiles(first: OnStatement, second: OnStatement): boolean {
   return keyOfCondition(first.where) === keyOfCondition(second.where)
 }
 
-function optionsKeepingTheTeams(options: OxlintOptions = {}): OxlintOptions {
-  const { reportUnusedDisableDirectives = UNUSED_DIRECTIVES_UNREPORTED } = options
-  return { ...options, reportUnusedDisableDirectives }
+/** A config imported from .oxlintrc.json is untyped: settings that are no object where oxlint takes one stay as written, for oxlint to read as it would alone. */
+function withOurReactVersionUnlessTheTeamGivesOne(settings: OxlintSettings = {}): OxlintSettings {
+  if (!isRecord(settings)) return settings
+  const { react = {} } = settings
+  if (!isRecord(react)) return settings
+  if (react.version !== undefined) return settings
+  return { ...settings, react: { ...react, version: REACT_VERSION } }
 }
 
 /** Rules the merged root turns on that the team's root does not: plugins it did not list, or root statements oxlint ignored for the team. */

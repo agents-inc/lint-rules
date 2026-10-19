@@ -7,3 +7,11 @@ export function isCoveredByAShippedRule({ shipped }: RuleRoute): boolean {
   if (cover === undefined) throw new Error(`${shipped.coveredBy}: a cover the catalog does not hold`)
   return cover.shipped !== null
 }
+
+/** Whether the rule is shipped as covered, where oxlint runs, by another rule that is shipped too: throws for a cover the catalog does not hold. */
+export function isCoveredInOxlintByAShippedRule({ shipped }: RuleRoute): boolean {
+  if (shipped === null || shipped.coveredInOxlintBy === null) return false
+  const cover = catalog.rules.get(shipped.coveredInOxlintBy)
+  if (cover === undefined) throw new Error(`${shipped.coveredInOxlintBy}: a cover in oxlint the catalog does not hold`)
+  return cover.shipped !== null
+}
