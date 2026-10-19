@@ -4,6 +4,25 @@ import { globsReadFromTheRoot } from './globs-read-from-above.ts'
 // Every `fromTheRoot` below was checked against ESLint's minimatch 10.2.6 (`dot: true`), matching a file
 // under the root from above and from the root.
 
+const COMMAS = ','.repeat(30_000)
+const FOLDERS = ['project']
+const TIMED_RUNS = 3
+const SLOWER_THAN_PLAIN_AT_MOST = 4
+// So a slow read fails on the time it took, not on vitest's 5 s.
+const SLOW_READ_TIMEOUT_MS = 60_000
+
+type TimedRead = { readonly fromTheRoot: readonly string[]; readonly ms: number }
+
+/** The fastest of a few reads, so a pause for garbage collection is not counted. */
+function fastestMsToRead(glob: string): TimedRead {
+  const reads = Array.from({ length: TIMED_RUNS }, (): TimedRead => {
+    const start = performance.now()
+    const fromTheRoot = globsReadFromTheRoot(glob, FOLDERS)
+    return { fromTheRoot, ms: performance.now() - start }
+  })
+  return reads.reduce((fastest, read) => (read.ms < fastest.ms ? read : fastest))
+}
+
 describe('globsReadFromTheRoot', () => {
   it.each([
     { how: 'a folder it names', glob: 'app/src/**', folders: ['app'], fromTheRoot: ['src/**'] },
@@ -59,6 +78,36 @@ describe('globsReadFromTheRoot', () => {
     { how: 'no folder none of its alternatives names', glob: '{lib,docs}/**', folders: ['app'], fromTheRoot: [] },
   ])('reads braces as matching $how', ({ glob, folders, fromTheRoot }) => {
     expect(globsReadFromTheRoot(glob, folders)).toStrictEqual(fromTheRoot)
+  })
+
+  it.each([
+    { how: 'braces holding no comma, matching a folder named with them', glob: '{app}/**', folders: ['{app}'], fromTheRoot: ['**'] },
+    { how: 'braces holding no comma, matching no folder named without them', glob: '{app}/**', folders: ['app'], fromTheRoot: [] },
+    { how: 'an unclosed brace, matching a folder named with it', glob: '{app,lib/**', folders: ['{app,lib'], fromTheRoot: ['**'] },
+    { how: 'an unclosed brace, matching no folder an alternative names', glob: '{app,lib/**', folders: ['app'], fromTheRoot: [] },
+    { how: 'a comma outside braces, matching a folder named with it', glob: 'a,b/**', folders: ['a,b'], fromTheRoot: ['**'] },
+    { how: 'a comma outside braces, matching no folder named by a part', glob: 'a,b/**', folders: ['a'], fromTheRoot: [] },
+  ])('reads, as itself, $how', ({ glob, folders, fromTheRoot }) => {
+    expect(globsReadFromTheRoot(glob, folders)).toStrictEqual(fromTheRoot)
+  })
+
+  it.each([
+    { how: 'an empty first alternative', glob: '{,app}/**', folders: ['app'], fromTheRoot: ['**'] },
+    { how: 'two empty alternatives before the one naming it', glob: '{,,app}/**', folders: ['app'], fromTheRoot: ['**'] },
+    { how: 'one alternative of each of two braces', glob: '{a,b}-{c,d}/**', folders: ['b-c'], fromTheRoot: ['**'] },
+    { how: 'no folder two braces cannot spell', glob: '{a,b}-{c,d}/**', folders: ['b-b'], fromTheRoot: [] },
+  ])('reads braces as matching $how', ({ glob, folders, fromTheRoot }) => {
+    expect(globsReadFromTheRoot(glob, folders)).toStrictEqual(fromTheRoot)
+  })
+
+  // A segment this long takes a while to read whatever its braces hold, so the crafted one is timed against one
+  // of the same length with no brace: an opening brace before many commas once took the square of its length.
+  it('reads an opening brace before 30,000 commas about as fast as 30,001 commas', { timeout: SLOW_READ_TIMEOUT_MS }, () => {
+    const crafted = fastestMsToRead(`{${COMMAS}/**`)
+    const plain = fastestMsToRead(`,${COMMAS}/**`)
+
+    expect(crafted.fromTheRoot).toStrictEqual(plain.fromTheRoot)
+    expect(crafted.ms).toBeLessThan(plain.ms * SLOWER_THAN_PLAIN_AT_MOST)
   })
 
   // A segment holding an extglob matches no folder (a known limit), nor does ESLint here. `null` is a folder's name too.

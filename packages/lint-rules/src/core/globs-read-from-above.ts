@@ -7,8 +7,9 @@ import { namedGroupOf, namedGroupsOf } from './named-groups.ts'
 
 const SEGMENT_SEPARATOR = '/'
 const GLOBSTAR = '**'
-// The first braces holding no braces and at least one comma, which minimatch expands.
-const INNERMOST_BRACES = /\{(?<body>[^{}]*,[^{}]*)\}/u
+// The first braces holding no braces and at least one comma, which minimatch expands. The body splits at its first
+// comma, so a run of commas is read once.
+const INNERMOST_BRACES = /\{(?<body>[^{},]*,[^{}]*)\}/u
 const BRACE_SEPARATOR = ','
 const SEGMENT_PART = /\\(?<escaped>.)|\[(?<negated>[!^])?(?<members>[^\]]+)\]|(?<extglob>[@*+?!]\()|(?<star>\*)|(?<one>\?)|(?<other>.)/gsu
 const REGEXP_SYNTAX = /[\\^$.*+?()[\]{}|/]/gu
