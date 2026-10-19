@@ -2,6 +2,7 @@ import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/u
 
 import {
   findLastJsxAttribute,
+  fixedTextOf,
   isJsxAttribute,
   isJsxAttributeNamedIn,
   jsxAttributeName,
@@ -24,16 +25,6 @@ const VALUE_IS_NOT_THE_CONTENT: ReadonlySet<string> = new Set([
 // Deliberately not typeable, or explicitly uncontrolled.
 const OPTS_OUT: ReadonlySet<string> = new Set(['readOnly', 'disabled', 'defaultValue'])
 
-// Only a literal `type` can be judged; `type={x}` is assumed to need a handler.
-function staticStringOf(attribute: TSESTree.JSXAttribute): string | null {
-  const { value } = attribute
-  if (value?.type === AST_NODE_TYPES.Literal) return typeof value.value === 'string' ? value.value : null
-  if (value?.type === AST_NODE_TYPES.JSXExpressionContainer && value.expression.type === AST_NODE_TYPES.Literal) {
-    return typeof value.expression.value === 'string' ? value.expression.value : null
-  }
-  return null
-}
-
 function isChangeHandler(attribute: TSESTree.JSXAttribute | TSESTree.JSXSpreadAttribute): boolean {
   return isJsxAttribute(attribute) && isJsxAttributeNamedIn(attribute, CHANGE_HANDLERS)
 }
@@ -41,7 +32,8 @@ function isChangeHandler(attribute: TSESTree.JSXAttribute | TSESTree.JSXSpreadAt
 function exemptsTheField(attribute: TSESTree.JSXAttribute): boolean {
   if (isJsxAttributeNamedIn(attribute, CHANGE_HANDLERS) || isJsxAttributeNamedIn(attribute, OPTS_OUT)) return true
   if (jsxAttributeName(attribute) !== 'type') return false
-  const type = staticStringOf(attribute)
+  // Only a fixed `type` can be judged; `type={x}` is assumed to need a handler.
+  const type = fixedTextOf(attribute)
   return type !== null && VALUE_IS_NOT_THE_CONTENT.has(type)
 }
 

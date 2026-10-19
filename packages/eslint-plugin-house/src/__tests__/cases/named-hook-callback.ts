@@ -25,7 +25,6 @@ export function Panel() {
 
 export const customEffectHook = 'useMountEffect'
 
-// No JSX, so ESLint's default parser reads it as plain JavaScript.
 export const customEffectInHookModule = `import { useMountEffect } from './use-mount-effect'
 export function usePanelTitle() {
   useMountEffect(() => {

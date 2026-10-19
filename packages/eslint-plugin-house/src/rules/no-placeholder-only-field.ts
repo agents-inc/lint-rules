@@ -1,6 +1,11 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
-import { findLastJsxAttribute, isJsxAttributeNamedIn, plainAttributesOf } from '../shared/jsx-attributes.ts'
+import {
+  findLastJsxAttribute,
+  fixedTextOf,
+  isJsxAttributeNamedIn,
+  plainAttributesOf,
+} from '../shared/jsx-attributes.ts'
 import { formFieldTagOf } from '../shared/jsx-elements.ts'
 
 // An id counts as a label: it is almost always there for a `<label htmlFor>` this rule cannot see.
@@ -11,9 +16,9 @@ function isNamingAttribute(attribute: TSESTree.JSXAttribute): boolean {
   return isJsxAttributeNamedIn(attribute, FIELD_NAME_ATTRIBUTES)
 }
 
-// `placeholder=""` supplies no name at all: an unnamed field, which this message would misdescribe.
-function isEmptyLiteral(attribute: TSESTree.JSXAttribute): boolean {
-  return attribute.value?.type === AST_NODE_TYPES.Literal && attribute.value.value === ''
+// `placeholder=""`, in any form, supplies no name at all: an unnamed field, which this message would misdescribe.
+function isEmptyText(attribute: TSESTree.JSXAttribute): boolean {
+  return fixedTextOf(attribute) === ''
 }
 
 // The tag as written: `<Form.Label>` ends in the segment that matters.
@@ -52,7 +57,7 @@ export const noPlaceholderOnlyField = ESLintUtils.RuleCreator.withoutDocs<[], 'p
         const attributes = plainAttributesOf(node)
         if (attributes === null || attributes.some(isNamingAttribute)) return
         const placeholder = findLastJsxAttribute(attributes, 'placeholder')
-        if (placeholder === null || isEmptyLiteral(placeholder)) return
+        if (placeholder === null || isEmptyText(placeholder)) return
         if (context.sourceCode.getAncestors(node).some(isLabelElement)) return
         context.report({ node: placeholder, messageId: 'placeholderOnly', data: { tag } })
       },

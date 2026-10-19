@@ -39,8 +39,30 @@ export function findLastJsxAttribute(
   return attributes.findLast((attribute) => jsxAttributeName(attribute) === name) ?? null
 }
 
-/** `type="hidden"` exactly as written: `type={'hidden'}` and a dynamic type are not read. */
-export function hasLiteralHiddenType(element: TSESTree.JSXOpeningElement): boolean {
+// A template with nothing interpolated is one stretch of text.
+function uninterpolatedTextOf(template: TSESTree.TemplateLiteral): string | null {
+  if (template.expressions.length > 0) return null
+  const [text] = template.quasis
+  if (text === undefined) throw new Error('A template literal with nothing interpolated parsed with no text')
+  // `cooked` is null only for a bad escape in a tagged template, so here it is the text.
+  return text.value.cooked
+}
+
+function fixedStringOf(expression: TSESTree.Expression | TSESTree.JSXEmptyExpression): string | null {
+  if (expression.type === AST_NODE_TYPES.Literal) return typeof expression.value === 'string' ? expression.value : null
+  return expression.type === AST_NODE_TYPES.TemplateLiteral ? uninterpolatedTextOf(expression) : null
+}
+
+/** The text the source fixes: `x="a"`, `x={'a'}` and `` x={`a`} `` read `a`; anything else, bare `x` too, is null. */
+export function fixedTextOf(attribute: TSESTree.JSXAttribute): string | null {
+  const { value } = attribute
+  if (value === null) return null
+  if (value.type === AST_NODE_TYPES.Literal) return fixedStringOf(value)
+  return value.type === AST_NODE_TYPES.JSXExpressionContainer ? fixedStringOf(value.expression) : null
+}
+
+/** A `type` fixed as `hidden` in any form `fixedTextOf` reads; a dynamic type is not read. */
+export function hasHiddenType(element: TSESTree.JSXOpeningElement): boolean {
   const type = findJsxAttribute(element, 'type')
-  return type?.value?.type === AST_NODE_TYPES.Literal && type.value.value === 'hidden'
+  return type !== null && fixedTextOf(type) === 'hidden'
 }

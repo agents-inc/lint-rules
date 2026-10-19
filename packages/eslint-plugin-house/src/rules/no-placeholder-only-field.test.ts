@@ -1,5 +1,6 @@
 import {
   componentField,
+  inputWithPlaceholder,
   namedByAriaLabel,
   namedByIdAndLabelFor,
   namedByLabelledbyTitleOrEmptyPlaceholder,
@@ -13,6 +14,11 @@ import {
   wrappedInLabelWithCaption,
   wrappedInNamespacedLabel,
 } from '../__tests__/cases/no-placeholder-only-field.ts'
+import {
+  fixedTextAttributeForms,
+  interpolatedTemplateAttribute,
+  templateAttribute,
+} from '../__tests__/factories/attribute-factories.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
@@ -34,11 +40,33 @@ houseRuleTester.run('no-placeholder-only-field', housePlugin.rules['no-placehold
     buildValidCase('stays silent on a field whose template-literal id a label points at', namedByTemplateIdAndLabelFor),
     buildValidCase('stays silent on a field with rest props spread after its placeholder', restSpreadAfterPlaceholder),
     buildValidCase('stays silent on a field wrapped in Form.Label', wrappedInNamespacedLabel),
+    ...fixedTextAttributeForms('placeholder', '').map((placeholderAttribute) =>
+      buildValidCase<[]>(
+        `stays silent on an empty placeholder written ${placeholderAttribute}, which names nothing`,
+        inputWithPlaceholder(placeholderAttribute),
+      ),
+    ),
   ],
   invalid: [
     buildInvalidCase('reports an input whose only accessible name is its placeholder', placeholderOnlyInput, {
       filename: 'no-placeholder-only-field.tsx',
       errors: [{ messageId: 'placeholderOnly', line: 2 }],
     }),
+    buildInvalidCase(
+      'reports a placeholder that is a template with something interpolated, which it cannot read',
+      inputWithPlaceholder(interpolatedTemplateAttribute('placeholder', 'hint')),
+      {
+        filename: 'no-placeholder-only-field.tsx',
+        errors: [{ messageId: 'placeholderOnly', line: 2, data: { tag: 'input' } }],
+      },
+    ),
+    buildInvalidCase(
+      'reports a placeholder that is a template reading text',
+      inputWithPlaceholder(templateAttribute('placeholder', 'Search projects')),
+      {
+        filename: 'no-placeholder-only-field.tsx',
+        errors: [{ messageId: 'placeholderOnly', line: 2, data: { tag: 'input' } }],
+      },
+    ),
   ],
 })

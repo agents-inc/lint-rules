@@ -146,3 +146,11 @@ export const fieldNamedLikeAnInputType = `export function ImageUrlField({ imageU
   return <input name="image" value={imageUrl} />
 }
 `
+
+/** An input with a value and no change handler, its type written as `typeAttribute`, on line 2. */
+export function inputWithValueTypedBy(typeAttribute: string): string {
+  return `export function TokenField({ kind, token }: { readonly kind: string; readonly token: string }) {
+  return <input name="csrf" ${typeAttribute} value={token} />
+}
+`
+}

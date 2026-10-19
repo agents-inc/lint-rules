@@ -1,10 +1,12 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
 import { childNodesOf } from '../shared/child-nodes.ts'
-import { findJsxAttribute, hasLiteralHiddenType } from '../shared/jsx-attributes.ts'
+import { findJsxAttribute, fixedTextOf, hasHiddenType } from '../shared/jsx-attributes.ts'
 import { unqualifiedTagOf } from '../shared/jsx-elements.ts'
 
 type RenderedJsx = TSESTree.JSXElement | TSESTree.JSXFragment
+
+type BracedExpression = TSESTree.JSXExpressionContainer['expression']
 
 // A tabIndex this rule cannot read is `unknown`, not absent: `tabIndex={active ? 0 : -1}` is deliberate.
 type TabIndex = number | 'absent' | 'unknown'
@@ -16,15 +18,20 @@ const FOCUSABLE_WITH_HREF_TAGS: ReadonlySet<string> = new Set(['a', 'area'])
 // What a message calls an element whose tag is not a plain name, such as `<Menu.Item>`.
 const UNNAMED_TAG = 'element'
 
-// Only `x`, `x={true}` and `x="true"` render true. A dynamic value is unknowable, and unknown is silent.
-function rendersTrue(attribute: TSESTree.JSXAttribute): boolean {
+// What `x={…}` holds; null for a bare or quoted attribute.
+function bracedExpressionOf(attribute: TSESTree.JSXAttribute): BracedExpression | null {
   const { value } = attribute
-  if (value === null) return true
-  if (value.type === AST_NODE_TYPES.Literal) return value.value === 'true' || value.value === true
-  if (value.type === AST_NODE_TYPES.JSXExpressionContainer) {
-    return value.expression.type === AST_NODE_TYPES.Literal && value.expression.value === true
-  }
-  return false
+  return value?.type === AST_NODE_TYPES.JSXExpressionContainer ? value.expression : null
+}
+
+function isBracedTrue(attribute: TSESTree.JSXAttribute): boolean {
+  const expression = bracedExpressionOf(attribute)
+  return expression?.type === AST_NODE_TYPES.Literal && expression.value === true
+}
+
+// Only `x`, `x={true}` and the text "true" render true. A dynamic value is unknowable, and unknown is silent.
+function rendersTrue(attribute: TSESTree.JSXAttribute): boolean {
+  return attribute.value === null || fixedTextOf(attribute) === 'true' || isBracedTrue(attribute)
 }
 
 function ariaHiddenTrueOf(element: TSESTree.JSXOpeningElement): TSESTree.JSXAttribute | null {
@@ -45,12 +52,7 @@ function finiteOr(value: number): TabIndex {
 }
 
 // `tabIndex={-1}` parses as a UnaryExpression, not a negative Literal.
-function tabIndexOf(element: TSESTree.JSXOpeningElement): TabIndex {
-  const attribute = findJsxAttribute(element, 'tabIndex', 'tabindex')
-  if (attribute === null) return 'absent'
-  const { value } = attribute
-  const expression = value?.type === AST_NODE_TYPES.JSXExpressionContainer ? value.expression : value
-  if (expression === null) return 'unknown'
+function tabIndexInBraces(expression: BracedExpression): TabIndex {
   if (expression.type === AST_NODE_TYPES.Literal) return finiteOr(Number(expression.value))
   if (
     expression.type === AST_NODE_TYPES.UnaryExpression &&
@@ -60,6 +62,15 @@ function tabIndexOf(element: TSESTree.JSXOpeningElement): TabIndex {
     return finiteOr(-Number(expression.argument.value))
   }
   return 'unknown'
+}
+
+function tabIndexOf(element: TSESTree.JSXOpeningElement): TabIndex {
+  const attribute = findJsxAttribute(element, 'tabIndex', 'tabindex')
+  if (attribute === null) return 'absent'
+  const text = fixedTextOf(attribute)
+  if (text !== null) return finiteOr(Number(text))
+  const expression = bracedExpressionOf(attribute)
+  return expression === null ? 'unknown' : tabIndexInBraces(expression)
 }
 
 function displayedTagOf(element: TSESTree.JSXOpeningElement): string {
@@ -77,7 +88,7 @@ function isFocusableElement(element: TSESTree.JSXOpeningElement): boolean {
   if (tag === null) return false
   if (FOCUSABLE_TAGS.has(tag)) return true
   if (FOCUSABLE_WITH_HREF_TAGS.has(tag)) return findJsxAttribute(element, 'href') !== null
-  return tag === 'input' && !hasLiteralHiddenType(element)
+  return tag === 'input' && !hasHiddenType(element)
 }
 
 // The JSX an expression renders as children, without descending into it. A JSX attribute's value

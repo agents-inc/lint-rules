@@ -1,6 +1,6 @@
 import { ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
-import { findJsxAttribute, hasLiteralHiddenType } from '../shared/jsx-attributes.ts'
+import { findJsxAttribute, hasHiddenType } from '../shared/jsx-attributes.ts'
 import { unqualifiedTagOf } from '../shared/jsx-elements.ts'
 
 type BoundaryTag = 'a' | 'button' | 'form'
@@ -24,7 +24,7 @@ function intrinsicTagOf(element: TSESTree.JSXElement): string | null {
 
 // `type="hidden"` can take neither click nor focus, so it is legal inside a button.
 function isHiddenInput(tag: string, element: TSESTree.JSXElement): boolean {
-  return tag === 'input' && hasLiteralHiddenType(element.openingElement)
+  return tag === 'input' && hasHiddenType(element.openingElement)
 }
 
 // Without an href an `<a>` is a styled span. This misses `<a><a href/></a>`, which the parser also

@@ -82,3 +82,23 @@ export const intrinsicDialogWithoutName = `export const ShortcutsSheet = ({ open
   </dialog>
 )
 `
+
+/** A div with no accessible name whose role is written as `roleAttribute`, on line 2. */
+export function unnamedDivWithRole(roleAttribute: string): string {
+  return `export const Panel = ({ role, children }) => (
+  <div ${roleAttribute}>
+    {children}
+  </div>
+)
+`
+}
+
+/** A role="dialog" whose aria-label is written as `ariaLabelAttribute`, both on line 2. */
+export function roleDialogLabelledBy(ariaLabelAttribute: string): string {
+  return `export const Panel = ({ title, children }) => (
+  <div ${ariaLabelAttribute} role="dialog">
+    {children}
+  </div>
+)
+`
+}

@@ -192,3 +192,27 @@ export const hiddenInputInsideButton = `export function SubmitRow({ token, label
   )
 }
 `
+
+/** A button holding a select written `type="hidden"`, which hides only an input, on line 4. */
+export const selectTypedHiddenInsideButton = `export function SortButton() {
+  return (
+    <button type="button">
+      <select name="sort" type="hidden"><option>A</option></select>
+      Sort
+    </button>
+  )
+}
+`
+
+/** A button holding an input whose type is written as `typeAttribute`, on line 4. */
+export function inputTypedByInsideButton(typeAttribute: string): string {
+  return `export function SubmitRow({ kind, token }: { readonly kind: string; readonly token: string }) {
+  return (
+    <button name="intent" type="submit" value="pay">
+      <input name="csrf" ${typeAttribute} value={token} />
+      Pay
+    </button>
+  )
+}
+`
+}

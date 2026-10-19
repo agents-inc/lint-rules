@@ -9,14 +9,23 @@ import {
   formLevelOnChange,
   formLevelOnChangeAroundMappedFields,
   hiddenResetAndSubmitInputs,
+  inputWithValueTypedBy,
   radioAndCheckboxValues,
   readOnlyField,
   textareaAndSelectWithoutHandler,
   valueWithoutHandler,
 } from '../__tests__/cases/no-controlled-field-without-change-handler.ts'
+import {
+  fixedTextAttributeForms,
+  interpolatedTemplateAttribute,
+  templateAttribute,
+} from '../__tests__/factories/attribute-factories.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
+
+// `\x65` is "e", so the template renders "hidden".
+const HIDDEN_SPELLED_WITH_AN_ESCAPE = 'hidd\\x65n'
 
 houseRuleTester.run(
   'no-controlled-field-without-change-handler',
@@ -39,6 +48,16 @@ houseRuleTester.run(
       buildValidCase('stays silent on radio and checkbox values, which are submitted payloads', radioAndCheckboxValues),
       buildValidCase('stays silent on fields under a form-level onChange', formLevelOnChange),
       buildValidCase('stays silent on mapped fields under a form-level onChange', formLevelOnChangeAroundMappedFields),
+      ...fixedTextAttributeForms('type', 'hidden').map((typeAttribute) =>
+        buildValidCase<[]>(
+          `stays silent on a hidden input written ${typeAttribute}`,
+          inputWithValueTypedBy(typeAttribute),
+        ),
+      ),
+      buildValidCase(
+        'stays silent on a template type spelling hidden with an escape, read as the text it renders',
+        inputWithValueTypedBy(templateAttribute('type', HIDDEN_SPELLED_WITH_AN_ESCAPE)),
+      ),
     ],
     invalid: [
       buildInvalidCase('reports an input with a value and no change handler', valueWithoutHandler, {
@@ -63,6 +82,22 @@ houseRuleTester.run(
       buildInvalidCase(
         'reports an input whose name, not its type, is a value-is-not-content type such as image',
         fieldNamedLikeAnInputType,
+        {
+          filename: 'no-controlled-field-without-change-handler.tsx',
+          errors: [{ messageId: 'frozen', line: 2, data: { element: 'input' } }],
+        },
+      ),
+      buildInvalidCase(
+        'reports an input whose type is a template with something interpolated, which it cannot read',
+        inputWithValueTypedBy(interpolatedTemplateAttribute('type', 'kind')),
+        {
+          filename: 'no-controlled-field-without-change-handler.tsx',
+          errors: [{ messageId: 'frozen', line: 2, data: { element: 'input' } }],
+        },
+      ),
+      buildInvalidCase(
+        'reports an input whose type is a template reading text, an editable type',
+        inputWithValueTypedBy(templateAttribute('type', 'text')),
         {
           filename: 'no-controlled-field-without-change-handler.tsx',
           errors: [{ messageId: 'frozen', line: 2, data: { element: 'input' } }],

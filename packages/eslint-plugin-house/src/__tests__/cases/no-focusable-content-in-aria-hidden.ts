@@ -194,3 +194,51 @@ export const ariaHiddenControlsOutOfTabOrder = `export function Row({ on }: { re
   )
 }
 `
+
+/** An input whose type is written as `typeAttribute`, inside an aria-hidden wrapper on line 3. */
+export function inputTypedByInsideAriaHidden(typeAttribute: string): string {
+  return `export function Honeypot({ kind }: { readonly kind: string }) {
+  return (
+    <div aria-hidden="true">
+      <input name="website" ${typeAttribute} />
+    </div>
+  )
+}
+`
+}
+
+/** A button inside a wrapper whose aria-hidden is written as `ariaHiddenAttribute`, on line 3. */
+export function buttonInsideWrapperWith(ariaHiddenAttribute: string): string {
+  return `export function Toolbar({ hidden }: { readonly hidden: string }) {
+  return (
+    <div ${ariaHiddenAttribute}>
+      <button type="button">Undo</button>
+    </div>
+  )
+}
+`
+}
+
+/** A div whose tabIndex is written as `tabIndexAttribute`, inside an aria-hidden wrapper on line 3. */
+export function divWithTabIndexInsideAriaHidden(tabIndexAttribute: string): string {
+  return `export function Carousel({ index }: { readonly index: number }) {
+  return (
+    <div aria-hidden="true">
+      <div ${tabIndexAttribute}>Slide</div>
+    </div>
+  )
+}
+`
+}
+
+/** A button whose tabIndex is written as `tabIndexAttribute`, inside an aria-hidden wrapper on line 3. */
+export function buttonWithTabIndexInsideAriaHidden(tabIndexAttribute: string): string {
+  return `export function Pager() {
+  return (
+    <div aria-hidden="true">
+      <button ${tabIndexAttribute} type="button">Next</button>
+    </div>
+  )
+}
+`
+}

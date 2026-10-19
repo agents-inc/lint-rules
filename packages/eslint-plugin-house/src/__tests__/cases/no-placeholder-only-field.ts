@@ -104,3 +104,11 @@ export function Team() {
   )
 }
 `
+
+/** An input named by nothing but its placeholder, written as `placeholderAttribute`, on line 2. */
+export function inputWithPlaceholder(placeholderAttribute: string): string {
+  return `export function SearchBar({ hint }: { readonly hint: string }) {
+  return <input ${placeholderAttribute} type="search" />
+}
+`
+}
