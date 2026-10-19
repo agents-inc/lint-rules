@@ -6,7 +6,7 @@ How the built pieces fit, and the flows that matter. What was decided and why: [
 
 | Package | Owns |
 | --- | --- |
-| `packages/rule-data` (private) | The hand-edited data in `data/`: `rules.json` (the canonical list: every rule we ship, with its ruleset or `alwaysOn`, engine, options and file scope, plus `whenSuppressions` on the rules `allowSuppressions` sets, `eslintBecause` on each rule ESLint runs because oxlint's version is measurably worse, `coveredBy` or `splitByTypesWith` on a rule that reports what another does ([plan](plan.md#ruleset-assignment)), and `readsRuntimeGlobals` on each rule our runtimes' globals serve), `ruleset-definitions.json` (every ruleset with its list, libs domain, runtime env, `optIn` and `sortsCode`, in the order a consumer lists them), `eslint-stand-ins.json` (for an `oxc/*` rule ESLint has no version of, the ESLint rule that reports the same code, each with its card and measurement, checked by `eslint-stand-ins.test.ts`), `oxlint-scopes.json` (oxlint scope → ESLint prefix, plus per-rule exceptions), `eslint-fallback-skips.json` (the oxlint-run rules an ESLint part without oxlint leaves out, each with its reason, checked by `eslint-fallback-skips.test.ts`), `rule-candidates.json` (the considering list: rules we might ship, each with a status and reason, checked by `rule-candidates.test.ts`), `oxlint-file-types.json` (the file types oxlint lints, and the rules whose guard skips some of them, each with where it was read or measured, checked against the installed oxlint by `oxlint-file-types.integration.test.ts`) and `oxlint-refused-options.json` (the options of a typescript-eslint extension that oxlint's copy of the core rule refuses or accepts without honouring, with where each was measured, checked against the installed oxlint by `oxlint-refused-options.integration.test.ts`). The ESLint plugin registry, `eslintPlugins` in `src/eslint-plugins.ts` (rule-ID prefix → plugin). The generator in `src/generate/` and its committed output in `src/generated/`. The `catalog` in `src/catalog.ts`. `consumerConfigFiles` in `src/consumer-config-files.ts`, the one source of the consumer's file names. |
+| `packages/rule-data` (private) | The hand-edited data in `data/`: `rules.json` (the canonical list: every rule we ship, with its ruleset or `alwaysOn`, engine, options and file scope, plus `whenSuppressions` on the rules `allowSuppressions` sets, `eslintBecause` on each rule ESLint runs because oxlint's version is measurably worse, `coveredBy`, `coveredInOxlintBy` or `splitByTypesWith` on a rule that reports what another does ([plan](plan.md#ruleset-assignment)), and `readsRuntimeGlobals` on each rule our runtimes' globals serve), `ruleset-definitions.json` (every ruleset with its list, libs domain, runtime env, `optIn` and `sortsCode`, in the order a consumer lists them), `eslint-stand-ins.json` (for an `oxc/*` rule ESLint has no version of, the ESLint rule that reports the same code, each with its card and measurement, checked by `eslint-stand-ins.test.ts`), `without-an-eslint-stand-in.json` (each other shipped `oxc/*` rule, with the search that found none, checked by the same test), `oxlint-scopes.json` (oxlint scope → ESLint prefix, plus per-rule exceptions), `eslint-fallback-skips.json` (the oxlint-run rules an ESLint part without oxlint leaves out, each with its reason, checked by `eslint-fallback-skips.test.ts`), `rule-candidates.json` (every installed rule we do not ship, and candidates from plugins we do not install, each with a status and reason, checked by `rule-candidates.test.ts`), `oxlint-file-types.json` (the file types oxlint lints, and the rules whose guard skips some of them, each with where it was read or measured, checked against the installed oxlint by `oxlint-file-types.integration.test.ts`) and `oxlint-refused-options.json` (the options of a typescript-eslint extension that oxlint's copy of the core rule refuses or accepts without honouring, with where each was measured, checked against the installed oxlint by `oxlint-refused-options.integration.test.ts`). The ESLint plugin registry, `eslintPlugins` in `src/eslint-plugins.ts` (rule-ID prefix → plugin). The generator in `src/generate/` and its committed output in `src/generated/`. The `catalog` in `src/catalog.ts`. `consumerConfigFiles` in `src/consumer-config-files.ts`, the one source of the consumer's file names. |
 | `packages/eslint-plugin-house` (private) | The `house/*` rules, one file each in `src/rules/`, exported as `housePlugin`. |
 | `packages/lint-rules` (published as `@agents-inc/lint-rules`) | The consumer API: `defineLintRules` (`.`), `mergeOxlintConfig` (`./oxlint`), `mergeEslintConfig` (`./eslint`); the `agents-inc-lint` bin (`src/cli.ts`), with `check` in `src/cli/check/` and `init` in `src/cli/init/`; the internal `agentSettingsOf` (`src/agent-settings.ts`) and `buildAgentConfigs` (`src/agent-configs.ts`), which no export names, for `check`; and the core in `src/core/`. tsdown inlines the private packages into `dist/`; every ESLint plugin is a `dependency`, and `eslint`, `oxlint` and `typescript` are peers. `dist.test.ts` checks that no `@workspace/` name and no undeclared import reaches `dist/`. |
 | `packages/typescript-config` (private) | Shared tsconfigs. |
@@ -86,7 +86,10 @@ entry points: defineLintRules (index.ts), mergeOxlintConfig (oxlint.ts), mergeEs
      `rulesetChanges`; `listsChanging` for overlap), and its own `rules` naming it win there, but
      its `rules` turning the cover on or off do not move it. Where the cover runs in some files
      alone, the rule is still left out of the whole layer. Every build and merge reads these layers,
-     so all of them leave it out.
+     so all of them leave it out. Beside oxlint (the agent build, and both editor parts where the
+     project lists oxlint), `coveredInOxlintBy` leaves a rule out the same way
+     (`resolveRuleLayersBesideOxlint`); an ESLint part without oxlint keeps it, as ESLint's version of
+     the cover reports less.
    - A slash-free glob gets `**/` (`normalizeGlob`): oxlint matches it at any depth, ESLint only at
      the root. Each value of our `ignores` becomes the forms both engines read as that .gitignore
      line (`formsOfAnIgnoresValue`; [plan](plan.md), the `ignores` row).
@@ -94,12 +97,13 @@ entry points: defineLintRules (index.ts), mergeOxlintConfig (oxlint.ts), mergeEs
    so only named rules run. `plugins` holds the plugin of every rule emitted anywhere, because oxlint silently skips a rule
    whose plugin is missing. Each rule is written under its `oxlintName` as `[severity, ...options]`,
    because a bare severity resets oxlint's options. `env` is `builtin`, `es2024` and the runtimes;
-   `ignorePatterns` is `**/node_modules/**` plus `ignores`; `reportUnusedDisableDirectives` is off.
+   `ignorePatterns` is `**/node_modules/**` plus `ignores`; `reportUnusedDisableDirectives` is off;
+   `settings.react.version` is `18.3.0` (`REACT_VERSION`), the oldest React the `react` ruleset expects.
    Overrides: first each framework's globals in its files (`framework-globals.ts`), whatever
    rulesets are listed: the `svelte` env (Svelte 5's runes) on Svelte's components and rune modules,
    `$$props`, `$$restProps` and `$$slots` read-only on its components, and the `vue` and `astro`
    envs on theirs; and the `vitest` and `jest` envs on test files (`TEST_RUNNER_GLOBALS`:
-   `*.test.*`, `*.spec.*` and any file under `__tests__`, JS and TS); then one per top-level rule
+   `*.test.*`, `*.spec.*`, `*.test-d.*`, `*.spec-d.*` and any file under `__tests__`, JS and TS); then one per top-level rule
    with `ignores`, turning it off there, then the top level's TS-file rules; then per entry, one
    for its ruleset, env and `allowSuppressions` changes, one for its own rules, one per rule it turns on that has
    `ignores` (as `excludeFiles`), ones turning a core rule off on its TS files alone (D11 in
@@ -111,17 +115,17 @@ entry points: defineLintRules (index.ts), mergeOxlintConfig (oxlint.ts), mergeEs
    its own: `oxlintSettingsOf` throws, and `canonical-list.test.ts` keeps such a rule out of the data.
 4. **The agent set's ESLint config** (`buildEslintConfig`). It reads nothing from disk: it takes
    the project's facts (`projectFactsOf`, `project-facts.ts`), read by one walk of
-   `tsconfigRootDir`: the TS files outside every tsconfig (step 8), every `tsconfig.json` and
-   `jsconfig.json` outside `node_modules` and `.git`, and whether React resolves from it. Named
+   `tsconfigRootDir`: the TS files outside every tsconfig (step 8), and every `tsconfig.json` and
+   `jsconfig.json` outside `node_modules` and `.git`. Named
    blocks, in this order:
    - `agents-inc/ignores`: the global ignores.
    - `agents-inc/base`: every JS and TS file, `tseslint.parser`, every plugin (with `css-modules`,
-     `react` and `react-hook-form` through `fixupPluginRules` in `core/eslint-compat.ts`), the stub
+     `react` and `react-hook-form` through `fixupPluginRules` in `core/eslint-compat.ts`, and
+     typescript-eslint's `no-deprecated` and `consistent-type-exports` given a checker that ends a
+     re-export cycle, `core/re-export-cycles.ts`), the stub
      plugins, `buildEslintSettings`, the runtime globals, and the untyped rules. import-x resolves
      modules with eslint-import-resolver-typescript, given those tsconfigs, and reads TS modules'
-     exports (`import-x/extensions`; #33 fix C). Where React does not resolve,
-     `settings.react.version` is `999.999.999`, the version eslint-plugin-react's `detect` falls
-     back to, so the plugin prints no warning; elsewhere it is `detect`.
+     exports (`import-x/extensions`; #33 fix C). `settings.react.version` is `18.3.0`, as in step 3.
    - `agents-inc/svelte-runes`: the same runes (the `globals` package's `svelte` env) on Svelte's
      rune modules, each file whose name holds `.svelte.` and ends in `.js` or `.ts`; naming `.svelte`
      files would make ESLint lint them, which our parser cannot read.
@@ -135,6 +139,9 @@ entry points: defineLintRules (index.ts), mergeOxlintConfig (oxlint.ts), mergeEs
    - `agents-inc/scope/<id>`: one block per rule with its own `files` or `ignores`, then one per
      rule the top level gives its TS files alone (step 3), as an entry's `/scope/<id>` blocks end
      with its own. A nested `files` array ANDs globs (`filesMatchingAll`).
+   - `agents-inc/test-files`, and an entry's `/test-files`: where suppressions are banned, a rule
+     `allowSuppressions` decides at its setting for test and type-test files (rule-data's
+     `bannedInTestFiles`), so `ban-ts-comment` allows `@ts-expect-error` with a description there.
    - `agents-inc/file-overrides/<n>`, with `/typed` and `/scope/<id>` blocks: each entry's changes
      and rules. A dropped runtime turns off only the globals no remaining runtime defines.
    - `agents-inc/twins-off/<n>`: sub-agents always run oxlint, which runs a core rule and
@@ -266,8 +273,9 @@ entry points: defineLintRules (index.ts), mergeOxlintConfig (oxlint.ts), mergeEs
      objects, the first three go in a first extended config (`placedFirstInLine`), so they still
      come before the team's extended overrides.
    - `extends`: each config the team extends as an object, without the statements oxlint ignores
-     for it. `options`: the team's, with `reportUnusedDisableDirectives: 'off'` where it leaves that
-     out. Every other key, `ignorePatterns` included, is the team's.
+     for it. `options`: the team's, as written, since oxlint refuses any option in a config below the one
+     it starts from. `settings`: the team's, with `react.version` added where it gives none (step 3).
+     Every other key, `ignorePatterns` included, is the team's.
 8. **The consumer's own config files** (`consumerConfigFiles`). The three shipped rules they break,
    `perfectionist/sort-objects`, `unicorn/no-top-level-side-effects` and, in a package npm may
    publish, `n/no-unpublished-import`, carry them in `ignores`.
@@ -328,28 +336,38 @@ shared with `init`, are in `src/cli/exit-codes.ts`.
 1. **Find:** the git top level, then the nearest `agents-inc.lint.mts` up to it (`nearestConfig`).
    A config importing another copy of our package is refused (`refuseAnotherCopy`); the config's
    `eslint` export gives the agent build (`agentSettingsOf`, then `buildAgentConfigs`; steps 3 and
-   4 above).
+   4 above). For the files outside the config's folder, both configs get the config's folder, from
+   the git top level, in front of each glob tied to a folder: one holding a `/` that does not start
+   with `**/`, but for a `files` glob led by `/`, which names no file in either engine
+   (`configsReadFromTheGitTopLevel`).
 2. **Pair** (`gitRepoAt`, `git-changes.ts`): a scratch git folder in the OS temp folder holds a copy
-   of the index and its own objects, reading the repo's as an alternate. Untracked files are added
-   there as intent-to-add, so `git diff --find-renames=1% HEAD` pairs a plain `mv` with its old
-   path, and the repo is never written. A file with no old path, or any file in a repo with no
-   commits, is wholly changed; otherwise its lines are those `git diff -U0` adds. JS and TS files
-   under the config's folder that exist and that the ESLint config does not ignore go on.
+   of the index, where there is one, and its own objects, reading the repo's as an alternate.
+   Untracked files are added there as intent-to-add, so `git diff --find-renames=1% HEAD` pairs a
+   plain `mv` with its old path, and the repo is never written. A file with no old path, or any file
+   in a repo with no commits, is wholly changed; otherwise its lines are those `git diff -U0` adds.
+   JS, TS, Vue, Svelte and Astro files anywhere in the repo that exist and that the ESLint config
+   does not ignore go on; Vue, Svelte and Astro files to oxlint alone (`lintedFileOf`).
 3. **Fix** (`applyFixes`, `fix-step.ts`), oxlint's then ESLint's: `oxlint --fix` with the withheld
-   rules off (`fixRunConfigOf`, `withheld-fixes.json`), then ESLint with a `fix` predicate allowing
-   a rule's fix on a changed line (`eslintFixFilter`). After each engine, every line nobody changed
-   must still be there, in order (`keepsUnchangedLines`, `fix-guard.ts`), or that engine's fixes in
-   that file are undone. ESLint's output is written only while the file holds the text it read.
-4. **Lint:** oxlint again, from a temporary config in the config's folder, with unused-suppression
-   reports on (`lintRunConfigOf`), as ESLint has them throughout (`eslint-run.ts`). ESLint's
+   rules and every rule at `warn` off (`fixRunConfigOf`, `withheld-fixes.json`), then ESLint with a
+   `fix` predicate allowing an `error` rule's fix on a changed line (`eslintFixFilter`). ESLint runs
+   with the config's folder as `cwd` and the config as built for the files in that folder, and from
+   the git top level with the prefixed config for the rest (`eslintEngineByFolder`, `eslint-run.ts`).
+   After each engine, every line nobody changed must still be there, in order (`keepsUnchangedLines`,
+   `fix-guard.ts`), or that engine's fixes in that file are undone. ESLint's output is written only
+   while the file holds the text it read. A file deleted or replaced meanwhile, or one ESLint throws
+   on, is not checked, and nor are oxlint's rules where oxlint fails (`not-checked.ts`); the rest goes
+   on.
+4. **Lint:** oxlint again, from the git top level with a temporary config there, with
+   unused-suppression reports on (`lintRunConfigOf`), as ESLint has them throughout (`eslint-run.ts`). ESLint's
    messages are the fix step's.
 5. **Attribute** (`findingsIn`, `findings.ts`), on the lines read again where a fix changed the
    file: a finding counts where the line it starts on changed (for oxlint, its first label's), line
    0 only in a wholly changed file; a parse error counts once per file, wherever it is; an oxlint
-   code names its rule through the catalog; a suppressed name is unused where both engines report
-   it so (`unused-suppressions.ts`).
-6. **Report** (`checkReport`, `report.ts`). The temporary config and the scratch folder are removed
-   on exit, after SIGINT or SIGTERM too (`leftovers.ts`). No fix is undone, however the run ends: a
+   code names its rule through the catalog, or prints as oxlint's own where the catalog lacks it; a
+   suppressed name is unused where both engines report it so (`unused-suppressions.ts`).
+6. **Report** (`checkReport`, `report.ts`): the findings, then what was not checked; exit 1 where an
+   error is left, else 2 where anything was not checked, else 0. The temporary config and the scratch
+   folder are removed on exit, after SIGINT or SIGTERM too (`leftovers.ts`). No fix is undone, however the run ends: a
    run a signal or a failure stops prints the autofixed line naming the files its fixes rewrote so
    far (`stdoutIfStopped`, `src/cli/outcome.ts`).
 
@@ -363,13 +381,19 @@ Run the generator and the tests after every data change. `canonical-list.test.ts
 unsorted or duplicate IDs, a rule its engine lacks, an `oxlintName` that does not map back, an
 unknown ruleset, `files` or `typed` on an oxlint rule, neither or both of a ruleset and `alwaysOn`, a
 missing assignment, an `eslintBecause` on a rule oxlint runs or that oxlint has no untyped version of,
-a `coveredBy` or `splitByTypesWith` that does not hold (`relation-offenders.ts`).
+a `coveredBy`, `coveredInOxlintBy` or `splitByTypesWith` that does not hold (`relation-offenders.ts`),
+a `files` or `ignores` naming test files without every test-file glob.
 
 - **Change a shipped rule** (options, ruleset or `alwaysOn`, `files`, `ignores`): edit its entry in `data/rules.json`.
 - **Ship a rule:** add an entry, sorted by `id`: the ESLint ID, `ruleset` or `alwaysOn: true` (on
   whatever rulesets are listed), `engine`, `oxlintName`
   exactly when oxlint runs it (oxlint's `--rules` spelling), `options`, `typed`, optional `files`
-  and `ignores`, and `assignment`. A rule we do not ship needs no entry: it is already a `RuleId`.
+  and `ignores`, and `assignment`; and remove its entry from `rule-candidates.json`, which holds every
+  installed rule we do not ship. A shipped `oxc/*` rule ESLint has no version of needs a stand-in in
+  `eslint-stand-ins.json` or its search in `without-an-eslint-stand-in.json`, each pinned in
+  `__tests__/cases/rule-relations.ts`.
+- **Stop shipping a rule:** remove its entry, and add a `dropped` one to `rule-candidates.json` naming
+  the card or decision (`decidedBy`), which `__tests__/cases/dropped-rules.ts` pins too.
 - **Move a rule between engines:** change `engine`, add or remove `oxlintName`. An oxlint rule
   carries neither `files` nor `typed`. `catalog.test.ts` pins the oxlint rules whose ESLint name
   differs from oxlint's, since a suppression reaches oxlint only under oxlint's name. A rule moved
@@ -380,12 +404,15 @@ a `coveredBy` or `splitByTypesWith` that does not hold (`relation-offenders.ts`)
   in `eslintPlugins` (through `checkedPlugin` when its types do not fit `ESLint.Plugin`), name its
   package in `src/generate/eslint-plugin-package-names.ts`, and add its prefix to
   `PREFIXES_NEEDING_COMPAT` in `lint-rules/src/core/eslint-compat.ts` if it calls context methods ESLint 10
-  removed. `eslint-plugins.test.ts` checks the registry against the dependencies.
+  removed. `eslint-plugins.test.ts` checks the registry against the dependencies. Each of its rules
+  we do not ship needs an entry in `rule-candidates.json` (`not-reviewed` until someone looks);
+  `rule-candidates.test.ts` names any left out.
 - **Add a ruleset** (users type its name, so the owner names it): add it to
   `data/ruleset-definitions.json` in the order consumers list it, and update the pinned list in
   `canonical-list.test.ts`.
 - **Add a house rule:** a file in `eslint-plugin-house/src/rules/` with its test, registered in
-  `housePlugin` and in the names `plugin.test.ts` pins.
+  `housePlugin` and in the names `plugin.test.ts` pins; then ship it, or give it a `rule-candidates.json`
+  entry, as any installed rule.
 
 ## Keeping the generated files fresh
 

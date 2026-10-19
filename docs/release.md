@@ -24,7 +24,8 @@ Every release does every step.
    records the version. Before 1.0: minor for a feature cluster or anything that breaks a
    consumer's setup (a new `error` rule fails their CI), patch for fixes only.
 2. **Build and test from the root:** `bun run build && bun run typecheck && bun run test`.
-   `npm publish` packs whatever `dist/` holds; `prepublishOnly` repeats this once added.
+   `npm publish` from `packages/lint-rules` first runs that package's build, typecheck and tests
+   (`prepublishOnly`); a failure stops it.
 3. **Write `packages/lint-rules/changelogs/<version>.md`** in the [detailed format](#detailed-changelogsversionmd).
 4. **Prepend the [summary block](#summary-changelogmd)** to `packages/lint-rules/CHANGELOG.md`.
    Every `###` subheading in the detailed file gets its own bullet there.
@@ -78,16 +79,13 @@ work raised), `## Findings` (the `docs/work/` files written this cycle), `## Pro
 
 ## Before the first publish
 
-`packages/lint-rules/package.json` is being changed by another lane right now, so these manifest
-edits happen at the first release. Commands run from the repo root.
+These manifest edits happen at the first release. Commands run from the repo root.
 
 | Blocks the publish today | Check |
 | --- | --- |
 | `"private": true` | `jq .private packages/lint-rules/package.json` prints `null` |
-| No licence: no `license` field, no `LICENSE` file | `jq .license packages/lint-rules/package.json`; `ls packages/lint-rules/LICENSE` |
 | No README for the package | `ls packages/lint-rules/README.md` |
 | `files` lists only `dist`. npm packs `README.md` and `LICENSE` regardless, but not `CHANGELOG.md` (measured, npm 10.9.2) | `npm pack --dry-run` in `packages/lint-rules` lists `CHANGELOG.md`, `README.md` and `LICENSE` |
-| No `prepublishOnly` script, so `npm publish` packs whatever `dist/` holds. At the first release add `"prepublishOnly": "bun run build && bun run typecheck && bun run test"` (the package's own scripts, so it runs from `packages/lint-rules`) | `jq .scripts.prepublishOnly packages/lint-rules/package.json` |
 | No `publishConfig`. A scoped package publishes as restricted unless its access is public | `jq .publishConfig packages/lint-rules/package.json` gives `access: "public"` and `registry: "https://registry.npmjs.org/"` |
 | No `repository` field | `jq .repository packages/lint-rules/package.json` names `https://github.com/agents-inc/lint-rules` with `directory: "packages/lint-rules"` |
 | The `@agents-inc` npm scope must exist, and the publisher must belong to it | `npm whoami`; `npm org ls agents-inc` lists that user |
