@@ -1,6 +1,9 @@
+import { describe, expect, it } from 'vitest'
+
 import {
   customMinter,
   customMinterKeyInMap,
+  customMinterKeyInMapModule,
   derivedKeys,
   destructuredUuidField,
   keyedOnDataId,
@@ -18,6 +21,7 @@ import {
   randomUuidKeyInMap,
 } from '../__tests__/cases/no-unstable-list-keys.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
+import { lintWithHouseRule } from '../__tests__/house-linter.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
 
@@ -62,4 +66,28 @@ houseRuleTester.run('no-unstable-list-keys', housePlugin.rules['no-unstable-list
       },
     ),
   ],
+})
+
+describe('no-unstable-list-keys options, as ESLint checks them', () => {
+  it('accepts a minters option and applies it: a list key minted by a minter it names is reported', () => {
+    const messages = lintWithHouseRule(
+      'no-unstable-list-keys',
+      [{ minters: [customMinter] }],
+      customMinterKeyInMapModule,
+      'no-unstable-list-keys.js',
+    )
+
+    expect(messages.map(({ ruleId }) => ruleId)).toStrictEqual(['house/no-unstable-list-keys'])
+  })
+
+  it('refuses an option key other than minters', () => {
+    expect(() =>
+      lintWithHouseRule(
+        'no-unstable-list-keys',
+        [{ minter: [customMinter] }],
+        customMinterKeyInMapModule,
+        'no-unstable-list-keys.js',
+      ),
+    ).toThrowError(/Unexpected property "minter"/)
+  })
 })

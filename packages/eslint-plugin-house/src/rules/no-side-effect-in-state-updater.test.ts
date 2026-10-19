@@ -1,3 +1,5 @@
+import type { ESLintUtils } from '@typescript-eslint/utils'
+
 import {
   arrayAndMapCopies,
   copiedSearchParamsMutated,
@@ -14,11 +16,19 @@ import {
   pureSetHelpersAssignedAndMapped,
   setterCalledInsideUpdater,
   setterStoredInHandler,
+  storageWriteThrough,
   storageWriteThroughWindow,
 } from '../__tests__/cases/no-side-effect-in-state-updater.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
+
+// The invalid array's type does not reach a case built inside .map, so those cases name it outright.
+type StateUpdaterMessageIds = ESLintUtils.InferMessageIdsTypeFromRule<
+  (typeof housePlugin.rules)['no-side-effect-in-state-updater']
+>
+
+const GLOBAL_ALIASES_BESIDE_WINDOW = ['globalThis', 'self']
 
 houseRuleTester.run('no-side-effect-in-state-updater', housePlugin.rules['no-side-effect-in-state-updater'], {
   valid: [
@@ -65,5 +75,15 @@ houseRuleTester.run('no-side-effect-in-state-updater', housePlugin.rules['no-sid
       filename: 'no-side-effect-in-state-updater.tsx',
       errors: [{ messageId: 'effect', line: 9, data: { name: 'window.localStorage.setItem' } }],
     }),
+    ...GLOBAL_ALIASES_BESIDE_WINDOW.map((globalAlias) =>
+      buildInvalidCase<StateUpdaterMessageIds, []>(
+        `reports a storage write reached through ${globalAlias}. inside a state updater`,
+        storageWriteThrough(globalAlias),
+        {
+          filename: 'no-side-effect-in-state-updater.tsx',
+          errors: [{ messageId: 'effect', line: 9, data: { name: `${globalAlias}.localStorage.setItem` } }],
+        },
+      ),
+    ),
   ],
 })

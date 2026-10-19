@@ -245,7 +245,9 @@ export function Cart({ item }: { readonly item: string }) {
 }
 `
 
-export const storageWriteThroughWindow = `import { useState } from 'react'
+/** A state updater writing storage through `globalAlias.localStorage`, on line 9. */
+export function storageWriteThrough(globalAlias: string): string {
+  return `import { useState } from 'react'
 
 export function Theme() {
   const [theme, setTheme] = useState('light')
@@ -253,13 +255,16 @@ export function Theme() {
   const toggle = () =>
     setTheme((prev) => {
       const next = prev === 'light' ? 'dark' : 'light'
-      window.localStorage.setItem('theme', next)
+      ${globalAlias}.localStorage.setItem('theme', next)
       return next
     })
 
   return <button onClick={toggle}>{theme}</button>
 }
 `
+}
+
+export const storageWriteThroughWindow = storageWriteThrough('window')
 
 // The updater builds handlers that write storage when called, and calls none of them.
 export const effectsInFunctionsTheUpdaterOnlyBuilds = `import { useState } from 'react'

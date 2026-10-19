@@ -71,3 +71,17 @@ export function renderPanel() {
   return <div>{b}{c}{d}{String(r1)}{String(r2)}{id}{String(ctx)}</div>
 }
 `
+
+// Plain JavaScript: ESLint's default parser reads no types. Uncounted by default, useMemo is the
+// hook that takes the component past LIMIT_OF_THE_MEMO_MODULE.
+export const componentWithAMemoHookModule = `export function Panel() {
+  const [count] = useState(0)
+  const ref = useRef(null)
+  const doubled = useMemo(() => count * 2, [count])
+  return <div ref={ref}>{doubled}</div>
+}
+`
+
+export const LIMIT_OF_THE_MEMO_MODULE = 2
+
+export const ignoreListLeavingUseMemoCounted: readonly string[] = ['useCallback']

@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest'
+
 import {
   blockComment,
   blockCommentBeforeLastLineBrace,
@@ -9,6 +11,7 @@ import {
   toolingDirectiveBlockComment,
 } from '../__tests__/cases/prefer-line-comments.ts'
 import { caseBuildersFor } from '../__tests__/factories/rule-case-factories.ts'
+import { lintWithHouseRule } from '../__tests__/house-linter.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
 
@@ -44,4 +47,28 @@ houseRuleTester.run('prefer-line-comments', housePlugin.rules['prefer-line-comme
       },
     ),
   ],
+})
+
+describe('prefer-line-comments options, as ESLint checks them', () => {
+  it('accepts an allowPatterns option and applies it: a tooling directive it does not match is reported', () => {
+    const messages = lintWithHouseRule(
+      'prefer-line-comments',
+      [{ allowPatterns: [blockCommentPattern] }],
+      toolingDirectiveBlockComment,
+      'prefer-line-comments.js',
+    )
+
+    expect(messages.map(({ ruleId }) => ruleId)).toStrictEqual(['house/prefer-line-comments'])
+  })
+
+  it('refuses an option key other than allowPatterns', () => {
+    expect(() =>
+      lintWithHouseRule(
+        'prefer-line-comments',
+        [{ allowPattern: [blockCommentPattern] }],
+        toolingDirectiveBlockComment,
+        'prefer-line-comments.js',
+      ),
+    ).toThrowError(/Unexpected property "allowPattern"/)
+  })
 })

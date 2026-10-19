@@ -235,3 +235,16 @@ export function Rows({ rows }: { readonly rows: { label: string }[] }) {
   )
 }
 `
+
+// Plain JavaScript: ESLint's default parser reads no types.
+export const customMinterKeyInMapModule = `import { makeId } from './make-id'
+export function TagList({ tags }) {
+  return (
+    <ul>
+      {tags.map(tag => (
+        <li key={makeId()}>{tag}</li>
+      ))}
+    </ul>
+  )
+}
+`

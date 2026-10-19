@@ -1,16 +1,25 @@
+import { describe, expect, it } from 'vitest'
+
 import {
   DEFAULT_HOOK_LIMIT,
   LIMIT_BELOW_SEVEN,
+  LIMIT_OF_THE_MEMO_MODULE,
   camelCaseRenderHelperWithNineHooks,
+  componentWithAMemoHookModule,
   componentWithNineHooks,
   componentWithSevenHooks,
   hookCalledFourTimesInNineHookComponent,
+  ignoreListLeavingUseMemoCounted,
   pascalCaseProviderWithNineHooks,
 } from '../__tests__/cases/max-hooks-per-component.ts'
 import { caseBuildersFor } from '../__tests__/factories/rule-case-factories.ts'
+import { lintWithHouseRule } from '../__tests__/house-linter.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
 
+const RULE_NAME = 'max-hooks-per-component'
+const RULE_ID = 'house/max-hooks-per-component'
+const JAVASCRIPT_FILENAME = 'max-hooks-per-component.js'
 const { invalidCase, validCase } = caseBuildersFor('max-hooks-per-component.tsx')
 
 houseRuleTester.run('max-hooks-per-component', housePlugin.rules['max-hooks-per-component'], {
@@ -47,4 +56,28 @@ houseRuleTester.run('max-hooks-per-component', housePlugin.rules['max-hooks-per-
       },
     ),
   ],
+})
+
+describe('max-hooks-per-component options, as ESLint checks them', () => {
+  it('accepts an ignore option and applies it: useMemo is counted when ignore names only useCallback', () => {
+    const messages = lintWithHouseRule(
+      RULE_NAME,
+      [{ max: LIMIT_OF_THE_MEMO_MODULE, ignore: ignoreListLeavingUseMemoCounted }],
+      componentWithAMemoHookModule,
+      JAVASCRIPT_FILENAME,
+    )
+
+    expect(messages.map(({ ruleId }) => ruleId)).toStrictEqual([RULE_ID])
+  })
+
+  it('refuses an option key other than max and ignore', () => {
+    expect(() =>
+      lintWithHouseRule(
+        RULE_NAME,
+        [{ max: LIMIT_OF_THE_MEMO_MODULE, ignores: ignoreListLeavingUseMemoCounted }],
+        componentWithAMemoHookModule,
+        JAVASCRIPT_FILENAME,
+      ),
+    ).toThrowError(/Unexpected property "ignores"/)
+  })
 })
