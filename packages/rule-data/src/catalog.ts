@@ -1,7 +1,7 @@
 import eslintFallbackSkips from '../data/eslint-fallback-skips.json' with { type: 'json' }
 import eslintStandIns from '../data/eslint-stand-ins.json' with { type: 'json' }
 
-import { groupBy } from './collections.ts'
+import { foundOr, groupBy } from './collections.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
 import routing from './generated/routing.json' with { type: 'json' }
 import { parseEngine, parseOxlintCategory } from './parse-names.ts'
@@ -41,6 +41,11 @@ export type ShippedRule = TurnedOnBy &
      * wherever that one is on. `null` where none.
      */
     readonly coveredBy: string | null
+    /**
+     * The shipped rule whose findings include this one's where oxlint runs both: this rule is left out
+     * wherever oxlint runs it and that one is on. `null` where none.
+     */
+    readonly coveredInOxlintBy: string | null
     /**
      * The typed rule this untyped one splits by types with: this rule is off where that one runs with
      * type information. `null` where none.
@@ -128,6 +133,7 @@ type InventoryRule = (typeof inventory.rules)[number]
 type GeneratedShippedRule = TurnedOnByFields &
   Readonly<ShippedScope> & {
     readonly coveredBy?: string | undefined
+    readonly coveredInOxlintBy?: string | undefined
     readonly splitByTypesWith?: string | undefined
     readonly readsRuntimeGlobals?: boolean | undefined
   }
@@ -150,9 +156,7 @@ export const catalog: Catalog = {
 export const ruleIdsOxlintRunsTypeAware: ReadonlySet<string> = new Set(inventory.rules.filter(isRunTypeAwareByOxlint).map(({ id }) => id))
 
 export function routeOf(id: string, { rules }: Pick<Catalog, 'rules'>): RuleRoute {
-  const route = rules.get(id)
-  if (route === undefined) throw new Error(`unknown rule ID "${id}"`)
-  return route
+  return foundOr(rules.get(id), `unknown rule ID "${id}"`)
 }
 
 /** Narrows an oxlint-routed rule to one that carries the oxlint name and plugin it needs. */
@@ -197,11 +201,12 @@ function parseRuleRoute(route: GeneratedRoute): RuleRoute {
 /** Routing writes a relation, or the runtime-globals mark, only where the canonical list records one; absent, it is none. */
 function parseShippedRule(id: string, shipped: GeneratedShippedRule | null): ShippedRule | null {
   if (shipped === null) return null
-  const { ruleset, alwaysOn, whenSuppressions, coveredBy, splitByTypesWith, readsRuntimeGlobals, ...scope } = shipped
+  const { ruleset, alwaysOn, whenSuppressions, coveredBy, coveredInOxlintBy, splitByTypesWith, readsRuntimeGlobals, ...scope } = shipped
   return {
     ...parseTurnedOnBy(id, { ruleset, alwaysOn, whenSuppressions }),
     ...scope,
     coveredBy: coveredBy === undefined ? null : coveredBy,
+    coveredInOxlintBy: coveredInOxlintBy === undefined ? null : coveredInOxlintBy,
     splitByTypesWith: splitByTypesWith === undefined ? null : splitByTypesWith,
     readsRuntimeGlobals: readsRuntimeGlobals === true,
   }

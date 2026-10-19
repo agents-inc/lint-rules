@@ -2,12 +2,17 @@ import rules from '../../data/rules.json' with { type: 'json' }
 
 import { parseEngine } from '../parse-names.ts'
 import {
-  type SettingFieldBySuppressionMode,
   type SuppressionModeSettingField,
+  type TestFileOptions,
+  type WhenSuppressions,
   inEachSuppressionMode,
   parseSuppressionModeSetting,
+  testFileSettingOf,
 } from '../turned-on-by.ts'
 import type { CanonicalRule, CanonicalSuppressionModeSetting } from './build-routing.ts'
+
+/** `whenSuppressions` as data/rules.json gives it, which types `off` as `string`. */
+type WhenSuppressionsField = WhenSuppressions<SuppressionModeSettingField, TestFileOptions>
 
 /**
  * An entry of `data/rules.json` before its names are narrowed. Declared rather than inferred: JSON infers a
@@ -15,7 +20,7 @@ import type { CanonicalRule, CanonicalSuppressionModeSetting } from './build-rou
  */
 type CanonicalRuleField = Omit<CanonicalRule, 'engine' | 'whenSuppressions'> & {
   readonly engine: string
-  readonly whenSuppressions?: SettingFieldBySuppressionMode
+  readonly whenSuppressions?: WhenSuppressionsField
 }
 
 /** The canonical list. Its invariants are checked by canonical-list.test.ts, not at load. */
@@ -27,10 +32,10 @@ function parseCanonicalRule({ whenSuppressions, ...rule }: CanonicalRuleField): 
 
 function whenSuppressionsOf(
   id: string,
-  field: SettingFieldBySuppressionMode | undefined,
+  field: WhenSuppressionsField | undefined,
 ): Pick<CanonicalRule, 'whenSuppressions'> {
   if (field === undefined) return {}
-  return { whenSuppressions: inEachSuppressionMode(field, (setting) => parseCanonicalSetting(id, setting)) }
+  return { whenSuppressions: { ...inEachSuppressionMode(field, (setting) => parseCanonicalSetting(id, setting)), ...testFileSettingOf(field) } }
 }
 
 function parseCanonicalSetting(id: string, setting: SuppressionModeSettingField): CanonicalSuppressionModeSetting {

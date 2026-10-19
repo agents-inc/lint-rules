@@ -18,5 +18,9 @@
   "oxc/misrefactored-assign-op": {
     "standIn": "unicorn/no-misrefactored-assignment",
     "because": "r2-d49-51: oxc with oxlint, unicorn without. Both report total += total + step (measured, oxlint 1.87, eslint-plugin-unicorn 77.0.0)"
+  },
+  "oxc/missing-throw": {
+    "standIn": "sonarjs/no-unthrown-error",
+    "because": "read-oxc-stand-ins: oxc with oxlint, sonarjs without. Both report new Error('failed') left as a statement, and leave one thrown or returned; sonarjs's reports new TypeError(…) too, which oxc's leaves (measured, oxlint 1.87, ESLint 10.12, eslint-plugin-sonarjs 4.2.2)"
   }
 }

@@ -348,7 +348,7 @@
     "typed": false,
     "coveredBy": {
       "rule": "functional/no-classes",
-      "because": "r2-d18: functional/no-classes reports every class, a class component included"
+      "because": "r2-d18: functional/no-classes reports every class outside test files, a class component included"
     },
     "assignment": {
       "confidence": "high",
@@ -668,12 +668,21 @@
             "ts-nocheck": true
           }
         ]
+      },
+      "bannedInTestFiles": {
+        "options": [
+          {
+            "ts-expect-error": "allow-with-description",
+            "ts-ignore": true,
+            "ts-nocheck": true
+          }
+        ]
       }
     },
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "note": "allowSuppressions decides it, whatever rulesets are listed: bans all three @ts- comments while suppressions are banned; allows @ts-expect-error with a description while allowed",
+      "note": "allowSuppressions decides it, whatever rulesets are listed: bans all three @ts- comments while suppressions are banned, but for @ts-expect-error with a description in test and type-test files (q-dogfood-ts-expect-error-tests); allows @ts-expect-error with a description while allowed",
       "by": "owner-2026-10-10"
     }
   },
@@ -979,7 +988,7 @@
     "typed": false,
     "coveredBy": {
       "rule": "functional/no-classes",
-      "because": "r2-d73: functional/no-classes reports every class"
+      "because": "r2-d73: functional/no-classes reports every class outside test files"
     },
     "assignment": {
       "confidence": "low",
@@ -1050,6 +1059,11 @@
             "from": "package",
             "package": "vitest",
             "name": "__type"
+          },
+          {
+            "from": "package",
+            "package": "@vitest/expect",
+            "name": "Promisify"
           }
         ]
       }
@@ -1120,7 +1134,7 @@
     "typed": false,
     "coveredBy": {
       "rule": "functional/no-this-expressions",
-      "because": "r2-d77: functional/no-this-expressions reports every this, outside error-boundary files"
+      "because": "r2-d77: functional/no-this-expressions reports every this, outside error-boundary and test files"
     },
     "assignment": {
       "confidence": "high",
@@ -1208,7 +1222,8 @@
     "typed": false,
     "ignores": [
       "**/*.{test,spec}.{ts,tsx,js,jsx}",
-      "**/__tests__/**"
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -1448,6 +1463,11 @@
     "engine": "eslint",
     "options": [],
     "typed": true,
+    "ignores": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "agent-D"
@@ -1774,6 +1794,19 @@
     }
   },
   {
+    "id": "default-case-last",
+    "ruleset": "conventions",
+    "engine": "oxlint",
+    "oxlintName": "default-case-last",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "back for every team (my-move-default-case-last): where the opt-in ordering is listed, perfectionist/sort-switch-case reports the same switch too",
+      "by": "a3-read-default-case-last-ruleset"
+    }
+  },
+  {
     "id": "default-param-last",
     "ruleset": "conventions",
     "engine": "eslint",
@@ -1847,6 +1880,11 @@
       }
     ],
     "typed": false,
+    "ignores": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "agent-D"
@@ -1856,14 +1894,21 @@
     "id": "functional/no-expression-statements",
     "ruleset": "declarative",
     "engine": "eslint",
-    "options": [],
+    "options": [
+      {
+        "ignoreVoid": true
+      }
+    ],
     "typed": true,
     "files": [
       "**/*.ts"
     ],
     "ignores": [
       "**/use[A-Z]*.ts",
-      "**/use-*.ts"
+      "**/use-*.ts",
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -1892,7 +1937,10 @@
     ],
     "ignores": [
       "**/use[A-Z]*.ts",
-      "**/use-*.ts"
+      "**/use-*.ts",
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -1906,7 +1954,10 @@
     "options": [],
     "typed": false,
     "ignores": [
-      "**/*{ErrorBoundary,error-boundary}*.{ts,tsx,js,jsx}"
+      "**/*{ErrorBoundary,error-boundary}*.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -1949,7 +2000,9 @@
     "id": "functional/readonly-type",
     "ruleset": "conventions",
     "engine": "eslint",
-    "options": [],
+    "options": [
+      "keyword"
+    ],
     "typed": true,
     "assignment": {
       "confidence": "low",
@@ -2197,15 +2250,15 @@
   },
   {
     "id": "import-x/first",
-    "ruleset": "modules",
+    "ruleset": "import-order",
     "engine": "oxlint",
     "oxlintName": "import/first",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "note": "places imports above other code and sorts nothing, so it stays on when the opt-in import-order is not listed",
-      "by": "orchestrator-2026-10-15"
+      "note": "sorts nothing, but the owner keeps it with the import rules: a team that does not list the opt-in import-order goes without it",
+      "by": "my-move-import-first"
     }
   },
   {
@@ -2284,7 +2337,11 @@
     "id": "import-x/no-extraneous-dependencies",
     "ruleset": "modules",
     "engine": "eslint",
-    "options": [],
+    "options": [
+      {
+        "includeTypes": true
+      }
+    ],
     "typed": false,
     "assignment": {
       "confidence": "high",
@@ -2556,6 +2613,10 @@
     "oxlintName": "jsx_a11y/html-has-lang",
     "options": [],
     "typed": false,
+    "coveredInOxlintBy": {
+      "rule": "jsx-a11y/lang",
+      "because": "q-html-lang-twice: oxlint's jsx-a11y/lang reports every case it does; ESLint's reports no missing lang, so ESLint without oxlint keeps both"
+    },
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -2844,6 +2905,7 @@
       "**/use-*.{tsx,jsx}",
       "**/*.{test,spec}.{ts,tsx,js,jsx}",
       "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
       "**/*.stories.{ts,tsx,js,jsx}"
     ],
     "assignment": {
@@ -3247,6 +3309,10 @@
     "oxlintName": "no-cond-assign",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "sonarjs/no-nested-assignment",
+      "because": "read-cond-assign-cover: sonarjs's rule reports an assignment in an if, for or ternary condition too, but not in a while or do-while condition"
+    },
     "assignment": {
       "confidence": "high",
       "by": "agent-C"
@@ -3533,19 +3599,6 @@
     }
   },
   {
-    "id": "no-implicit-globals",
-    "ruleset": "browser",
-    "engine": "oxlint",
-    "oxlintName": "no-implicit-globals",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "note": "q70: off for Node code, read as the browser runtime",
-      "by": "owner-2026-10-14"
-    }
-  },
-  {
     "id": "no-implied-eval",
     "ruleset": "security",
     "engine": "eslint",
@@ -3684,7 +3737,7 @@
     "typed": false,
     "coveredBy": {
       "rule": "functional/no-expression-statements",
-      "because": "r2-d72: functional/no-expression-statements reports a new expression used as a statement too, where types are known"
+      "because": "r2-d72: functional/no-expression-statements reports a new expression used as a statement too, where types are known, outside test files"
     },
     "assignment": {
       "confidence": "low",
@@ -3801,7 +3854,7 @@
     "typed": false,
     "coveredBy": {
       "rule": "sonarjs/no-nested-assignment",
-      "because": "r2-d57: sonarjs's rule reports an assignment inside a return too (no-cond-assign keeps reporting beside it: the general card's example pair)"
+      "because": "r2-d57: sonarjs's rule reports an assignment in a return statement too, but not one that is an arrow function's body or part of a sequence"
     },
     "assignment": {
       "confidence": "low",
@@ -4066,7 +4119,7 @@
     "typed": false,
     "coveredBy": {
       "rule": "functional/no-expression-statements",
-      "because": "r2-d72: functional/no-expression-statements reports every expression statement, where types are known"
+      "because": "r2-d72: functional/no-expression-statements reports every expression statement, where types are known, outside test files"
     },
     "assignment": {
       "confidence": "high",
@@ -4104,7 +4157,8 @@
     "oxlintName": "no-unused-vars",
     "options": [
       {
-        "caughtErrors": "none"
+        "caughtErrors": "none",
+        "ignoreRestSiblings": true
       }
     ],
     "typed": false,
@@ -4436,6 +4490,10 @@
     "oxlintName": "oxc/no-map-spread",
     "options": [],
     "typed": false,
+    "coveredBy": {
+      "rule": "functional/immutable-data",
+      "because": "q-dogfood-map-spread-pair: its suggested fix, Object.assign on each item, is a mutation functional/immutable-data reports"
+    },
     "assignment": {
       "confidence": "low",
       "alternative": "complexity",
@@ -5231,7 +5289,8 @@
     "typed": false,
     "ignores": [
       "**/*.{test,spec}.{ts,tsx,js,jsx}",
-      "**/__tests__/**"
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -5268,7 +5327,8 @@
       "**/playwright/**",
       "**/e2e/**",
       "**/*.{test,spec}.{ts,tsx,js,jsx}",
-      "**/__tests__/**"
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -6828,7 +6888,8 @@
     "typed": false,
     "ignores": [
       "**/*.{test,spec}.{ts,tsx,js,jsx}",
-      "**/__tests__/**"
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -7046,6 +7107,11 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "ignores": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "agent-B"
@@ -7088,19 +7154,6 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-B"
-    }
-  },
-  {
-    "id": "sonarjs/function-return-type",
-    "ruleset": "complexity",
-    "engine": "eslint",
-    "options": [],
-    "typed": true,
-    "assignment": {
-      "confidence": "low",
-      "alternative": "correctness",
-      "note": "flags functions returning mixed types; type-level design smell more than a bug",
-      "by": "critique-r1"
     }
   },
   {
@@ -7239,6 +7292,11 @@
       }
     ],
     "typed": false,
+    "ignores": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "agent-B"
@@ -7464,18 +7522,6 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-B"
-    }
-  },
-  {
-    "id": "sonarjs/no-empty-test-file",
-    "ruleset": "tests",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "low",
-      "note": "generic test rule",
-      "by": "critique-r1"
     }
   },
   {
@@ -7777,18 +7823,6 @@
     }
   },
   {
-    "id": "sonarjs/no-os-command-from-path",
-    "ruleset": "security",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "note": "child_process (security hotspot)",
-      "by": "critique-r1"
-    }
-  },
-  {
     "id": "sonarjs/no-redundant-assignments",
     "ruleset": "redundancy",
     "engine": "eslint",
@@ -7946,6 +7980,11 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "ignores": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+    ],
     "assignment": {
       "confidence": "low",
       "alternative": "redundancy",
@@ -8338,17 +8377,6 @@
     }
   },
   {
-    "id": "sonarjs/strings-comparison",
-    "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": true,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-B"
-    }
-  },
-  {
     "id": "sonarjs/table-header",
     "ruleset": "accessibility",
     "engine": "eslint",
@@ -8680,6 +8708,12 @@
       }
     ],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "ignores": [
       "**/*.stories.{ts,tsx,js,jsx,mjs}",
       "**/.storybook/**"
@@ -8695,6 +8729,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8706,6 +8746,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8723,6 +8769,12 @@
       }
     ],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8734,6 +8786,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8745,9 +8803,15 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "coveredBy": {
       "rule": "sonarjs/no-debug-commands-in-ui-tests",
-      "because": "r2-d60: sonarjs's rule reports a debug call left in a test too"
+      "because": "r2-d60: sonarjs's rule reports a debug call left in a test file too, but not in a story or a type test, and not logDOM, prettyFormat or a call through the project's own test utilities"
     },
     "assignment": {
       "confidence": "high",
@@ -8760,6 +8824,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "ignores": [
       "**/*.stories.{ts,tsx,js,jsx,mjs}",
       "**/.storybook/**"
@@ -8775,6 +8845,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8786,6 +8862,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8801,6 +8883,12 @@
       }
     ],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8812,6 +8900,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8823,6 +8917,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8834,6 +8934,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8845,6 +8951,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8856,6 +8968,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8867,6 +8985,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8878,6 +9002,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8889,6 +9019,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8900,6 +9036,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8911,6 +9053,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -8922,6 +9070,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -9014,6 +9168,12 @@
       }
     ],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -9025,6 +9185,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -9036,6 +9202,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -9047,6 +9219,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -9058,6 +9236,12 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
+      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
@@ -9095,7 +9279,11 @@
     "id": "unicorn/comment-content",
     "ruleset": "comments",
     "engine": "eslint",
-    "options": [],
+    "options": [
+      {
+        "checkUniformCase": false
+      }
+    ],
     "typed": false,
     "assignment": {
       "confidence": "high",
@@ -9106,7 +9294,13 @@
     "id": "unicorn/consistent-boolean-name",
     "ruleset": "naming",
     "engine": "eslint",
-    "options": [],
+    "options": [
+      {
+        "ignore": [
+          "^_*(?!(?:is|has|was|does|requires)[A-Z0-9])[a-z]+s[A-Z0-9]"
+        ]
+      }
+    ],
     "typed": false,
     "assignment": {
       "confidence": "high",
@@ -9319,12 +9513,15 @@
           "dest": false,
           "dev": false,
           "dir": false,
+          "dirs": false,
+          "dist": false,
           "doc": false,
           "docs": false,
           "e": false,
           "el": false,
           "elem": false,
           "env": false,
+          "envs": false,
           "err": false,
           "evt": false,
           "fn": false,
@@ -9350,6 +9547,7 @@
           "props": false,
           "ref": false,
           "refs": false,
+          "repo": false,
           "req": false,
           "res": false,
           "ret": false,
@@ -9793,6 +9991,11 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "ignores": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
@@ -9910,17 +10113,6 @@
   {
     "id": "unicorn/no-loop-iterable-mutation",
     "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
-    "id": "unicorn/no-manually-wrapped-comments",
-    "ruleset": "comments",
     "engine": "eslint",
     "options": [],
     "typed": false,
@@ -10273,17 +10465,6 @@
     }
   },
   {
-    "id": "unicorn/no-unreadable-new-expression",
-    "ruleset": "complexity",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
     "id": "unicorn/no-unreadable-object-destructuring",
     "ruleset": "complexity",
     "engine": "eslint",
@@ -10347,17 +10528,6 @@
     "assignment": {
       "confidence": "high",
       "by": "critique-r1"
-    }
-  },
-  {
-    "id": "unicorn/no-unsafe-string-replacement",
-    "ruleset": "correctness",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
     }
   },
   {
@@ -10735,6 +10905,11 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "ignores": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
@@ -11396,19 +11571,6 @@
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "critique-r1"
-    }
-  },
-  {
-    "id": "unicorn/prefer-short-arrow-method",
-    "ruleset": "conventions",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "low",
-      "alternative": "UNPLACED",
-      "note": "expression over statement; otherwise \"consistency\"",
       "by": "critique-r1"
     }
   },

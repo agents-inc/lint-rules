@@ -1,10 +1,12 @@
 import type { Engine, RuleRoute, ShippedScope } from '../catalog.ts'
-import { compareCodeUnits, sharedKeys } from '../collections.ts'
+import { compareCodeUnits, foundOr, sharedKeys } from '../collections.ts'
 import { oxlintSpellingsOf } from '../rule-id-parts.ts'
 import {
-  type BySuppressionMode,
+  type SettingBySuppressionMode,
   type SuppressionModeSetting,
+  type TestFileOptions,
   type TurnedOnBy,
+  type WhenSuppressions,
   inEachSuppressionMode,
   parseTurnedOnBy,
 } from '../turned-on-by.ts'
@@ -24,13 +26,17 @@ export type CanonicalSuppressionModeSetting = 'on' | SuppressionModeSetting
 /** Another shipped rule this one is related to, and why: the card it was decided on, then one line. */
 export type RuleRelation = { readonly rule: string; readonly because: string }
 
+/** The test files, the files under `__tests__`, and Vitest's type tests (`*.test-d.ts`): the files a rule's test-file setting is for. */
+const TEST_FILE_GLOBS: readonly string[] = ['**/*.{test,spec}.{ts,tsx,js,jsx}', '**/__tests__/**', '**/*.{test,spec}-d.{ts,tsx,js,jsx}']
+
 /**
  * A route's `shipped` as the generated routing writes it: each relation is the other rule's ID, and
- * present only where `data/rules.json` records it. The catalog gives every shipped rule both.
+ * present only where `data/rules.json` records it. The catalog gives every shipped rule each.
  */
 export type RoutedShippedRule = TurnedOnBy &
   ShippedScope & {
     readonly coveredBy?: string
+    readonly coveredInOxlintBy?: string
     readonly splitByTypesWith?: string
     readonly readsRuntimeGlobals?: true
   }
@@ -48,7 +54,7 @@ export type CanonicalRule = {
    * Present on the rules `allowSuppressions` decides, whatever rulesets are listed: routing ships
    * this in place of `ruleset` and `alwaysOn`, which canonical-list.test.ts still requires one of.
    */
-  whenSuppressions?: BySuppressionMode<CanonicalSuppressionModeSetting>
+  whenSuppressions?: WhenSuppressions<CanonicalSuppressionModeSetting, TestFileOptions>
   engine: Engine
   /** Why ESLint runs a rule oxlint has an untyped version of: the reason oxlint's is worse, and its measurement. */
   eslintBecause?: string
@@ -63,6 +69,11 @@ export type CanonicalRule = {
    * wherever that one is on.
    */
   coveredBy?: RuleRelation
+  /**
+   * The shipped rule whose findings include this one's where oxlint runs both: this rule is left out
+   * wherever oxlint runs it and that one is on. ESLint's version keeps it.
+   */
+  coveredInOxlintBy?: RuleRelation
   /** The typed rule this untyped one is off beside, where that one runs with type information. */
   splitByTypesWith?: RuleRelation
   /** `true`: our runtimes' globals serve the rule, so the editor merges give them where it runs. */
@@ -108,9 +119,7 @@ function assertOneRuleIdPerOxlintName(rules: readonly InventoryRule[], ruleIds: 
 }
 
 function installedRuleOf(id: string, installedById: ReadonlyMap<string, InventoryRule>): InventoryRule {
-  const installed = installedById.get(id)
-  if (installed === undefined) throw new Error(`${id} is in data/rules.json, but no installed engine has it`)
-  return installed
+  return foundOr(installedById.get(id), `${id} is in data/rules.json, but no installed engine has it`)
 }
 
 function routeOf(installed: InventoryRule, canonical: CanonicalRule | undefined, ruleIds: ReadonlySet<string>): RoutingEntry {
@@ -134,16 +143,27 @@ function shippedRuleOf(canonical: CanonicalRule): RoutedShippedRule {
 }
 
 /** Each relation the canonical list records, as the other rule's ID: none where it records none. */
-function relatedRuleIdsOf({ coveredBy, splitByTypesWith }: CanonicalRule): Pick<RoutedShippedRule, 'coveredBy' | 'splitByTypesWith'> {
+function relatedRuleIdsOf({ coveredBy, coveredInOxlintBy, splitByTypesWith }: CanonicalRule): Pick<RoutedShippedRule, 'coveredBy' | 'coveredInOxlintBy' | 'splitByTypesWith'> {
   return {
     ...(coveredBy === undefined ? {} : { coveredBy: coveredBy.rule }),
+    ...(coveredInOxlintBy === undefined ? {} : { coveredInOxlintBy: coveredInOxlintBy.rule }),
     ...(splitByTypesWith === undefined ? {} : { splitByTypesWith: splitByTypesWith.rule }),
   }
 }
 
 function turnedOnByOf({ id, ruleset, alwaysOn, whenSuppressions, options }: CanonicalRule): TurnedOnBy {
   if (whenSuppressions === undefined) return parseTurnedOnBy(id, { ruleset, alwaysOn })
-  return { whenSuppressions: inEachSuppressionMode(whenSuppressions, (setting) => resolvedSettingOf(setting, options)) }
+  return {
+    whenSuppressions: {
+      ...inEachSuppressionMode(whenSuppressions, (setting) => resolvedSettingOf(setting, options)),
+      ...testFileSettingWithGlobs(whenSuppressions.bannedInTestFiles),
+    },
+  }
+}
+
+/** The test-file options with the globs of the files they are for: none where the canonical list gives none. */
+function testFileSettingWithGlobs(testFileOptions: TestFileOptions | undefined): Pick<SettingBySuppressionMode, 'bannedInTestFiles'> {
+  return testFileOptions === undefined ? {} : { bannedInTestFiles: { files: TEST_FILE_GLOBS, options: testFileOptions.options } }
 }
 
 function resolvedSettingOf(

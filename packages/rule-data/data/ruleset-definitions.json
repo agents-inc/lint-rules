@@ -144,6 +144,22 @@
     "sortsCode": false
   },
   {
+    "name": "nextjs",
+    "list": "libs",
+    "domain": "ui",
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
+  },
+  {
+    "name": "react-ssr",
+    "list": "libs",
+    "domain": "ui",
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
+  },
+  {
     "name": "vitest",
     "list": "libs",
     "domain": "testing",
@@ -161,6 +177,22 @@
   },
   {
     "name": "storybook",
+    "list": "libs",
+    "domain": "testing",
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
+  },
+  {
+    "name": "playwright",
+    "list": "libs",
+    "domain": "testing",
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
+  },
+  {
+    "name": "jest-dom",
     "list": "libs",
     "domain": "testing",
     "env": null,
@@ -192,6 +224,54 @@
     "sortsCode": false
   },
   {
+    "name": "tailwind",
+    "list": "libs",
+    "domain": "styling",
+    "env": null,
+    "optIn": true,
+    "sortsCode": false
+  },
+  {
+    "name": "tanstack-query",
+    "list": "libs",
+    "domain": "data",
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
+  },
+  {
+    "name": "drizzle",
+    "list": "libs",
+    "domain": "data",
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
+  },
+  {
+    "name": "tanstack-router",
+    "list": "libs",
+    "domain": "routing",
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
+  },
+  {
+    "name": "zod",
+    "list": "libs",
+    "domain": "validation",
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
+  },
+  {
+    "name": "jsonwebtoken",
+    "list": "libs",
+    "domain": "auth",
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
+  },
+  {
     "name": "node",
     "list": "runtimes",
     "domain": null,
@@ -205,6 +285,14 @@
     "domain": null,
     "env": "browser",
     "optIn": false,
+    "sortsCode": false
+  },
+  {
+    "name": "browser-targets",
+    "list": "runtimes",
+    "domain": null,
+    "env": null,
+    "optIn": true,
     "sortsCode": false
   }
 ]

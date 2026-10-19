@@ -6,8 +6,17 @@ export type SuppressionModeSetting = 'off' | { readonly options: readonly unknow
 
 export type BySuppressionMode<Setting> = { readonly [mode in SuppressionMode]: Setting }
 
+/** A rule's options in test and type-test files while suppressions are banned, as data/rules.json gives them. */
+export type TestFileOptions = { readonly options: readonly unknown[] }
+
+/** Those options with the globs of the test and type-test files, as the generated routing and the catalog give them. */
+export type TestFileSetting = TestFileOptions & { readonly files: readonly string[] }
+
+/** Each mode's setting and, on a rule that differs there, its setting in test and type-test files while suppressions are banned. */
+export type WhenSuppressions<Setting, InTestFiles> = BySuppressionMode<Setting> & { readonly bannedInTestFiles?: InTestFiles }
+
 /** The setting of a rule `allowSuppressions` decides, in each mode. */
-export type SettingBySuppressionMode = BySuppressionMode<SuppressionModeSetting>
+export type SettingBySuppressionMode = WhenSuppressions<SuppressionModeSetting, TestFileSetting>
 
 /**
  * What turns a shipped rule on: its ruleset, when a consumer lists it; nothing, for a rule that is on
@@ -23,9 +32,10 @@ export type TurnedOnBy =
 /** A suppression-mode setting as JSON gives it, which types `off` as `string`. */
 export type SuppressionModeSettingField = string | { readonly options: readonly unknown[] }
 
-export type SettingFieldBySuppressionMode = BySuppressionMode<SuppressionModeSettingField>
+/** The settings as the generated routing gives them. */
+export type SettingFieldBySuppressionMode = WhenSuppressions<SuppressionModeSettingField, TestFileSetting | undefined>
 
-/** The three fields as JSON gives them, in `data/rules.json` and in the generated routing. */
+/** The three fields as the generated routing gives them; `data/rules.json` gives the first two the same way. */
 export type TurnedOnByFields = {
   readonly ruleset?: string | undefined
   readonly alwaysOn?: boolean | undefined
@@ -42,7 +52,12 @@ export function parseTurnedOnBy(id: string, { ruleset, alwaysOn, whenSuppression
     throw new Error(`${id} needs exactly one of a ruleset, alwaysOn: true and whenSuppressions`)
   }
   if (whenSuppressions !== undefined) {
-    return { whenSuppressions: inEachSuppressionMode(whenSuppressions, (setting) => parseSuppressionModeSetting(id, setting)) }
+    return {
+      whenSuppressions: {
+        ...inEachSuppressionMode(whenSuppressions, (setting) => parseSuppressionModeSetting(id, setting)),
+        ...testFileSettingOf(whenSuppressions),
+      },
+    }
   }
   if (ruleset !== undefined) return { ruleset }
   return { alwaysOn: true }
@@ -60,4 +75,9 @@ export function inEachSuppressionMode<Given, Made>(
   settingOf: (setting: Given) => Made,
 ): BySuppressionMode<Made> {
   return { banned: settingOf(settings.banned), allowed: settingOf(settings.allowed) }
+}
+
+/** The test-file setting, where the rule has one: none is no key, as exactOptionalPropertyTypes asks. */
+export function testFileSettingOf<InTestFiles>({ bannedInTestFiles }: { readonly bannedInTestFiles?: InTestFiles | undefined }): { readonly bannedInTestFiles?: InTestFiles } {
+  return bannedInTestFiles === undefined ? {} : { bannedInTestFiles }
 }
