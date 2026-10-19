@@ -13,7 +13,7 @@ why each part of this repo's setup exists: [mutation testing](mutation-testing.m
   emptied) and runs the tests that cover it. A break no test catches marks code no test checks: a
   list of weak tests, not a score.
 - It cannot drop a field, reorder blocks, stop after one step, or remove a wrapping call or a spread
-  element. Those breaks are still made by hand (`CLAUDE.md`, "Break each new decision point").
+  element. Those breaks are still made by hand (`CLAUDE.md`, "Tests").
 - Run it on the changed lines once a change's gate is green, and on a whole package only once the
   code has stopped moving: mutating code that is about to be deleted wastes hours.
 

@@ -132,12 +132,14 @@ Steps 7-8 are how the work is finished, not a tidy-up phase for later.
   triage it before deleting it.
 - **In an `it.fails` test, only the assertion may throw.** Run the tool (oxlint, say) in
   `beforeAll`, or the test "passes" when the tool itself crashes.
-- **Break each new decision point and watch a test fail.** After implementing, a script breaks one
-  line at a time, serving the broken module without writing the source file (a Vite `load` hook,
-  say), and asserts a test fails for each break. A break no test catches gets a test, or a reason
-  measured as the next bullet says. Before counting, the unbroken run is clean or its failures are
-  explained, and a scratch copy builds whatever the tests load: `packages/lint-rules`' integration
-  tests run the engines on the built `dist`, so a break not built into it reaches none of them.
+- After implementing, run StrykerJS on the lines the change touched:
+  `node scripts/mutate-changed-lines.mts`. Each break it reports as not caught (Survived or
+  NoCoverage) gets a test, or a measured reason. Two kinds of "not caught" prove nothing: one in
+  code that runs while modules load (a constant, a top-level table) is checked again with the second
+  pass (`node scripts/mutate-changed-lines.mts stryker.static.config.mjs`); one that ran 0 tests
+  means test files failed to load, so fix the cause and re-run with `--force`. Stryker only makes
+  small breaks (swap an operator, flip a condition): a break that changes a decision (drop a field,
+  reorder blocks, stop after one step) is still written by hand.
 - **"This break changes nothing" needs a run of the real tool** on the exact config the break
   writes, not on a similar one.
 

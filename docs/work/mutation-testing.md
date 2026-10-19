@@ -89,7 +89,7 @@ From the trial on 2026-10-14 and the adoption runs:
   `bun run mutation stryker.static.config.mjs --mutate <ranges>`, or for a round
   `node scripts/mutate-changed-lines.mts stryker.static.config.mjs`. A mutant either pass kills is
   caught. The pass keeps its own incremental file, and its reports replace the first pass's. Or break
-  the line by hand and serve it through a Vite `load` hook, as `CLAUDE.md` describes.
+  the line by hand and serve it through a Vite `load` hook.
 - **Ranges.** A mutant counts only if it lies wholly inside a range, so a changed line inside a longer
   expression or block gets the mutants of its own parts, not of the whole. A deleted line gives none.
   Ranges count columns from 0; the report counts them from 1.
