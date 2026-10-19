@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import { existsSync, globSync, readFileSync, realpathSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { satisfies, subset } from 'semver'
@@ -6,6 +7,9 @@ import ts from 'typescript'
 export type Manifest = {
   readonly name: string
   readonly version: string
+  readonly license?: string
+  readonly scripts?: Readonly<Record<string, string>>
+  readonly files?: readonly string[]
   readonly engines?: { readonly node?: string }
   readonly dependencies?: Readonly<Record<string, string>>
   readonly devDependencies?: Readonly<Record<string, string>>
@@ -37,6 +41,9 @@ export type LockDisagreement = {
 
 type BunLock = { readonly workspaces: LockedWorkspaces }
 
+/** npm's JSON report of a dry-run pack: one entry for the one package packed. */
+type NpmPackReport = readonly { readonly files: readonly { readonly path: string }[] }[]
+
 const PACKAGE_JSON = 'package.json'
 const NODE_MODULES = 'node_modules'
 // The fields that pin the version installed; a peer dependency gives a range the consumer meets.
@@ -45,6 +52,7 @@ const LISTING_FIELDS: readonly DependencyField[] = ['dependencies', 'devDependen
 const LOCKED_FIELDS: readonly DependencyField[] = ['dependencies', 'devDependencies', 'peerDependencies']
 const ROOT_WORKSPACE = ''
 const LINE_BREAK = '\n'
+const NPM = 'npm'
 
 /** Parse boundary: a package.json on disk. */
 export function readManifest(path: string): Manifest {
@@ -134,6 +142,16 @@ export function readLockedWorkspaces(lockPath: string): LockedWorkspaces {
   if (error !== undefined) throw new Error(`${lockPath}: ${ts.flattenDiagnosticMessageText(error.messageText, LINE_BREAK)}`)
   const { workspaces } = config as BunLock
   return workspaces
+}
+
+/** By path from the package, what `npm pack` would put in its tarball. */
+export function pathsNpmPacks(packageDir: string): string[] {
+  const { status, stdout, stderr } = spawnSync(NPM, ['pack', '--dry-run', '--json'], { cwd: packageDir, encoding: 'utf8' })
+  if (status !== 0) throw new Error(`npm pack --dry-run failed in ${packageDir}: ${stdout}${stderr}`)
+  // Parse boundary: npm's JSON report.
+  const [packed] = JSON.parse(stdout) as NpmPackReport
+  if (packed === undefined) throw new Error(`npm pack --dry-run reported no package in ${packageDir}: ${stdout}`)
+  return packed.files.map(({ path }) => path)
 }
 
 /** bun 1.2.6's frozen install accepts such a lock and leaves it as it is, so nothing else notices. */

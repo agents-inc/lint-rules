@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { beforeAll, describe, expect, it } from 'vitest'
@@ -11,6 +12,7 @@ import {
   nodeVersionsAdmittedBy,
   packagesAdmittingLessNodeThan,
   packagesInstalledFor,
+  pathsNpmPacks,
   readLockedWorkspaces,
   readManifest,
   workspaceDirsOf,
@@ -40,11 +42,23 @@ const NODE_VERSIONS_ADMITTED = ['22.18.0', '22.23.0', '24.0.0', '26.0.0']
 // jsdoc-type-pratt-parser 9.x, which eslint-plugin-regexp 3.3.1 depends on (^9.0.0), admits Node
 // 22.22.2 up and 24.15.0 up only; every 9.x release states the same range.
 const KNOWN_GAP_NODE_RANGE = 'jsdoc-type-pratt-parser: ^22.22.2 || >=24.15.0'
+const LICENSE_FILE = 'LICENSE'
+const LICENSE_ID = 'MIT'
+// The MIT text's heading, then its holder, as ~/dev/cli's LICENSE opens.
+const LICENSE_OPENING = ['MIT License', '', 'Copyright (c) 2026 Vincent']
+const LINE_BREAK = '\n'
+// docs/release.md's release step 2, run from the package with its own scripts.
+const PREPUBLISH_ONLY = 'bun run build && bun run typecheck && bun run test'
+const SOURCE_FOLDER = 'src/'
 
 function nodeRangeShipped(): string {
   const nodeRange = SHIPPED.engines?.node
   if (nodeRange === undefined) throw new Error(`${SHIPPED.name}'s package.json states no engines.node`)
   return nodeRange
+}
+
+function licenseTextIn(dir: string): string {
+  return readFileSync(join(dir, LICENSE_FILE), 'utf8')
 }
 
 describe('the Node versions @agents-inc/lint-rules admits, by its engines field', () => {
@@ -72,6 +86,46 @@ describe('the Node versions @agents-inc/lint-rules admits, by its engines field'
 
   it.fails('lie within the engines range of each package installed for it', () => {
     expect(packagesAdmittingLessNode()).toStrictEqual([])
+  })
+})
+
+describe('the licence @agents-inc/lint-rules ships under', () => {
+  let packed: readonly string[] | undefined
+
+  beforeAll(() => {
+    packed = pathsNpmPacks(PACKAGE_DIR)
+  })
+
+  function pathsPacked(): readonly string[] {
+    if (packed === undefined) throw new Error('what npm packs was read outside the suite that packed it')
+    return packed
+  }
+
+  it('is MIT, by its package.json', () => {
+    expect(SHIPPED.license).toBe(LICENSE_ID)
+  })
+
+  it('opens with the MIT heading and its holder, in the package and at the repo root', () => {
+    const openings = [PACKAGE_DIR, REPO_ROOT].map((dir) => licenseTextIn(dir).split(LINE_BREAK).slice(0, LICENSE_OPENING.length))
+
+    expect(openings).toStrictEqual([LICENSE_OPENING, LICENSE_OPENING])
+  })
+
+  it('reads the same in the package as at the repo root', () => {
+    expect(licenseTextIn(PACKAGE_DIR)).toBe(licenseTextIn(REPO_ROOT))
+  })
+
+  it('is in what npm packs, which holds no source file', () => {
+    expect({
+      license: pathsPacked().includes(LICENSE_FILE),
+      sourceFiles: pathsPacked().filter((path) => path.startsWith(SOURCE_FOLDER)),
+    }).toStrictEqual({ license: true, sourceFiles: [] })
+  })
+})
+
+describe('what npm runs before it publishes @agents-inc/lint-rules', () => {
+  it("is the package's build, typecheck and tests, each stopping the publish where it fails", () => {
+    expect(SHIPPED.scripts).toHaveProperty('prepublishOnly', PREPUBLISH_ONLY)
   })
 })
 

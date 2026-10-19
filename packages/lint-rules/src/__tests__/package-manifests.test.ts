@@ -11,6 +11,7 @@ import {
   nodeVersionsAdmittedBy,
   packagesAdmittingLessNodeThan,
   packagesInstalledFor,
+  pathsNpmPacks,
   readLockedWorkspaces,
   workspaceDirsOf,
 } from './package-manifests.ts'
@@ -174,6 +175,27 @@ describe('workspaceDirsOf', () => {
     })
 
     expect(workspaceDirsOf(rootDir)).toStrictEqual(['', 'packages/a', 'packages/b', 'tools/one'])
+  })
+})
+
+describe('pathsNpmPacks', () => {
+  it('lists what npm would pack: the package.json, what `files` names and a LICENSE, and no other file', () => {
+    const packageDir = tempProjects.create({
+      files: {
+        ...manifestFileIn(buildManifest('packed', { files: ['dist'] })),
+        'dist/index.mjs': 'export {}\n',
+        LICENSE: 'MIT License\n',
+        'src/index.ts': 'export {}\n',
+      },
+    })
+
+    expect(pathsNpmPacks(packageDir).toSorted()).toStrictEqual(['LICENSE', 'dist/index.mjs', 'package.json'])
+  })
+
+  it('throws, naming the folder, where npm cannot pack it', () => {
+    const notAPackageDir = tempProjects.create({ files: { 'package.json': '{ "name": ' } })
+
+    expect(() => pathsNpmPacks(notAPackageDir)).toThrowError(`npm pack --dry-run failed in ${notAPackageDir}`)
   })
 })
 
