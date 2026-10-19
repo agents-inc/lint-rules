@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
   describeFinding,
   type EslintCliResult,
@@ -13,7 +13,8 @@ import {
   runOxlintCli,
 } from './__tests__/engine-clis.ts'
 import { buildTsconfig } from './__tests__/factories/tsconfig-factories.ts'
-import { INSTALLED_OXLINT, setUpTempProjects, THIS_PACKAGE } from './__tests__/temp-projects.ts'
+import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
+import { INSTALLED_OXLINT, THIS_PACKAGE } from './__tests__/temp-projects.ts'
 
 // One sentinel per engine: a typed rule in ESLint, no-debugger in oxlint, or in ESLint without oxlint.
 // Each project's copy of its debugger source outside the tsconfig must draw no typed rule.
@@ -21,7 +22,7 @@ import { INSTALLED_OXLINT, setUpTempProjects, THIS_PACKAGE } from './__tests__/t
 const CONSUMER_FILES_DIR = fileURLToPath(new URL('../test-fixtures/consumer-files', import.meta.url))
 const WITHOUT_OXLINT_DIR = fileURLToPath(new URL('../test-fixtures/consumer-files-without-oxlint', import.meta.url))
 const OXLINT_CONFIG_FILE = 'oxlint.config.mts'
-const CLI_RUNS_TIMEOUT_MS = 480_000
+const CLI_RUNS: RunsBeforeTheSuiteOptions = { timeoutMs: 480_000, whatFailed: "the engines' CLIs could not be run on the fixture project before the suite" }
 
 const TYPED_SENTINEL = 'src/floating-promise.ts:3 @typescript-eslint/no-floating-promises'
 const OXLINT_SENTINEL = 'src/debugger.ts:2 eslint(no-debugger)'
@@ -38,13 +39,9 @@ type CompletedRuns = {
   readonly oxlint: OxlintCliRun | null
 }
 
-const tempProjects = setUpTempProjects()
-
 /** Copies the fixture project beside the built package and oxlint, writes its tsconfig, and runs the engines its configs name. */
 function setUpProjectRuns(fixturesDir: string, runsOxlint: boolean): () => CompletedRuns {
-  let runs: CompletedRuns | undefined
-
-  beforeAll(() => {
+  return setUpRunsBeforeTheSuite((tempProjects) => {
     const projectDir = tempProjects.create({
       fixturesDir,
       files: {
@@ -53,17 +50,12 @@ function setUpProjectRuns(fixturesDir: string, runsOxlint: boolean): () => Compl
       },
       linkedPackages: [THIS_PACKAGE, INSTALLED_OXLINT],
     })
-    runs = {
+    return {
       projectDir,
       eslint: runEslintCli(projectDir),
       oxlint: runsOxlint ? runOxlintCli(projectDir, OXLINT_CONFIG_FILE) : null,
     }
-  }, CLI_RUNS_TIMEOUT_MS)
-
-  return () => {
-    if (runs === undefined) throw new Error('the runs were read outside the suite that made them')
-    return runs
-  }
+  }, CLI_RUNS)
 }
 
 function eslintFindings({ eslint, projectDir }: CompletedRuns): string[] {

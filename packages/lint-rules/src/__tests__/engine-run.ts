@@ -1,19 +1,18 @@
-import { spawnSync } from 'node:child_process'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { oxlintCliOutputIn } from '@workspace/rule-data/test-support/oxlint-cli'
 import { ESLint, type Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
 import type { OxlintConfig } from 'oxlint'
-import { beforeAll } from 'vitest'
-import { oxlintBin } from '../cli/check/oxlint-run.ts'
 import { mergeEslintConfig } from '../eslint.ts'
 import { mergeOxlintConfig } from '../oxlint.ts'
 import { agentConfigsOf, type DefinedLintRules } from './agent-configs.ts'
 import { fatalMessagesIn, type OxlintCliDiagnostic, writeOxlintConfigFile } from './engine-clis.ts'
 import { projectPathOf } from './project-paths.ts'
 import { rulesNotFoundAmong } from './rules-not-found.ts'
+import { setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
 import { NO_TEAM_ESLINT_CONFIG, type TeamEslintConfigPath } from './team-configs-of-the-other-engine.ts'
-import { INSTALLED_OXLINT, type LinkedPackage, type ProjectFiles, setUpTempProjects } from './temp-projects.ts'
+import { INSTALLED_OXLINT, type LinkedPackage, type ProjectFiles } from './temp-projects.ts'
 
 export type ProcessOutput = { readonly exitCode: number | null; readonly stdout: string }
 
@@ -79,7 +78,6 @@ type EmittedConfigs = { readonly oxlint: OxlintConfig | null; readonly eslint: L
 const OXLINT_CONFIG_FILE = '.oxlintrc.json'
 // The team's oxlint config in an editor build: a name oxlint never finds by itself.
 const TEAM_OXLINT_CONFIG_FILE = 'team.oxlintrc.json'
-const ENGINE_RUNS_TIMEOUT_MS = 300_000
 const ESLINT_ERROR = 2
 const OXLINT_ERROR = 'error'
 const ENGINE_ORDER = ['eslint', 'oxlint']
@@ -99,18 +97,10 @@ export function setUpEngineRun(
   build: EngineBuild = AGENT_BUILD,
   linkedPackages: readonly LinkedPackage[] = [],
 ): EngineRun {
-  const tempProjects = setUpTempProjects()
-  let run: CompletedRun | undefined
-
-  beforeAll(async () => {
+  const completedRun = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const projectDir = tempProjects.create({ fixturesDir, files: writtenFiles, linkedPackages: [INSTALLED_OXLINT, ...linkedPackages] })
-    run = await runBothEngines(projectDir, emittedConfigsOf(projectDir, configFor(projectDir), build))
-  }, ENGINE_RUNS_TIMEOUT_MS)
-
-  function completedRun(): CompletedRun {
-    if (run === undefined) throw new Error('the engines were queried outside the suite that ran them')
-    return run
-  }
+    return runBothEngines(projectDir, emittedConfigsOf(projectDir, configFor(projectDir), build))
+  })
 
   function oxlintRun(): OxlintRun {
     const { oxlint } = completedRun()
@@ -230,9 +220,6 @@ function byLineThenEngine(first: ErrorAt, second: ErrorAt): number {
 }
 
 function runOxlint(projectDir: string, args: readonly string[]): ProcessOutput {
-  const { status, stdout } = spawnSync(process.execPath, [oxlintBin(), '-c', OXLINT_CONFIG_FILE, ...args], {
-    cwd: projectDir,
-    encoding: 'utf8',
-  })
-  return { exitCode: status, stdout }
+  const { exitCode, stdout } = oxlintCliOutputIn(projectDir, ['-c', OXLINT_CONFIG_FILE, ...args])
+  return { exitCode, stdout }
 }
