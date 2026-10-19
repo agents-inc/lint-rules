@@ -41,6 +41,8 @@ const GLOBS = [
 ]
 const SEED = 7
 const CASES = 3000
+// About 2 s alone, and past vitest's default 5 s on a loaded machine (measured).
+const DRAWN_CASES_TIMEOUT_MS = 60_000
 // Large repos hold tens of thousands of TS files outside every tsconfig. Linear time takes under 0.2 s here;
 // a pairwise step took seconds at a tenth of this count (measured). The ceiling sits between the two.
 const PATH_COUNT = 20_000
@@ -98,7 +100,7 @@ function timed(shape: () => FilesCondition): { readonly condition: FilesConditio
 }
 
 describe('bothOf, eitherOf and notOf, against plain sets of files', () => {
-  it(`match the files the sets give, in each of ${String(CASES)} drawn cases`, () => {
+  it(`match the files the sets give, in each of ${String(CASES)} drawn cases`, { timeout: DRAWN_CASES_TIMEOUT_MS }, () => {
     expect(mismatchesOverCases()).toStrictEqual([])
   })
 })
