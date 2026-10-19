@@ -11,7 +11,7 @@ import { oxlintCodeOfRule } from '../../__tests__/oxlint-codes.ts'
 import { rawOxlintOutput } from '../../__tests__/oxlint-raw-output.ts'
 import { allowEveryTestForParallelLoad } from '../../__tests__/parallel-load.ts'
 import { setUpTempProjects } from '../../__tests__/temp-projects.ts'
-import { oxlintReportFrom, ruleIdOfOxlintCode } from './oxlint-output.ts'
+import { labelOfOxlintCode, oxlintReportFrom } from './oxlint-output.ts'
 
 // oxlint exits 1 for findings and for a refused config alike, so check reads its JSON report, never its exit code.
 
@@ -35,15 +35,15 @@ const PROJECT = tempProjects.create({
   },
 })
 
-describe('ruleIdOfOxlintCode', () => {
+describe('labelOfOxlintCode', () => {
   it('gives every rule oxlint has, as the catalog records the oxlint we install, back from its code', () => {
-    const misread = catalog.oxlintRules.filter((rule) => ruleIdOfOxlintCode(oxlintCodeOfRule(rule), catalog) !== rule.id)
+    const misread = catalog.oxlintRules.filter((rule) => labelOfOxlintCode(oxlintCodeOfRule(rule), catalog) !== rule.id)
 
     expect(misread).toStrictEqual([])
   })
 
-  it('refuses a code no rule in the catalog has, naming it', () => {
-    expect(() => ruleIdOfOxlintCode('eslint(no-such-rule)', catalog)).toThrowError(/eslint\(no-such-rule\)/u)
+  it('gives a code no rule in the catalog has as oxlint wrote it, beside those rules, which it gives as their IDs', () => {
+    expect(labelOfOxlintCode('eslint(no-such-rule)', catalog)).toBe('eslint(no-such-rule)')
   })
 })
 

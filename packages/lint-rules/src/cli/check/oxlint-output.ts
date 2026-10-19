@@ -35,11 +35,10 @@ const PLUGIN_SEPARATOR = '/'
 
 const ruleIdsByCodeOf = new WeakMap<Catalog, ReadonlyMap<string, string>>()
 
-/** `eslint(no-debugger)` → its RuleId; throws on a code the catalog does not record. */
-export function ruleIdOfOxlintCode(code: string, catalog: Catalog): string {
+/** `eslint(no-debugger)` → its RuleId; a code the catalog does not record is printed as oxlint gives it. */
+export function labelOfOxlintCode(code: string, catalog: Catalog): string {
   const ruleId = ruleIdsByCode(catalog).get(code)
-  if (ruleId === undefined) throw new Error(`oxlint reported the code ${code}, which no rule in the catalog has`)
-  return ruleId
+  return ruleId === undefined ? code : ruleId
 }
 
 /**

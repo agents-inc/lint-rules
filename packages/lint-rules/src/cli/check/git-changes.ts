@@ -1,5 +1,5 @@
 import { type SpawnSyncReturns, spawnSync } from 'node:child_process'
-import { copyFileSync, mkdirSync, mkdtempSync } from 'node:fs'
+import { copyFileSync, mkdirSync, mkdtempSync, statSync, utimesSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join, resolve } from 'node:path'
 import { firstPrintedLineOf } from '../printed-lines.ts'
@@ -9,6 +9,9 @@ import { gitFailed } from './texts.ts'
 
 /** `oldPath`: its path at HEAD where git paired it as a rename or copy. */
 export type ChangedFile = { readonly path: string; readonly oldPath: string | null; readonly isNew: boolean }
+
+/** Where init runs, which writes in all three. */
+export type WhereInitRuns = { readonly kind: 'in a repo'; readonly topLevel: string } | { readonly kind: 'outside a repo' } | { readonly kind: 'git could not run' }
 
 export type GitRepo = {
   readonly topLevel: string
@@ -38,10 +41,11 @@ export function gitTopLevelOf(cwd: string): string | null {
   return topLevelFrom(askGitForTheTopLevel(cwd))
 }
 
-/** Null where git is missing too: init writes outside git all the same. */
-export function gitTopLevelUnlessGitIsMissing(cwd: string): string | null {
+export function whereInitRuns(cwd: string): WhereInitRuns {
   const answer = askGitForTheTopLevel(cwd)
-  return answer.error === undefined ? topLevelFrom(answer) : null
+  if (answer.error !== undefined) return { kind: 'git could not run' }
+  const topLevel = topLevelFrom(answer)
+  return topLevel === null ? { kind: 'outside a repo' } : { kind: 'in a repo', topLevel }
 }
 
 /**
@@ -58,7 +62,7 @@ export function gitRepoAt(topLevel: string): GitRepo {
     GIT_OBJECT_DIRECTORY: join(folder, OBJECTS),
     GIT_ALTERNATE_OBJECT_DIRECTORIES: alternateObjectFolders(gitPath(OBJECTS)),
   }
-  copyFileSync(gitPath(INDEX), scratch.GIT_INDEX_FILE)
+  copyKeepingItsTimes(gitPath(INDEX), scratch.GIT_INDEX_FILE)
   mkdirSync(scratch.GIT_OBJECT_DIRECTORY)
   git(topLevel, scratch, ['add', '--intent-to-add', '-A', '.'])
   return { topLevel, scratch }
@@ -92,6 +96,18 @@ function topLevelFrom(answer: SpawnSyncReturns<string>): string | null {
 /** The repo's own objects, then any alternates git is already given. */
 function alternateObjectFolders(repoObjects: string): string {
   return [repoObjects, process.env['GIT_ALTERNATE_OBJECT_DIRECTORIES']].filter((path) => path !== undefined).join(delimiter)
+}
+
+/**
+ * By the index's mtime git tells a file written in that same second (racily clean), and reads it rather than
+ * trust its stat data. Read first: an index written meanwhile gets an older time, so git only reads more files.
+ * Where there is no index, as `git clone --no-checkout` leaves, there is no copy: git reads a missing index as empty.
+ */
+function copyKeepingItsTimes(from: string, to: string): void {
+  const times = statSync(from, { throwIfNoEntry: false })
+  if (times === undefined) return
+  copyFileSync(from, to)
+  utimesSync(to, times.atime, times.mtime)
 }
 
 function hasCommits(topLevel: string): boolean {

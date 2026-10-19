@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { autofixedFilesIn, findingMessagesIn, findingsIn, findingsInFile, lastLineOf, linesOf } from './check-output.ts'
+import { autofixedFilesIn, findingMessagesIn, findingsIn, findingsInFile, lastLineOf, linesOf, notCheckedIn } from './check-output.ts'
 import {
   CHECK_STDOUT_WITH_EVERY_KIND_OF_LINE,
   CHECK_STDOUT_WITHOUT_AUTOFIXED_LINE,
   CHECK_STDOUT_WITH_A_MALFORMED_AUTOFIXED_LINE,
+  CHECK_STDOUT_WITH_NOT_CHECKED_ENTRIES,
 } from './cases/check-stdouts.ts'
 
 describe('linesOf', () => {
@@ -70,5 +71,21 @@ describe('lastLineOf', () => {
 
   it('refuses an empty stdout', () => {
     expect(() => lastLineOf('')).toThrowError(/printed nothing/u)
+  })
+})
+
+describe('notCheckedIn', () => {
+  it('gives each not-checked entry in the order printed, one quoting text over several lines whole, and reads none of it as a finding', () => {
+    expect({ notChecked: notCheckedIn(CHECK_STDOUT_WITH_NOT_CHECKED_ENTRIES), findings: findingsIn(CHECK_STDOUT_WITH_NOT_CHECKED_ENTRIES) }).toStrictEqual({
+      notChecked: [
+        'check: not checked: src/b.ts (it was deleted or replaced while check ran)',
+        "check: not checked: oxlint's rules (oxlint failed: Failed to parse oxlint configuration file.\n\n  x Rule 'no-such-rule' not found in plugin 'eslint')",
+      ],
+      findings: ['src/a.ts:2 no-debugger'],
+    })
+  })
+
+  it('gives none where check printed none', () => {
+    expect(notCheckedIn(CHECK_STDOUT_WITHOUT_AUTOFIXED_LINE)).toStrictEqual([])
   })
 })

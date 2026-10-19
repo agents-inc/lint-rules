@@ -1,5 +1,3 @@
-import { noteLine } from '../command-lines.ts'
-
 const COMMAND = 'check'
 // Follows "Fix " or "The list is complete: fix ".
 const ERRORS_ADVICE = "what is in code you wrote, then run check again. Do not read the lint configuration or this package's source; each line says what to fix."
@@ -10,7 +8,17 @@ export const UNUSED_SUPPRESSION_LABEL = 'unused suppression'
 export const WARNING_MARK = ' (warning)'
 export const MESSAGE_SEPARATOR = ' — '
 
-export const NOTHING_TO_CHECK = `${COMMAND}: no changed JS or TS files.`
+export const NOTHING_TO_CHECK = `${COMMAND}: no changed JS, TS, Vue, Svelte or Astro files.`
+
+/** What a not-checked line names where oxlint failed: every file is unchecked by oxlint's rules. */
+export const OXLINT_RULES = "oxlint's rules"
+
+export const GONE_WHILE_CHECK_RAN = 'it was deleted or replaced while check ran'
+
+/** `check: not checked: src/b.ts (it was deleted or replaced while check ran)` */
+export function notCheckedLine(subject: string, reason: string): string {
+  return `${COMMAND}: not checked: ${subject} (${reason})`
+}
 
 /** `1 error`, `2 errors`. */
 export function countOf(count: number, singular: string, plural: string): string {
@@ -30,7 +38,8 @@ export function cutLine(findingCount: number, fileCount: number): string {
   return `+${countOf(findingCount, 'more finding', 'more findings')} in ${countOf(fileCount, 'file', 'files')}. Fix the ones above, then run check again to see them.`
 }
 
-export type ListPrinted = 'complete' | 'cut'
+/** `partial`: something was cut or not checked. */
+export type ListPrinted = 'complete' | 'partial'
 
 export type SummaryCounts = {
   readonly errors: number
@@ -40,7 +49,7 @@ export type SummaryCounts = {
   readonly list: ListPrinted
 }
 
-/** Under a cut, it does not call the list complete. */
+/** It calls the list complete only where nothing was cut and everything was checked. */
 export function summaryLine({ errors, warnings, filesWithFindings, changedFiles, list }: SummaryCounts): string {
   const ofChangedFiles = `${String(filesWithFindings)} of ${countOf(changedFiles, 'changed file', 'changed files')}`
   if (errors > 0) {
@@ -50,16 +59,12 @@ export function summaryLine({ errors, warnings, filesWithFindings, changedFiles,
     const warningsLeft = `${COMMAND}: no errors; ${countOf(warnings, 'warning', 'warnings')} in ${ofChangedFiles}.`
     return list === 'complete' ? `${warningsLeft} ${LIST_IS_COMPLETE}.` : warningsLeft
   }
+  if (list === 'partial') return `${COMMAND}: no findings, but not everything was checked: report the lines above.`
   return `${COMMAND}: no findings in ${countOf(changedFiles, 'changed file', 'changed files')}.`
 }
 
 function errorsAdvice(list: ListPrinted): string {
   return list === 'complete' ? `${LIST_IS_COMPLETE}: fix ${ERRORS_ADVICE}` : `Fix ${ERRORS_ADVICE}`
-}
-
-/** Changed files outside the config's folder are left to that folder's own config. */
-export function skippedNote(count: number, configFolder: string): string {
-  return noteLine(COMMAND, `skipped ${countOf(count, 'changed file', 'changed files')} outside ${configFolder}.`)
 }
 
 export function notInGit(cwd: string): string {

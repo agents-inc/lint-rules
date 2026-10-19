@@ -1,22 +1,26 @@
-import { EXIT_CLEAN, EXIT_FINDINGS } from '../exit-codes.ts'
+import { EXIT_CLEAN, EXIT_COULD_NOT_RUN, EXIT_FINDINGS } from '../exit-codes.ts'
 import { NOT_FOUND } from '../not-found.ts'
 import { printedLengthOf, textOfLines } from '../printed-lines.ts'
-import { autofixedLine, cutLine, MESSAGE_SEPARATOR, summaryLine, WARNING_MARK } from './texts.ts'
+import { autofixedLine, cutLine, type ListPrinted, MESSAGE_SEPARATOR, notCheckedLine, summaryLine, WARNING_MARK } from './texts.ts'
 
 /** `file` is relative to the config's folder, with forward slashes. */
 export type CheckFinding = {
   readonly file: string
   readonly line: number
-  /** The rule's ID, or `parse error` or `unused suppression`. */
+  /** The rule's ID, oxlint's code where the catalog has no rule of it, or `parse error` or `unused suppression`. */
   readonly label: string
   readonly severity: 'error' | 'warning'
   readonly message: string
 }
 
+/** A file, as printed, or oxlint's rules, and why check could not lint it with them. */
+export type NotCheckedEntry = { readonly subject: string; readonly reason: string }
+
 export type CheckReportInput = {
   readonly findings: readonly CheckFinding[]
   readonly changedFileCount: number
   readonly autofixedFiles: readonly string[]
+  readonly notChecked: readonly NotCheckedEntry[]
 }
 
 export type CheckReport = { readonly stdout: string; readonly exitCode: number }
@@ -30,8 +34,11 @@ const PRINTED_FINDINGS_CAP = 8000
 // A first finding longer than the cap still prints, whole.
 const AT_LEAST_ONE = 1
 
-/** Errors first, then warnings, each by path then line; then the cut; the summary last. */
-export function checkReport({ findings, changedFileCount, autofixedFiles }: CheckReportInput): CheckReport {
+/**
+ * Errors first, then warnings, each by path then line; then the cut; then what was not checked; the
+ * summary last. Errors left exit 1; else anything not checked, 2.
+ */
+export function checkReport({ findings, changedFileCount, autofixedFiles, notChecked }: CheckReportInput): CheckReport {
   const unique = findingsOncePerLine(findings)
   const errors = inPrintOrder(unique, 'error')
   const warnings = inPrintOrder(unique, 'warning')
@@ -40,15 +47,16 @@ export function checkReport({ findings, changedFileCount, autofixedFiles }: Chec
     ...autofixedLines(autofixedFiles),
     ...printed.map(findingLine),
     ...cutLines(cut),
+    ...notChecked.map(({ subject, reason }) => notCheckedLine(subject, reason)),
     summaryLine({
       errors: errors.length,
       warnings: warnings.length,
       filesWithFindings: filesOf(unique).size,
       changedFiles: changedFileCount,
-      list: cut.length > 0 ? 'cut' : 'complete',
+      list: completenessOf(cut, notChecked),
     }),
   ]
-  return { stdout: textOfLines(lines), exitCode: errors.length > 0 ? EXIT_FINDINGS : EXIT_CLEAN }
+  return { stdout: textOfLines(lines), exitCode: exitCodeOf(errors, notChecked) }
 }
 
 /** The line a stopped run prints alone. Nothing where it names no file. */
@@ -59,6 +67,15 @@ export function autofixedStdout(autofixedFiles: readonly string[]): string {
 /** `src/cart.ts:30 no-console (warning) — <message>` */
 export function findingLine({ file, line, label, severity, message }: CheckFinding): string {
   return `${file}:${String(line)} ${label}${severity === 'warning' ? WARNING_MARK : ''}${MESSAGE_SEPARATOR}${message}`
+}
+
+function completenessOf(cut: readonly CheckFinding[], notChecked: readonly NotCheckedEntry[]): ListPrinted {
+  return cut.length > 0 || notChecked.length > 0 ? 'partial' : 'complete'
+}
+
+function exitCodeOf(errors: readonly CheckFinding[], notChecked: readonly NotCheckedEntry[]): number {
+  if (errors.length > 0) return EXIT_FINDINGS
+  return notChecked.length > 0 ? EXIT_COULD_NOT_RUN : EXIT_CLEAN
 }
 
 /** Identical findings, from both engines or from two passes, print once. */

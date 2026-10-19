@@ -22,11 +22,11 @@ function readManifest(): BinManifest {
 }
 
 describe('the bin entry', () => {
-  it('is agents-inc-lint, and only it, pointing at dist/cli.mjs (M-1)', () => {
+  it('is agents-inc-lint, and only it, pointing at dist/cli.mjs', () => {
     expect(readManifest().bin).toStrictEqual({ 'agents-inc-lint': './dist/cli.mjs' })
   })
 
-  it('is built, and starts with the line that has a shell run it with Node (M-1)', () => {
+  it('is built, and starts with the line that has a shell run it with Node', () => {
     expect({ built: existsSync(CLI_FILE), firstLine: existsSync(CLI_FILE) ? readFileSync(CLI_FILE, 'utf8').split('\n')[0] : null }).toStrictEqual({
       built: true,
       firstLine: SHEBANG,
@@ -34,7 +34,7 @@ describe('the bin entry', () => {
   })
 })
 
-describe('the bin entry and the package entry a config imports (K-21)', () => {
+describe('the bin entry and the package entry a config imports', () => {
   const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY), (project) => {
     project.write('src/a.ts', moduleText(exportedConstant('a'), DEBUGGER_STATEMENT))
   })

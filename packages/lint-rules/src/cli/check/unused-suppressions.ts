@@ -7,7 +7,8 @@ export type UnusedSuppression = { readonly line: number; readonly ruleName: stri
 
 type SuppressionForm = 'eslint' | 'oxlint'
 
-type UnusedInOxlint = UnusedSuppression & { readonly form: SuppressionForm }
+/** `commentLine`: where ESLint gives the name, its comment's first line, which differs from `line` in a comment over several lines. */
+type UnusedInOxlint = UnusedSuppression & { readonly form: SuppressionForm; readonly commentLine: number }
 
 type UnusedMessage = { readonly form: SuppressionForm; readonly start: RegExp }
 
@@ -18,6 +19,8 @@ type FileText = { readonly text: string; readonly bytes: Buffer; readonly commen
 
 /** Delimiters included. */
 type Comment = { readonly text: string; readonly start: number; readonly end: number }
+
+type ReadComments = { readonly text: string; readonly comments: readonly Comment[] }
 
 type Spanned = Comment & { readonly line: number }
 
@@ -44,7 +47,11 @@ const ON_A_DIRECTIVE_COMMENT = /^Unused (?:eslint|oxlint)-(?:disable|enable) dir
 const READ_BY_OXLINT_ALONE: SuppressionForm = 'oxlint'
 // oxlint gives a comment wholly unused as the comment's span, and one name of a comment partly used as that name's span.
 const COMMENT_START = /^(?:\/\/|\/\*)/u
-const DIRECTIVE = /^(?:\/\/|\/\*)\s*(?:eslint|oxlint)-(?:disable|enable)(?:-next-line|-line)?(?<names>[\s\S]*?)(?:\*\/)?$/u
+const LINE_COMMENT_START = '//'
+const DIRECTIVE_KEYWORD = String.raw`\s*(?:eslint|oxlint)-(?:disable|enable)(?:-next-line|-line)?`
+// A line comment's names run to its end, a `*/` there one of them (oxlint 1.87), or past it in a stale span; a block comment's stop at its close.
+const LINE_DIRECTIVE = new RegExp(String.raw`^\/\/${DIRECTIVE_KEYWORD}(?<names>[\s\S]*)$`, 'u')
+const BLOCK_DIRECTIVE = new RegExp(String.raw`^\/\*${DIRECTIVE_KEYWORD}(?<names>[\s\S]*?)(?:\*\/)?$`, 'u')
 const ENABLE_DIRECTIVE = /^(?:\/\/|\/\*)\s*(?:eslint|oxlint)-enable(?![\w-])/u
 // A disable or enable comment that holds until the next of the other kind: never `-line` or `-next-line`.
 const REGION_COMMENT = /^(?:\/\/|\/\*)\s*(?:eslint|oxlint)-(?:disable|enable)(?![\w-])/u
@@ -54,19 +61,29 @@ const LINE_FEED = '\n'
 
 const parseForEslint: ParseForEslint = tseslint.parser.parseForESLint
 
-/** `file` is the path, which says how to parse the text. */
+/** `file` is the path, which says how to parse the text. The two engines' reports of a name are matched by its comment. */
 export function namesSuppressingNothing(
   messages: readonly Linter.LintMessage[],
   diagnostics: readonly OxlintDiagnostic[],
   { file, text }: { readonly file: string; readonly text: string },
 ): UnusedSuppression[] {
   const unusedByEslint = new Set(unusedInEslint(messages).map(keyOf))
-  return unusedInOxlint(diagnostics, file, text).filter((unused) => unused.form === READ_BY_OXLINT_ALONE || unusedByEslint.has(keyOf(unused)))
+  return unusedInOxlint(diagnostics, file, text)
+    .filter((unused) => isUnusedInEveryEngineReadingIt(unused, unusedByEslint))
+    .map(asUnusedSuppression)
 }
 
 /** Such a diagnostic has no code, but is no parse error. */
 export function isAboutADirectiveComment(message: string): boolean {
   return ON_A_DIRECTIVE_COMMENT.test(message)
+}
+
+function isUnusedInEveryEngineReadingIt({ form, commentLine, ruleName }: UnusedInOxlint, unusedByEslint: ReadonlySet<string>): boolean {
+  return form === READ_BY_OXLINT_ALONE || unusedByEslint.has(keyOf({ line: commentLine, ruleName }))
+}
+
+function asUnusedSuppression({ line, ruleName }: UnusedInOxlint): UnusedSuppression {
+  return { line, ruleName }
 }
 
 function unusedInEslint(messages: readonly Linter.LintMessage[]): UnusedSuppression[] {
@@ -91,13 +108,38 @@ function unusedReportOf(diagnostic: OxlintDiagnostic): OxlintUnusedReport[] {
 }
 
 /**
- * A span no comment holds now was read from a text the file no longer holds. An `eslint-disable`
- * name is then left to ESLint's own report; an `oxlint-disable` one is dropped for this run.
+ * A span that fits no comment now, or a name that is none of its comment's own, was read from a text
+ * the file no longer holds. An `eslint-disable` name is then left to ESLint's own report; an
+ * `oxlint-disable` one is dropped for this run, and the next run reports the comment where it is.
  */
-function namesOxlintCallsUnusedIn({ form, span }: OxlintUnusedReport, file: FileText): UnusedInOxlint[] {
-  const spanned = spannedBy(file.bytes, span)
-  if (form === READ_BY_OXLINT_ALONE && liesInNoCommentNow(file, spanned)) return []
-  return namesIn(spanned.text).map((ruleName) => ({ line: lineOfTheDisableComment(file, spanned, ruleName), ruleName, form }))
+function namesOxlintCallsUnusedIn({ form, span }: OxlintUnusedReport, { text, bytes, comments }: FileText): UnusedInOxlint[] {
+  const spanned = spannedBy(bytes, span)
+  if (comments === null) return namesAtOxlintsLine(spanned, form)
+  const comment = commentNowAt(comments, spanned)
+  if (comment === null) return form === READ_BY_OXLINT_ALONE ? [] : namesAtOxlintsLine(spanned, form)
+  return namesPlacedIn({ text, comments }, comment, spanned, form)
+}
+
+/** Where check cannot read the comments, or no comment is there: oxlint's line, for both engines. */
+function namesAtOxlintsLine(spanned: Spanned, form: SuppressionForm): UnusedInOxlint[] {
+  return namesIn(spanned.text).map((ruleName) => ({ line: spanned.line, commentLine: spanned.line, ruleName, form }))
+}
+
+function namesPlacedIn(file: ReadComments, comment: Comment, spanned: Spanned, form: SuppressionForm): UnusedInOxlint[] {
+  return namesOxlintReadIn(comment, spanned).map((ruleName) => ({ ...placeOf(file, comment, spanned, ruleName), ruleName, form }))
+}
+
+/** A spanned name the comment does not hold is out of date, and dropped. */
+function namesOxlintReadIn(comment: Comment, spanned: Spanned): string[] {
+  const ownNames = namesIn(comment.text)
+  return namesIn(spanned.text).filter((ruleName) => ownNames.includes(ruleName))
+}
+
+/** A name of a disable comment at oxlint's line, the name's own; one at an enable comment at the disable comment it closes. */
+function placeOf(file: ReadComments, comment: Comment, spanned: Spanned, ruleName: string): Pick<UnusedInOxlint, 'line' | 'commentLine'> {
+  if (!ENABLE_DIRECTIVE.test(comment.text)) return { line: spanned.line, commentLine: lineAt(file.text, comment.start) }
+  const line = lineOfTheDisableComment(file, comment, spanned, ruleName)
+  return { line, commentLine: line }
 }
 
 function formOfAnUnusedSuppression({ code, message }: OxlintDiagnostic): SuppressionForm | null {
@@ -136,26 +178,24 @@ function parsedCommentsIn(ast: unknown): readonly ParsedComment[] {
 
 /**
  * oxlint gives an unused `disable` … `enable` pair at its enable comment, ESLint at its disable
- * comment (1.87, 10.12), so this finds the disable comment the enable one closes, in either form.
- * Where that fails, oxlint's line.
+ * comment's first line (1.87, 10.12), so this finds the disable comment the enable one closes, in
+ * either form. Where that fails, oxlint's line.
  */
-function lineOfTheDisableComment({ text, comments }: FileText, spanned: Spanned, ruleName: string): number {
-  if (comments === null) return spanned.line
-  const comment = commentAt(comments, spanned)
-  if (comment === null || !ENABLE_DIRECTIVE.test(comment.text)) return spanned.line
-  const opening = disableCommentOpenAt(comments, comment, ruleName)
+function lineOfTheDisableComment({ text, comments }: ReadComments, enable: Comment, spanned: Spanned, ruleName: string): number {
+  const opening = disableCommentOpenAt(comments, enable, ruleName)
   return opening === null ? spanned.line : lineAt(text, opening.start)
 }
 
-/** oxlint read a text the file no longer holds. */
-function liesInNoCommentNow({ comments }: FileText, spanned: Spanned): boolean {
-  return comments !== null && commentAt(comments, spanned) === null
+/** oxlint spans a wholly unused comment whole, else the name inside it. Null where the text there is no comment now. */
+function commentNowAt(comments: readonly Comment[], spanned: Spanned): Comment | null {
+  const found = spansAWholeComment(spanned)
+    ? comments.find(({ start }) => start === spanned.start)
+    : comments.find(({ start, end }) => start <= spanned.start && spanned.end <= end)
+  return found === undefined ? null : found
 }
 
-/** oxlint spans a wholly unused comment whole, else the name inside it. */
-function commentAt(comments: readonly Comment[], spanned: Spanned): Comment | null {
-  if (COMMENT_START.test(spanned.text)) return spanned
-  return comments.find(({ start, end }) => start <= spanned.start && spanned.end <= end) ?? null
+function spansAWholeComment({ text }: Spanned): boolean {
+  return COMMENT_START.test(text)
 }
 
 function disableCommentOpenAt(comments: readonly Comment[], enable: Comment, ruleName: string): Comment | null {
@@ -186,7 +226,8 @@ function lineAt(text: string, index: number): number {
 
 function namesIn(spanned: string): string[] {
   if (!COMMENT_START.test(spanned)) return [spanned]
-  const names = DIRECTIVE.exec(spanned)?.groups?.['names']
+  const directive = spanned.startsWith(LINE_COMMENT_START) ? LINE_DIRECTIVE : BLOCK_DIRECTIVE
+  const names = directive.exec(spanned)?.groups?.['names']
   if (names === undefined) return []
   return names
     .replace(JUSTIFICATION, '')

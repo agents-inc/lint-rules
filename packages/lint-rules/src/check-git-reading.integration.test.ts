@@ -3,20 +3,19 @@ import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { findingsIn } from './__tests__/check-output.ts'
 import { EXIT, runCheck } from './__tests__/cli-runs.ts'
-import { checkedPackageFiles, DEBUGGER_STATEMENT, exportedConstant, moduleText, REDUNDANCY } from './__tests__/factories/check-factories.ts'
-import { createGitProject } from './__tests__/git-projects.ts'
+import { checkedPackageFiles, DEBUGGER_STATEMENT, exportedConstant, moduleText, NOTHING_TO_CHECK, REDUNDANCY } from './__tests__/factories/check-factories.ts'
+import { createGitProject, type GitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
-import { entriesUnder, setUpEmptyFolders } from './__tests__/temp-projects.ts'
+import { entriesUnder, setUpEmptyFolders, type TempProjects } from './__tests__/temp-projects.ts'
 
 allowEveryTestForParallelLoad()
 
-const NOTHING_TO_CHECK = 'check: no changed JS or TS files.\n'
 // Read and list only: what a folder holding the OS temp folder, such as `/`, lets its user do.
 const READ_ONLY = 0o555
 const WRITABLE = 0o755
 
-describe('check on a changed file whose name, as a git pathspec, is a pattern (step 7)', () => {
+describe('check on a changed file whose name, as a git pathspec, is a pattern', () => {
   // A Next.js dynamic route: as a pattern, `[id]` is one letter of the two, so it matches `i.ts` too.
   const ROUTE = 'src/[id].ts'
   const MATCHED_BY_THE_PATTERN = 'src/i.ts'
@@ -40,7 +39,7 @@ describe('check on a changed file whose name, as a git pathspec, is a pattern (s
   })
 })
 
-describe('check where the OS temp folder is in a folder it may not write, as /tmp is in / (step 6)', () => {
+describe('check where the OS temp folder is in a folder it may not write, as /tmp is in /', () => {
   const emptyFolder = setUpEmptyFolders()
 
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
@@ -65,7 +64,7 @@ describe('check where the OS temp folder is in a folder it may not write, as /tm
   })
 })
 
-describe('check in a repo whose objects git finds only through GIT_ALTERNATE_OBJECT_DIRECTORIES (step 6)', () => {
+describe('check in a repo whose objects git finds only through GIT_ALTERNATE_OBJECT_DIRECTORIES', () => {
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, {
       repo: 'committed',
@@ -84,7 +83,25 @@ describe('check in a repo whose objects git finds only through GIT_ALTERNATE_OBJ
   })
 })
 
-describe('check where no changed file is one to lint (steps 6 and 8)', () => {
+describe('check in a repo that has a commit but no index file, as `git clone --no-checkout` leaves', () => {
+  const runs = setUpRunsBeforeTheSuite((tempProjects) => {
+    const untouched = committedWithoutAnIndex(tempProjects)
+    const edited = committedWithoutAnIndex(tempProjects)
+    edited.append('src/a.ts', moduleText(DEBUGGER_STATEMENT))
+    return { untouched: runCheck(untouched.dir), edited: runCheck(edited.dir) }
+  })
+
+  it("reads it as an empty one: nothing to check where nothing changed, and an edited file's finding on its changed line alone", () => {
+    const { untouched, edited } = runs()
+
+    expect({ untouched, edited: { exitCode: edited.exitCode, findings: findingsIn(edited.stdout) } }).toStrictEqual({
+      untouched: { exitCode: EXIT.clean, signal: null, stdout: NOTHING_TO_CHECK, stderr: '' },
+      edited: { exitCode: EXIT.findings, findings: ['src/a.ts:3 no-debugger'] },
+    })
+  })
+})
+
+describe('check where no changed file is one to lint', () => {
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, { ignores: ['src/generated/**'] }) })
     project.write('src/generated/gen.ts', moduleText(DEBUGGER_STATEMENT))
@@ -96,3 +113,13 @@ describe('check where no changed file is one to lint (steps 6 and 8)', () => {
     expect(run()).toStrictEqual({ exitCode: EXIT.clean, signal: null, stdout: NOTHING_TO_CHECK, stderr: '' })
   })
 })
+
+/** Its src/a.ts holds a committed debugger on line 2. */
+function committedWithoutAnIndex(tempProjects: TempProjects): GitProject {
+  const project = createGitProject(tempProjects, {
+    repo: 'committed',
+    files: { ...checkedPackageFiles(REDUNDANCY), 'src/a.ts': moduleText(exportedConstant('a'), DEBUGGER_STATEMENT) },
+  })
+  project.remove('.git/index')
+  return project
+}

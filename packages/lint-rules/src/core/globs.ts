@@ -1,3 +1,4 @@
+import { foundOr } from '@workspace/rule-data/collections'
 import { namedGroupsOf } from './named-groups.ts'
 
 const ANY_DEPTH = '**/'
@@ -34,6 +35,16 @@ export function negationOf(glob: string): string {
 
 export function keepingNegation(glob: string, change: (pattern: string) => string): string {
   return isNegated(glob) ? negationOf(change(withoutNegation(glob))) : change(glob)
+}
+
+export function isLedByAnyDepth(pattern: string): boolean {
+  return pattern.startsWith(ANY_DEPTH)
+}
+
+/** `./x` and `/x` each name x at the root, in the engine reading that form. */
+export function withoutRootAnchor(glob: string): string {
+  const anchored = pathAnchoredAtTheRoot(glob)
+  return anchored === null ? glob : anchored
 }
 
 /** ESLint drops a glob's leading `./` (@eslint/config-array, normalizePattern). */
@@ -101,9 +112,9 @@ function isReadAtAnyDepth(line: string): boolean {
 }
 
 export function filesOfExtensions(extensions: readonly string[]): string {
-  const [onlyExtension, ...rest] = extensions
-  if (onlyExtension === undefined) throw new Error('a glob of files by their extensions names at least one')
-  return `${EVERY_FILE_AT_ANY_DEPTH}${EXTENSION_DOT}${rest.length === 0 ? onlyExtension : `{${extensions.join(BRACE_SEPARATOR)}}`}`
+  const first = foundOr(extensions.at(0), 'a glob of files by their extensions names at least one')
+  const extensionsGlob = extensions.length === 1 ? first : `{${extensions.join(BRACE_SEPARATOR)}}`
+  return `${EVERY_FILE_AT_ANY_DEPTH}${EXTENSION_DOT}${extensionsGlob}`
 }
 
 export function extensionsNamedBy(glob: string): string[] | null {
@@ -111,8 +122,7 @@ export function extensionsNamedBy(glob: string): string[] | null {
   if (match === null) return null
   const { braced, bare } = namedGroupsOf(match)
   if (braced !== undefined) return braced.split(BRACE_SEPARATOR)
-  if (bare === undefined) throw new Error(`${FILES_OF_EXTENSIONS.source} matched ${glob} without an extension`)
-  return [bare]
+  return [foundOr(bare, `${FILES_OF_EXTENSIONS.source} matched ${glob} without an extension`)]
 }
 
 /** As an extglob, which only ESLint's minimatch reads. */

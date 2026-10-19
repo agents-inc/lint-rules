@@ -3,6 +3,7 @@
 export const EXIT_CLEAN = 0
 /** `check`: an error is left after the fixes. `init`: it refused, as the config exists. */
 export const EXIT_FINDINGS = 1
+/** `check`: also where no error is left but something was not checked. */
 export const EXIT_COULD_NOT_RUN = 2
 /** 128 + SIGINT's number, as a shell reports a process Ctrl+C ended. */
 export const EXIT_INTERRUPTED = 130

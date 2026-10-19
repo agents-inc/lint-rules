@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLintMessage, buildWithheldFixes, linesChanged, wholeFileChanged } from '../../__tests__/factories/check-factories.ts'
+import { buildLintMessage, buildLintWarning, buildWithheldFixes, linesChanged, wholeFileChanged } from '../../__tests__/factories/check-factories.ts'
 import { eslintFixFilter } from './eslint-fix-filter.ts'
 
 const A_FIXABLE_RULE = 'object-shorthand'
@@ -33,6 +33,13 @@ describe("the filter on ESLint's fixes", () => {
     const filter = eslintFixFilter(wholeFileChanged(), NONE_WITHHELD)
 
     expect([null, A_FIXABLE_RULE].map((ruleId) => filter(buildLintMessage({ ruleId, line: 1 })))).toStrictEqual([false, true])
+  })
+
+  // A team that sets a rule to warn has it listed, not fixed: check fixes errors alone.
+  it("never applies a warning's fix, even in a wholly changed file, beside the same rule's fix at error, which it applies", () => {
+    const filter = eslintFixFilter(wholeFileChanged(), NONE_WITHHELD)
+
+    expect([buildLintWarning({ ruleId: A_FIXABLE_RULE, line: 1 }), buildLintMessage({ ruleId: A_FIXABLE_RULE, line: 1 })].map(filter)).toStrictEqual([false, true])
   })
 
   it("applies another rule's fix beside a withheld one", () => {

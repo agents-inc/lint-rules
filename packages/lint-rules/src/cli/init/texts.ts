@@ -25,6 +25,8 @@ export function outsideGitNote(folder: string): string {
   return noteLine(COMMAND, `${folder} is not in a git repository, and check needs one.`)
 }
 
+export const GIT_COULD_NOT_RUN_NOTE = noteLine(COMMAND, 'git could not be run, and check needs it.')
+
 /** The file reads import.meta.dirname, which TypeScript types only with @types/node. */
 export function typesNodeNote(configFile: string): string {
   return noteLine(

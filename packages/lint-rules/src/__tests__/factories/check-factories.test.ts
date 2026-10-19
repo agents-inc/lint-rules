@@ -10,6 +10,8 @@ import {
   blockEnable,
   type EnableComment,
   exportedConstant,
+  GLOB_PLACES,
+  globsHeldBy,
   moduleText,
   oxlintParseError,
   oxlintUnusedEnable,
@@ -93,5 +95,27 @@ describe("oxlint's report of a parse error", () => {
     const text = moduleText(...A_SYNTAX_ERROR)
 
     expect(oxlintReportOn(text)).toStrictEqual([oxlintParseError(spanOfTextOnLine(text, BROKEN_LINE, '='))])
+  })
+})
+
+describe('globsHeldBy', () => {
+  const GLOBS_OF_EACH_PLACE = [
+    ['src/**'],
+    ['**/__tests__/**', 'src/**'],
+    ['**/*.ts', 'src/**'],
+    ['src/**'],
+    ['src/**'],
+    ['src/**'],
+    ['**/*.ts', 'src/**'],
+  ]
+
+  it('gives every glob each place holds, a nested list read through, in order', () => {
+    expect(GLOB_PLACES.map(({ holding }) => globsHeldBy(holding(['src/**'])))).toStrictEqual(GLOBS_OF_EACH_PLACE)
+  })
+
+  it("reads no plugin's, parser's or rule's own values, and gives a value under a glob key that is no string as its type", () => {
+    const config = { plugins: { a: { configs: { files: ['plugin/**'] } } }, rules: { b: ['error', { ignores: ['option/**'] }] }, files: [() => true, 'src/**'] }
+
+    expect(globsHeldBy(config)).toStrictEqual(['<function>', 'src/**'])
   })
 })

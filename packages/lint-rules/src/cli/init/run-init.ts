@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { catalog } from '@workspace/rule-data'
 import { listsPackage, ourPackageJsonFile, PACKAGE_JSON, type PackageJsonFile, readPackageJsonFile, THIS_PACKAGE, versionOf } from '../../core/package-json-files.ts'
 import { messageOf } from '../caught-errors.ts'
-import { gitTopLevelUnlessGitIsMissing } from '../check/git-changes.ts'
+import { type WhereInitRuns, whereInitRuns } from '../check/git-changes.ts'
 import { EXIT_CLEAN, EXIT_FINDINGS } from '../exit-codes.ts'
 import { foldersUpTo } from '../folders.ts'
 import type { Outcome } from '../outcome.ts'
@@ -11,7 +11,7 @@ import { textOfLines } from '../printed-lines.ts'
 import { INIT_CONFIG_FILE, initConfigText } from './config-text.ts'
 import { withDevDependency } from './package-json-edit.ts'
 import { packageManagerOf } from './package-manager.ts'
-import { configExists, type EntryWritten, initStdoutLines, noPackageJson, nothingWritten, outsideGitNote, typesNodeNote } from './texts.ts'
+import { configExists, type EntryWritten, GIT_COULD_NOT_RUN_NOTE, initStdoutLines, noPackageJson, nothingWritten, outsideGitNote, typesNodeNote } from './texts.ts'
 import { type FileWrite, writeAllOrNone } from './write-all-or-none.ts'
 
 const TYPES_NODE = '@types/node'
@@ -34,11 +34,11 @@ export function initIn(cwd: string, signal: AbortSignal): Outcome {
 
 /** Worked out before writing, so an unreadable package.json refuses the run with nothing written. */
 function printedOnceWritten(cwd: string, entry: EntryWritten): Outcome {
-  const gitTopLevel = gitTopLevelUnlessGitIsMissing(cwd)
-  const folders = gitTopLevel === null ? [cwd] : foldersUpTo(cwd, gitTopLevel)
+  const where = whereInitRuns(cwd)
+  const folders = where.kind === 'in a repo' ? foldersUpTo(cwd, where.topLevel) : [cwd]
   return {
     stdout: textOfLines(initStdoutLines(entry, THIS_PACKAGE, INIT_CONFIG_FILE, packageManagerOf(folders))),
-    stderr: textOfLines(notesOf(cwd, gitTopLevel, folders)),
+    stderr: textOfLines(notesOf(cwd, where, folders)),
     exitCode: EXIT_CLEAN,
   }
 }
@@ -71,12 +71,24 @@ function writeEveryFileOrSayNoneChanged(writes: readonly FileWrite[]): void {
   }
 }
 
-/** Outside git, and @types/node listed in no package.json from the folder up to the git top level. */
-function notesOf(cwd: string, gitTopLevel: string | null, folders: readonly string[]): string[] {
-  return [
-    ...(gitTopLevel === null ? [outsideGitNote(cwd)] : []),
-    ...(folders.some(listsTypesNode) ? [] : [typesNodeNote(INIT_CONFIG_FILE)]),
-  ]
+/** Outside git, or where git could not run, and @types/node listed in no package.json from the folder up to the git top level. */
+function notesOf(cwd: string, where: WhereInitRuns, folders: readonly string[]): string[] {
+  return [...gitNotesOf(cwd, where), ...typesNodeNotesOf(folders)]
+}
+
+function gitNotesOf(cwd: string, where: WhereInitRuns): string[] {
+  switch (where.kind) {
+    case 'in a repo':
+      return []
+    case 'outside a repo':
+      return [outsideGitNote(cwd)]
+    case 'git could not run':
+      return [GIT_COULD_NOT_RUN_NOTE]
+  }
+}
+
+function typesNodeNotesOf(folders: readonly string[]): string[] {
+  return folders.some(listsTypesNode) ? [] : [typesNodeNote(INIT_CONFIG_FILE)]
 }
 
 function listsTypesNode(folder: string): boolean {

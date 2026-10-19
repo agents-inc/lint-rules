@@ -26,7 +26,7 @@ const ANOTHER_EXPERIMENT = 'A loader that replaces Type Stripping is experimenta
 // Starting as Node's warning does, but no experimental one.
 const A_DEPRECATION = 'Type Stripping options in this config are deprecated'
 
-describe('check where the config it imports has Node warn (Output contract)', () => {
+describe('check where the config it imports has Node warn', () => {
   const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const config = `${checkConfigText(REDUNDANCY)}${moduleText(
       emittingAWarning('ExperimentalWarning', NODES_TYPE_STRIPPING_WARNING),

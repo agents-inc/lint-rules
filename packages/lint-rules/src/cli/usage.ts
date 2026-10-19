@@ -4,7 +4,7 @@ import { type Command, couldNotRunLine } from './command-lines.ts'
 
 export const USAGE = `usage: agents-inc-lint <command>
   init   add @agents-inc/lint-rules and agents-inc.lint.mts to the package in this folder
-  check  lint the JS and TS lines changed since the last commit
+  check  lint the JS, TS, Vue, Svelte and Astro lines changed since the last commit
 `
 
 const COMMANDS: readonly Command[] = ['check', 'init']

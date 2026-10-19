@@ -24,6 +24,12 @@ export const RETHROWN_BY_A_USELESS_CATCH = ['export function rethrown(task: () =
 /** The same function with only line 5, inside the finding, changed. */
 export const RETHROWN_WITH_A_COMMENT_ADDED = ['export function rethrown(task: () => void) {', '  try {', '    task()', '  } catch (error) {', '    throw error // rethrown as it is', '  }', '}']
 
+/** A module whose one export, a default, is named apart from its file: ESLint's sonarjs/file-name-differ-from-class, in naming, at line 0. */
+export const A_DEFAULT_EXPORT_NAMED_APART = ["const label = 'before'", 'export default label']
+
+/** The same module with only line 1 changed. */
+export const A_DEFAULT_EXPORT_NAMED_APART_ITS_VALUE_CHANGED = ["const label = 'after'", 'export default label']
+
 /** Line 2 holds a declaration with no name: a parse error in both engines. */
 export const A_SYNTAX_ERROR = [exportedConstant('beforeTheError'), 'export const = 2']
 
@@ -49,6 +55,9 @@ export const A_SUPPRESSION_OVER_A_FINDING = [exportedConstant('bannedOver'), '//
 
 /** A `no-restricted-syntax` selector ESLint throws on when it lints, though defineLintRules accepts it (measured, ESLint 10.12). */
 export const A_SELECTOR_ESLINT_THROWS_ON = '[[['
+
+/** What ESLint throws on that selector, as each file is linted (measured, ESLint 10.12). */
+export const A_SELECTOR_ESLINT_THROWS_ON_MESSAGE = String.raw`Syntax error in selector "[[[" at position 1: Expected " " or [^ [\],():#!=><~+.] but "[" found.`
 
 /** A project's own ESLint config, which throws if anything imports it. */
 export const THROWING_ESLINT_CONFIG = moduleText("throw new Error('check imported the eslint.config.mjs of the project')")
@@ -95,7 +104,7 @@ export const NAMED_IMPORTS_OUT_OF_ORDER = ["import { sep, join } from 'node:path
 export const NAMED_IMPORTS_SORTED = ["import { join, sep } from 'node:path'", "export const nested = join('a', sep)"]
 
 /**
- * import-x/first, oxlint, in modules, on line 2: an import below other code. The import is read, not
+ * import-x/first, oxlint, in import-order, on line 2: an import below other code. The import is read, not
  * re-exported, which unicorn/prefer-export-from would fix into an `export … from`.
  */
 export const AN_IMPORT_BELOW_CODE = ['export const before = 1', "import { sep } from 'node:path'", 'export const after = sep.length']
@@ -173,11 +182,6 @@ export const OXLINT_FORM_SUPPRESSIONS_ONE_UNUSED = [
  */
 export const A_LITERAL_THROWN = "throw 'generated'"
 
-/** A component file with a script oxlint would fix, were it given the file. */
-export function componentWithAScript(scriptLine: string): string {
-  return moduleText('<script lang="ts">', scriptLine, '</script>')
-}
-
 /** A committed file whose line 2 is an `eslint-enable` comment that turns back on nothing a disable comment turned off. */
 export const AN_ENABLE_CLOSING_NOTHING = [
   exportedConstant('before'),
@@ -241,3 +245,113 @@ export function movedDownByAnotherWriter(lines: readonly string[]): string[] {
 
 /** An import of our package, which `init` lists under devDependencies alone. */
 export const AN_IMPORT_OF_OUR_PACKAGE = ["import { defineLintRules } from '@agents-inc/lint-rules'", 'export const define = defineLintRules']
+
+/** An async function returning 1, which a monorepo package's lib folder holds. */
+export const AN_ASYNC_LOAD = ['export async function load(): Promise<number> {', '  return 1', '}']
+
+/** A call to that function left floating (line 4), beside one awaited (line 5): @typescript-eslint/no-floating-promises at line 4 alone. */
+export const A_FLOATING_CALL_BESIDE_AN_AWAITED_ONE = ["import { load } from './lib/load.ts'", '', 'export async function run(): Promise<void> {', '  load()', '  await load()', '}']
+
+/** The `value` of the module named, read in a function rather than re-exported: import-x/no-extraneous-dependencies at line 1 where the package is not listed. */
+export function aValueReadFrom(specifier: string): string[] {
+  return [`import { value } from '${specifier}'`, '', 'export function read(): number {', '  return value', '}']
+}
+
+/** A name the lib folder's value.ts lacks, imported through the alias given: import-x/named at line 1 where the alias resolves. */
+export function aNameTheAliasedModuleLacks(alias: string): string[] {
+  return [`import { missing } from '${alias}/value.ts'`, '', 'export function aliased(): number {', '  return missing', '}']
+}
+
+/** A module exporting `one`, which an alias leads to. */
+export const THE_ALIASED_MODULE = [exportedConstant('one')]
+
+/** oxlint's no-debugger at line 2 and ESLint's @typescript-eslint/only-throw-error at line 3, in a TS file a tsconfig takes in. */
+export const A_DEBUGGER_AND_A_LITERAL_THROWN = [exportedConstant('reported'), DEBUGGER_STATEMENT, A_LITERAL_THROWN]
+
+/** A block `eslint-disable` over lines 1 to 4 above a `debugger`: no-console, on line 3, suppresses nothing. */
+export const A_DISABLE_OVER_SEVERAL_LINES_ABOVE_A_DEBUGGER = ['/* eslint-disable', '  no-debugger,', `  ${A_RULE_REPORTING_NOTHING}`, '*/', DEBUGGER_STATEMENT]
+
+/** The same comment on one line. */
+export const A_DISABLE_ON_ONE_LINE_ABOVE_A_DEBUGGER = [`/* eslint-disable no-debugger, ${A_RULE_REPORTING_NOTHING} */`, DEBUGGER_STATEMENT]
+
+/** The lines given, after another writer added a character to the first: every later byte moves one on. */
+export function withACharacterAddedToTheFirstLine([first, ...rest]: readonly string[]): string[] {
+  if (first === undefined) throw new Error('there is no first line to add a character to')
+  return [`${first}2`, ...rest]
+}
+
+/** An `oxlint-disable` comment on line 2 of an oxlint-run rule nothing below it reports: oxlint spans the whole comment. */
+export const A_WHOLLY_UNUSED_OXLINT_DISABLE = [exportedConstant('before'), suppressionOfTheNextLine('oxlint', 'no-debugger'), exportedConstant('after')]
+
+/** That file after another writer put a string holding the comment's text where oxlint read it, and moved the comment to line 3. */
+export const A_WHOLLY_UNUSED_OXLINT_DISABLE_BELOW_A_STRING_HOLDING_ITS_TEXT = [
+  exportedString('quoted1', suppressionOfTheNextLine('oxlint', 'no-debugger')),
+  exportedConstant('between'),
+  suppressionOfTheNextLine('oxlint', 'no-debugger'),
+  exportedConstant('after'),
+]
+
+/** A wholly unused `oxlint-disable` comment of two names on line 1: oxlint spans the whole comment. */
+export const A_WHOLLY_UNUSED_OXLINT_DISABLE_OF_TWO_NAMES = [suppressionOfTheNextLine('oxlint', `no-debugger, ${A_RULE_REPORTING_NOTHING}`), exportedConstant('after')]
+
+/** That file after another writer took the second name out: the code below now lies where oxlint read the name. */
+export const A_WHOLLY_UNUSED_OXLINT_DISABLE_WITH_A_NAME_TAKEN_OUT = [suppressionOfTheNextLine('oxlint', 'no-debugger'), exportedConstant('after')]
+
+/** A string holding a rule's name on line 1, above an `oxlint-disable` comment of that rule on line 2. */
+export const A_RULE_NAME_IN_A_STRING_ABOVE_A_SUPPRESSION_OF_IT = [
+  exportedString('rule', A_RULE_REPORTING_NOTHING),
+  suppressionOfTheNextLine('oxlint', A_RULE_REPORTING_NOTHING),
+  exportedConstant('after'),
+]
+
+/** A Vue single-file component whose script holds the lines given, from line 5. */
+export function vueComponentScripting(lines: readonly string[]): string[] {
+  return ['<template>', '  <p>hi</p>', '</template>', '<script lang="ts">', ...lines, '</script>']
+}
+
+/** A Svelte component whose script holds the lines given, from line 2. */
+export function svelteComponentScripting(lines: readonly string[]): string[] {
+  return ['<script lang="ts">', ...lines, '</script>', '<p>hi</p>']
+}
+
+/** An Astro component whose frontmatter holds the lines given, from line 2. */
+export function astroComponentScripting(lines: readonly string[]): string[] {
+  return ['---', ...lines, '---', '<p>hi</p>']
+}
+
+/** Each component file kind check lints with oxlint's rules alone, and the line its script's first line is on. */
+export const COMPONENT_FILE_KINDS = [
+  { kind: 'Vue', extension: 'vue', scripting: vueComponentScripting, firstScriptLine: 5 },
+  { kind: 'Svelte', extension: 'svelte', scripting: svelteComponentScripting, firstScriptLine: 2 },
+  { kind: 'Astro', extension: 'astro', scripting: astroComponentScripting, firstScriptLine: 2 },
+] as const
+
+/** oxlint's no-useless-rename on the first line, whose fix drops the rename, in a component's script of each kind too (measured, oxlint 1.87). */
+export const A_USELESS_RENAME = ["const { length: length } = 'ab'", 'export const big = length']
+export const A_USELESS_RENAME_FIXED = ["const { length } = 'ab'", 'export const big = length']
+
+/** src/cycle.ts, re-exporting a name from itself: a re-export cycle, which no rule reports. */
+export const RE_EXPORTING_ITSELF = { file: 'src/cycle.ts', lines: ["export { looped } from './cycle.ts'"] }
+
+/** A constant marked deprecated (src/old.ts), re-exported (src/passed-on.ts) and read through that (src/read.ts): no-deprecated at the read, line 3. */
+export const A_DEPRECATED_CONSTANT_PASSED_ON: Readonly<Record<string, readonly string[]>> = {
+  'src/old.ts': ['/** @deprecated read `current` */', 'export const old = 1'],
+  'src/passed-on.ts': ["export { old } from './old.ts'"],
+  'src/read.ts': ["import { old } from './passed-on.ts'", '', 'export const read = old'],
+}
+
+/** A type (src/shape.ts) re-exported as a value (src/shape-passed-on.ts), which consistent-type-exports fixes to SHAPE_PASSED_ON_AS_A_TYPE. */
+export const A_TYPE_PASSED_ON_AS_A_VALUE: Readonly<Record<string, readonly string[]>> = {
+  'src/shape.ts': ['export type Shape = { readonly side: number }'],
+  'src/shape-passed-on.ts': ["export { Shape } from './shape.ts'"],
+}
+
+export const SHAPE_PASSED_ON_AS_A_TYPE = { file: 'src/shape-passed-on.ts', lines: ["export type { Shape } from './shape.ts'"] }
+
+// An `oxlint-disable` comment over a `debugger`, ending in the characters that close a block comment: oxlint reads them
+// as a name of a line comment, reported unused at those 2 bytes, trailing spaces or none (1.87), and as a block comment's close.
+export const STRAY_COMMENT_CLOSES = [
+  { comment: 'a line comment', suppression: '// oxlint-disable-next-line no-debugger */', aName: true },
+  { comment: 'a line comment ending in two spaces', suppression: '// oxlint-disable-next-line no-debugger */  ', aName: true },
+  { comment: 'a block comment, which it closes', suppression: '/* oxlint-disable-next-line no-debugger */', aName: false },
+] as const

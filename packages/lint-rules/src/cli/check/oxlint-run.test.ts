@@ -1,16 +1,20 @@
 import { readdirSync } from 'node:fs'
-import { basename } from 'node:path'
+import { basename, join } from 'node:path'
+import { buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import type { OxlintConfig, OxlintOverride } from 'oxlint'
 import { describe, expect, it } from 'vitest'
 import { idOfAnEndedProcess, tempConfigNameOf, tempConfigPatternOf } from '../../__tests__/cli-runs.ts'
-import { buildCatalog, buildEslintRoute, buildOxlintRoute, buildQualityRuleset, buildShippedRule } from '../../__tests__/factories/catalog-factories.ts'
-import { buildWithheldFixes } from '../../__tests__/factories/check-factories.ts'
+import { buildCatalog, buildEslintRoute, buildOxlintRoute, buildQualityRuleset } from '../../__tests__/factories/catalog-factories.ts'
+import { OXLINT_REFUSAL_OF_A_RULE, RULE_OXLINT_DOES_NOT_HAVE } from '../../__tests__/cases/oxlint-refusals.ts'
+import { buildWithheldFixes, DEBUGGER_STATEMENT, moduleText } from '../../__tests__/factories/check-factories.ts'
+import { settledOf } from '../../__tests__/settled-runs.ts'
 import { setUpTempProjects } from '../../__tests__/temp-projects.ts'
-import { fixRunConfigOf, tempOxlintConfigIn } from './oxlint-run.ts'
+import { oxlintRulesFailed } from './not-checked.ts'
+import { fixRunConfigOf, oxlintLintRun, tempOxlintConfigIn } from './oxlint-run.ts'
 
 const tempProjects = setUpTempProjects()
 
-describe("the sweep of other runs' temporary oxlint configs (K-11)", () => {
+describe("the sweep of other runs' temporary oxlint configs", () => {
   // Process 1 lives, and belongs to root: another user is not permitted to signal it (EPERM).
   const A_LIVE_PROCESS_OF_ANOTHER_USER = 1
   const ENDED = idOfAnEndedProcess()
@@ -31,7 +35,7 @@ describe("the sweep of other runs' temporary oxlint configs (K-11)", () => {
   })
 })
 
-describe("oxlint's fix run config (X2)", () => {
+describe("oxlint's fix run config", () => {
   const QUALITY = 'quality-set'
   const WITHHELD_ON_OXLINT = 'unicorn/prefer-optional-catch-binding'
   const WITHHELD_ON_ESLINT = 'perfectionist/sort-arrays'
@@ -55,5 +59,48 @@ describe("oxlint's fix run config (X2)", () => {
 
   it('leaves the build as it is where no withheld rule runs on oxlint', () => {
     expect(fixRunConfigOf(AGENT_BUILD, buildWithheldFixes(WITHHELD_ON_ESLINT), CATALOG)).toStrictEqual(AGENT_BUILD)
+  })
+
+  // A team that sets a rule to warn has it listed, not fixed: check fixes errors alone.
+  it('turns each rule set to warn off, at the top and in each override, its options with it, and leaves each rule at error on', () => {
+    const WARNED_IN_AN_OVERRIDE: OxlintOverride = { files: ['src/**'], rules: { 'no-console': ['warn', { allow: ['info'] }], [WITHHELD_ON_OXLINT]: 'error' } }
+    const warned: OxlintConfig = { rules: { [WITHHELD_ON_OXLINT]: 'warn', 'no-debugger': 'error' }, overrides: [WARNED_IN_AN_OVERRIDE] }
+
+    expect(fixRunConfigOf(warned, buildWithheldFixes(WITHHELD_ON_ESLINT), CATALOG)).toStrictEqual({
+      rules: { [WITHHELD_ON_OXLINT]: 'off', 'no-debugger': 'error' },
+      overrides: [{ files: ['src/**'], rules: { 'no-console': 'off', [WITHHELD_ON_OXLINT]: 'error' } }],
+    })
+  })
+})
+
+describe("oxlint's lint run", () => {
+  const LINTED_FILE = 'src/a.ts'
+  const ACCEPTED: OxlintConfig = { rules: { 'no-debugger': 'error' } }
+  const REFUSED: OxlintConfig = { rules: { [RULE_OXLINT_DOES_NOT_HAVE]: 'error' } }
+
+  function lintedIn(folder: string, config: OxlintConfig, signal: AbortSignal): ReturnType<typeof oxlintLintRun> {
+    return oxlintLintRun(tempOxlintConfigIn(folder), config, [join(folder, LINTED_FILE)], signal)
+  }
+
+  it("lists oxlint's rules as not checked, quoting all oxlint printed, where it refuses the config, beside a run it reports", async () => {
+    const folder = tempProjects.create({ files: { [LINTED_FILE]: moduleText(DEBUGGER_STATEMENT) } })
+    const running = new AbortController().signal
+    const [refused, accepted] = [await lintedIn(folder, REFUSED, running), await lintedIn(folder, ACCEPTED, running)]
+
+    expect({ refused, accepted: { codes: accepted.report.diagnostics.map(({ code }) => code), notChecked: accepted.notChecked } }).toStrictEqual({
+      refused: { report: { diagnostics: [] }, notChecked: [oxlintRulesFailed(new Error(`oxlint failed: ${OXLINT_REFUSAL_OF_A_RULE}`))] },
+      accepted: { codes: ['eslint(no-debugger)'], notChecked: [] },
+    })
+  })
+
+  it('throws where the signal stopped it, beside a run oxlint refuses, which it lists', async () => {
+    const folder = tempProjects.create({ files: { [LINTED_FILE]: moduleText(DEBUGGER_STATEMENT) } })
+    const stopped = AbortSignal.abort()
+    const settled = await settledOf(lintedIn(folder, REFUSED, stopped))
+
+    expect({ threw: 'threw' in settled, listed: (await lintedIn(folder, REFUSED, new AbortController().signal)).notChecked }).toStrictEqual({
+      threw: true,
+      listed: [oxlintRulesFailed(new Error(`oxlint failed: ${OXLINT_REFUSAL_OF_A_RULE}`))],
+    })
   })
 })

@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   A_SELECTOR_ESLINT_THROWS_ON,
   ATTEMPT,
+  A_SELECTOR_ESLINT_THROWS_ON_MESSAGE,
+  A_USELESS_RENAME,
+  A_USELESS_RENAME_FIXED,
   ATTEMPT_CATCHING,
-  componentWithAScript,
   IDS_AS_A_SET,
   IDS_AS_AN_ARRAY,
   IDS_FIXED,
@@ -13,10 +15,11 @@ import {
   SHORTHAND_SECOND,
   SHORTHAND_SECOND_FIXED,
   UNITS,
+  vueComponentScripting,
   WRAP,
   WRAP_FIXED,
 } from './__tests__/cases/check-sources.ts'
-import { autofixedFilesIn, autofixedLineOf, findingsIn, findingsInFile } from './__tests__/check-output.ts'
+import { autofixedFilesIn, autofixedLineOf, findingsIn, findingsInFile, lastLineOf, notCheckedIn } from './__tests__/check-output.ts'
 import {
   type BackgroundRun,
   checkRunningOnBesideAnotherWriter,
@@ -29,19 +32,23 @@ import {
   RUNS_IN_THE_BACKGROUND,
 } from './__tests__/cli-runs.ts'
 import {
-  CHECK_ESLINT_FAILED,
+  A_TSCONFIG_TAKING_IN_THE_REPO,
   CHECK_INTERRUPTED,
   checkedPackageFiles,
   DEBUGGER_STATEMENT,
+  eslintMessageWhileLinting,
   exportedConstant,
   exportedConstFixedFromLet,
   exportedLet,
   moduleText,
+  NOT_EVERYTHING_CHECKED_SUMMARY,
+  notCheckedAsGone,
+  notCheckedByEslint,
   REDUNDANCY,
 } from './__tests__/factories/check-factories.ts'
 import { createGitProject, type GitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
+import { runMadeFor, setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { type TempProjects, textsOf } from './__tests__/temp-projects.ts'
 
 // The fixable rules here, measured on the agent build (oxlint 1.87, ESLint 10.12): prefer-const
@@ -54,6 +61,8 @@ allowEveryTestForParallelLoad()
 const FIXES = { quality: ['correctness', 'redundancy', 'modern-js', 'immutability', 'conventions'] } as const
 const ORDERING_AND_MODERN_JS = { quality: ['ordering', 'modern-js'] } as const
 const IMMUTABILITY = { quality: ['immutability'] } as const
+const IMMUTABILITY_AND_REDUNDANCY = { quality: ['immutability', 'redundancy'] } as const
+const MODERN_JS_AND_IMMUTABILITY = { quality: ['modern-js', 'immutability'] } as const
 
 // ESLint fixes files one at a time, in path order, after oxlint's fix run, so once the first file
 // holds ESLint's fix, a signal lands while check is still fixing. The last file holds nothing to fix.
@@ -139,7 +148,7 @@ describe('check fixing what agents changed', () => {
     return { result, before, after: textsOf(project.dir, changedFiles) }
   })
 
-  it('fixes an ESLint-fixable and an oxlint-fixable finding in a new file, reports neither, and names the file in the autofixed line (F-1)', () => {
+  it('fixes an ESLint-fixable and an oxlint-fixable finding in a new file, reports neither, and names the file in the autofixed line', () => {
     const { result, after } = run()
 
     expect({
@@ -149,7 +158,7 @@ describe('check fixing what agents changed', () => {
     }).toStrictEqual({ text: moduleText(exportedConstFixedFromLet('count'), 'export const point = { count }'), findings: [], autofixed: true })
   })
 
-  it('fixes an ESLint finding on a changed line, and leaves the same finding on an unchanged line, byte for byte, and unreported (F-2)', () => {
+  it('fixes an ESLint finding on a changed line, and leaves the same finding on an unchanged line, byte for byte, and unreported', () => {
     const { result, after } = run()
 
     expect({ text: after['src/eslint-partly.ts'], findings: findingsInFile(result.stdout, 'src/eslint-partly.ts') }).toStrictEqual({
@@ -158,7 +167,7 @@ describe('check fixing what agents changed', () => {
     })
   })
 
-  it("drops oxlint's fixes in a file where they would modify an unchanged line, reporting the finding on the changed one (F-3)", () => {
+  it("drops oxlint's fixes in a file where they would modify an unchanged line, reporting the finding on the changed one", () => {
     const { result, before, after } = run()
 
     expect({
@@ -168,7 +177,7 @@ describe('check fixing what agents changed', () => {
     }).toStrictEqual({ text: before['src/oxlint-guard.ts'], findings: ['src/oxlint-guard.ts:2 prefer-const'], autofixed: false })
   })
 
-  it("drops every one of ESLint's fixes in a file where one would rewrite unchanged lines, reporting both findings (F-3)", () => {
+  it("drops every one of ESLint's fixes in a file where one would rewrite unchanged lines, reporting both findings", () => {
     const { result, before, after } = run()
 
     expect({
@@ -185,7 +194,7 @@ describe('check fixing what agents changed', () => {
   it.each([
     { kind: 'a file only part of which changed', file: 'src/caught-partly.ts' },
     { kind: 'a new file', file: 'src/caught-new.ts' },
-  ])("never loses a caught error's cause silently, in $kind: the file keeps a cause, or check reports it missing (F-5, P3)", ({ file }) => {
+  ])("never loses a caught error's cause silently, in $kind: the file keeps a cause, or check reports it missing", ({ file }) => {
     const { result, after } = run()
     const text = after[file]
     if (text === undefined) throw new Error(`${file} was not read after the run`)
@@ -196,7 +205,7 @@ describe('check fixing what agents changed', () => {
     }).toStrictEqual({ ran: true, causeAccountedFor: true })
   })
 
-  it('reads the changed lines again after fixing: a fix that deletes lines does not make the finding below them, older than the change, reported (F-10)', () => {
+  it('reads the changed lines again after fixing: a fix that deletes lines does not make the finding below them, older than the change, reported', () => {
     const { result, after } = run()
 
     expect({
@@ -207,7 +216,7 @@ describe('check fixing what agents changed', () => {
   })
 })
 
-describe('check on a fix it withholds, and on a warning (F-4, P4)', () => {
+describe('check on a fix it withholds, and on a warning', () => {
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(ORDERING_AND_MODERN_JS, { rules: { 'object-shorthand': 'warn' } }) })
     project.write('src/units.ts', moduleText(...UNITS))
@@ -216,7 +225,7 @@ describe('check on a fix it withholds, and on a warning (F-4, P4)', () => {
     return { result, after: textsOf(project.dir, ['src/units.ts', 'src/warned.ts']) }
   })
 
-  it('keeps an array whose order the program observes in its order, and reports it (F-4)', () => {
+  it('keeps an array whose order the program observes in its order, and reports it', () => {
     const { result, after } = run()
 
     expect({ exitCode: result.exitCode, text: after['src/units.ts'], findings: findingsInFile(result.stdout, 'src/units.ts') }).toStrictEqual({
@@ -226,14 +235,17 @@ describe('check on a fix it withholds, and on a warning (F-4, P4)', () => {
     })
   })
 
-  it('fixes a finding a team set to warn, as it does an error (P4)', () => {
+  it('lists a finding a team set to warn as a warning, and fixes it not', () => {
     const { result, after } = run()
 
-    expect({ text: after['src/warned.ts'], findings: findingsInFile(result.stdout, 'src/warned.ts') }).toStrictEqual({ text: moduleText(...WRAP_FIXED), findings: [] })
+    expect({ text: after['src/warned.ts'], findings: findingsInFile(result.stdout, 'src/warned.ts') }).toStrictEqual({
+      text: moduleText(...WRAP),
+      findings: ['src/warned.ts:2 object-shorthand (warning)'],
+    })
   })
 })
 
-describe('check where nothing it finds can be fixed (F-8)', () => {
+describe('check where nothing it finds can be fixed', () => {
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, {
       repo: 'committed',
@@ -259,27 +271,71 @@ describe('check where nothing it finds can be fixed (F-8)', () => {
   })
 })
 
-describe('check fixing only what it checks (F-9)', () => {
-  const APP = 'app'
-  const UNTOUCHABLE = ['lib/outside.ts', `${APP}/src/generated/generated.ts`, `${APP}/src/component.vue`]
+describe("check on fixable rules a team set to warn, in its rules or a file override, beside the same rules at error", () => {
+  // object-shorthand (ESLint) on line 2 of src/wrap.ts, prefer-const (oxlint) on line 1 of src/count.ts.
+  const WARNED = { 'object-shorthand': 'warn', 'prefer-const': 'warn' } as const
+  const FILES = ['src/count.ts', 'src/wrap.ts']
+  const BEFORE = { 'src/count.ts': moduleText(exportedLet('count')), 'src/wrap.ts': moduleText(...WRAP) }
+  const FIXED = { 'src/count.ts': moduleText(exportedConstFixedFromLet('count')), 'src/wrap.ts': moduleText(...WRAP_FIXED) }
+  const SET_TO_WARN = [
+    { kind: 'in its rules', fields: { rules: WARNED } },
+    { kind: 'in a file override', fields: { fileOverrides: [{ files: ['src/**'], rules: WARNED }] } },
+  ]
+  const AT_ERROR = { kind: 'at error, as they ship', fields: {} }
+  const SETTINGS = [...SET_TO_WARN, AT_ERROR]
 
-  const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(IMMUTABILITY, { ignores: ['src/generated/**'] }, `${APP}/`) })
-    project.write('lib/outside.ts', moduleText(exportedLet('outside')))
-    project.write(`${APP}/src/generated/generated.ts`, moduleText(exportedLet('generated')))
-    project.write(`${APP}/src/component.vue`, componentWithAScript(exportedLet('inAComponent')))
-    project.write(`${APP}/src/fixable.ts`, moduleText(exportedLet('fixable')))
-    const before = textsOf(project.dir, UNTOUCHABLE)
-    const result = runCheck(project.pathOf(APP))
-    return { result, before, after: textsOf(project.dir, [...UNTOUCHABLE, `${APP}/src/fixable.ts`]) }
+  const runs = setUpRunsBeforeTheSuite((tempProjects) =>
+    SETTINGS.map(({ kind, fields }) => {
+      const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(MODERN_JS_AND_IMMUTABILITY, fields) })
+      Object.entries(BEFORE).forEach(([file, text]) => project.write(file, text))
+      const result = runCheck(project.dir)
+      return { kind, run: { exitCode: result.exitCode, findings: findingsIn(result.stdout), autofixed: autofixedFilesIn(result.stdout), texts: textsOf(project.dir, FILES) } }
+    }),
+  )
+
+  it.each(SET_TO_WARN)('lists each as a warning, fixes neither, in either engine, and exits 0: set to warn $kind', ({ kind }) => {
+    expect(runMadeFor(runs(), kind).run).toStrictEqual({
+      exitCode: EXIT.clean,
+      findings: ['src/count.ts:1 prefer-const (warning)', 'src/wrap.ts:2 object-shorthand (warning)'],
+      autofixed: [],
+      texts: BEFORE,
+    })
   })
 
-  it("fixes no file outside the config's folder, none its ignores name, and none that is not JS or TS, while it fixes the one beside them", () => {
+  it('fixes both at error and reports neither, beside them', () => {
+    expect(runMadeFor(runs(), AT_ERROR.kind).run).toStrictEqual({ exitCode: EXIT.clean, findings: [], autofixed: FILES, texts: FIXED })
+  })
+})
+
+describe('check fixing what it checks', () => {
+  const APP = 'app'
+  const FILES = ['lib/outside.ts', `${APP}/src/generated/generated.ts`, `${APP}/src/component.vue`, `${APP}/src/fixable.ts`]
+
+  const run = setUpRunsBeforeTheSuite((tempProjects) => {
+    const project = createGitProject(tempProjects, {
+      repo: 'committed',
+      files: { ...A_TSCONFIG_TAKING_IN_THE_REPO, ...checkedPackageFiles(IMMUTABILITY_AND_REDUNDANCY, { ignores: ['src/generated/**'] }, `${APP}/`) },
+    })
+    project.write('lib/outside.ts', moduleText(exportedLet('outside')))
+    project.write(`${APP}/src/generated/generated.ts`, moduleText(exportedLet('generated')))
+    project.write(`${APP}/src/component.vue`, moduleText(...vueComponentScripting(A_USELESS_RENAME)))
+    project.write(`${APP}/src/fixable.ts`, moduleText(exportedLet('fixable')))
+    const before = textsOf(project.dir, FILES)
+    const result = runCheck(project.pathOf(APP))
+    return { result, before, after: textsOf(project.dir, FILES) }
+  })
+
+  it("fixes a changed file outside the config's folder and a Vue component, beside the file in the folder, and none the config's ignores name", () => {
     const { result, before, after } = run()
 
     expect({ exitCode: result.exitCode, after }).toStrictEqual({
       exitCode: EXIT.clean,
-      after: { ...before, [`${APP}/src/fixable.ts`]: moduleText(exportedConstFixedFromLet('fixable')) },
+      after: {
+        ...before,
+        'lib/outside.ts': moduleText(exportedConstFixedFromLet('outside')),
+        [`${APP}/src/component.vue`]: moduleText(...vueComponentScripting(A_USELESS_RENAME_FIXED)),
+        [`${APP}/src/fixable.ts`]: moduleText(exportedConstFixedFromLet('fixable')),
+      },
     })
   })
 })
@@ -287,7 +343,7 @@ describe('check fixing only what it checks (F-9)', () => {
 // An interrupted check puts no file back, which would overwrite other writers' edits; it names the
 // files it rewrote so far.
 
-describe('check interrupted while ESLint fixes, after oxlint wrote its fixes (spec-cli.md "Signals and leftovers")', () => {
+describe('check interrupted while ESLint fixes, after oxlint wrote its fixes', () => {
   const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const signalledWith = async (signal: NodeJS.Signals): Promise<{ readonly stopped: BackgroundRun; readonly after: Record<string, string> }> => {
       const project = projectBothEnginesFix(tempProjects)
@@ -311,7 +367,7 @@ describe('check interrupted while ESLint fixes, after oxlint wrote its fixes (sp
   })
 })
 
-describe('check interrupted while it fixes, after another writer rewrote a file oxlint fixed and a file with nothing to fix (spec-cli.md "Signals and leftovers", F-6)', () => {
+describe('check interrupted while it fixes, after another writer rewrote a file oxlint fixed and a file with nothing to fix', () => {
   // Another writer rewrites the last file oxlint fixed, and the file neither engine fixes, between
   // ESLint's first fix and the signal.
   const REWRITTEN_MEANWHILE = FIXED_BY_OXLINT[FILES_OXLINT_FIXES - 1]
@@ -340,7 +396,7 @@ describe('check interrupted while it fixes, after another writer rewrote a file 
   })
 })
 
-describe('check interrupted once ESLint fixed what another writer wrote into a file after oxlint ended (spec-cli.md "Signals and leftovers", F-6)', () => {
+describe('check interrupted once ESLint fixed what another writer wrote into a file after oxlint ended', () => {
   // Another writer adds a function ESLint fixes to a file oxlint fixed, after check read it. The middle
   // file: ESLint reaches it well after the write and well before its last file.
   const MIDDLE = FILES_OXLINT_FIXES / 2
@@ -368,7 +424,7 @@ describe('check interrupted once ESLint fixed what another writer wrote into a f
   })
 })
 
-describe('check that runs to its end while another writer rewrites a changed file it fixes nothing in (P2)', () => {
+describe('check that runs to its end while another writer rewrites a changed file it fixes nothing in', () => {
   const ANOTHER_WRITERS_TEXT = moduleText(exportedConstant('writtenByAnotherWriter'))
 
   const run = setUpRunsBeforeTheSuite(async (tempProjects) => {
@@ -389,39 +445,107 @@ describe('check that runs to its end while another writer rewrites a changed fil
   })
 })
 
-describe('check that could not run once oxlint had written its fixes: ESLint failed (spec-cli.md "Signals and leftovers", P2)', () => {
-  // oxlint's fix run comes before ESLint, which throws on the selector as it lints the first file.
+describe('check where ESLint throws on each file once oxlint wrote its fixes', () => {
+  // oxlint's fix run comes before ESLint, which throws on the selector as it lints each file.
   const FILES = ['src/first.ts', 'src/second.ts']
   const ESLINT_THROWING = { rules: { 'no-restricted-syntax': ['error', A_SELECTOR_ESLINT_THROWS_ON] } } as const
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const runOn = (lineOfFileAt: (index: number) => string): { readonly result: CliRun; readonly after: Record<string, string> } => {
+    const runOn = (lineOfFileAt: (index: number) => string): { readonly result: CliRun; readonly notChecked: string; readonly after: Record<string, string> } => {
       const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(IMMUTABILITY, ESLINT_THROWING) })
       FILES.forEach((file, index) => project.write(file, moduleText(lineOfFileAt(index))))
       const result = runCheck(project.dir)
-      return { result, after: textsOf(project.dir, FILES) }
+      const notChecked = FILES.map((file) => `${notCheckedByEslint(file, eslintMessageWhileLinting(A_SELECTOR_ESLINT_THROWS_ON_MESSAGE, project.pathOf(file)))}\n`).join('')
+      return { result, notChecked, after: textsOf(project.dir, FILES) }
     }
     return { oxlintFixed: runOn(letOfFileAt), nothingFixed: runOn(letFixedOfFileAt) }
   })
 
-  it("keeps oxlint's fixes, names the files in the autofixed line, says why it could not run, and exits 2", () => {
-    const { result, after } = runs().oxlintFixed
+  it("keeps oxlint's fixes, names the files in the autofixed line, lists each file as not checked, says not everything was checked, and exits 2", () => {
+    const { result, notChecked, after } = runs().oxlintFixed
 
-    expect({ exitCode: result.exitCode, stdout: result.stdout, couldNotRun: result.stderr.startsWith(CHECK_ESLINT_FAILED), after }).toStrictEqual({
-      exitCode: EXIT.couldNotRun,
-      stdout: autofixedLineOf(FILES),
-      couldNotRun: true,
+    expect({ result, after }).toStrictEqual({
+      result: { exitCode: EXIT.couldNotRun, signal: null, stdout: `${autofixedLineOf(FILES)}${notChecked}${NOT_EVERYTHING_CHECKED_SUMMARY}\n`, stderr: '' },
       after: Object.fromEntries(FILES.map((file, index) => [file, moduleText(letFixedOfFileAt(index))])),
     })
   })
 
-  it('prints no autofixed line where it rewrote nothing before it could not run, beside that run', () => {
-    const { result } = runs().nothingFixed
+  it('prints no autofixed line where it rewrote nothing, beside that run', () => {
+    const { result, notChecked } = runs().nothingFixed
 
-    expect({ exitCode: result.exitCode, stdout: result.stdout, couldNotRun: result.stderr.startsWith(CHECK_ESLINT_FAILED) }).toStrictEqual({
-      exitCode: EXIT.couldNotRun,
-      stdout: '',
-      couldNotRun: true,
+    expect(result).toStrictEqual({ exitCode: EXIT.couldNotRun, signal: null, stdout: `${notChecked}${NOT_EVERYTHING_CHECKED_SUMMARY}\n`, stderr: '' })
+  })
+})
+
+describe('check where another writer deletes a changed file while oxlint fixes', () => {
+  // ESLint reaches the deleted file, last in path order, well after oxlint's fix run wrote the first file.
+  const WITH_A_FINDING = 'src/a-debugger.ts'
+  const DELETED = 'src/untouched.ts'
+
+  const run = setUpRunsBeforeTheSuite(async (tempProjects) => {
+    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(IMMUTABILITY_AND_REDUNDANCY) })
+    project.write(WITH_A_FINDING, moduleText(exportedConstant('withAFinding'), DEBUGGER_STATEMENT))
+    FIXED_BY_OXLINT.forEach((file, index) => project.write(file, moduleText(letOfFileAt(index))))
+    project.write(DELETED, NOTHING_TO_FIX_TEXT)
+    const [firstFixed] = FIXED_BY_OXLINT
+    if (firstFixed === undefined) throw new Error('there is no file oxlint fixes')
+    return checkRunningOnBesideAnotherWriter(project.dir, project.pathOf(firstFixed), () => project.remove(DELETED))
+  }, RUNS_IN_THE_BACKGROUND)
+
+  it("lists that file as not checked, keeps and names oxlint's fixes, prints the other files' findings, and exits 1", () => {
+    const { wrote, run: ran } = run()
+
+    expect({
+      wrote,
+      exitCode: ran.exitCode,
+      autofixed: autofixedFilesIn(ran.stdout),
+      findings: findingsIn(ran.stdout),
+      notChecked: notCheckedIn(ran.stdout),
+      stderr: ran.stderr,
+    }).toStrictEqual({
+      wrote: true,
+      exitCode: EXIT.findings,
+      autofixed: FIXED_BY_OXLINT,
+      findings: [`${WITH_A_FINDING}:2 no-debugger`],
+      notChecked: [notCheckedAsGone(DELETED)],
+      stderr: '',
+    })
+  })
+})
+
+describe('check where another writer deletes a changed component while oxlint fixes', () => {
+  // Only the report reads a component again: ESLint never reads one, and oxlint skips a path with no file (measured, oxlint 1.87).
+  const FIXED = 'src/fixed.ts'
+  const COMPONENT = 'src/untouched.vue'
+
+  const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
+    const projectOf = (): GitProject => {
+      const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(IMMUTABILITY) })
+      project.write(FIXED, moduleText(exportedLet('fixed')))
+      project.write(COMPONENT, moduleText(...vueComponentScripting([exportedConstant('untouched')])))
+      return project
+    }
+    const deletedFrom = projectOf()
+    const keptIn = projectOf()
+    return {
+      deleted: await checkRunningOnBesideAnotherWriter(deletedFrom.dir, deletedFrom.pathOf(FIXED), () => deletedFrom.remove(COMPONENT)),
+      nothingDeleted: { wrote: false, run: runCheck(keptIn.dir) },
+    }
+  }, RUNS_IN_THE_BACKGROUND)
+
+  it.each([
+    { kind: 'deleted', ran: () => runs().deleted, wrote: true, exitCode: EXIT.couldNotRun, notChecked: [notCheckedAsGone(COMPONENT)], summary: NOT_EVERYTHING_CHECKED_SUMMARY },
+    { kind: 'nothing deleted', ran: () => runs().nothingDeleted, wrote: false, exitCode: EXIT.clean, notChecked: [], summary: 'check: no findings in 2 changed files.' },
+  ])("lists the component as not checked and never exits 0 where it is gone by the report, keeping oxlint's fix, beside a run where it stays: $kind", ({ ran, ...expected }) => {
+    const { wrote, run } = ran()
+
+    expect({ wrote, exitCode: run.exitCode, autofixed: autofixedFilesIn(run.stdout), notChecked: notCheckedIn(run.stdout), summary: lastLineOf(run.stdout), stderr: run.stderr }).toStrictEqual({
+      wrote: expected.wrote,
+      exitCode: expected.exitCode,
+      autofixed: [FIXED],
+      notChecked: expected.notChecked,
+      summary: expected.summary,
+      stderr: '',
     })
   })
 })

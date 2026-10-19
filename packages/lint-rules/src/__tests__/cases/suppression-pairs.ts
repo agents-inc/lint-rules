@@ -242,8 +242,10 @@ export const SUPPRESSION_PAIR_CASES: readonly SuppressionPairCase[] = [
     ],
     oxlintReport: (text) => [oxlintUnusedSuppression('oxlint', spanOfLine(text, 1)), oxlintUnusedSuppression('oxlint', spanOfLine(text, 5))],
     unusedInEslint: [],
+    // oxlint reads the `*/` closing no block as a name too (1.87).
     reported: [
       { line: 1, ruleName: NO_DEBUGGER },
+      { line: 1, ruleName: '*/' },
       { line: 3, ruleName: NO_DEBUGGER },
     ],
   },

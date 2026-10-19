@@ -1,7 +1,7 @@
 import type { Catalog } from '@workspace/rule-data'
 import type { Linter } from 'eslint'
 import { type ChangedLines, isOnChangedLines, WHOLE_FILE_LINE } from './changed-lines.ts'
-import { type OxlintDiagnostic, ruleIdOfOxlintCode } from './oxlint-output.ts'
+import { labelOfOxlintCode, type OxlintDiagnostic } from './oxlint-output.ts'
 import type { CheckFinding } from './report.ts'
 import { PARSE_ERROR_LABEL, UNUSED_SUPPRESSION_LABEL, unusedSuppressionMessage } from './texts.ts'
 import { isAboutADirectiveComment, namesSuppressingNothing } from './unused-suppressions.ts'
@@ -24,22 +24,30 @@ const OXLINT_WARNING = 'warning'
 const TYPESCRIPT_SYNTAX_CODE = /^TS\(\d+\)$/u
 
 /**
- * One parse error per file, ESLint's where both report one. ESLint's other messages that name no
- * rule are its own notes, and left out.
+ * One parse error per file, ESLint's where both report one. Where oxlint read a file ESLint could not,
+ * oxlint's findings follow ESLint's parse error. ESLint's other messages that name no rule are its own
+ * notes, and left out.
  */
 export function findingsIn(reports: FileReports, catalog: Catalog): CheckFinding[] {
-  const parseError = parseErrorIn(reports)
-  if (parseError !== null) return [parseError]
-  const findings = [...ruleFindingsIn(reports, catalog), ...unusedSuppressionsIn(reports)]
-  return findings.filter(({ line }) => isOnChangedLines(line, reports.changed))
+  const eslintParseError = eslintParseErrorIn(reports)
+  const oxlintParseError = oxlintParseErrorIn(reports)
+  if (oxlintParseError !== null) return [eslintParseError ?? oxlintParseError]
+  const findings = findingsOnChangedLines(reports, catalog)
+  return eslintParseError === null ? findings : [eslintParseError, ...findings]
 }
 
-function parseErrorIn({ file, eslintMessages, oxlintDiagnostics }: FileReports): CheckFinding | null {
-  const eslintParseError = eslintMessages.find(({ fatal }) => fatal === true)
-  if (eslintParseError !== undefined) return parseErrorFinding(file, eslintParseError.line, eslintParseError.message)
-  const oxlintParseError = oxlintDiagnostics.find(isParseError)
-  if (oxlintParseError !== undefined) return parseErrorFinding(file, lineOf(oxlintParseError), oxlintParseError.message)
-  return null
+function findingsOnChangedLines(reports: FileReports, catalog: Catalog): CheckFinding[] {
+  return [...ruleFindingsIn(reports, catalog), ...unusedSuppressionsIn(reports)].filter(({ line }) => isOnChangedLines(line, reports.changed))
+}
+
+function eslintParseErrorIn({ file, eslintMessages }: FileReports): CheckFinding | null {
+  const parseError = eslintMessages.find(({ fatal }) => fatal === true)
+  return parseError === undefined ? null : parseErrorFinding(file, lineOfEslintsParseError(parseError), parseError.message)
+}
+
+function oxlintParseErrorIn({ file, oxlintDiagnostics }: FileReports): CheckFinding | null {
+  const parseError = oxlintDiagnostics.find(isParseError)
+  return parseError === undefined ? null : parseErrorFinding(file, lineOf(parseError), parseError.message)
 }
 
 function ruleFindingsIn({ file, changed, eslintMessages, oxlintDiagnostics }: FileReports, catalog: Catalog): CheckFinding[] {
@@ -57,7 +65,7 @@ function eslintRuleFindings(file: string, { ruleId, line, severity, message }: L
 function oxlintRuleFindings(file: string, diagnostic: OxlintDiagnostic, changed: ChangedLines, catalog: Catalog): CheckFinding[] {
   const { code, severity, message } = diagnostic
   if (code === null || isParseError(diagnostic)) return []
-  return [{ file, line: lineOfTheChange(diagnostic, changed), label: ruleIdOfOxlintCode(code, catalog), severity: severityOfOxlint(severity), message }]
+  return [{ file, line: lineOfTheChange(diagnostic, changed), label: labelOfOxlintCode(code, catalog), severity: severityOfOxlint(severity), message }]
 }
 
 function unusedSuppressionsIn({ file, text, suppressionsAllowed, eslintMessages, oxlintDiagnostics }: FileReports): CheckFinding[] {
@@ -75,6 +83,14 @@ function parseErrorFinding(file: string, line: number, message: string): CheckFi
 
 function unusedSuppressionFinding(file: string, line: number, ruleName: string): CheckFinding {
   return { file, line, label: UNUSED_SUPPRESSION_LABEL, severity: 'error', message: unusedSuppressionMessage(ruleName) }
+}
+
+/**
+ * Parse boundary: for a TS file the project service finds in no tsconfig, ESLint's parse error has no
+ * line, though its type gives one (measured, ESLint 10.12). It is then about the whole file.
+ */
+function lineOfEslintsParseError({ line }: Pick<Partial<Linter.LintMessage>, 'line'>): number {
+  return line === undefined ? WHOLE_FILE_LINE : line
 }
 
 function lineOf({ spans: [first] }: OxlintDiagnostic): number {

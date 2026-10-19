@@ -1,5 +1,5 @@
 // Reads what `check` prints to stdout: the autofixed line, one `file:line label — message` line per finding
-// (` (warning)` after a warning's label), the cut line, and the summary last.
+// (` (warning)` after a warning's label), the cut line, the `check: not checked: …` entries, and the summary last.
 
 const LINE_END = '\n'
 const MESSAGE_SEPARATOR = ' — '
@@ -7,6 +7,10 @@ const FINDING_LOCATION = /^.+:\d+ \S/u
 const AUTOFIXED_PREFIX = 'check: autofixed '
 const AUTOFIXED_SUFFIX = '; read them again before editing them.'
 const PATH_SEPARATOR = ', '
+const NOT_CHECKED_PREFIX = 'check: not checked: '
+// Every line check writes itself starts so; the text an engine printed, quoted in an entry, need not.
+const CHECK_LINE_PREFIX = 'check: '
+const NOT_FOUND = -1
 
 export function linesOf(output: string): string[] {
   const lines = output.split(LINE_END)
@@ -46,6 +50,18 @@ export function lastLineOf(stdout: string): string {
   const last = linesOf(stdout).at(-1)
   if (last === undefined) throw new Error('check printed nothing to stdout')
   return last
+}
+
+/** Each `check: not checked: …` entry, in the order printed, one quoting text over several lines kept whole. */
+export function notCheckedIn(stdout: string): string[] {
+  const lines = linesOf(stdout)
+  return lines.flatMap((line, index) => (line.startsWith(NOT_CHECKED_PREFIX) ? [entryStartingAt(lines, index)] : []))
+}
+
+/** Up to the next line check starts itself. */
+function entryStartingAt(lines: readonly string[], start: number): string {
+  const end = lines.findIndex((line, index) => index > start && line.startsWith(CHECK_LINE_PREFIX))
+  return lines.slice(start, end === NOT_FOUND ? lines.length : end).join(LINE_END)
 }
 
 type FindingLine = { readonly location: string; readonly message: string }

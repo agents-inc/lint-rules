@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { devNull } from 'node:os'
 import { dirname, join } from 'node:path'
 import { CONSUMER_INSTALL, type LinkedPackage, type ProjectFiles, type TempProjects, writeFileCreatingItsDir } from './temp-projects.ts'
@@ -31,6 +31,8 @@ export type GitProject = {
   readonly git: (...args: string[]) => string
   /** Writes a file in the folder above the project, which holds its linked packages and is in no repo. */
   readonly writeAbove: (file: string, content: string) => void
+  /** Links a path in that folder to the target given, as an install links a package's bin there. */
+  readonly linkAbove: (file: string, target: string) => void
 }
 
 const FIRST_COMMIT_MESSAGE = 'the project before the agent changed it'
@@ -72,6 +74,11 @@ export function createGitProject(tempProjects: TempProjects, { files, repo, link
     },
     git: (...args) => gitIn(dir, args),
     writeAbove: (file, content) => writeFileCreatingItsDir(join(dir, '..', file), content),
+    linkAbove: (file, target) => {
+      const path = join(dir, '..', file)
+      mkdirSync(dirname(path), { recursive: true })
+      symlinkSync(target, path)
+    },
   }
 }
 

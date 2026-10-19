@@ -56,11 +56,15 @@ export type FileHolding = { readonly path: string; readonly text: string }
 // check needs Node 22.18 or later.
 const BELOW_THE_FLOOR = '<22.18.0'
 const CLI_TIMEOUT_MS = 240_000
+// A run held by a loop in a rule never gets to handle SIGTERM, and spawnSync would wait on it for good.
+const KILLED_PAST_THE_TIMEOUT: NodeJS.Signals = 'SIGKILL'
 const TEMP_CONFIG_PREFIX = '.agents-inc-check-'
 // How often a test reads a file check may be fixing: well inside the time check takes to lint the next file.
 const TEXT_POLL_MS = 10
 
 const NODE_EXECUTABLE = 'node'
+const OUR_BIN = 'agents-inc-lint'
+const WORD_SEPARATOR = ' '
 
 // Imported into each Node process of a check run: it writes the files the variable below names as oxlint's lint run ends.
 const WRITER_AS_OXLINT_LINT_RUN_ENDS = new URL('./another-writer-as-oxlint-lint-run-ends.mjs', import.meta.url).href
@@ -79,6 +83,21 @@ export function runCli(cwd: string, args: readonly string[], { env = {}, node = 
     env: testEnv(env),
     encoding: 'utf8',
     timeout: CLI_TIMEOUT_MS,
+    killSignal: KILLED_PAST_THE_TIMEOUT,
+  })
+  return { exitCode: status, signal, stdout, stderr }
+}
+
+/** A command line's words, then the arguments given, run as an agent's shell runs them: by the name on PATH. */
+export function runCommandLine(cwd: string, commandLine: string, args: readonly string[], { env = {} }: Pick<CliOptions, 'env'> = {}): CliRun {
+  const [command, ...words] = commandLine.split(WORD_SEPARATOR)
+  if (command === undefined || command === '') throw new Error(`the command line "${commandLine}" names no command`)
+  const { status, signal, stdout, stderr } = spawnSync(command, [...words, ...args], {
+    cwd,
+    env: testEnv(env),
+    encoding: 'utf8',
+    timeout: CLI_TIMEOUT_MS,
+    killSignal: KILLED_PAST_THE_TIMEOUT,
   })
   return { exitCode: status, signal, stdout, stderr }
 }
@@ -286,6 +305,16 @@ export function tempConfigNameOf(pid: number, suffix: string): string {
 export function idOfAnEndedProcess(): number {
   const { pid } = spawnSync(process.execPath, ['--eval', ''])
   return pid
+}
+
+/** PATH less the folders holding a bin of our name, as a workspace install or `bun run` puts this repo's own there. */
+export function searchPathWithoutOurBin(): string {
+  const searchPath = process.env['PATH']
+  if (searchPath === undefined) throw new Error('the tests run with no PATH')
+  return searchPath
+    .split(delimiter)
+    .filter((folder) => !existsSync(join(folder, OUR_BIN)))
+    .join(delimiter)
 }
 
 export function nodeBelowTheFloor(): OldNode | undefined {

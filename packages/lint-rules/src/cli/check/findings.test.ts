@@ -1,6 +1,18 @@
 import { catalog } from '@workspace/rule-data'
 import { describe, expect, it } from 'vitest'
-import { A_RULE_REPORTING_NOTHING, A_SYNTAX_ERROR, aSuppressionPartlyUnused, movedDownByAnotherWriter } from '../../__tests__/cases/check-sources.ts'
+import {
+  A_DISABLE_ON_ONE_LINE_ABOVE_A_DEBUGGER,
+  A_DISABLE_OVER_SEVERAL_LINES_ABOVE_A_DEBUGGER,
+  A_RULE_NAME_IN_A_STRING_ABOVE_A_SUPPRESSION_OF_IT,
+  A_RULE_REPORTING_NOTHING,
+  A_SYNTAX_ERROR,
+  A_WHOLLY_UNUSED_OXLINT_DISABLE_OF_TWO_NAMES,
+  A_WHOLLY_UNUSED_OXLINT_DISABLE_WITH_A_NAME_TAKEN_OUT,
+  aSuppressionPartlyUnused,
+  movedDownByAnotherWriter,
+  STRAY_COMMENT_CLOSES,
+  withACharacterAddedToTheFirstLine,
+} from '../../__tests__/cases/check-sources.ts'
 import { SUPPRESSION_PAIR_CASES, type UnusedAt } from '../../__tests__/cases/suppression-pairs.ts'
 import {
   A_SUPPRESSION_REASON,
@@ -13,11 +25,14 @@ import {
   buildLintWarning,
   buildOxlintDiagnostic,
   buildOxlintWarning,
+  buildParseError,
+  buildParseErrorWithNoLine,
   buildUnusedSuppressionFinding,
   DEBUGGER_STATEMENT,
   type EnableComment,
   ESLINT_FINDING_MESSAGE,
   eslintUnusedSuppression,
+  eslintUnusedSuppressionOfBoth,
   eslintUnusedSuppressionText,
   exportedConstant,
   exportedElement,
@@ -57,7 +72,7 @@ function duplicateKeyAt(line: number): CheckFinding {
   return buildCheckFinding({ line, label: 'no-dupe-keys', message: OXLINT_FINDING_MESSAGE })
 }
 
-describe('a finding oxlint gives at several places (q-c9)', () => {
+describe('a finding oxlint gives at several places', () => {
   it('is kept where only a later place is on a changed line, and printed at that place', () => {
     const reports = buildFileReports({ lines: WITH_A_DUPLICATE_KEY, changed: linesChanged(DUPLICATE_LINE), oxlintDiagnostics: [AT_BOTH_KEYS] })
 
@@ -83,7 +98,7 @@ describe('a finding oxlint gives at several places (q-c9)', () => {
   })
 })
 
-describe('findings of a rule a team set to warn (P4)', () => {
+describe('findings of a rule a team set to warn', () => {
   const LINES = [exportedConstant('before'), DEBUGGER_STATEMENT]
   const TEXT = moduleText(...LINES)
 
@@ -104,7 +119,7 @@ describe('findings of a rule a team set to warn (P4)', () => {
   })
 })
 
-describe("oxlint's own TypeScript syntax checks (step 14)", () => {
+describe("oxlint's own TypeScript syntax checks", () => {
   // `TS(1036)`: a statement in a `.d.ts` file (oxlint 1.87).
   const TYPESCRIPT_SYNTAX_CODE = 'TS(1036)'
   const LINES = [exportedConstant('declared'), DEBUGGER_STATEMENT]
@@ -127,7 +142,7 @@ describe("oxlint's own TypeScript syntax checks (step 14)", () => {
   })
 })
 
-describe('unused suppressions, where suppressions are allowed (q-c15)', () => {
+describe('unused suppressions, where suppressions are allowed', () => {
   const COMMENT_LINE = 2
 
   /** A suppression comment on line 2, in the form given, of the rule named, then `nextLine`. */
@@ -144,6 +159,17 @@ describe('unused suppressions, where suppressions are allowed (q-c15)', () => {
     })
 
     expect(findingsIn(reports, catalog)).toStrictEqual([buildUnusedSuppressionFinding({ line: COMMENT_LINE, ruleName: 'no-debugger' })])
+  })
+
+  it.each(STRAY_COMMENT_CLOSES)("reports a `*/` oxlint calls unused in $comment where it is a name, as oxlint reads it, and drops it where it closes the comment", ({ suppression, aName }) => {
+    const lines = [exportedConstant('before'), suppression, DEBUGGER_STATEMENT]
+    const reports = buildFileReports({
+      lines,
+      changed: wholeFileChanged(),
+      oxlintDiagnostics: [oxlintPartlyUnusedSuppression('oxlint', '*/', spanOfTextOnLine(moduleText(...lines), COMMENT_LINE, '*/'))],
+    })
+
+    expect(findingsIn(reports, catalog)).toStrictEqual(aName ? [buildUnusedSuppressionFinding({ line: COMMENT_LINE, ruleName: '*/' })] : [])
   })
 
   // oxlint spans the whole comment, its reason included (1.87).
@@ -232,7 +258,7 @@ describe('unused suppressions, where suppressions are allowed (q-c15)', () => {
   })
 })
 
-describe('enable comments oxlint calls unused (q-c10, q-c15)', () => {
+describe('enable comments oxlint calls unused', () => {
   // oxlint reports an enable comment that turns back on nothing with no code (1.87). It is neither a
   // parse error nor an unused suppression, so check reports nothing on it.
   const ENABLE_LINE = 2
@@ -276,7 +302,7 @@ describe('enable comments oxlint calls unused (q-c10, q-c15)', () => {
   })
 })
 
-describe('unused block pairs, where suppressions are allowed (q-c15)', () => {
+describe('unused block pairs, where suppressions are allowed', () => {
   // oxlint gives an unused pair at its enable comment, ESLint at its disable comment (oxlint 1.87,
   // ESLint 10.12): check reads both at the disable comment.
   const DISABLE_LINE = 1
@@ -332,7 +358,7 @@ describe('unused block pairs, where suppressions are allowed (q-c15)', () => {
   })
 })
 
-describe('unused suppressions oxlint reports at an enable comment, read at the disable comment that turned the rule off (q-c15)', () => {
+describe('unused suppressions oxlint reports at an enable comment, read at the disable comment that turned the rule off', () => {
   const A_PLAIN_COMMENT = '// the limits below are measured'
   const PARTLY_UNUSED_LINE = 2
   // ESLint reads an `eslint-disable` comment and calls the name unused at its line; it never reads an `oxlint-disable` one.
@@ -398,14 +424,44 @@ describe('unused suppressions oxlint reports at an enable comment, read at the d
     expect(findingsIn(reports, catalog)).toStrictEqual(unusedSuppressionsOf([{ line: ENABLE_LINE, ruleName: 'no-console' }]))
   })
 
-  // oxlint reports on the text it read, which another writer may have changed since.
-  it('reads a span covering the text of a whole comment as that comment where the text there is no comment now, and reports it at its line', () => {
-    const QUOTED_LINE = 1
-    const lines = [exportedString('quoted', blockDisable('oxlint', 'no-debugger'))]
-    const span = spanOfTextOnLine(moduleText(...lines), QUOTED_LINE, blockDisable('oxlint', 'no-debugger'))
-    const reports = buildFileReports({ lines, changed: wholeFileChanged(), oxlintDiagnostics: [oxlintUnusedSuppression('oxlint', span)] })
+  // oxlint reports on the text it read, which another writer may have changed since: its word on an
+  // `oxlint-disable` comment no longer there is dropped for the run.
+  it('drops a span covering the text of a whole comment where the text there is no comment now, beside the same span over the comment, which it reports at its line', () => {
+    const COMMENT_LINE = 1
+    const reportsOn = (lines: readonly string[]): CheckFinding[] => {
+      const span = spanOfTextOnLine(moduleText(...lines), COMMENT_LINE, blockDisable('oxlint', 'no-debugger'))
+      return findingsIn(buildFileReports({ lines, changed: wholeFileChanged(), oxlintDiagnostics: [oxlintUnusedSuppression('oxlint', span)] }), catalog)
+    }
 
-    expect(findingsIn(reports, catalog)).toStrictEqual(unusedSuppressionsOf([{ line: QUOTED_LINE, ruleName: 'no-debugger' }]))
+    expect({
+      inAString: reportsOn([exportedString('quoted', blockDisable('oxlint', 'no-debugger'))]),
+      aComment: reportsOn([blockDisable('oxlint', 'no-debugger'), exportedConstant('after')]),
+    }).toStrictEqual({ inAString: [], aComment: unusedSuppressionsOf([{ line: COMMENT_LINE, ruleName: 'no-debugger' }]) })
+  })
+
+  it("drops a name oxlint's span gives that is none of its comment's own names, as another writer's added character leaves it, beside the same comment as oxlint read it, whose name it reports", () => {
+    const asOxlintReadIt = aSuppressionPartlyUnused('oxlint')
+    const unused = oxlintPartlyUnusedSuppression('oxlint', A_RULE_REPORTING_NOTHING, spanOfTextOnLine(moduleText(...asOxlintReadIt), PARTLY_UNUSED_LINE, A_RULE_REPORTING_NOTHING))
+    const reportsOn = (lines: readonly string[]): CheckFinding[] => findingsIn(buildFileReports({ lines, changed: wholeFileChanged(), oxlintDiagnostics: [unused] }), catalog)
+
+    expect({ shifted: reportsOn(withACharacterAddedToTheFirstLine(asOxlintReadIt)), asOxlintReadIt: reportsOn(asOxlintReadIt) }).toStrictEqual({
+      shifted: [],
+      asOxlintReadIt: unusedSuppressionsOf([{ line: PARTLY_UNUSED_LINE, ruleName: A_RULE_REPORTING_NOTHING }]),
+    })
+  })
+
+  it("drops what oxlint's span over a whole comment gives that is none of the comment's own names, as another writer's taking a name out leaves it, beside the comment as oxlint read it, whose names it reports", () => {
+    const COMMENT_LINE = 1
+    const unused = oxlintUnusedSuppression('oxlint', spanOfLine(moduleText(...A_WHOLLY_UNUSED_OXLINT_DISABLE_OF_TWO_NAMES), COMMENT_LINE))
+    const reportsOn = (lines: readonly string[]): CheckFinding[] => findingsIn(buildFileReports({ lines, changed: wholeFileChanged(), oxlintDiagnostics: [unused] }), catalog)
+
+    expect({ nameTakenOut: reportsOn(A_WHOLLY_UNUSED_OXLINT_DISABLE_WITH_A_NAME_TAKEN_OUT), asOxlintReadIt: reportsOn(A_WHOLLY_UNUSED_OXLINT_DISABLE_OF_TWO_NAMES) }).toStrictEqual({
+      nameTakenOut: unusedSuppressionsOf([{ line: COMMENT_LINE, ruleName: 'no-debugger' }]),
+      asOxlintReadIt: unusedSuppressionsOf([
+        { line: COMMENT_LINE, ruleName: 'no-debugger' },
+        { line: COMMENT_LINE, ruleName: A_RULE_REPORTING_NOTHING },
+      ]),
+    })
   })
 
   it('reports no name where the whole comment at the span is no suppression comment now, as where another writer put a plain comment there', () => {
@@ -447,6 +503,17 @@ describe('unused suppressions oxlint reports at an enable comment, read at the d
     expect(findingsIn(reports, catalog)).toStrictEqual(unusedSuppressionsOf([{ line: COMMENT_LINE, ruleName: A_RULE_REPORTING_NOTHING }]))
   })
 
+  it("drops a name no comment holds in an `oxlint-disable` comment's report though a comment below holds that name, beside that comment's own report, which it reports at its line", () => {
+    const STRING_LINE = 1
+    const COMMENT_LINE = 2
+    const text = moduleText(...A_RULE_NAME_IN_A_STRING_ABOVE_A_SUPPRESSION_OF_IT)
+    const unusedAt = (line: number): OxlintDiagnostic =>
+      oxlintPartlyUnusedSuppression('oxlint', A_RULE_REPORTING_NOTHING, spanOfTextOnLine(text, line, A_RULE_REPORTING_NOTHING))
+    const reports = buildFileReports({ lines: A_RULE_NAME_IN_A_STRING_ABOVE_A_SUPPRESSION_OF_IT, changed: wholeFileChanged(), oxlintDiagnostics: [unusedAt(STRING_LINE), unusedAt(COMMENT_LINE)] })
+
+    expect(findingsIn(reports, catalog)).toStrictEqual(unusedSuppressionsOf([{ line: COMMENT_LINE, ruleName: A_RULE_REPORTING_NOTHING }]))
+  })
+
   // ESLint read the file in the fix step and oxlint in its last run, both before the writer: their
   // reports are on the comment at line 2, and check reads the text with the writer's line above it.
   it.each(MOVED_DOWN_CASES)(
@@ -463,4 +530,117 @@ describe('unused suppressions oxlint reports at an enable comment, read at the d
       })
     },
   )
+})
+
+describe('a block `eslint-disable` comment over several lines, where suppressions are allowed', () => {
+  // ESLint gives the comment's first line for every name it calls unused, oxlint the name's own line.
+  const NAME_LINE = 3
+
+  function reportsOn(lines: readonly string[], line: number, eslintMessages: FileReports['eslintMessages']): CheckFinding[] {
+    const unused = oxlintPartlyUnusedSuppression('eslint', A_RULE_REPORTING_NOTHING, spanOfTextOnLine(moduleText(...lines), line, A_RULE_REPORTING_NOTHING))
+    return findingsIn(buildFileReports({ lines, changed: wholeFileChanged(), eslintMessages, oxlintDiagnostics: [unused] }), catalog)
+  }
+
+  it("reports a name on a later line both engines call unused at the name's line, as it reports the one-line form at its line", () => {
+    const eslintCallsBothUnused = [eslintUnusedSuppressionOfBoth(['no-debugger', A_RULE_REPORTING_NOTHING], 1)]
+
+    expect({
+      severalLines: reportsOn(A_DISABLE_OVER_SEVERAL_LINES_ABOVE_A_DEBUGGER, NAME_LINE, eslintCallsBothUnused),
+      oneLine: reportsOn(A_DISABLE_ON_ONE_LINE_ABOVE_A_DEBUGGER, 1, eslintCallsBothUnused),
+    }).toStrictEqual({
+      severalLines: [buildUnusedSuppressionFinding({ line: NAME_LINE, ruleName: A_RULE_REPORTING_NOTHING })],
+      oneLine: [buildUnusedSuppressionFinding({ line: 1, ruleName: A_RULE_REPORTING_NOTHING })],
+    })
+  })
+
+  it('reports no name only oxlint calls unused there, ESLint having used it, beside the name both call unused', () => {
+    expect({
+      eslintUsedIt: reportsOn(A_DISABLE_OVER_SEVERAL_LINES_ABOVE_A_DEBUGGER, NAME_LINE, [eslintUnusedSuppression('no-debugger', 1)]),
+      bothCallItUnused: reportsOn(A_DISABLE_OVER_SEVERAL_LINES_ABOVE_A_DEBUGGER, NAME_LINE, [eslintUnusedSuppression(A_RULE_REPORTING_NOTHING, 1)]),
+    }).toStrictEqual({ eslintUsedIt: [], bothCallItUnused: [buildUnusedSuppressionFinding({ line: NAME_LINE, ruleName: A_RULE_REPORTING_NOTHING })] })
+  })
+})
+
+describe("ESLint's parse error", () => {
+  const LINES = [exportedConstant('seed')]
+  const PARSE_ERROR_MESSAGE = 'Parsing error: src/seed.ts was not found by the project service.'
+
+  function findingsOf(parseError: FileReports['eslintMessages'][number]): CheckFinding[] {
+    return findingsIn(buildFileReports({ lines: LINES, changed: wholeFileChanged(), eslintMessages: [parseError] }), catalog)
+  }
+
+  it('prints one ESLint gives with no line at line 0, a finding about the whole file, beside one with a line, which keeps it', () => {
+    expect({ noLine: findingsOf(buildParseErrorWithNoLine(PARSE_ERROR_MESSAGE)), aLine: findingsOf(buildParseError(PARSE_ERROR_MESSAGE, 1)) }).toStrictEqual({
+      noLine: [buildCheckFinding({ line: 0, label: 'parse error', message: PARSE_ERROR_MESSAGE })],
+      aLine: [buildCheckFinding({ line: 1, label: 'parse error', message: PARSE_ERROR_MESSAGE })],
+    })
+  })
+
+  it("prints oxlint's findings after it where oxlint read the file, beside a file oxlint could not read either, which prints ESLint's parse error alone", () => {
+    const WITH_A_DEBUGGER = [exportedConstant('seed'), DEBUGGER_STATEMENT]
+    const TEXT = moduleText(...WITH_A_DEBUGGER)
+    const parseErrorAlone = { lines: WITH_A_DEBUGGER, changed: wholeFileChanged(), eslintMessages: [buildParseErrorWithNoLine(PARSE_ERROR_MESSAGE)] }
+    const readByOxlint = buildFileReports({ ...parseErrorAlone, oxlintDiagnostics: [buildOxlintDiagnostic(oxlintCodeOf('no-debugger', catalog), spanOfLine(TEXT, 2))] })
+    const unreadByOxlint = buildFileReports({ ...parseErrorAlone, oxlintDiagnostics: [oxlintParseError(spanOfLine(TEXT, 2))] })
+
+    expect({ readByOxlint: findingsIn(readByOxlint, catalog), unreadByOxlint: findingsIn(unreadByOxlint, catalog) }).toStrictEqual({
+      readByOxlint: [
+        buildCheckFinding({ line: 0, label: 'parse error', message: PARSE_ERROR_MESSAGE }),
+        buildCheckFinding({ line: 2, label: 'no-debugger', message: OXLINT_FINDING_MESSAGE }),
+      ],
+      unreadByOxlint: [buildCheckFinding({ line: 0, label: 'parse error', message: PARSE_ERROR_MESSAGE })],
+    })
+  })
+
+  it("prints oxlint's finding on a changed line after it, beside the same finding on an unchanged line, which it drops", () => {
+    const lines = [exportedConstant('seed'), DEBUGGER_STATEMENT, DEBUGGER_STATEMENT]
+    const text = moduleText(...lines)
+    const reports = buildFileReports({
+      lines,
+      changed: linesChanged(2),
+      eslintMessages: [buildParseErrorWithNoLine(PARSE_ERROR_MESSAGE)],
+      oxlintDiagnostics: [2, 3].map((line) => buildOxlintDiagnostic(oxlintCodeOf('no-debugger', catalog), spanOfLine(text, line))),
+    })
+
+    expect(findingsIn(reports, catalog)).toStrictEqual([
+      buildCheckFinding({ line: 0, label: 'parse error', message: PARSE_ERROR_MESSAGE }),
+      buildCheckFinding({ line: 2, label: 'no-debugger', message: OXLINT_FINDING_MESSAGE }),
+    ])
+  })
+
+  it('prints an `oxlint-disable` comment oxlint calls unused after it where suppressions are allowed, beside where they are banned, which prints it alone', () => {
+    const lines = [exportedConstant('seed'), suppressionOfTheNextLine('oxlint', 'no-debugger'), exportedConstant('after')]
+    const unusedComment = oxlintUnusedSuppression('oxlint', spanOfLine(moduleText(...lines), 2))
+    function findingsWhereSuppressions(suppressionsAllowed: boolean): CheckFinding[] {
+      const reports = buildFileReports({ lines, changed: wholeFileChanged(), suppressionsAllowed, eslintMessages: [buildParseErrorWithNoLine(PARSE_ERROR_MESSAGE)], oxlintDiagnostics: [unusedComment] })
+      return findingsIn(reports, catalog)
+    }
+    const parseError = buildCheckFinding({ line: 0, label: 'parse error', message: PARSE_ERROR_MESSAGE })
+
+    expect({ allowed: findingsWhereSuppressions(true), banned: findingsWhereSuppressions(false) }).toStrictEqual({
+      allowed: [parseError, buildUnusedSuppressionFinding({ line: 2, ruleName: 'no-debugger' })],
+      banned: [parseError],
+    })
+  })
+})
+
+describe('an oxlint code the catalog lacks', () => {
+  // check runs its own oxlint, every code of which the catalog holds, so no run of the real engines is known
+  // that gives one: this is the parse boundary's own test.
+  const LINES = [exportedConstant('before'), exportedConstant('between'), DEBUGGER_STATEMENT]
+  const TEXT = moduleText(...LINES)
+  const A_CODE_NO_RULE_HAS = 'eslint(no-foo)'
+
+  it("prints the finding under oxlint's own name for it, beside a code the catalog holds, which prints as our rule's ID", () => {
+    const reports = buildFileReports({
+      lines: LINES,
+      changed: wholeFileChanged(),
+      oxlintDiagnostics: [buildOxlintDiagnostic(A_CODE_NO_RULE_HAS, spanOfLine(TEXT, 3)), buildOxlintDiagnostic(oxlintCodeOf('no-debugger', catalog), spanOfLine(TEXT, 3))],
+    })
+
+    expect(findingsIn(reports, catalog)).toStrictEqual([
+      buildCheckFinding({ line: 3, label: A_CODE_NO_RULE_HAS, message: OXLINT_FINDING_MESSAGE }),
+      buildCheckFinding({ line: 3, label: 'no-debugger', message: OXLINT_FINDING_MESSAGE }),
+    ])
+  })
 })

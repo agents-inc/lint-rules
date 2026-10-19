@@ -17,3 +17,12 @@ check: no findings in 2 changed files.
 export const CHECK_STDOUT_WITH_A_MALFORMED_AUTOFIXED_LINE = `check: autofixed src/a.ts.
 check: no findings in 1 changed file.
 `
+
+export const CHECK_STDOUT_WITH_NOT_CHECKED_ENTRIES = `src/a.ts:2 no-debugger — \`debugger\` statement is not allowed
++1 more finding in 1 file. Fix the ones above, then run check again to see them.
+check: not checked: src/b.ts (it was deleted or replaced while check ran)
+check: not checked: oxlint's rules (oxlint failed: Failed to parse oxlint configuration file.
+
+  x Rule 'no-such-rule' not found in plugin 'eslint')
+check: 2 errors and 0 warnings in 2 of 3 changed files. Fix what is in code you wrote, then run check again. Do not read the lint configuration or this package's source; each line says what to fix.
+`

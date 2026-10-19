@@ -3,15 +3,19 @@ import { join } from 'node:path'
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import type { ESLint, Linter } from 'eslint'
 import type { ChangedLines } from '../../cli/check/changed-lines.ts'
+import type { EslintEngine } from '../../cli/check/eslint-run.ts'
 import type { FileReports } from '../../cli/check/findings.ts'
 import type { InPlaceFixer } from '../../cli/check/fix-writes.ts'
 import type { OxlintDiagnostic, OxlintSpan } from '../../cli/check/oxlint-output.ts'
-import type { CheckFinding } from '../../cli/check/report.ts'
+import type { CheckFinding, NotCheckedEntry } from '../../cli/check/report.ts'
+import type { EngineConfigs } from '../../core/configs-read-from-the-git-top-level.ts'
+import { isRecord } from '../../core/is-record.ts'
 import type { LintRules } from '../../index.ts'
 import type { ProjectFiles } from '../temp-projects.ts'
 import { agentsIncLintModuleTextRootedAtItsFolder } from './consumer-project-factories.ts'
 import { buildConsumerSettings } from './lint-rules-factories.ts'
-import { buildPackageJson, packageJsonText } from './package-json-factories.ts'
+import { buildPackageJson, type DependencyField, type PackageJson, packageJsonText } from './package-json-factories.ts'
+import { buildTsconfig } from './tsconfig-factories.ts'
 
 type Rulesets = LintRules['agentRulesets']
 type SharedFields = Partial<Omit<LintRules, 'tsconfigRootDir' | 'agentRulesets' | 'editorRulesets'>>
@@ -43,6 +47,44 @@ export const CHECK_INTERRUPTED = 'check: interrupted\n'
 
 export const CHECK_ESLINT_FAILED = 'check: could not run: ESLint failed: '
 
+/** What check prints where no changed file is one it lints. */
+export const NOTHING_TO_CHECK = 'check: no changed JS, TS, Vue, Svelte or Astro files.\n'
+
+/** What a wrong call prints. */
+export const USAGE = `usage: agents-inc-lint <command>
+  init   add @agents-inc/lint-rules and agents-inc.lint.mts to the package in this folder
+  check  lint the JS, TS, Vue, Svelte and Astro lines changed since the last commit
+`
+
+/** The summary where no finding is left and something was not checked. */
+export const NOT_EVERYTHING_CHECKED_SUMMARY = 'check: no findings, but not everything was checked: report the lines above.'
+
+const NOT_CHECKED = 'check: not checked:'
+
+/** Its file is printed from the config's folder. */
+export function notCheckedAsGone(file: string): string {
+  return `${NOT_CHECKED} ${file} (it was deleted or replaced while check ran)`
+}
+
+export function notCheckedByEslint(file: string, eslintMessage: string): string {
+  return `${NOT_CHECKED} ${file} (ESLint failed: ${eslintMessage})`
+}
+
+/** `printed`: all oxlint printed. */
+export function notCheckedByOxlint(printed: string): string {
+  return `${NOT_CHECKED} oxlint's rules (oxlint failed: ${printed})`
+}
+
+/** A file deleted while check ran, unless given. */
+export function buildNotCheckedEntry(fields: Partial<NotCheckedEntry> = {}): NotCheckedEntry {
+  return { subject: 'src/b.ts', reason: 'it was deleted or replaced while check ran', ...fields }
+}
+
+/** ESLint names the file a rule threw on below the error's own message (measured, ESLint 10.12). */
+export function eslintMessageWhileLinting(message: string, path: string): string {
+  return `${message}\nOccurred while linting ${path}`
+}
+
 export function checkConfigText(agentRulesets: Partial<Rulesets>, fields: SharedFields = {}): string {
   return agentsIncLintModuleTextRootedAtItsFolder(buildConsumerSettings({ agentRulesets }, fields))
 }
@@ -55,11 +97,79 @@ export const { eslint, oxlint } = defineLintRules({ tsconfigRootDir: import.meta
 `
 }
 
+/** Exports an equal copy of the ESLint part defineLintRules returned, which is not that part. */
+export function checkConfigTextExportingACopy(agentRulesets: Partial<Rulesets>): string {
+  return `import { defineLintRules } from '${BUILT_PACKAGE}'
+
+const { eslint: returned } = defineLintRules({ tsconfigRootDir: import.meta.dirname, ...${JSON.stringify(buildConsumerSettings({ agentRulesets }), null, 2)} }).editorRulesets
+
+export const eslint = { ...returned }
+`
+}
+
 /** Under the folder given, '' for the project's root. */
 export function checkedPackageFiles(agentRulesets: Partial<Rulesets>, fields: SharedFields = {}, folder = ''): ProjectFiles {
   return {
     [`${folder}${PACKAGE_JSON_FILE}`]: packageJsonText(buildPackageJson()),
     [`${folder}${CONFIG_FILE}`]: checkConfigText(agentRulesets, fields),
+  }
+}
+
+/** Two packages of a monorepo: the one holding the config, and another holding none. */
+export const WEB_PACKAGE = 'packages/web'
+export const API_PACKAGE = 'packages/api'
+
+/** A project keeps what it installs out of git. */
+export const NODE_MODULES_IGNORED_BY_GIT: ProjectFiles = { '.gitignore': 'node_modules\n' }
+
+export const GITIGNORE_FILE = '.gitignore'
+
+export function gitignoreText(...patterns: readonly string[]): string {
+  return patterns.map((pattern) => `${pattern}${LINE_END}`).join('')
+}
+
+/** The ignore file ESLint 10 no longer reads, and warns of where it finds one in the folder it runs from: under the folder given, '' for the project's root. */
+export function aLegacyEslintignoreIn(folder = ''): ProjectFiles {
+  return { [`${folder}.eslintignore`]: 'legacy/**\n' }
+}
+
+export const ESLINTIGNORE_WARNING = 'ESLintIgnoreWarning: The ".eslintignore" file is no longer supported.'
+
+/** A package installed in the repo's own node_modules at its root: a manifest, and an entry exporting `value`. */
+export function installedAtTheRepoRoot(name: string): ProjectFiles {
+  return {
+    [`node_modules/${name}/package.json`]: `${JSON.stringify({ name, version: '1.0.0', type: 'module', main: 'index.js' })}\n`,
+    [`node_modules/${name}/index.js`]: moduleText(exportedConstant('value')),
+  }
+}
+
+export type PackageTsconfig = { readonly include: readonly string[]; readonly paths: Readonly<Record<string, readonly string[]>> }
+
+/** A consumer's tsconfig taking in the folders given, with the path aliases given. */
+export function packageTsconfigText({ include, paths }: PackageTsconfig): string {
+  const tsconfig = buildTsconfig({ include })
+  return `${JSON.stringify({ ...tsconfig, compilerOptions: { ...tsconfig.compilerOptions, paths } })}\n`
+}
+
+/** Taking in src alone, with no alias. */
+export const TAKING_IN_SRC: PackageTsconfig = { include: ['src'], paths: {} }
+
+/**
+ * A tsconfig at the repo root taking in every TS file not in a dot folder: outside the config's folder, a TS
+ * file no tsconfig takes in draws ESLint's parse error alone (a written limit, pinned in check-monorepo).
+ */
+export const A_TSCONFIG_TAKING_IN_THE_REPO: ProjectFiles = { 'tsconfig.json': packageTsconfigText({ include: ['**/*'], paths: {} }) }
+
+/** An alias `<name>/*` for the package's src/lib folder. */
+export function aliasOfTheLibFolder(name: string): PackageTsconfig['paths'] {
+  return { [`${name}/*`]: ['./src/lib/*'] }
+}
+
+/** A package of a monorepo under its folder: a package.json listing the packages given, and a tsconfig. */
+export function monorepoPackageFiles(folder: string, tsconfig: PackageTsconfig, listed: Pick<PackageJson, DependencyField> = {}): ProjectFiles {
+  return {
+    [`${folder}/${PACKAGE_JSON_FILE}`]: packageJsonText(buildPackageJson(listed)),
+    [`${folder}/tsconfig.json`]: packageTsconfigText(tsconfig),
   }
 }
 
@@ -150,6 +260,22 @@ export function buildLintResult(filePath: string, fields: Partial<ESLint.LintRes
   }
 }
 
+export type EslintEngineCall = { readonly engine: string; readonly method: keyof EslintEngine; readonly path: string }
+
+/** A stand-in that finds nothing and records each call under its name. */
+export function eslintEngineRecording(engine: string, calls: EslintEngineCall[]): EslintEngine {
+  const recorded = <Answer>(method: keyof EslintEngine, path: string, answer: Answer): Promise<Answer> => {
+    calls.push({ engine, method, path })
+    return Promise.resolve(answer)
+  }
+  return {
+    isIgnored: (path) => recorded('isIgnored', path, false),
+    allowsSuppressionsIn: (path) => recorded('allowsSuppressionsIn', path, true),
+    fixed: (path) => recorded('fixed', path, buildLintResult(path)),
+    linted: (path) => recorded('linted', path, buildLintResult(path)),
+  }
+}
+
 export type SuppressionForm = 'eslint' | 'oxlint'
 
 /** REPORTED_FILE, suppressions allowed and nothing reported, unless given. */
@@ -211,6 +337,26 @@ export function eslintUnusedSuppression(ruleName: string, line: number): Linter.
 
 export function eslintUnusedSuppressionText(ruleName: string): string {
   return `Unused eslint-disable directive (no problems were reported from '${ruleName}').`
+}
+
+/** ESLint's one report of a comment naming two rules, neither of which reported, at the comment's first line (measured, ESLint 10.12). */
+export function eslintUnusedSuppressionOfBoth([first, second]: readonly [string, string], line: number): Linter.LintMessage {
+  return { ...eslintUnusedSuppression(first, line), message: `Unused eslint-disable directive (no problems were reported from '${first}' or '${second}').` }
+}
+
+/**
+ * The parse error ESLint gives with no line, for a TS file the project service finds in no tsconfig (measured,
+ * ESLint 10.12): its types give every message a line, the object has none.
+ */
+export function buildParseErrorWithNoLine(message: string): Linter.LintMessage {
+  const parseError = buildParseError(message, 0)
+  Reflect.deleteProperty(parseError, 'line')
+  Reflect.deleteProperty(parseError, 'column')
+  return parseError
+}
+
+export function buildParseError(message: string, line: number): Linter.LintMessage {
+  return { ruleId: null, fatal: true, severity: ESLINT_ERROR, message, line, column: 1 }
 }
 
 export function suppressionOfTheNextLine(form: SuppressionForm, ruleName: string): string {
@@ -299,6 +445,74 @@ export const LINE_LENGTH_FILLING_THE_CAP_IN_80 = 99
 export function findingLineOf({ file, line, label, severity, message }: CheckFinding): string {
   const warningMark = severity === 'warning' ? ' (warning)' : ''
   return `${file}:${String(line)} ${label}${warningMark} — ${message}`
+}
+
+/** A place the two configs hold globs, the engine reading it, and configs holding the globs given there, beside a rule and a glob tied to no folder, which stay. */
+/** `key`: whether the place names the files a block or override applies to, or the files it leaves out. */
+export type GlobPlace = {
+  readonly place: string
+  readonly engine: 'eslint' | 'oxlint'
+  readonly key: 'files' | 'ignores'
+  readonly holding: (globs: readonly string[]) => EngineConfigs
+}
+
+const A_BLOCK_NAME = 'agents-inc/a-block'
+const ON_TS_FILES = '**/*.ts'
+const UNDER_TESTS_FOLDERS = '**/__tests__/**'
+const AN_ESLINT_RULE: Linter.RulesRecord = { 'no-var': 'error' }
+const AN_OXLINT_RULE = { 'no-debugger': 'error' } as const
+const NO_OXLINT_CONFIG = {}
+
+export const GLOB_PLACES: readonly GlobPlace[] = [
+  {
+    place: "an ESLint block's files",
+    engine: 'eslint',
+    key: 'files',
+    holding: (globs) => ({ eslint: [{ name: A_BLOCK_NAME, files: [...globs], rules: AN_ESLINT_RULE }], oxlint: NO_OXLINT_CONFIG }),
+  },
+  {
+    place: "an ESLint block's files, each beside another glob a file must also match",
+    engine: 'eslint',
+    key: 'files',
+    holding: (globs) => ({ eslint: [{ name: A_BLOCK_NAME, files: globs.map((glob) => [UNDER_TESTS_FOLDERS, glob]), rules: AN_ESLINT_RULE }], oxlint: NO_OXLINT_CONFIG }),
+  },
+  {
+    place: "an ESLint block's ignores",
+    engine: 'eslint',
+    key: 'ignores',
+    holding: (globs) => ({ eslint: [{ name: A_BLOCK_NAME, files: [ON_TS_FILES], ignores: [...globs], rules: AN_ESLINT_RULE }], oxlint: NO_OXLINT_CONFIG }),
+  },
+  { place: "ESLint's global ignores", engine: 'eslint', key: 'ignores', holding: (globs) => ({ eslint: [{ name: A_BLOCK_NAME, ignores: [...globs] }], oxlint: NO_OXLINT_CONFIG }) },
+  { place: "oxlint's ignorePatterns", engine: 'oxlint', key: 'ignores', holding: (globs) => ({ eslint: [], oxlint: { ignorePatterns: [...globs], rules: AN_OXLINT_RULE } }) },
+  { place: "an oxlint override's files", engine: 'oxlint', key: 'files', holding: (globs) => ({ eslint: [], oxlint: { overrides: [{ files: [...globs], rules: AN_OXLINT_RULE }] } }) },
+  {
+    place: "an oxlint override's excludeFiles",
+    engine: 'oxlint',
+    key: 'files',
+    holding: (globs) => ({ eslint: [], oxlint: { overrides: [{ files: [ON_TS_FILES], excludeFiles: [...globs], rules: AN_OXLINT_RULE }] } }),
+  },
+]
+
+// The keys both engines read globs under (ESLint 10.12, oxlint 1.87). Plugins, parsers and rule options are left unread.
+const GLOB_KEYS: ReadonlySet<string> = new Set(['files', 'ignores', 'ignorePatterns', 'excludeFiles'])
+const UNREAD_KEYS: ReadonlySet<string> = new Set(['plugins', 'parser', 'processor', 'rules'])
+
+/** Every value under a key named in GLOB_KEYS, at any depth, nested arrays read through; a value that is no string is given as `<its type>`. */
+export function globsHeldBy(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(globsHeldBy)
+  if (!isRecord(value)) return []
+  return Object.entries(value).flatMap(([key, held]) => globsUnderTheKey(key, held))
+}
+
+function globsUnderTheKey(key: string, held: unknown): string[] {
+  if (UNREAD_KEYS.has(key)) return []
+  return GLOB_KEYS.has(key) ? globsUnder(held) : globsHeldBy(held)
+}
+
+function globsUnder(held: unknown): string[] {
+  if (typeof held === 'string') return [held]
+  if (Array.isArray(held)) return held.flatMap(globsUnder)
+  return [`<${typeof held}>`]
 }
 
 /** `count` errors in the file, on lines 1 to `count`, each of whose lines is `length` characters long. */

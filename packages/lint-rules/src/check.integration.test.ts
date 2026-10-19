@@ -4,13 +4,21 @@ import { catalog } from '@workspace/rule-data'
 import { describe, expect, it } from 'vitest'
 import {
   A_CLEAN_COMPONENT,
+  A_DEFAULT_EXPORT_NAMED_APART,
+  A_DEFAULT_EXPORT_NAMED_APART_ITS_VALUE_CHANGED,
+  A_DISABLE_ON_ONE_LINE_ABOVE_A_DEBUGGER,
+  A_DISABLE_OVER_SEVERAL_LINES_ABOVE_A_DEBUGGER,
+  A_LITERAL_THROWN,
   AN_ENABLE_CLOSING_NOTHING,
   AN_ENABLE_CLOSING_NOTHING_WITH_A_DEBUGGER_ADDED,
   A_SUPPRESSION_OF_NOTHING,
   A_TABLE,
   A_TABLE_WITH_DUPLICATES_ADDED,
+  A_WHOLLY_UNUSED_OXLINT_DISABLE,
+  A_WHOLLY_UNUSED_OXLINT_DISABLE_BELOW_A_STRING_HOLDING_ITS_TEXT,
   A_SUPPRESSION_OVER_A_FINDING,
   A_SELECTOR_ESLINT_THROWS_ON,
+  A_SELECTOR_ESLINT_THROWS_ON_MESSAGE,
   A_SYNTAX_ERROR,
   ANOTHER_COPY_OF_THE_PACKAGE,
   aSuppressionPartlyUnused,
@@ -25,6 +33,7 @@ import {
   RETHROWN_WITH_A_COMMENT_ADDED,
   SUPPRESSIONS_TWO_UNUSED,
   THROWING_ESLINT_CONFIG,
+  withACharacterAddedToTheFirstLine,
 } from './__tests__/cases/check-sources.ts'
 import { NO_CONSOLE_OPTION_OXLINT_REFUSES, OXLINT_REFUSAL_OF_AN_OPTION } from './__tests__/cases/oxlint-refusals.ts'
 import {
@@ -33,12 +42,13 @@ import {
   A_PAIR_BELOW_A_STRING_HOLDING_A_DISABLE,
   A_PAIR_BELOW_A_STRING_HOLDING_NO_COMMENT,
 } from './__tests__/cases/suppression-pairs.ts'
-import { findingMessagesIn, findingsIn, findingsInFile, lastLineOf } from './__tests__/check-output.ts'
+import { findingMessagesIn, findingsIn, findingsInFile, lastLineOf, notCheckedIn } from './__tests__/check-output.ts'
 import {
   anotherWriterAsOxlintsLintRunEnds,
   type BackgroundRun,
   checkInTheBackground,
   checkSignalledOnceItsConfigAppears,
+  type CliRun,
   EXIT,
   idOfAnEndedProcess,
   nodeBelowTheFloor,
@@ -52,23 +62,31 @@ import {
   tempConfigsIn,
 } from './__tests__/cli-runs.ts'
 import {
+  A_TSCONFIG_TAKING_IN_THE_REPO,
   blockDisable,
   CHECK_ESLINT_FAILED,
   CHECK_INTERRUPTED,
   checkConfigText,
+  checkConfigTextExportingACopy,
   checkConfigTextHanding,
   checkedPackageFiles,
   CONFIG_FILE,
   DEBUGGER_STATEMENT,
   ERRORS_SUMMARY_TAIL,
+  eslintMessageWhileLinting,
   exportedConstant,
   moduleText,
   NESTED_PACKAGE,
+  NOT_EVERYTHING_CHECKED_SUMMARY,
+  notCheckedByEslint,
+  notCheckedByOxlint,
+  NOTHING_TO_CHECK,
   PACKAGE_JSON_FILE,
   REDUNDANCY,
   type SuppressionForm,
   SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED,
   unusedSuppressionMessageOf,
+  USAGE,
 } from './__tests__/factories/check-factories.ts'
 import { buildPackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { type FolderWatch, watchFolder } from './__tests__/folder-watch.ts'
@@ -83,16 +101,12 @@ import { validateLintRules } from './core/validate-lint-rules.ts'
 
 allowEveryTestForParallelLoad()
 
-const REDUNDANCY_AND_TESTS = { quality: ['redundancy', 'tests'] } as const
+const REDUNDANCY_AND_NAMING = { quality: ['redundancy', 'naming'] } as const
 const REDUNDANCY_AND_MODERN_JS = { quality: ['redundancy', 'modern-js'] } as const
+const REDUNDANCY_AND_CORRECTNESS = { quality: ['redundancy', 'correctness'] } as const
 const CORRECTNESS_AND_REACT = { quality: ['correctness'], libs: { ui: ['react'] } } as const
 const CORRECTNESS_AND_MODULES = { quality: ['correctness', 'modules'] } as const
 
-const NOTHING_TO_CHECK = 'check: no changed JS or TS files.\n'
-const USAGE = `usage: agents-inc-lint <command>
-  init   add @agents-inc/lint-rules and agents-inc.lint.mts to the package in this folder
-  check  lint the JS and TS lines changed since the last commit
-`
 // typescript-eslint 8.71's message for `export const = 2`; oxlint reports the same line as "Unexpected token".
 const ESLINT_PARSE_ERROR_MESSAGE = 'Parsing error: Variable declaration expected.'
 
@@ -125,15 +139,15 @@ describe('check on the files and lines changed since the last commit', () => {
     },
   )
 
-  it('reports every line of an untracked file (K-2)', () => {
+  it('reports every line of an untracked file', () => {
     expect(findingsInFile(runs().stdout, 'src/new-untracked.ts')).toStrictEqual(['src/new-untracked.ts:2 no-debugger', 'src/new-untracked.ts:3 no-debugger'])
   })
 
-  it('reports a finding on a changed line of a tracked file, and not the one on its unchanged line (K-3)', () => {
+  it('reports a finding on a changed line of a tracked file, and not the one on its unchanged line', () => {
     expect(findingsInFile(runs().stdout, 'src/partly.ts')).toStrictEqual(['src/partly.ts:3 no-debugger'])
   })
 
-  it('checks a path with a space and one with letters outside ASCII, and prints each as it is (K-5)', () => {
+  it('checks a path with a space and one with letters outside ASCII, and prints each as it is', () => {
     const { stdout } = runs()
 
     expect([...findingsInFile(stdout, 'src/with space.ts'), ...findingsInFile(stdout, 'src/ünïcode.ts')]).toStrictEqual([
@@ -142,7 +156,7 @@ describe('check on the files and lines changed since the last commit', () => {
     ])
   })
 
-  it('counts a change only staged and a change not staged alike (K-6)', () => {
+  it('counts a change only staged and a change not staged alike', () => {
     const { stdout } = runs()
 
     expect([...findingsInFile(stdout, 'src/staged-only.ts'), ...findingsInFile(stdout, 'src/unstaged-only.ts')]).toStrictEqual([
@@ -151,7 +165,7 @@ describe('check on the files and lines changed since the last commit', () => {
     ])
   })
 
-  it('lints a changed file of each of the eight JS and TS extensions, and no .json, .md or .css file (K-8)', () => {
+  it('lints a changed file of each of the eight JS and TS extensions, and no .json, .md or .css file', () => {
     expect(
       findingsIn(runs().stdout)
         .filter((finding) => finding.startsWith('src/ext/'))
@@ -159,7 +173,7 @@ describe('check on the files and lines changed since the last commit', () => {
     ).toStrictEqual(EXTENSIONS.map((extension) => `src/ext/a.${extension}:1 no-debugger`).toSorted())
   })
 
-  it("reports nothing in a changed file the config's ignores name, in either engine, and leaves it out of the count (K-9)", () => {
+  it("reports nothing in a changed file the config's ignores name, in either engine, and leaves it out of the count", () => {
     const { stdout } = runs()
 
     expect({ inTheIgnoredFile: findingsInFile(stdout, 'src/generated/gen.ts'), summary: lastLineOf(stdout) }).toStrictEqual({
@@ -168,7 +182,7 @@ describe('check on the files and lines changed since the last commit', () => {
     })
   })
 
-  it("imports neither the project's own ESLint config, which throws, nor reads its oxlint configs, which turn the rule off (K-10)", () => {
+  it("imports neither the project's own ESLint config, which throws, nor reads its oxlint configs, which turn the rule off", () => {
     const { exitCode, stderr, stdout } = runs()
 
     expect({ exitCode, stderr, partly: findingsInFile(stdout, 'src/partly.ts') }).toStrictEqual({
@@ -178,7 +192,7 @@ describe('check on the files and lines changed since the last commit', () => {
     })
   })
 
-  it("reports a syntax error once, as a parse error with ESLint's message, and exits 1 (K-13)", () => {
+  it("reports a syntax error once, as a parse error with ESLint's message, and exits 1", () => {
     const { exitCode, stdout } = runs()
 
     expect({
@@ -205,7 +219,7 @@ describe('check on the files and lines changed since the last commit', () => {
   })
 })
 
-describe('check on moved files (K-4, q-c7)', () => {
+describe('check on moved files', () => {
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, {
       repo: 'committed',
@@ -226,19 +240,19 @@ describe('check on moved files (K-4, q-c7)', () => {
     return { run, statusBefore, statusAfter: gitStatusOf(project), indexBefore, indexAfter: project.readBytes('.git/index') }
   })
 
-  it('reports only the line appended to a file moved with git mv (K-4)', () => {
+  it('reports only the line appended to a file moved with git mv', () => {
     expect(findingsInFile(runs().run.stdout, 'src/git-moved-to.ts')).toStrictEqual(['src/git-moved-to.ts:4 no-debugger'])
   })
 
-  it('pairs a file moved with a plain mv with its old path, reporting only the line appended (K-4b)', () => {
+  it('pairs a file moved with a plain mv with its old path, reporting only the line appended', () => {
     expect(findingsInFile(runs().run.stdout, 'src/plain-moved-to.ts')).toStrictEqual(['src/plain-moved-to.ts:4 no-debugger'])
   })
 
-  it('still reports every line of a new file that pairs with no old path (K-4b)', () => {
+  it('still reports every line of a new file that pairs with no old path', () => {
     expect(findingsInFile(runs().run.stdout, 'src/unpaired.ts')).toStrictEqual(['src/unpaired.ts:1 no-debugger', 'src/unpaired.ts:3 no-debugger'])
   })
 
-  it('leaves the real index byte for byte as it was, and git status unchanged (K-4b)', () => {
+  it('leaves the real index byte for byte as it was, and git status unchanged', () => {
     const { run, statusBefore, statusAfter, indexBefore, indexAfter } = runs()
 
     expect({
@@ -249,7 +263,7 @@ describe('check on moved files (K-4, q-c7)', () => {
   })
 })
 
-describe('check on deleted files (K-6)', () => {
+describe('check on deleted files', () => {
   const run = setUpCheckAfterTheAgent(
     {
       ...checkedPackageFiles(REDUNDANCY),
@@ -275,7 +289,7 @@ describe('check on deleted files (K-6)', () => {
   })
 })
 
-describe('check in a repo with no commits (K-7, q-c8)', () => {
+describe('check in a repo with no commits', () => {
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, {
       repo: 'no commits',
@@ -302,7 +316,7 @@ describe('check in a repo with no commits (K-7, q-c8)', () => {
   })
 })
 
-describe('check with no changed JS or TS file, then with only the config changed (K-1, K-24, K-25, q-c14, q-c17)', () => {
+describe('check with no changed JS or TS file, then with only the config changed', () => {
   const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const project = createGitProject(tempProjects, {
       repo: 'committed',
@@ -321,13 +335,13 @@ describe('check with no changed JS or TS file, then with only the config changed
     return { nothingToCheck, namesSeen, statusBefore, entriesBefore, ...afterNothingToCheck, configChanged }
   }, RUNS_IN_THE_BACKGROUND)
 
-  it('says there is nothing to check and exits 0 when only a file that is not JS or TS changed (K-1)', () => {
+  it('says there is nothing to check and exits 0 when only a file that is not JS or TS changed', () => {
     const { nothingToCheck } = runs()
 
     expect(nothingToCheck).toStrictEqual({ exitCode: EXIT.clean, signal: null, stdout: NOTHING_TO_CHECK, stderr: '' })
   })
 
-  it('creates no temporary config, not even for a moment, and writes no file then (K-1)', () => {
+  it('creates no temporary config, not even for a moment, and writes no file then', () => {
     const { nothingToCheck, namesSeen, statusBefore, statusAfter, entriesBefore, entriesAfter } = runs()
 
     expect({ stdout: nothingToCheck.stdout, namesSeen, statusAfter, entriesAfter }).toStrictEqual({
@@ -338,11 +352,11 @@ describe('check with no changed JS or TS file, then with only the config changed
     })
   })
 
-  it('says nothing about an agents-inc.lint.mts an agent changed, and lints it as a changed file (K-24, q-c14)', () => {
+  it('says nothing about an agents-inc.lint.mts an agent changed, and lints it as a changed file', () => {
     expect(runs().configChanged).toStrictEqual({ exitCode: EXIT.clean, signal: null, stdout: 'check: no findings in 1 changed file.\n', stderr: '' })
   })
 
-  it('says nothing about the rulesets the config leaves out, where it lists one of them (K-25, q-c17)', () => {
+  it('says nothing about the rulesets the config leaves out, where it lists one of them', () => {
     const { nothingToCheck, configChanged } = runs()
 
     expect({ stderr: [nothingToCheck.stderr, configChanged.stderr], exitCodes: [nothingToCheck.exitCode, configChanged.exitCode] }).toStrictEqual({
@@ -352,13 +366,15 @@ describe('check with no changed JS or TS file, then with only the config changed
   })
 })
 
-describe('what check leaves behind (K-11, K-20)', () => {
+describe('what check leaves behind', () => {
   const emptyFolder = setUpEmptyFolders()
   const APP = 'app'
   const RUN_FROM = 'app/src'
+  const CHANGED_WHEN_ESLINT_FAILS = [CONFIG_FILE, 'src/clean.ts', 'src/finding.ts']
 
-  /** What one run left: whether its temporary config appeared in the config's folder, any left in the folders it touches, and any file outside the project. */
+  /** What one run left: whether its temporary config appeared in the git top level and in the config's folder, any left in the folders it touches, and any file outside the project. */
   type LeftBehind = BackgroundRun & {
+    readonly tempConfigSeenInTheGitTopLevel: boolean
     readonly tempConfigSeenInTheConfigFolder: boolean
     readonly leftovers: readonly string[]
     readonly outside: readonly string[]
@@ -375,13 +391,17 @@ describe('what check leaves behind (K-11, K-20)', () => {
     // HOME, XDG_STATE_HOME and TMPDIR each an empty folder of its own: what check writes outside the project lands in one.
     async function runLeaving(start: (env: Readonly<Record<string, string>>, watched: FolderWatch) => Promise<BackgroundRun>): Promise<LeftBehind> {
       const outside = { HOME: emptyFolder(), XDG_STATE_HOME: emptyFolder(), TMPDIR: emptyFolder() }
-      const watched = watchFolder(configFolder)
-      const started = await start(outside, watched)
-      const namesSeen = await watched.namesSeen()
-      watched.close()
+      const watchedTopLevel = watchFolder(project.dir)
+      const watchedConfigFolder = watchFolder(configFolder)
+      const started = await start(outside, watchedTopLevel)
+      const [namesSeenInTheTopLevel, namesSeenInTheConfigFolder] = await Promise.all([watchedTopLevel.namesSeen(), watchedConfigFolder.namesSeen()])
+      watchedTopLevel.close()
+      watchedConfigFolder.close()
+      const isItsConfig = (name: string): boolean => tempConfigPatternOf(started.pid).test(name)
       return {
         ...started,
-        tempConfigSeenInTheConfigFolder: namesSeen.some((name) => tempConfigPatternOf(started.pid).test(name)),
+        tempConfigSeenInTheGitTopLevel: namesSeenInTheTopLevel.some(isItsConfig),
+        tempConfigSeenInTheConfigFolder: namesSeenInTheConfigFolder.some(isItsConfig),
         leftovers: [...tempConfigsIn(configFolder), ...tempConfigsIn(runFolder), ...tempConfigsIn(project.dir)],
         outside: Object.values(outside).flatMap((folder) => entriesUnder(folder)),
       }
@@ -406,38 +426,47 @@ describe('what check leaves behind (K-11, K-20)', () => {
 
     const fromAnEndedProcess = tempConfigNameOf(idOfAnEndedProcess(), 'left-by-an-ended-run')
     const fromALiveProcess = tempConfigNameOf(process.pid, 'held-by-a-live-run')
-    project.write(`${APP}/${fromAnEndedProcess}`, '{}\n')
-    project.write(`${APP}/${fromALiveProcess}`, '{}\n')
+    project.write(fromAnEndedProcess, '{}\n')
+    project.write(fromALiveProcess, '{}\n')
     const sweep = await checkInTheBackground(runFolder)
-    const afterTheSweep = tempConfigsIn(configFolder)
+    const afterTheSweep = tempConfigsIn(project.dir)
 
-    return { clean, findings, interrupted, terminated, engineFailure, sweep, fromALiveProcess, afterTheSweep }
+    const eslintFailedOn = (file: string): string => notCheckedByEslint(file, eslintMessageWhileLinting(A_SELECTOR_ESLINT_THROWS_ON_MESSAGE, project.pathOf(`${APP}/${file}`)))
+    return { clean, findings, interrupted, terminated, engineFailure, notCheckedWhereEslintFails: CHANGED_WHEN_ESLINT_FAILS.map(eslintFailedOn), sweep, fromALiveProcess, afterTheSweep }
   }, RUNS_IN_THE_BACKGROUND)
 
   it.each([
     { kind: 'a clean run', exitCode: EXIT.clean, ran: () => runs().clean },
     { kind: 'a run with findings', exitCode: EXIT.findings, ran: () => runs().findings },
-  ])("writes its temporary oxlint config in the config's folder while it runs, and leaves none behind, after $kind (K-11)", ({ exitCode, ran }) => {
-    const { run, tempConfigSeenInTheConfigFolder, leftovers } = ran()
+  ])("writes its temporary oxlint config in the git top level, not the config's folder, while it runs, and leaves none behind, after $kind", ({ exitCode, ran }) => {
+    const { run, tempConfigSeenInTheGitTopLevel, tempConfigSeenInTheConfigFolder, leftovers } = ran()
 
-    expect({ exitCode: run.exitCode, tempConfigSeenInTheConfigFolder, leftovers }).toStrictEqual({ exitCode, tempConfigSeenInTheConfigFolder: true, leftovers: [] })
+    expect({ exitCode: run.exitCode, tempConfigSeenInTheGitTopLevel, tempConfigSeenInTheConfigFolder, leftovers }).toStrictEqual({
+      exitCode,
+      tempConfigSeenInTheGitTopLevel: true,
+      tempConfigSeenInTheConfigFolder: false,
+      leftovers: [],
+    })
   })
 
-  it('exits 2 when ESLint fails, and leaves no temporary config behind (K-11)', () => {
-    const { run, tempConfigSeenInTheConfigFolder, leftovers } = runs().engineFailure
+  // finding.ts holds an oxlint-found error, so the run exits 1.
+  it('lists each file ESLint failed on as not checked, prints nothing on stderr, and leaves no temporary config behind', () => {
+    const { engineFailure, notCheckedWhereEslintFails } = runs()
+    const { run, tempConfigSeenInTheGitTopLevel, leftovers } = engineFailure
 
-    expect({
-      exitCode: run.exitCode,
-      couldNotRun: run.stderr.startsWith(CHECK_ESLINT_FAILED),
-      tempConfigSeenInTheConfigFolder,
-      leftovers,
-    }).toStrictEqual({ exitCode: EXIT.couldNotRun, couldNotRun: true, tempConfigSeenInTheConfigFolder: true, leftovers: [] })
+    expect({ exitCode: run.exitCode, notChecked: notCheckedIn(run.stdout), stderr: run.stderr, tempConfigSeenInTheGitTopLevel, leftovers }).toStrictEqual({
+      exitCode: EXIT.findings,
+      notChecked: notCheckedWhereEslintFails,
+      stderr: '',
+      tempConfigSeenInTheGitTopLevel: true,
+      leftovers: [],
+    })
   })
 
   it.each([
     { signal: 'SIGINT', exitCode: EXIT.interrupted, ran: () => runs().interrupted },
     { signal: 'SIGTERM', exitCode: EXIT.terminated, ran: () => runs().terminated },
-  ])('exits $exitCode on $signal, says it was interrupted, and leaves no temporary config behind (K-11)', ({ exitCode, ran }) => {
+  ])('exits $exitCode on $signal, says it was interrupted, and leaves no temporary config behind', ({ exitCode, ran }) => {
     const { signalled, run, leftovers } = ran()
 
     expect({ signalled, exitCode: run.exitCode, stderr: run.stderr, leftovers }).toStrictEqual({ signalled: true, exitCode, stderr: CHECK_INTERRUPTED, leftovers: [] })
@@ -447,13 +476,13 @@ describe('what check leaves behind (K-11, K-20)', () => {
   it.each([
     { signal: 'SIGINT', ran: () => runs().interrupted },
     { signal: 'SIGTERM', ran: () => runs().terminated },
-  ])('prints no autofixed line on $signal, where it had fixed nothing (P2)', ({ ran }) => {
+  ])('prints no autofixed line on $signal, where it had fixed nothing', ({ ran }) => {
     const { signalled, run } = ran()
 
     expect({ signalled, stdout: run.stdout }).toStrictEqual({ signalled: true, stdout: '' })
   })
 
-  it('writes nothing outside the project in any of those runs: no log, no scratch index left (K-20, c13-again)', () => {
+  it('writes nothing outside the project in any of those runs: no log, no scratch index left', () => {
     const { clean, findings, interrupted, terminated, engineFailure } = runs()
 
     expect([clean, findings, interrupted, terminated, engineFailure].map(({ run, outside }) => ({ exitCode: run.exitCode, outside }))).toStrictEqual([
@@ -461,18 +490,18 @@ describe('what check leaves behind (K-11, K-20)', () => {
       { exitCode: EXIT.findings, outside: [] },
       { exitCode: EXIT.interrupted, outside: [] },
       { exitCode: EXIT.terminated, outside: [] },
-      { exitCode: EXIT.couldNotRun, outside: [] },
+      { exitCode: EXIT.findings, outside: [] },
     ])
   })
 
-  it("removes a temporary config left by a process that has ended, and keeps one whose process lives (K-11)", () => {
+  it('removes a temporary config in the git top level left by a process that has ended, and keeps one whose process lives', () => {
     const { sweep, afterTheSweep, fromALiveProcess } = runs()
 
     expect({ exitCode: sweep.run.exitCode, afterTheSweep }).toStrictEqual({ exitCode: EXIT.findings, afterTheSweep: [fromALiveProcess] })
   })
 })
 
-describe('two checks started together in one project (K-12)', () => {
+describe('two checks started together in one project', () => {
   const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY) })
     project.write('src/a.ts', moduleText(exportedConstant('a'), DEBUGGER_STATEMENT))
@@ -493,7 +522,7 @@ describe('two checks started together in one project (K-12)', () => {
   })
 })
 
-describe('check where it cannot run (K-16, q-c2)', () => {
+describe('check where it cannot run', () => {
   // A ruleset name no catalog has: defineLintRules refuses it.
   const REFUSED_SETTINGS: Omit<Parameters<typeof validateLintRules>[0], 'tsconfigRootDir'> = {
     agentRulesets: { quality: ['no-such-ruleset'], libs: {}, runtimes: [] },
@@ -556,7 +585,7 @@ describe('check where it cannot run (K-16, q-c2)', () => {
     })
   })
 
-  it('exits 2 where no agents-inc.lint.mts is in the folder or any above it up to the git top level (q-c6)', () => {
+  it('exits 2 where no agents-inc.lint.mts is in the folder or any above it up to the git top level', () => {
     const { dir, run } = runs().noConfig
 
     expect(run).toStrictEqual({
@@ -567,7 +596,7 @@ describe('check where it cannot run (K-16, q-c2)', () => {
     })
   })
 
-  it('does not use an agents-inc.lint.mts above the git top level, run from a folder below it (q-c6)', () => {
+  it('does not use an agents-inc.lint.mts above the git top level, run from a folder below it', () => {
     const { dir, fromBelow } = runs().noConfig
 
     expect(fromBelow).toStrictEqual({
@@ -615,7 +644,7 @@ describe('check where it cannot run (K-16, q-c2)', () => {
   })
 
   // Runs where PATH holds a Node older than 22.18; skipped, and so reported, where it holds none.
-  it.runIf(OLD_NODE !== undefined)('exits 2 on a Node older than 22.18, check and init alike, saying which Node it is (#59)', () => {
+  it.runIf(OLD_NODE !== undefined)('exits 2 on a Node older than 22.18, check and init alike, saying which Node it is', () => {
     const { oldNode } = runs()
     if (oldNode === null || OLD_NODE === undefined) throw new Error('the old Node runs were not made')
     const version = OLD_NODE.version.replace(/^v/u, '')
@@ -632,7 +661,57 @@ describe('check where it cannot run (K-16, q-c2)', () => {
   })
 })
 
-describe('check on a React file in a project that does not install React (K-18, X5)', () => {
+describe('check where a file override lists no file', () => {
+  // defineLintRules lets an empty `files` through, and ESLint refuses the block check builds for that entry's component files.
+  function suppressionsOffIn(files: readonly string[]): Parameters<typeof checkedPackageFiles>[1] {
+    return { allowSuppressions: true, fileOverrides: [{ files: [...files], allowSuppressions: false }] }
+  }
+
+  const runs = setUpRunsBeforeTheSuite((tempProjects) => {
+    const checkedWith = (files: readonly string[]): CliRun => {
+      const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, suppressionsOffIn(files)) })
+      project.write('src/a.ts', moduleText(exportedConstant('a'), DEBUGGER_STATEMENT))
+      return runCheck(project.dir)
+    }
+    return { listingNone: checkedWith([]), listingSrc: checkedWith(['src/**']) }
+  })
+
+  it("stops, naming that entry's block, beside an entry listing src/**, which check runs", () => {
+    const { listingNone, listingSrc } = runs()
+
+    expect({
+      stopped: { exitCode: listingNone.exitCode, namesTheBlock: listingNone.stderr.startsWith(`${CHECK_ESLINT_FAILED}Config "agents-inc/check/component-files/file-overrides/0": Key "files":`) },
+      ran: { exitCode: listingSrc.exitCode, findings: findingsIn(listingSrc.stdout) },
+    }).toStrictEqual({ stopped: { exitCode: EXIT.couldNotRun, namesTheBlock: true }, ran: { exitCode: EXIT.findings, findings: ['src/a.ts:2 no-debugger'] } })
+  })
+})
+
+describe('check where the config exports a copy of the ESLint part defineLintRules returned', () => {
+  const runs = setUpRunsBeforeTheSuite((tempProjects) => {
+    const project = createGitProject(tempProjects, {
+      repo: 'committed',
+      files: { [PACKAGE_JSON_FILE]: packageJsonText(buildPackageJson()), [CONFIG_FILE]: checkConfigTextExportingACopy(REDUNDANCY), 'src/a.ts': moduleText(exportedConstant('a')) },
+    })
+    const nothingChanged = runCheck(project.dir)
+    project.append('src/a.ts', `${exportedConstant('b')}\n`)
+    return { nothingChanged, aFileChanged: runCheck(project.dir) }
+  })
+
+  it('exits 2 naming the fix where a TS file changed', () => {
+    expect(runs().aFileChanged).toStrictEqual({
+      exitCode: EXIT.couldNotRun,
+      signal: null,
+      stdout: '',
+      stderr: 'check: could not run: agents-inc.lint.mts: the part given is not one defineLintRules returned: pass `eslint` or `oxlint` exactly as the file exports it\n',
+    })
+  })
+
+  it('says there is nothing to check and exits 0 where no file changed, reading no settings from the part', () => {
+    expect(runs().nothingChanged).toStrictEqual({ exitCode: EXIT.clean, signal: null, stdout: NOTHING_TO_CHECK, stderr: '' })
+  })
+})
+
+describe('check on a React file in a project that does not install React', () => {
   const run = setUpCheckAfterTheAgent(checkedPackageFiles(CORRECTNESS_AND_REACT), (project) => {
     project.write('src/hello.tsx', moduleText(...A_CLEAN_COMPONENT))
   })
@@ -648,7 +727,7 @@ describe('check on a React file in a project that does not install React (K-18, 
   })
 })
 
-describe('a wrong call (K-19, q-c16)', () => {
+describe('a wrong call', () => {
   const WRONG_CALLS = [['check', '--help'], ['check', 'foo'], [], ['foo'], ['--help'], ['init', 'x']]
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
@@ -682,14 +761,13 @@ describe('a wrong call (K-19, q-c16)', () => {
   })
 })
 
-describe('check in a monorepo package (K-22, q-c6)', () => {
+describe('check in a monorepo package, after changes in it, in another package and at the repo root', () => {
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, {}, `${NESTED_PACKAGE}/`) })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: { ...A_TSCONFIG_TAKING_IN_THE_REPO, ...checkedPackageFiles(REDUNDANCY, {}, `${NESTED_PACKAGE}/`) } })
     project.write(`${NESTED_PACKAGE}/src/in-the-package.ts`, moduleText(exportedConstant('inThePackage'), DEBUGGER_STATEMENT))
     project.write('packages/b/src/in-another-package.ts', moduleText(exportedConstant('inAnotherPackage'), DEBUGGER_STATEMENT))
     project.write('scripts/at-the-root.ts', moduleText(exportedConstant('atTheRoot'), DEBUGGER_STATEMENT))
     return {
-      packageDir: project.pathOf(NESTED_PACKAGE),
       fromThePackage: runCheck(project.pathOf(NESTED_PACKAGE)),
       fromBelowIt: runCheck(project.pathOf(`${NESTED_PACKAGE}/src`)),
     }
@@ -698,14 +776,18 @@ describe('check in a monorepo package (K-22, q-c6)', () => {
   it.each([
     { from: 'the folder of its agents-inc.lint.mts', ran: () => runs().fromThePackage },
     { from: 'a folder below it', ran: () => runs().fromBelowIt },
-  ])("run from $from, lints the changed files under the config's folder, with paths from it, and notes those it skipped", ({ ran }) => {
-    const { packageDir } = runs()
-
+  ])("run from $from, lints every changed file in the repo with the config found, with paths from the config's folder, and notes nothing", ({ ran }) => {
     expect(ran()).toStrictEqual({
       exitCode: EXIT.findings,
       signal: null,
-      stdout: `src/in-the-package.ts:2 no-debugger — \`debugger\` statement is not allowed\ncheck: 1 error and 0 warnings in 1 of 1 changed file. ${ERRORS_SUMMARY_TAIL}\n`,
-      stderr: `check: note: skipped 2 changed files outside ${packageDir}.\n`,
+      stdout: [
+        '../../scripts/at-the-root.ts:2 no-debugger — `debugger` statement is not allowed',
+        '../b/src/in-another-package.ts:2 no-debugger — `debugger` statement is not allowed',
+        'src/in-the-package.ts:2 no-debugger — `debugger` statement is not allowed',
+        `check: 3 errors and 0 warnings in 3 of 3 changed files. ${ERRORS_SUMMARY_TAIL}`,
+        '',
+      ].join('\n'),
+      stderr: '',
     })
   })
 })
@@ -715,12 +797,11 @@ describe('check in a package whose folder, at the repo root, and a changed file 
   const PACKAGE = '..pkg'
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, {}, `${PACKAGE}/`) })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: { ...A_TSCONFIG_TAKING_IN_THE_REPO, ...checkedPackageFiles(REDUNDANCY, {}, `${PACKAGE}/`) } })
     project.write(`${PACKAGE}/..x.ts`, moduleText(exportedConstant('dotDotX'), DEBUGGER_STATEMENT))
     project.write(`${PACKAGE}/src/in-the-package.ts`, moduleText(exportedConstant('inThePackage'), DEBUGGER_STATEMENT))
     project.write('scripts/at-the-root.ts', moduleText(exportedConstant('atTheRoot'), DEBUGGER_STATEMENT))
     return {
-      packageDir: project.pathOf(PACKAGE),
       fromThePackage: runCheck(project.pathOf(PACKAGE)),
       fromBelowIt: runCheck(project.pathOf(`${PACKAGE}/src`)),
     }
@@ -729,26 +810,30 @@ describe('check in a package whose folder, at the repo root, and a changed file 
   it.each([
     { from: 'the folder of its agents-inc.lint.mts', ran: () => runs().fromThePackage },
     { from: 'a folder below it, finding the config in the ..pkg folder', ran: () => runs().fromBelowIt },
-  ])('run from $from, lints ..x.ts as a file in the config\'s folder, and skips only the file outside it', ({ ran }) => {
-    const { packageDir } = runs()
-
+  ])("run from $from, prints ..x.ts as a file in the config's folder, and the file at the repo root from the folder above it", ({ ran }) => {
     expect(ran()).toStrictEqual({
       exitCode: EXIT.findings,
       signal: null,
-      stdout: `..x.ts:2 no-debugger — \`debugger\` statement is not allowed\nsrc/in-the-package.ts:2 no-debugger — \`debugger\` statement is not allowed\ncheck: 2 errors and 0 warnings in 2 of 2 changed files. ${ERRORS_SUMMARY_TAIL}\n`,
-      stderr: `check: note: skipped 1 changed file outside ${packageDir}.\n`,
+      stdout: [
+        '../scripts/at-the-root.ts:2 no-debugger — `debugger` statement is not allowed',
+        '..x.ts:2 no-debugger — `debugger` statement is not allowed',
+        'src/in-the-package.ts:2 no-debugger — `debugger` statement is not allowed',
+        `check: 3 errors and 0 warnings in 3 of 3 changed files. ${ERRORS_SUMMARY_TAIL}`,
+        '',
+      ].join('\n'),
+      stderr: '',
     })
   })
 })
 
-describe('check on suppression comments (K-14, K-23, q-c15)', () => {
+describe('check on suppression comments', () => {
   const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY_AND_MODERN_JS, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
     project.write('src/allowed/unused.ts', moduleText(...SUPPRESSIONS_TWO_UNUSED))
     project.write('src/banned-unused.ts', moduleText(...A_SUPPRESSION_OF_NOTHING))
     project.write('src/banned-over-a-finding.ts', moduleText(...A_SUPPRESSION_OVER_A_FINDING))
   })
 
-  it('reports an unused suppression of an ESLint-run rule and of an oxlint-run rule, each once, where suppressions are allowed, and not one that suppressed a finding (K-23)', () => {
+  it('reports an unused suppression of an ESLint-run rule and of an oxlint-run rule, each once, where suppressions are allowed, and not one that suppressed a finding', () => {
     const { stdout } = run()
     const messages = findingMessagesIn(stdout)
 
@@ -761,28 +846,28 @@ describe('check on suppression comments (K-14, K-23, q-c15)', () => {
     })
   })
 
-  it('reports no unused suppression where suppressions are banned, only the ban (K-23)', () => {
+  it('reports no unused suppression where suppressions are banned, only the ban', () => {
     expect(findingsInFile(run().stdout, 'src/banned-unused.ts')).toStrictEqual(['src/banned-unused.ts:2 house/no-suppressions'])
   })
 
-  it('reports a banned suppression comment over a finding as exactly one finding, the ban (K-14)', () => {
+  it('reports a banned suppression comment over a finding as exactly one finding, the ban', () => {
     expect(findingsInFile(run().stdout, 'src/banned-over-a-finding.ts')).toStrictEqual(['src/banned-over-a-finding.ts:2 house/no-suppressions'])
   })
 })
 
-describe('check on findings spanning lines, and on findings about a whole file (K-26, q-c9)', () => {
+describe('check on findings spanning lines, and on findings about a whole file', () => {
   const run = setUpCheckAfterTheAgent(
     {
-      ...checkedPackageFiles(REDUNDANCY_AND_TESTS),
+      ...checkedPackageFiles(REDUNDANCY_AND_NAMING),
       'src/catch-start.ts': moduleText(...GUARDED_BY_FINALLY),
       'src/catch-inside.ts': moduleText(...RETHROWN_BY_A_USELESS_CATCH),
-      'src/old.test.ts': moduleText(exportedConstant('before'), exportedConstant('unchanged')),
+      'src/old.ts': moduleText(...A_DEFAULT_EXPORT_NAMED_APART),
     },
     (project) => {
       project.write('src/catch-start.ts', moduleText(...GUARDED_BY_A_USELESS_CATCH))
       project.write('src/catch-inside.ts', moduleText(...RETHROWN_WITH_A_COMMENT_ADDED))
-      project.write('src/old.test.ts', moduleText(exportedConstant('after'), exportedConstant('unchanged')))
-      project.write('src/fresh.test.ts', moduleText(exportedConstant('nothing')))
+      project.write('src/old.ts', moduleText(...A_DEFAULT_EXPORT_NAMED_APART_ITS_VALUE_CHANGED))
+      project.write('src/fresh.ts', moduleText(...A_DEFAULT_EXPORT_NAMED_APART))
     },
   )
 
@@ -790,32 +875,31 @@ describe('check on findings spanning lines, and on findings about a whole file (
     expect(findingsInFile(run().stdout, 'src/catch-start.ts')).toStrictEqual(['src/catch-start.ts:4 no-useless-catch'])
   })
 
-  // KNOWN GAP: oxlint reports no-useless-catch at lines 4 and 5, not as one span, and a finding counts at
-  // any changed place, so check reports it at line 5. Whether the first place decides waits on the owner.
-  it.fails('drops a finding spanning several lines where only a later one of them changed, beside the one it keeps', () => {
+  // oxlint reports no-useless-catch at lines 4 and 5, not as one span, and a finding counts at any changed place.
+  it('reports a finding spanning several lines where only a later one of them changed, at that line, beside the one whose first line changed', () => {
     const { stdout } = run()
 
-    expect({ kept: findingsInFile(stdout, 'src/catch-start.ts'), dropped: findingsInFile(stdout, 'src/catch-inside.ts') }).toStrictEqual({
-      kept: ['src/catch-start.ts:4 no-useless-catch'],
-      dropped: [],
+    expect({ firstLineChanged: findingsInFile(stdout, 'src/catch-start.ts'), laterLineChanged: findingsInFile(stdout, 'src/catch-inside.ts') }).toStrictEqual({
+      firstLineChanged: ['src/catch-start.ts:4 no-useless-catch'],
+      laterLineChanged: ['src/catch-inside.ts:5 no-useless-catch'],
     })
   })
 
   it('keeps a finding at line 0 in a new file', () => {
-    expect(findingsInFile(run().stdout, 'src/fresh.test.ts')).toStrictEqual(['src/fresh.test.ts:0 sonarjs/no-empty-test-file'])
+    expect(findingsInFile(run().stdout, 'src/fresh.ts')).toStrictEqual(['src/fresh.ts:0 sonarjs/file-name-differ-from-class'])
   })
 
   it('drops a finding at line 0 in a tracked file only part of which changed, beside the new file whose one it keeps', () => {
     const { stdout } = run()
 
-    expect({ kept: findingsInFile(stdout, 'src/fresh.test.ts'), dropped: findingsInFile(stdout, 'src/old.test.ts') }).toStrictEqual({
-      kept: ['src/fresh.test.ts:0 sonarjs/no-empty-test-file'],
+    expect({ kept: findingsInFile(stdout, 'src/fresh.ts'), dropped: findingsInFile(stdout, 'src/old.ts') }).toStrictEqual({
+      kept: ['src/fresh.ts:0 sonarjs/file-name-differ-from-class'],
       dropped: [],
     })
   })
 })
 
-describe('check on findings oxlint gives at several places, an agent having added the later one (q-c9)', () => {
+describe('check on findings oxlint gives at several places, an agent having added the later one', () => {
   // import-x/no-duplicates has a fix, which would rewrite the older import's line: the guard drops
   // it in both files, so the fix step changes nothing here either.
   const run = setUpCheckAfterTheAgent(
@@ -844,22 +928,99 @@ describe('check on findings oxlint gives at several places, an agent having adde
   })
 })
 
-describe("check where oxlint refuses an option the team gave a rule (K-16, read-q64)", () => {
-  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY, { rules: { 'no-console': ['error', NO_CONSOLE_OPTION_OXLINT_REFUSES] } }), (project) => {
-    project.write('src/a.ts', moduleText(exportedConstant('a')))
+// What check cannot run is skipped and listed after the findings, and the run never exits 0: errors left
+// exit 1, else 2.
+
+describe('check where oxlint refuses an option the team gave a rule', () => {
+  const REFUSED_OPTION = { rules: { 'no-console': ['error', NO_CONSOLE_OPTION_OXLINT_REFUSES] } } as const
+
+  const runs = setUpRunsBeforeTheSuite((tempProjects) => {
+    const runAfterAdding = (files: Readonly<Record<string, string>>): CliRun => {
+      const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY_AND_CORRECTNESS, REFUSED_OPTION) })
+      Object.entries(files).forEach(([file, text]) => project.write(file, text))
+      return runCheck(project.dir)
+    }
+    return {
+      clean: runAfterAdding({ 'src/a.ts': moduleText(exportedConstant('a')) }),
+      eslintError: runAfterAdding({ 'src/a.ts': moduleText(exportedConstant('a')), 'src/b.js': moduleText(exportedConstant('b'), A_LITERAL_THROWN) }),
+    }
   })
 
-  it('exits 2 quoting all oxlint printed, the reason included', () => {
-    expect(run()).toStrictEqual({
+  it("lists oxlint's rules as not checked, quoting all oxlint printed, says not everything was checked, and exits 2 where nothing else is found", () => {
+    expect(runs().clean).toStrictEqual({
       exitCode: EXIT.couldNotRun,
       signal: null,
-      stdout: '',
-      stderr: `check: could not run: oxlint failed: ${OXLINT_REFUSAL_OF_AN_OPTION}\n`,
+      stdout: `${notCheckedByOxlint(OXLINT_REFUSAL_OF_AN_OPTION)}\n${NOT_EVERYTHING_CHECKED_SUMMARY}\n`,
+      stderr: '',
+    })
+  })
+
+  it("still prints ESLint's findings, and exits 1 where one is an error, beside that run", () => {
+    const { exitCode, stdout, stderr } = runs().eslintError
+
+    expect({ exitCode, findings: findingsIn(stdout), notChecked: notCheckedIn(stdout), stderr }).toStrictEqual({
+      exitCode: EXIT.findings,
+      findings: ['src/b.js:2 no-throw-literal'],
+      notChecked: [notCheckedByOxlint(OXLINT_REFUSAL_OF_AN_OPTION)],
+      stderr: '',
     })
   })
 })
 
-describe("check on suppression comments in oxlint's own form (K-23, q-c15)", () => {
+describe('check where ESLint throws as it lints each file, on a selector it cannot read', () => {
+  const FILES = ['src/a.ts', 'src/b.ts']
+  const ESLINT_THROWING = { 'no-restricted-syntax': ['error', A_SELECTOR_ESLINT_THROWS_ON] } as const
+  // no-restricted-syntax takes selectors, as strings or objects.
+  const AN_OPTION_ESLINT_REFUSES = 123
+
+  const runs = setUpRunsBeforeTheSuite((tempProjects) => {
+    const runWhereNoDebuggerIs = (setting: 'warn' | 'error'): { readonly result: CliRun; readonly notChecked: readonly string[] } => {
+      const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, { rules: { ...ESLINT_THROWING, 'no-debugger': setting } }) })
+      project.write('src/a.ts', moduleText(exportedConstant('a')))
+      project.write('src/b.ts', moduleText(exportedConstant('b'), DEBUGGER_STATEMENT))
+      const notChecked = FILES.map((file) => notCheckedByEslint(file, eslintMessageWhileLinting(A_SELECTOR_ESLINT_THROWS_ON_MESSAGE, project.pathOf(file))))
+      return { result: runCheck(project.dir), notChecked }
+    }
+    const refusing = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, { rules: { 'no-restricted-syntax': ['error', AN_OPTION_ESLINT_REFUSES] } }) })
+    refusing.write('src/a.ts', moduleText(exportedConstant('a')))
+    return { oxlintWarns: runWhereNoDebuggerIs('warn'), oxlintErrs: runWhereNoDebuggerIs('error'), refusedBeforeLinting: runCheck(refusing.dir) }
+  })
+
+  it("lists every file as not checked, quoting ESLint's message, still prints oxlint's findings in them, and exits 2 where none is an error", () => {
+    const { result, notChecked } = runs().oxlintWarns
+
+    expect({ exitCode: result.exitCode, findings: findingsIn(result.stdout), notChecked: notCheckedIn(result.stdout), stderr: result.stderr }).toStrictEqual({
+      exitCode: EXIT.couldNotRun,
+      findings: ['src/b.ts:2 no-debugger (warning)'],
+      notChecked,
+      stderr: '',
+    })
+  })
+
+  it('exits 1 where oxlint found an error in them, beside that run', () => {
+    const { result, notChecked } = runs().oxlintErrs
+
+    expect({ exitCode: result.exitCode, findings: findingsIn(result.stdout), notChecked: notCheckedIn(result.stdout), stderr: result.stderr }).toStrictEqual({
+      exitCode: EXIT.findings,
+      findings: ['src/b.ts:2 no-debugger'],
+      notChecked,
+      stderr: '',
+    })
+  })
+
+  // ESLint checks each rule's options against its schema when it computes a file's config, before it lints any.
+  it('stops, quoting ESLint, where ESLint refuses the config before it lints any file, beside the runs it goes on in', () => {
+    const { exitCode, stdout, stderr } = runs().refusedBeforeLinting
+
+    expect({ exitCode, stdout, quotesEslint: stderr.startsWith(`${CHECK_ESLINT_FAILED}Key "rules": Key "no-restricted-syntax":`) }).toStrictEqual({
+      exitCode: EXIT.couldNotRun,
+      stdout: '',
+      quotesEslint: true,
+    })
+  })
+})
+
+describe("check on suppression comments in oxlint's own form", () => {
   const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
     project.write('src/allowed/oxlint-form.ts', moduleText(...OXLINT_FORM_SUPPRESSIONS_ONE_UNUSED))
     project.write('src/banned-oxlint-form.ts', moduleText(...OXLINT_FORM_SUPPRESSIONS_ONE_UNUSED))
@@ -885,28 +1046,21 @@ describe("check on suppression comments in oxlint's own form (K-23, q-c15)", () 
   })
 })
 
-describe('check counting the changed files outside its config folder (K-22, q-c6)', () => {
+describe("check counting the changed files outside its config folder", () => {
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, {}, `${NESTED_PACKAGE}/`) })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: { ...A_TSCONFIG_TAKING_IN_THE_REPO, ...checkedPackageFiles(REDUNDANCY, {}, `${NESTED_PACKAGE}/`) } })
     project.write('README.md', moduleText(DEBUGGER_STATEMENT))
     project.write('packages/b/settings.json', `${JSON.stringify({ debugger: true })}\n`)
     project.write('scripts/at-the-root.ts', moduleText(exportedConstant('atTheRoot')))
-    return { packageDir: project.pathOf(NESTED_PACKAGE), result: runCheck(project.pathOf(NESTED_PACKAGE)) }
+    return runCheck(project.pathOf(NESTED_PACKAGE))
   })
 
-  it('notes the JS and TS files among them alone, and has nothing to check in its folder', () => {
-    const { packageDir, result } = run()
-
-    expect(result).toStrictEqual({
-      exitCode: EXIT.clean,
-      signal: null,
-      stdout: NOTHING_TO_CHECK,
-      stderr: `check: note: skipped 1 changed file outside ${packageDir}.\n`,
-    })
+  it('counts the JS and TS file among them alone, which it lints, and notes nothing', () => {
+    expect(run()).toStrictEqual({ exitCode: EXIT.clean, signal: null, stdout: 'check: no findings in 1 changed file.\n', stderr: '' })
   })
 })
 
-describe('check on block suppression comments, and on enable comments that turn back on nothing (K-23, q-c10, q-c15)', () => {
+describe('check on block suppression comments, and on enable comments that turn back on nothing', () => {
   const run = setUpCheckAfterTheAgent({ ...checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), 'src/legacy.ts': moduleText(...AN_ENABLE_CLOSING_NOTHING) }, (project) => {
     project.write('src/legacy.ts', moduleText(...AN_ENABLE_CLOSING_NOTHING_WITH_A_DEBUGGER_ADDED))
     project.write('src/allowed/stray-enables.ts', moduleText(...ENABLES_CLOSING_NOTHING_ABOVE_A_DEBUGGER))
@@ -938,7 +1092,7 @@ describe('check on block suppression comments, and on enable comments that turn 
   })
 })
 
-describe('check on unused pairs beside comment-like text in a string or a template literal, where suppressions are allowed (K-23, q-c15)', () => {
+describe('check on unused pairs beside comment-like text in a string or a template literal, where suppressions are allowed', () => {
   // Comment-like text inside a string is no comment: read as one, check refused the run or placed the
   // pair where ESLint does not.
 
@@ -967,9 +1121,9 @@ describe('check on unused pairs beside comment-like text in a string or a templa
   })
 })
 
-describe('check where another writer moves a partly unused suppression comment down after oxlint read it, where suppressions are allowed (K-23, q-c15)', () => {
-  // Another writer adds a line above a suppression comment between oxlint's read and check's. The pairing
-  // never refuses the run: the moved comment goes unreported now and is reported next run.
+describe('check where another writer changes suppression comments after oxlint read them, where suppressions are allowed', () => {
+  // Another writer edits each file between oxlint's read and check's: a report that no longer fits the text
+  // goes unreported, never refusing the run, and the next run reports the comment where it is.
   const MOVED = [
     { file: 'src/allowed/eslint-moved.ts', form: 'eslint' },
     { file: 'src/allowed/oxlint-moved.ts', form: 'oxlint' },
@@ -978,22 +1132,32 @@ describe('check where another writer moves a partly unused suppression comment d
     { file: 'src/allowed/eslint-in-place.ts', form: 'eslint' },
     { file: 'src/allowed/oxlint-in-place.ts', form: 'oxlint' },
   ] as const
+  // oxlint's span on the unused name now covers `no-consol`, a name the comment does not hold.
+  const SHIFTED = { file: 'src/allowed/oxlint-shifted.ts', asOxlintReadIt: aSuppressionPartlyUnused('oxlint') }
+  // oxlint's span on the whole comment now covers a string holding its text.
+  const UNDER_A_STRING = { file: 'src/allowed/oxlint-under-a-string.ts', asOxlintReadIt: A_WHOLLY_UNUSED_OXLINT_DISABLE }
 
   function writersTextOf(form: SuppressionForm): string {
     return moduleText(...movedDownByAnotherWriter(aSuppressionPartlyUnused(form)))
   }
 
+  const OUT_OF_DATE = [
+    ...MOVED.map(({ file, form }) => ({ file, asOxlintReadIt: aSuppressionPartlyUnused(form), writersText: writersTextOf(form) })),
+    { ...SHIFTED, writersText: moduleText(...withACharacterAddedToTheFirstLine(SHIFTED.asOxlintReadIt)) },
+    { ...UNDER_A_STRING, writersText: moduleText(...A_WHOLLY_UNUSED_OXLINT_DISABLE_BELOW_A_STRING_HOLDING_ITS_TEXT) },
+  ]
+
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED) })
-    const partlyUnused = [...MOVED, ...IN_PLACE]
-    partlyUnused.forEach(({ file, form }) => project.write(file, moduleText(...aSuppressionPartlyUnused(form))))
+    IN_PLACE.forEach(({ file, form }) => project.write(file, moduleText(...aSuppressionPartlyUnused(form))))
+    OUT_OF_DATE.forEach(({ file, asOxlintReadIt }) => project.write(file, moduleText(...asOxlintReadIt)))
     project.write('src/other.ts', moduleText(exportedConstant('other'), DEBUGGER_STATEMENT))
-    const result = runCheck(project.dir, anotherWriterAsOxlintsLintRunEnds(MOVED.map(({ file, form }) => ({ path: project.pathOf(file), text: writersTextOf(form) }))))
-    return { result, movedNow: MOVED.map(({ file }) => project.read(file)) }
+    const result = runCheck(project.dir, anotherWriterAsOxlintsLintRunEnds(OUT_OF_DATE.map(({ file, writersText }) => ({ path: project.pathOf(file), text: writersText }))))
+    return { result, textsNow: OUT_OF_DATE.map(({ file }) => project.read(file)), nextRun: runCheck(project.dir) }
   })
 
-  it("reports neither moved comment and refuses nothing: reports the comment nobody moved, in either form, and the finding in another file, keeps the writer's text, and exits 1", () => {
-    const { result, movedNow } = run()
+  it("reports none of the comments it read out of date, in either form, and refuses nothing: reports the comments nobody changed and the finding in another file, keeps the writer's text, and exits 1", () => {
+    const { result, textsNow } = run()
     const messages = findingMessagesIn(result.stdout)
 
     expect({
@@ -1001,13 +1165,45 @@ describe('check where another writer moves a partly unused suppression comment d
       stderr: result.stderr,
       findings: findingsIn(result.stdout),
       inPlaceMessages: IN_PLACE.map(({ file }) => messages.get(`${file}:2 unused suppression`)),
-      movedNow,
+      textsNow,
     }).toStrictEqual({
       exitCode: EXIT.findings,
       stderr: '',
       findings: ['src/allowed/eslint-in-place.ts:2 unused suppression', 'src/allowed/oxlint-in-place.ts:2 unused suppression', 'src/other.ts:2 no-debugger'],
       inPlaceMessages: [unusedSuppressionMessageOf('no-console'), unusedSuppressionMessageOf('no-console')],
-      movedNow: MOVED.map(({ form }) => writersTextOf(form)),
+      textsNow: OUT_OF_DATE.map(({ writersText }) => writersText),
+    })
+  })
+
+  it('reports each of those comments where it is now on the next run', () => {
+    const { stdout } = run().nextRun
+
+    expect(OUT_OF_DATE.flatMap(({ file }) => findingsInFile(stdout, file))).toStrictEqual([
+      'src/allowed/eslint-moved.ts:3 unused suppression',
+      'src/allowed/oxlint-moved.ts:3 unused suppression',
+      'src/allowed/oxlint-shifted.ts:2 unused suppression',
+      'src/allowed/oxlint-under-a-string.ts:3 unused suppression',
+    ])
+  })
+})
+
+describe('check on a block eslint-disable comment over several lines, where suppressions are allowed', () => {
+  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
+    project.write('src/allowed/several-lines.ts', moduleText(...A_DISABLE_OVER_SEVERAL_LINES_ABOVE_A_DEBUGGER))
+    project.write('src/allowed/one-line.ts', moduleText(...A_DISABLE_ON_ONE_LINE_ABOVE_A_DEBUGGER))
+  })
+
+  it("reports a name on a later line of it that suppresses nothing, at that name's line, and not the name that suppressed the debugger, as it reports the one-line form at its line", () => {
+    const { stdout } = run()
+
+    expect({
+      severalLines: findingsInFile(stdout, 'src/allowed/several-lines.ts'),
+      message: findingMessagesIn(stdout).get('src/allowed/several-lines.ts:3 unused suppression'),
+      oneLine: findingsInFile(stdout, 'src/allowed/one-line.ts'),
+    }).toStrictEqual({
+      severalLines: ['src/allowed/several-lines.ts:3 unused suppression'],
+      message: unusedSuppressionMessageOf('no-console'),
+      oneLine: ['src/allowed/one-line.ts:1 unused suppression'],
     })
   })
 })

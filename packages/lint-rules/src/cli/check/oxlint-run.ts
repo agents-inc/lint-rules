@@ -5,13 +5,19 @@ import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { text } from 'node:stream/consumers'
 import { type Catalog, isOxlintRoute, routeOf } from '@workspace/rule-data'
-import type { DummyRule, OxlintConfig } from 'oxlint'
+import type { DummyRule, DummyRuleMap, OxlintConfig, OxlintOverride } from 'oxlint'
 import { hasErrorCode } from '../caught-errors.ts'
 import { leftoverToRemove, removeLeftover } from './leftovers.ts'
+import { type NotChecked, oxlintRulesFailed } from './not-checked.ts'
 import { type OxlintReport, oxlintReportFrom } from './oxlint-output.ts'
 
-/** Written in the config's folder, where its rooted globs resolve. */
+/** Written in the git top level, which oxlint runs in and reads every glob of the config from. */
 export type TempOxlintConfig = { readonly path: string; readonly folder: string }
+
+/** oxlint's report, with no diagnostic where its run failed. */
+export type OxlintLintRun = { readonly report: OxlintReport; readonly notChecked: readonly NotChecked[] }
+
+type RuleEntry = DummyRuleMap[string]
 
 // Never `.oxlintrc.json` or `oxlint.config.*`, which oxlint would find by itself.
 const TEMP_CONFIG_PREFIX = '.agents-inc-check-'
@@ -24,7 +30,9 @@ const OXLINT_BIN = join('bin', 'oxlint')
 const NOT_PERMITTED = 'EPERM'
 const EVERY_FILE = ['**/*']
 const OFF = 'off'
+const WARN = 'warn'
 const REPORTED = 'error'
+const NO_DIAGNOSTICS: OxlintReport = { diagnostics: [] }
 
 /** Removes the temp configs of ended check runs, keeps live ones', and reserves this run's name. */
 export function tempOxlintConfigIn(folder: string): TempOxlintConfig {
@@ -34,8 +42,12 @@ export function tempOxlintConfigIn(folder: string): TempOxlintConfig {
   return { path: leftoverToRemove(join(folder, tempConfigNameOfThisRun())), folder }
 }
 
-/** Withheld-fix rules are off, so oxlint's `--fix` cannot apply them. */
+/** Rules set to warn and withheld-fix rules are off, so oxlint's `--fix` applies neither: check fixes errors alone. */
 export function fixRunConfigOf(config: OxlintConfig, withheld: ReadonlyMap<string, string>, catalog: Catalog): OxlintConfig {
+  return withheldRulesOff(withWarnedRulesOff(config), withheld, catalog)
+}
+
+function withheldRulesOff(config: OxlintConfig, withheld: ReadonlyMap<string, string>, catalog: Catalog): OxlintConfig {
   const withheldInOxlint = [...withheld.keys()]
     .map((id) => routeOf(id, catalog))
     .filter(isOxlintRoute)
@@ -46,8 +58,42 @@ export function fixRunConfigOf(config: OxlintConfig, withheld: ReadonlyMap<strin
   return { ...config, overrides: [...(config.overrides ?? []), { files: EVERY_FILE, rules: off }] }
 }
 
+/** At the top and in each override: where an override sets a rule to error, it is fixed in that override's files. */
+function withWarnedRulesOff(config: OxlintConfig): OxlintConfig {
+  const { rules, overrides } = config
+  return {
+    ...config,
+    ...(rules === undefined ? {} : { rules: warnedRulesOff(rules) }),
+    ...(overrides === undefined ? {} : { overrides: overrides.map(overrideWithWarnedRulesOff) }),
+  }
+}
+
+function overrideWithWarnedRulesOff(override: OxlintOverride): OxlintOverride {
+  const { rules } = override
+  return rules === undefined ? override : { ...override, rules: warnedRulesOff(rules) }
+}
+
+function warnedRulesOff(rules: DummyRuleMap): DummyRuleMap {
+  return Object.fromEntries(Object.entries(rules).map(([name, rule]): [string, RuleEntry] => [name, isSetToWarn(rule) ? OFF : rule]))
+}
+
+/** The build writes a severity alone, or first before the options. */
+function isSetToWarn(rule: RuleEntry): boolean {
+  return (Array.isArray(rule) ? rule[0] : rule) === WARN
+}
+
 export function lintRunConfigOf(config: OxlintConfig): OxlintConfig {
   return { ...config, options: { ...config.options, reportUnusedDisableDirectives: REPORTED } }
+}
+
+/** A failure the signal caused stops check; any other leaves oxlint's rules unchecked. */
+export async function oxlintLintRun(config: TempOxlintConfig, lintRunConfig: OxlintConfig, paths: readonly string[], signal: AbortSignal): Promise<OxlintLintRun> {
+  try {
+    return { report: await runOxlint(config, lintRunConfig, paths, { fix: false, signal }), notChecked: [] }
+  } catch (error) {
+    if (signal.aborted) throw error
+    return { report: NO_DIAGNOSTICS, notChecked: [oxlintRulesFailed(error)] }
+  }
 }
 
 /** The project's own oxlint configs are never read: `-c` names the only one. */
