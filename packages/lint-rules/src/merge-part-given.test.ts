@@ -8,8 +8,10 @@ import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-// A team's config is untyped JS, so it may hand a merge anything: each merge refuses all but its own
-// part, naming the config file calling it, what it takes, and what it was given.
+// A team's eslint.config.mjs is untyped JS, so it may hand mergeEslintConfig anything: the merge refuses all but its
+// own part, naming the config file calling it, what it takes, and what it was given. mergeOxlintConfig's part is
+// refused by its type alone (merge-oxlint-config.test-d.ts; what an untyped oxlint.config.mts gets instead:
+// untyped-oxlint-config.test.ts).
 
 const tempProjects = setUpTempProjects()
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) }, linkedPackages: [INSTALLED_OXLINT] })
@@ -46,20 +48,6 @@ describe('mergeEslintConfig, handed what a team config gives as its second argum
 })
 
 describe('mergeOxlintConfig, handed what a team config gives as its second argument', () => {
-  it('is refused where it is the eslint part, the error naming it', () => {
-    // @ts-expect-error mergeOxlintConfig takes the oxlint part
-    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), eslint, NO_TEAM_ESLINT_CONFIG)).toThrowError(
-      new Error('oxlint.config.mts: mergeOxlintConfig takes the oxlint part agents-inc.lint.mts exports, and was given its eslint part'),
-    )
-  })
-
-  it.each(VALUES_THAT_ARE_NEITHER_PART)('is refused where it is $what, the error saying it is neither part', ({ value }) => {
-    // @ts-expect-error mergeOxlintConfig takes the oxlint part
-    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), value, NO_TEAM_ESLINT_CONFIG)).toThrowError(
-      new Error(`oxlint.config.mts: mergeOxlintConfig takes the oxlint part agents-inc.lint.mts exports, and was given ${NEITHER_PART}`),
-    )
-  })
-
   it('merges where it is the oxlint part', () => {
     expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, NO_TEAM_ESLINT_CONFIG)).not.toThrow()
   })

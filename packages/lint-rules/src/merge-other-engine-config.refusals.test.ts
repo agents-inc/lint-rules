@@ -55,15 +55,10 @@ describe("mergeEslintConfig's third argument, where it is neither a path nor nul
   })
 })
 
-describe("mergeOxlintConfig's third argument, where it is neither a path nor null", () => {
+// Neither a path nor null, it is refused by its type alone (merge-oxlint-config.test-d.ts; what an untyped
+// oxlint.config.mts gets instead: untyped-oxlint-config.test.ts).
+describe("mergeOxlintConfig's third argument", () => {
   const oxlint = ourOxlintPartIn(projectListingOxlintIn(tempProjects))
-
-  it.each(VALUES_THAT_ARE_NO_PATH)('is refused where eslintConfig is $what, the error describing it as $described', ({ value, described }) => {
-    // @ts-expect-error eslintConfig is a path or null
-    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: value })).toThrowError(
-      new Error(`oxlint.config.mts: eslintConfig must be a path or null, and was given ${described}`),
-    )
-  })
 
   it('is accepted where eslintConfig is null, the project having no ESLint config', () => {
     expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: null })).not.toThrow()

@@ -19,7 +19,7 @@ import {
 import { layersWithEachTwinPairDecidedBesideOxlint } from './twin-pairs.ts'
 
 export type EslintPart = {
-  /** A team's config is untyped JS, so each merge checks it was handed its own engine's part. */
+  /** A team's eslint.config.mjs is untyped JS, so mergeEslintConfig reads this to check it was handed this part. mergeOxlintConfig's part is checked by its type alone. */
   readonly engine: 'eslint'
   readonly tsconfigRootDir: string
   readonly usesOxlint: boolean
@@ -47,12 +47,6 @@ export function isEslintPart(given: unknown): given is EslintPart {
 
 export function isOxlintPart(given: unknown): given is OxlintPart {
   return isRecord(given) && given['engine'] === 'oxlint'
-}
-
-export function describePartGiven(given: unknown): string {
-  if (isEslintPart(given)) return 'its eslint part'
-  if (isOxlintPart(given)) return 'its oxlint part'
-  return 'a value that is neither of its parts'
 }
 
 export function editorPartsOf(lintRules: TwoSetLintRulesInput, catalog: Catalog, usesOxlint: boolean): EditorParts {

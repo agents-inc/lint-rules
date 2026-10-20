@@ -20,7 +20,7 @@ import { describeValue } from './value-descriptions.ts'
 // merge called returns the team's config unmerged and hands it to the read.
 
 /** The plugins we register let the read recognise the team's prefixes for ours. */
-export type TeamEslintConfigRead = { readonly blocks: readonly Linter.Config[]; readonly ourPlugins: EslintPluginRegistry }
+type TeamEslintConfigRead = { readonly blocks: readonly Linter.Config[]; readonly ourPlugins: EslintPluginRegistry }
 
 type HandedOver = { readonly engine: 'eslint'; readonly config: TeamEslintConfigRead } | { readonly engine: 'oxlint'; readonly config: OxlintConfig }
 
@@ -36,7 +36,6 @@ type OtherConfig = {
   readonly merge: string
   readonly key: string
   readonly named: string
-  readonly usualFile: string
 }
 
 const requireFromHere = createRequire(import.meta.url)
@@ -69,20 +68,18 @@ const KEYS_AN_ESLINT_CONFIG_OBJECT_HOLDS: ReadonlySet<string> = new Set(
   } satisfies Record<keyof EslintConfigObject, true>),
 )
 
-export const TEAMS_OXLINT_CONFIG: OtherConfig = {
+const TEAMS_OXLINT_CONFIG: OtherConfig = {
   readBy: consumerConfigFiles.eslintConfig,
   merge: 'mergeEslintConfig',
   key: 'oxlintConfig',
   named: 'oxlint config',
-  usualFile: consumerConfigFiles.oxlintConfig,
 }
 
-export const TEAMS_ESLINT_CONFIG: OtherConfig = {
+const TEAMS_ESLINT_CONFIG: OtherConfig = {
   readBy: consumerConfigFiles.oxlintConfig,
   merge: 'mergeOxlintConfig',
   key: 'eslintConfig',
   named: 'ESLint config',
-  usualFile: consumerConfigFiles.eslintConfig,
 }
 
 export function isInReadingMode(): boolean {
@@ -94,11 +91,12 @@ export function handOverToTheRead(handedOver: HandedOver): void {
   read.handedOver.push(handedOver)
 }
 
-/** Refused where left out or neither a path nor null; `requiredBecause` says why, where it is not always required. */
-export function pathOfTheOtherConfigGiven(given: unknown, other: OtherConfig, requiredBecause: string | null): string | null {
-  const path = foundOr(isRecord(given) ? given[other.key] : undefined, pathLeftOutProblem(other, requiredBecause))
+/** Refused where left out or neither a path nor null; `requiredBecause` says why it is required here. */
+export function pathOfTheTeamsOxlintConfigGiven(given: unknown, requiredBecause: string): string | null {
+  const { readBy, key } = TEAMS_OXLINT_CONFIG
+  const path = foundOr(isRecord(given) ? given[key] : undefined, oxlintConfigPathLeftOutProblem(requiredBecause))
   if (path === null || typeof path === 'string') return path
-  throw configErrorIn(other.readBy, `${other.key} must be a path or null, and was given ${describeValue(path)}`)
+  throw configErrorIn(readBy, `${key} must be a path or null, and was given ${describeValue(path)}`)
 }
 
 /** A JSON config is parsed as oxlint parses it, any other loaded. A file holding a key no oxlint config holds is refused. Null reads as an empty config. */
@@ -115,11 +113,11 @@ export function readTheTeamsEslintConfig(path: string | null, tsconfigRootDir: s
   return readOrRefuse(file, TEAMS_ESLINT_CONFIG, () => eslintConfigLoadedFrom(file))
 }
 
-function pathLeftOutProblem(other: OtherConfig, requiredBecause: string | null): string {
-  const because = requiredBecause === null ? '' : `: ${requiredBecause}`
+function oxlintConfigPathLeftOutProblem(requiredBecause: string): string {
+  const { readBy, merge, named, key } = TEAMS_OXLINT_CONFIG
   return configProblemIn(
-    other.readBy,
-    `${other.merge} needs the path of your ${other.named} as its third argument, { ${other.key}: '${other.usualFile}' }, or { ${other.key}: null } if this project has none${because}`,
+    readBy,
+    `${merge} needs the path of your ${named} as its third argument, { ${key}: '${consumerConfigFiles.oxlintConfig}' }, or { ${key}: null } if this project has none: ${requiredBecause}`,
   )
 }
 

@@ -15,7 +15,7 @@ import { type OxlintReport, oxlintReportFrom } from './oxlint-output.ts'
 export type TempOxlintConfig = { readonly path: string; readonly folder: string }
 
 /** oxlint's report, with no diagnostic where its run failed. */
-export type OxlintLintRun = { readonly report: OxlintReport; readonly notChecked: readonly NotChecked[] }
+type OxlintLintRun = { readonly report: OxlintReport; readonly notChecked: readonly NotChecked[] }
 
 type RuleEntry = DummyRuleMap[string]
 
@@ -122,7 +122,7 @@ function tempConfigNameOfThisRun(): string {
   return `${TEMP_CONFIG_PREFIX}${String(process.pid)}-${randomBytes(RANDOM_BYTES).toString('hex')}${TEMP_CONFIG_SUFFIX}`
 }
 
-export function oxlintBin(): string {
+function oxlintBin(): string {
   return join(dirname(createRequire(import.meta.url).resolve(OXLINT_MANIFEST)), OXLINT_BIN)
 }
 

@@ -3,11 +3,11 @@ import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import type { Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
 import { configErrorIn } from './core/config-error.ts'
-import { describePartGiven, type EslintPart, isEslintPart } from './core/editor-parts.ts'
+import { type EslintPart, isEslintPart, isOxlintPart } from './core/editor-parts.ts'
 import { refuseUnsupportedInstalledEslint } from './core/installed-eslint.ts'
 import { mergeEslintPart, type TeamEslintConfig } from './core/merge-eslint-config.ts'
 import { ruleIdsTheTeamsOxlintConfigSets } from './core/oxlint-config-reading.ts'
-import { handOverToTheRead, isInReadingMode, pathOfTheOtherConfigGiven, readTheTeamsOxlintConfig, TEAMS_OXLINT_CONFIG } from './core/other-engine-config.ts'
+import { handOverToTheRead, isInReadingMode, pathOfTheTeamsOxlintConfigGiven, readTheTeamsOxlintConfig } from './core/other-engine-config.ts'
 import { ourPackageJsonFile, versionOf } from './core/package-json-files.ts'
 import { eslintPluginRegistry } from './eslint-plugin-registry.ts'
 
@@ -23,7 +23,7 @@ const OXLINT_IS_LISTED = 'the package.json nearest to tsconfigRootDir lists oxli
 export function mergeEslintConfig(theirs: TeamEslintConfig, eslint: EslintPart, teamOxlintConfig: TeamOxlintConfigPath): Linter.Config[] {
   const part = eslintPartGiven(eslint)
   refuseUnsupportedInstalledEslint(part.tsconfigRootDir)
-  const oxlintConfigPath = part.usesOxlint ? pathOfTheOtherConfigGiven(teamOxlintConfig, TEAMS_OXLINT_CONFIG, OXLINT_IS_LISTED) : null
+  const oxlintConfigPath = part.usesOxlint ? pathOfTheTeamsOxlintConfigGiven(teamOxlintConfig, OXLINT_IS_LISTED) : null
   if (isInReadingMode()) return handedOverToTheRead(theirs)
   const setByTheTeamsOxlintConfig = part.usesOxlint ? ruleIdsTheTeamsOxlintConfigSets(readTheTeamsOxlintConfig(oxlintConfigPath, part.tsconfigRootDir), catalog) : []
   return mergeEslintPart(theirs, part, catalog, eslintPluginRegistry, versionOf(ourPackageJsonFile()), setByTheTeamsOxlintConfig)
@@ -41,6 +41,10 @@ function eslintPartGiven(given: unknown): EslintPart {
   if (isEslintPart(given)) return given
   throw configErrorIn(
     consumerConfigFiles.eslintConfig,
-    `mergeEslintConfig takes the eslint part ${consumerConfigFiles.lintRules} exports, and was given ${describePartGiven(given)}`,
+    `mergeEslintConfig takes the eslint part ${consumerConfigFiles.lintRules} exports, and was given ${whatWasGivenInPlaceOfTheEslintPart(given)}`,
   )
+}
+
+function whatWasGivenInPlaceOfTheEslintPart(given: unknown): string {
+  return isOxlintPart(given) ? 'its oxlint part' : 'a value that is neither of its parts'
 }

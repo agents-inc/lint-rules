@@ -195,29 +195,11 @@ describe("mergeEslintConfig's third argument, in a project whose package.json li
   })
 })
 
+// Left out, or neither a path nor null, it is refused by its type alone (merge-oxlint-config.test-d.ts; what an
+// untyped oxlint.config.mts gets instead: untyped-oxlint-config.test.ts).
 describe("mergeOxlintConfig's third argument", () => {
   const projectDir = projectListingOxlintIn(tempProjects, { [ESLINT_CONFIG]: ESLINT_CONFIG_SETTING_NO_RULE_TEXT, ...FAILING_CONFIG_FILES })
   const oxlint = ourOxlintPartIn(projectDir)
-
-  it.each([
-    // @ts-expect-error the third argument is required
-    { how: 'left out', merge: () => mergeOxlintConfig({}, oxlint) },
-    // @ts-expect-error eslintConfig is required
-    { how: 'given without its key', merge: () => mergeOxlintConfig({}, oxlint, {}) },
-  ])('is refused where it is $how, the error naming oxlint.config.mts and both ways to give it', ({ merge }) => {
-    expect(merge).toThrowError(
-      new Error(
-        "oxlint.config.mts: mergeOxlintConfig needs the path of your ESLint config as its third argument, { eslintConfig: 'eslint.config.mjs' }, or { eslintConfig: null } if this project has none",
-      ),
-    )
-  })
-
-  it('is refused where eslintConfig is neither a path nor null, the error describing what it was given', () => {
-    // @ts-expect-error a number is no path
-    expect(() => mergeOxlintConfig({}, oxlint, { eslintConfig: NO_CONFIG_BUT_A_NUMBER })).toThrowError(
-      new Error('oxlint.config.mts: eslintConfig must be a path or null, and was given number 42'),
-    )
-  })
 
   it('is refused where the path names no file, the error giving the path as read from tsconfigRootDir', () => {
     expect(() => mergeOxlintConfig({}, oxlint, { eslintConfig: MISSING_CONFIG })).toThrowError(
