@@ -20,13 +20,11 @@ describe('check, given an allowSuppressions in agents-inc.lint.mts', () => {
     allowing: runCheck(projectAllowingSuppressionsAs(tempProjects, true)),
   }))
 
-  it('exits 2 where it is an object, printing an error that describes it as one', () => {
-    expect(runs().anObject).toStrictEqual({
-      exitCode: EXIT.couldNotRun,
-      signal: null,
-      stdout: '',
-      stderr: 'check: could not run: agents-inc.lint.mts: allowSuppressions: an object is not true or false\n',
-    })
+  // The types refuse an object, and nothing of ours checks it at run time: a config nobody type-checks is the team's.
+  it('loads the config where it is an object, as where it is true', () => {
+    const { exitCode, stderr } = runs().anObject
+
+    expect({ exitCode, stderr }).toStrictEqual({ exitCode: EXIT.clean, stderr: '' })
   })
 
   it('loads the config where it is true', () => {

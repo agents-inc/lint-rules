@@ -1,7 +1,7 @@
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
 import type { ESLint, Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
-import type { TwoSetLintRulesInput } from '../../core/lint-rules-input.ts'
+import type { Severity, TwoSetLintRulesInput } from '../../core/lint-rules-input.ts'
 import type { RuleInPlay, RulesInPlay, SidesOfAFile } from '../eslint-entries-owed.ts'
 import { buildFakePlugin } from './catalog-factories.ts'
 import { buildTwoSetLintRules } from './lint-rules-factories.ts'
@@ -10,7 +10,7 @@ import { buildTeamEslintBlock, buildTeamEslintBlockTurningOn } from './team-conf
 type TeamEslintConfig = Parameters<typeof defineConfig>[number]
 
 /** `teamsPrefixes` is keyed by our prefix; the options are valid for the module the team's name runs. */
-export type TeamsNameOfOurRule = {
+type TeamsNameOfOurRule = {
   readonly ours: string
   readonly teams: string
   readonly plugins: Readonly<Record<string, ESLint.Plugin>>
@@ -18,16 +18,16 @@ export type TeamsNameOfOurRule = {
   readonly teamsPrefixes: ReadonlyMap<string, readonly string[]>
 }
 
-export type OurEntryOfTheRule = { readonly files: readonly string[]; readonly severity: string }
+type OurEntryOfTheRule = { readonly files: readonly string[]; readonly severity: Severity }
 
-export type TeamBlockPiece = {
+type TeamBlockPiece = {
   readonly stating?: TeamsNameOfOurRule
   readonly scope?: TeamBlockScope
   readonly entryOf?: (options: readonly unknown[]) => Linter.RuleEntry
 }
 
-export type OurSettingsPiece = {
-  readonly topLevel?: string
+type OurSettingsPiece = {
+  readonly topLevel?: Severity
   readonly entry?: OurEntryOfTheRule
   readonly ignores?: readonly string[]
 }

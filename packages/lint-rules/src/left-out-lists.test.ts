@@ -4,7 +4,6 @@ import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
 import {
   buildConsumerLintRules,
   buildConsumerLintRulesLeavingListsOut,
-  buildConsumerLintRulesWithoutEditorRulesets,
   EMPTY_TSCONFIG_ROOT_DIR,
 } from './__tests__/factories/lint-rules-factories.ts'
 import { createProjectListingOxlint } from './__tests__/factories/package-json-factories.ts'
@@ -77,35 +76,10 @@ describe('an agent set leaving lists out, in a project whose package.json lists 
   )
 })
 
-// What still refuses a set: a name in a list it gives, and the set left out altogether; each beside
-// the set leaving every list out, which is accepted.
+// The types refuse a name in a list a set gives, and a set left out altogether, beside the set leaving every list
+// out, which defineLintRules accepts.
 describe('a top-level set leaving lists out, in agents-inc.lint.mts', () => {
   it('is accepted leaving every list out, in both sets', () => {
     expect(() => defineLintRules(buildConsumerLintRulesLeavingListsOut(PROJECT_WITH_OXLINT, {}))).not.toThrow()
-  })
-
-  it('is refused for a ruleset its one list misspells, naming the file, the set and the list', () => {
-    expect(() =>
-      defineLintRules(
-        // @ts-expect-error corectness is no quality ruleset
-        buildConsumerLintRulesLeavingListsOut(PROJECT_WITH_OXLINT, { editorRulesets: { quality: ['corectness'] } }),
-      ),
-    ).toThrowError(new Error('agents-inc.lint.mts: editorRulesets.quality: unknown ruleset "corectness"'))
-  })
-
-  it('is refused for a libs domain no libs ruleset has, the other lists left out, naming the file, the set and the list', () => {
-    expect(() =>
-      defineLintRules(
-        // @ts-expect-error database is not a libs domain
-        buildConsumerLintRulesLeavingListsOut(PROJECT_WITH_OXLINT, { agentRulesets: { libs: { database: ['react'] } } }),
-      ),
-    ).toThrowError(new Error('agents-inc.lint.mts: agentRulesets.libs: unknown domain "database"'))
-  })
-
-  it('is refused left out altogether, naming the file and the set', () => {
-    // @ts-expect-error editorRulesets is required
-    expect(() => defineLintRules(buildConsumerLintRulesWithoutEditorRulesets(PROJECT_WITH_OXLINT))).toThrowError(
-      new Error('agents-inc.lint.mts: editorRulesets: missing'),
-    )
   })
 })

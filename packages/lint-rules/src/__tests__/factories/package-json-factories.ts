@@ -84,6 +84,11 @@ export function packageJsonText(packageJson: PackageJson): string {
   return `${JSON.stringify(packageJson, null, 2)}\n`
 }
 
+/** A package.json cut off inside its object, which no JSON parser reads. */
+export function malformedPackageJsonText(): string {
+  return `{ "name": "${PROJECT_NAME}", `
+}
+
 /**
 * A manifest and an entry module, so it resolves either way, and the schema text given beside the manifest
 * (none where null): this repo's oxlint's unless given.
@@ -105,7 +110,7 @@ export function buildInstalledOxlintFiles(
   }
 }
 
-export function installedOxlintSchemaText(): string {
+function installedOxlintSchemaText(): string {
   return readFileSync(join(INSTALLED_OXLINT.dir, OXLINT_SCHEMA_FILE), 'utf8')
 }
 

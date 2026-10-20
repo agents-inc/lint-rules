@@ -21,7 +21,6 @@ const CORRECTNESS_AND_NO_LIBS = "{ quality: ['correctness'], libs: {} }"
 // in ESLint, the prototype builtin called on an object in oxlint.
 const A_CORRECTNESS_FINDING_IN_ESLINT = 'src/planted.ts:20 @typescript-eslint/no-floating-promises'
 const A_CORRECTNESS_FINDING_IN_OXLINT = 'src/planted.ts:28 eslint(no-prototype-builtins)'
-const EDITOR_SET_MISSING = 'agents-inc.lint.mts: editorRulesets: missing'
 
 function runsWithTheEditorSet(editorRulesets: AgentsIncLintKeys['editorRulesets']): () => ConsumerCliRuns {
   return setUpConsumerCliRuns(consumerFilesAsPlanMdShows({ ...AS_PLAN_MD_SHOWS, editorRulesets }), OXLINT_CONFIG_FILE)
@@ -33,7 +32,6 @@ describe('the editor set of agents-inc.lint.mts, linted by both engines through 
   const correctnessAndEveryOtherListEmpty = runsWithTheEditorSet(CORRECTNESS_AND_EVERY_OTHER_LIST_EMPTY)
   const correctnessAlone = runsWithTheEditorSet(CORRECTNESS_ALONE)
   const correctnessAndNoLibs = runsWithTheEditorSet(CORRECTNESS_AND_NO_LIBS)
-  const editorSetLeftOut = runsWithTheEditorSet(null)
 
   it('as plan.md shows init writing it, {}, is loaded by oxlint, which reports what it reports with every list given empty', () => {
     expect(oxlintReportOf(asPlanMdShows())).toStrictEqual(oxlintReportOf(everyListEmpty()))
@@ -79,16 +77,6 @@ describe('the editor set of agents-inc.lint.mts, linted by both engines through 
         oxlint: { refused: false, findings: expect.not.arrayContaining([A_CORRECTNESS_FINDING_IN_OXLINT]) },
         eslint: { refused: false, findings: expect.not.arrayContaining([A_CORRECTNESS_FINDING_IN_ESLINT]) },
       },
-    })
-  })
-
-  // A set left out altogether is still a config error naming the file, unlike the empty set above.
-  it('left out altogether is refused by both engines, which name agents-inc.lint.mts and the set', () => {
-    const runs = editorSetLeftOut()
-
-    expect({ oxlint: oxlintReportOf(runs), eslint: eslintReportOf(runs) }).toStrictEqual({
-      oxlint: { refused: true, output: expect.stringContaining(EDITOR_SET_MISSING) },
-      eslint: { refused: true, output: expect.stringContaining(EDITOR_SET_MISSING) },
     })
   })
 })

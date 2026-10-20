@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   bareTsExpectError,
   CLASSIC_LOOP_LINE,
+  DEBUGGER_LINE,
   describedTsExpectError,
   disableNextLineOverADebugger,
   disableOfTheBanOverAClassicLoop,
@@ -14,6 +15,7 @@ import {
   suppressionOfARuleNobodyDefines,
   tsIgnore,
   tsNocheck,
+  unsuppressedDebugger,
 } from './__tests__/cases/suppression-comments.ts'
 import { setUpEngineRun } from './__tests__/engine-run.ts'
 import { buildErrorOnItsRoutedEngine, buildEslintError } from './__tests__/factories/engine-error-factories.ts'
@@ -32,6 +34,7 @@ const FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/suppression-ban', i
 
 const THE_BAN = 'house/no-suppressions'
 const THE_LOOP_RULE = 'house/no-classic-loops'
+const THE_DEBUGGER_RULE = 'no-debugger'
 const TS_COMMENT_BAN = '@typescript-eslint/ban-ts-comment'
 const BLANKET_DISABLE_RULE = 'unicorn/no-abusive-eslint-disable'
 const NOBODYS_RULE = 'nobody/rule'
@@ -42,6 +45,9 @@ const ESLINT_ENV_FATAL = 'not-suppressions/eslint-env.ts: /* eslint-env */ comme
 const BAN_REPORT_ON_LINE_1 = [buildEslintError(THE_BAN, 1)]
 const BLANKET_DISABLE_ON_LINE_1 = [buildErrorOnItsRoutedEngine(BLANKET_DISABLE_RULE, 1)]
 const BAN_AND_LOOP = [buildEslintError(THE_BAN, 1), buildEslintError(THE_LOOP_RULE, CLASSIC_LOOP_LINE)]
+
+// Typed with an index signature: the types let a rule allowSuppressions sets into rules in this shape.
+const THE_BAN_OFF: Record<string, 'off'> = { [THE_BAN]: 'off' }
 
 // One file per form in test-fixtures/suppression-ban/forms. A bare /* eslint-disable */ draws the ban
 // alone: unicorn/no-abusive-eslint-disable is off while suppressions are banned.
@@ -208,7 +214,9 @@ describe('suppressions allowed by allowSuppressions: true', () => {
 })
 
 // A type test asserts a type error with @ts-expect-error, so in test and type-test files it passes with a
-// description while suppressions are banned. A team cannot undo that: rules cannot name the rule.
+// description while suppressions are banned. An entry's rules naming the rule undo that, unless the entry
+// also sets allowSuppressions: false; the types do not refuse it in every shape (docs/plan.md, Open,
+// "Written limit of the config's types").
 describe('suppressions banned, in test and type-test files', () => {
   const EACH_KIND_OF_TEST_FILE = ['src/a.test.ts', 'src/a.spec.ts', 'src/__tests__/a.ts', 'src/a.test-d.ts']
   const testFiles = setUpEngineRun(
@@ -292,6 +300,61 @@ describe('suppressions allowed for legacy/** only, by a file override', () => {
     { file: 'legacy/ts-ignore.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
   ])('allows suppressions in legacy/** only: $file', ({ file, errors }) => {
     expect(legacyAllowed.errorsOn(file)).toStrictEqual(errors)
+  })
+})
+
+// An entry's rules naming the ban set it in the entry's files, which the owner accepts (docs/plan.md, Open, "Written
+// limit of the config's types"). Disable comments there then go unreported: oxlint honours them for its own rules, and
+// ESLint, still reading no inline config, ignores them. @ts- comments stay banned.
+describe("the ban turned off for legacy/** by an entry's rules", () => {
+  const banOffForLegacy = setUpEngineRun(
+    FIXTURES_DIR,
+    (projectDir) =>
+      defineLintRules(
+        buildConsumerLintRules(
+          projectDir,
+          {},
+          {
+            rules: { 'house/no-classic-loops': 'error', 'no-debugger': 'error' },
+            fileOverrides: [{ files: ['legacy/**'], rules: THE_BAN_OFF }],
+          },
+        ),
+      ),
+    {
+      'legacy/disable-next-line.ts': disableNextLineOverADebugger,
+      'src/disable-next-line.ts': disableNextLineOverADebugger,
+      'legacy/unsuppressed-debugger.ts': unsuppressedDebugger,
+      'legacy/named-disable-over-a-loop.ts': namedDisableOverAClassicLoop,
+      'src/named-disable-over-a-loop.ts': namedDisableOverAClassicLoop,
+      'legacy/ts-ignore.ts': tsIgnore,
+    },
+  )
+
+  it('is loaded by ESLint with no fatal message on any file', () => {
+    expect(banOffForLegacy.eslintFatalMessages()).toStrictEqual([])
+  })
+
+  it.each([
+    {
+      outcome: 'nothing for a disable comment, nor for the debugger oxlint lets it hide',
+      file: 'legacy/disable-next-line.ts',
+      errors: [],
+    },
+    { outcome: 'the same disable comment outside the entry', file: 'src/disable-next-line.ts', errors: BAN_REPORT_ON_LINE_1 },
+    {
+      outcome: 'a debugger no comment hides',
+      file: 'legacy/unsuppressed-debugger.ts',
+      errors: [buildErrorOnItsRoutedEngine(THE_DEBUGGER_RULE, DEBUGGER_LINE)],
+    },
+    {
+      outcome: 'the loop ESLint does not let a disable comment hide, and not the comment',
+      file: 'legacy/named-disable-over-a-loop.ts',
+      errors: [buildEslintError(THE_LOOP_RULE, CLASSIC_LOOP_LINE)],
+    },
+    { outcome: 'the same comment and loop outside the entry', file: 'src/named-disable-over-a-loop.ts', errors: BAN_AND_LOOP },
+    { outcome: 'a // @ts-ignore', file: 'legacy/ts-ignore.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
+  ])('reports $outcome: $file', ({ file, errors }) => {
+    expect(banOffForLegacy.errorsOn(file)).toStrictEqual(errors)
   })
 })
 

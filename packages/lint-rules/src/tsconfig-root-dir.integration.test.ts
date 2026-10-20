@@ -8,9 +8,8 @@ import {
 import { type ConsumerCliRuns, eslintFatalMessagesOf, eslintReportOf, oxlintReportOf, setUpConsumerCliRuns } from './__tests__/consumer-cli-runs.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 
-// tsconfigRootDir is checked when the config is defined: required, an absolute path, an existing
-// folder; otherwise an error naming agents-inc.lint.mts. Unchecked, each value below failed with an
-// error blaming something else.
+// tsconfigRootDir is checked when the config is defined: an absolute path, an existing folder; otherwise an
+// error naming agents-inc.lint.mts. Unchecked, each value below failed with an error blaming something else.
 
 allowEveryTestForParallelLoad()
 
@@ -28,7 +27,6 @@ describe('tsconfigRootDir in agents-inc.lint.mts, linted by both engines through
   const asPlanMdShows = runsWithTsconfigRootDir(AS_PLAN_MD_SHOWS.tsconfigRootDir)
   // The case's name in full in its title, which $-interpolation would cut short.
   const refused = [
-    { given: 'left out', runs: runsWithTsconfigRootDir(null) },
     { given: "'.'", runs: runsWithTsconfigRootDir("'.'") },
     { given: 'a folder that does not exist, in the project', runs: runsWithTsconfigRootDir('`${import.meta.dirname}/no-such-folder`') },
     // Beside the project, where no package.json lies above it.

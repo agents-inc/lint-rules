@@ -34,6 +34,18 @@ export type ShippedScope = {
   ignores: readonly string[] | null
 }
 
+/**
+ * An entry of a list in the rule's options whose calls another shipped rule reports: the entry is kept
+ * in the options exactly where that rule is on, so each such call is reported once.
+ */
+export type AllowanceLeftTo = {
+  /** The key, in an object of the rule's options, of the list holding the entry. */
+  readonly option: string
+  readonly entry: unknown
+  /** The shipped rule the entry's calls are left to. */
+  readonly rule: string
+}
+
 export type ShippedRule = TurnedOnBy &
   ShippedScope & {
     /**
@@ -53,6 +65,8 @@ export type ShippedRule = TurnedOnBy &
     readonly splitByTypesWith: string | null
     /** Whether our runtimes' globals serve the rule: the editor merges give them only where such a rule runs. */
     readonly readsRuntimeGlobals: boolean
+    /** Each entry of the rule's options left to another rule; empty where none. */
+    readonly allowancesLeftTo: readonly AllowanceLeftTo[]
   }
 
 export type RuleRoute = {
@@ -136,6 +150,7 @@ type GeneratedShippedRule = TurnedOnByFields &
     readonly coveredInOxlintBy?: string | undefined
     readonly splitByTypesWith?: string | undefined
     readonly readsRuntimeGlobals?: boolean | undefined
+    readonly allowancesLeftTo?: readonly AllowanceLeftTo[] | undefined
   }
 
 /** Every `RuleId` with its engine and, for the rules we ship, its ruleset and settings. */
@@ -198,10 +213,10 @@ function parseRuleRoute(route: GeneratedRoute): RuleRoute {
   return { ...route, engine: parseEngine(route.engine), shipped: parseShippedRule(route.id, route.shipped) }
 }
 
-/** Routing writes a relation, or the runtime-globals mark, only where the canonical list records one; absent, it is none. */
+/** Routing writes a relation, a mark or an allowance left to another rule only where the canonical list records one; absent, it is none. */
 function parseShippedRule(id: string, shipped: GeneratedShippedRule | null): ShippedRule | null {
   if (shipped === null) return null
-  const { ruleset, alwaysOn, whenSuppressions, coveredBy, coveredInOxlintBy, splitByTypesWith, readsRuntimeGlobals, ...scope } = shipped
+  const { ruleset, alwaysOn, whenSuppressions, coveredBy, coveredInOxlintBy, splitByTypesWith, readsRuntimeGlobals, allowancesLeftTo, ...scope } = shipped
   return {
     ...parseTurnedOnBy(id, { ruleset, alwaysOn, whenSuppressions }),
     ...scope,
@@ -209,5 +224,6 @@ function parseShippedRule(id: string, shipped: GeneratedShippedRule | null): Shi
     coveredInOxlintBy: coveredInOxlintBy === undefined ? null : coveredInOxlintBy,
     splitByTypesWith: splitByTypesWith === undefined ? null : splitByTypesWith,
     readsRuntimeGlobals: readsRuntimeGlobals === true,
+    allowancesLeftTo: allowancesLeftTo === undefined ? [] : allowancesLeftTo,
   }
 }

@@ -5,8 +5,8 @@ import type { ProjectFiles } from '../temp-projects.ts'
 // The files a team has once `init` has run and it merges the editor set into its own configs, as plan.md shows
 // them, with empty team configs.
 
-/** The two keys a case varies in `agents-inc.lint.mts`: each as its value's source text, null where the key is left out. */
-export type AgentsIncLintKeys = { readonly tsconfigRootDir: string | null; readonly editorRulesets: string | null }
+/** The two keys a case varies in `agents-inc.lint.mts`, each as its value's source text. */
+export type AgentsIncLintKeys = { readonly tsconfigRootDir: string; readonly editorRulesets: string }
 
 export const AS_PLAN_MD_SHOWS: AgentsIncLintKeys = { tsconfigRootDir: 'import.meta.dirname', editorRulesets: '{}' }
 
@@ -68,17 +68,16 @@ export default defineConfig(mergeOxlintConfig(theirExistingConfig, oxlint, { esl
 
 export const OXLINT_CONFIG_FILE = 'oxlint.config.mts'
 
-export const PLANTED_FILE = 'src/planted.ts'
+const PLANTED_FILE = 'src/planted.ts'
 
-/** Verbatim as plan.md shows `init` writing it: a key given another value keeps its line; one left out loses it. */
-export function agentsIncLintTextAsPlanMdShows({ tsconfigRootDir, editorRulesets }: AgentsIncLintKeys): string {
-  const tsconfigRootDirLine = tsconfigRootDir === null ? '' : `  tsconfigRootDir: ${tsconfigRootDir},\n`
-  const editorRulesetsLine = editorRulesets === null ? '' : `  editorRulesets: ${editorRulesets},${EDITOR_RULESETS_COMMENT}\n`
+/** Verbatim as plan.md shows `init` writing it: a key given another value keeps its line. */
+function agentsIncLintTextAsPlanMdShows({ tsconfigRootDir, editorRulesets }: AgentsIncLintKeys): string {
   return `/// <reference types="node" />
 import { defineLintRules } from '@agents-inc/lint-rules'
 
 const config = defineLintRules({
-${tsconfigRootDirLine}
+  tsconfigRootDir: ${tsconfigRootDir},
+
   agentRulesets: {
     quality: [
       'correctness',
@@ -112,7 +111,8 @@ ${tsconfigRootDirLine}
     languages: [],   // no JSON, Markdown or CSS rules exist yet
   },
 
-${editorRulesetsLine}
+  editorRulesets: ${editorRulesets},${EDITOR_RULESETS_COMMENT}
+
   ignores: [],
 
   rules: {},

@@ -1,14 +1,11 @@
-// Types are stripped when `agents-inc.lint.mts` loads, so every name here is a plain string until
-// `validateLintRules` narrows it.
+// What the code reads of `agents-inc.lint.mts`. The types in index.ts check every name in it, so here a name is a
+// plain string; a config nobody type-checks is read as it is written (owner, 2026-10-19).
 
 import type { SuppressionMode } from '@workspace/rule-data'
-import { quotedOrDescribed } from './value-descriptions.ts'
 
-const SEVERITIES = ['error', 'warn', 'off'] as const
+export type Severity = 'error' | 'warn' | 'off'
 
-export type Severity = (typeof SEVERITIES)[number]
-
-export type RuleEntryInput = string | readonly unknown[]
+export type RuleEntryInput = Severity | readonly [Severity, ...unknown[]]
 
 export type RuleSettingsInput = Readonly<Record<string, RuleEntryInput>>
 
@@ -22,8 +19,7 @@ export type RulesetsInput = {
 export type FileOverrideInput = {
   readonly files: readonly string[]
   readonly rulesets?: Partial<RulesetsInput>
-  /** A quoted 'false' is truthy, so it stays unknown until validated. */
-  readonly allowSuppressions?: unknown
+  readonly allowSuppressions?: boolean
   readonly rules?: RuleSettingsInput
 }
 
@@ -32,19 +28,19 @@ export type LintRulesInput = {
   readonly tsconfigRootDir: string
   readonly rulesets: RulesetsInput
   readonly ignores?: readonly string[]
-  readonly allowSuppressions?: unknown
+  readonly allowSuppressions?: boolean
   readonly rules?: RuleSettingsInput
   readonly fileOverrides?: readonly FileOverrideInput[]
 }
 
-export type RulesetSet = 'agentRulesets' | 'editorRulesets'
+type RulesetSet = 'agentRulesets' | 'editorRulesets'
 
-export type TwoSetFileOverrideInput = {
+type TwoSetFileOverrideInput = {
   readonly files: readonly string[]
   /** A set left out keeps the top-level one for these files. */
   readonly agentRulesets?: Partial<RulesetsInput>
   readonly editorRulesets?: Partial<RulesetsInput>
-  readonly allowSuppressions?: unknown
+  readonly allowSuppressions?: boolean
   readonly rules?: RuleSettingsInput
 }
 
@@ -54,12 +50,10 @@ export type TwoSetLintRulesInput = {
   readonly agentRulesets: Partial<RulesetsInput>
   readonly editorRulesets: Partial<RulesetsInput>
   readonly ignores?: readonly string[]
-  readonly allowSuppressions?: unknown
+  readonly allowSuppressions?: boolean
   readonly rules?: RuleSettingsInput
   readonly fileOverrides?: readonly TwoSetFileOverrideInput[]
 }
-
-export const RULESET_SETS: readonly RulesetSet[] = ['agentRulesets', 'editorRulesets']
 
 /** An entry that leaves the set out gets no `rulesets`, so it inherits the top-level lists. */
 export function projectedOnto(
@@ -84,14 +78,9 @@ function entryProjectedOnto(
   return rulesets === undefined ? shared : { ...shared, rulesets }
 }
 
-/** Null when it gives none of `error`, `warn` or `off`. */
-export function severityOf(entry: RuleEntryInput): Severity | null {
-  const given = severityGivenBy(entry)
-  return isSeverity(given) ? given : null
-}
-
-export function describeSeverity(entry: RuleEntryInput): string {
-  return quotedOrDescribed(severityGivenBy(entry))
+/** The severity alone, or the one leading the options. */
+export function severityOf(entry: RuleEntryInput): Severity {
+  return typeof entry === 'string' ? entry : entry[0]
 }
 
 /** Null for a severity alone, which keeps the options in force. */
@@ -101,29 +90,12 @@ export function optionsGivenBy(entry: RuleEntryInput): readonly unknown[] | null
   return options.length === 0 ? null : options
 }
 
-/** Once types are stripped, any other value is truthy or falsy by accident. */
-export function isAllowSuppressionsValue(value: unknown): value is boolean | undefined {
-  return value === undefined || typeof value === 'boolean'
-}
-
 /** Null where it is left out, so the earlier mode stands. */
-export function suppressionModeSetBy(allowSuppressions: unknown): SuppressionMode | null {
-  if (!isAllowSuppressionsValue(allowSuppressions)) {
-    throw new Error(`allowSuppressions: ${quotedOrDescribed(allowSuppressions)} is not true or false`)
-  }
+export function suppressionModeSetBy(allowSuppressions: boolean | undefined): SuppressionMode | null {
   if (allowSuppressions === undefined) return null
   return allowSuppressions ? 'allowed' : 'banned'
 }
 
 export function listedRulesetNames({ quality, libs, runtimes, languages = [] }: RulesetsInput): ReadonlySet<string> {
   return new Set([...quality, ...Object.values(libs).flat(), ...runtimes, ...languages])
-}
-
-/** Types are stripped, so the entry may be no string and no array. */
-function severityGivenBy(entry: unknown): unknown {
-  return Array.isArray(entry) ? entry[0] : entry
-}
-
-function isSeverity(value: unknown): value is Severity {
-  return SEVERITIES.some((severity) => severity === value)
 }
