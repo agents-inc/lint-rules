@@ -26,10 +26,10 @@ export type StubPackage = { readonly name: string; readonly declarations: string
 
 const FIND_QUERY_TYPES = ['Role', 'LabelText', 'PlaceholderText', 'Text', 'DisplayValue', 'AltText', 'Title', 'TestId']
 
-export const FIND_QUERIES: readonly string[] = FIND_QUERY_TYPES.flatMap((queryType) => [`findBy${queryType}`, `findAllBy${queryType}`])
+const FIND_QUERIES: readonly string[] = FIND_QUERY_TYPES.flatMap((queryType) => [`findBy${queryType}`, `findAllBy${queryType}`])
 
 /** user-event 14's methods, each returning a promise. */
-export const USER_EVENT_METHODS: readonly string[] = [
+const USER_EVENT_METHODS: readonly string[] = [
   'clear',
   'click',
   'copy',
@@ -207,7 +207,7 @@ function specificRulesOf(files: readonly DeprecatedApiFile[]): string[] {
 }
 
 /** Each legacy API both rules report: the duplicate no-deprecated leaves to the specific rule. */
-export const DEPRECATED_API_FILES: readonly DeprecatedApiFile[] = [
+const DEPRECATED_API_FILES: readonly DeprecatedApiFile[] = [
   stringMethodFile('substr(1)', 'unicorn/prefer-string-slice'),
   stringMethodFile('trimLeft()', 'unicorn/prefer-string-trim-start-end'),
   stringMethodFile('trimRight()', 'unicorn/prefer-string-trim-start-end'),

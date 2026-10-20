@@ -1009,7 +1009,13 @@
             "package": "@testing-library/dom",
             "name": [
               "waitFor",
-              "waitForElementToBeRemoved",
+              "waitForElementToBeRemoved"
+            ]
+          },
+          {
+            "from": "package",
+            "package": "@testing-library/dom",
+            "name": [
               "findByRole",
               "findAllByRole",
               "findByLabelText",
@@ -1069,6 +1075,105 @@
       }
     ],
     "typed": true,
+    "allowancesLeftTo": [
+      {
+        "option": "allowForKnownSafeCalls",
+        "entry": {
+          "from": "package",
+          "package": "@testing-library/dom",
+          "name": [
+            "waitFor",
+            "waitForElementToBeRemoved"
+          ]
+        },
+        "rule": "testing-library/await-async-utils",
+        "because": "lint-a4-vitest-only: testing-library/await-async-utils reports a Testing Library waitFor helper unawaited wherever it runs, so no-floating-promises reports it only where that rule does not"
+      },
+      {
+        "option": "allowForKnownSafeCalls",
+        "entry": {
+          "from": "package",
+          "package": "@testing-library/dom",
+          "name": [
+            "findByRole",
+            "findAllByRole",
+            "findByLabelText",
+            "findAllByLabelText",
+            "findByPlaceholderText",
+            "findAllByPlaceholderText",
+            "findByText",
+            "findAllByText",
+            "findByDisplayValue",
+            "findAllByDisplayValue",
+            "findByAltText",
+            "findAllByAltText",
+            "findByTitle",
+            "findAllByTitle",
+            "findByTestId",
+            "findAllByTestId"
+          ]
+        },
+        "rule": "testing-library/await-async-queries",
+        "because": "lint-a4-vitest-only: testing-library/await-async-queries reports a Testing Library find query unawaited wherever it runs, so no-floating-promises reports it only where that rule does not"
+      },
+      {
+        "option": "allowForKnownSafeCalls",
+        "entry": {
+          "from": "package",
+          "package": "@testing-library/user-event",
+          "name": [
+            "clear",
+            "click",
+            "copy",
+            "cut",
+            "dblClick",
+            "deselectOptions",
+            "hover",
+            "keyboard",
+            "paste",
+            "pointer",
+            "selectOptions",
+            "tab",
+            "tripleClick",
+            "type",
+            "unhover",
+            "upload"
+          ]
+        },
+        "rule": "testing-library/await-async-events",
+        "because": "lint-a4-vitest-only: testing-library/await-async-events reports a user-event call unawaited wherever it runs, so no-floating-promises reports it only where that rule does not"
+      },
+      {
+        "option": "allowForKnownSafeCalls",
+        "entry": {
+          "from": "package",
+          "package": "@testing-library/user-event",
+          "name": "__type"
+        },
+        "rule": "testing-library/await-async-events",
+        "because": "lint-a4-vitest-only: testing-library/await-async-events reports a user-event session's call unawaited wherever it runs, so no-floating-promises reports it only where that rule does not"
+      },
+      {
+        "option": "allowForKnownSafeCalls",
+        "entry": {
+          "from": "package",
+          "package": "vitest",
+          "name": "__type"
+        },
+        "rule": "vitest/valid-expect",
+        "because": "a3v-testing-calls-without-tests: vitest/valid-expect reports an unawaited Vitest assertion wherever it runs, so no-floating-promises reports it only where that rule does not"
+      },
+      {
+        "option": "allowForKnownSafeCalls",
+        "entry": {
+          "from": "package",
+          "package": "@vitest/expect",
+          "name": "Promisify"
+        },
+        "rule": "vitest/valid-expect",
+        "because": "a3v-testing-calls-without-tests: vitest/valid-expect reports an unawaited Vitest assertion wherever it runs, so no-floating-promises reports it only where that rule does not"
+      }
+    ],
     "assignment": {
       "confidence": "high",
       "by": "agent-D"
