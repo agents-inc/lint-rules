@@ -5,7 +5,7 @@ import { installedPackage } from './temp-projects.ts'
 
 export type ProcessResult = { readonly exitCode: number | null; readonly stdout: string; readonly stderr: string }
 
-export const INSTALLED_TYPESCRIPT = installedPackage('typescript')
+const INSTALLED_TYPESCRIPT = installedPackage('typescript')
 export const INSTALLED_TYPES_NODE = installedPackage('@types/node')
 
 const TSC = join(INSTALLED_TYPESCRIPT.dir, 'bin', 'tsc')
@@ -23,8 +23,8 @@ export function importInNode(file: string): ProcessResult {
   return { exitCode: status, stdout, stderr }
 }
 
-/** `tsc --noEmit` over the project's tsconfig.json, with the TypeScript this repo installs. */
+/** `tsc --noEmit` over the project's tsconfig.json, with the TypeScript this repo installs, run from the project's folder as a team runs it: each file it names is read from there. */
 export function typeCheck(projectDir: string): ProcessResult {
-  const { status, stdout, stderr } = spawnSync(process.execPath, [TSC, '--noEmit', '-p', projectDir], { encoding: 'utf8' })
+  const { status, stdout, stderr } = spawnSync(process.execPath, [TSC, '--noEmit', '-p', projectDir], { cwd: projectDir, encoding: 'utf8' })
   return { exitCode: status, stdout, stderr }
 }

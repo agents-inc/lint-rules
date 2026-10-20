@@ -1,16 +1,15 @@
 import { mkdirSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type { TwoSetLintRulesInput } from '../../core/lint-rules-input.ts'
 import type { resolveRuleLayers } from '../../core/resolve-rule-layers.ts'
-import type { validateLintRules } from '../../core/validate-lint-rules.ts'
 import type { LintRules } from '../../index.ts'
 
-/** Types are stripped when the consumer's config loads, so the core takes string-typed names it narrows at runtime. */
+/** The core takes every name as a plain string: the types in index.ts are what check them. */
 type LintRulesInput = Parameters<typeof resolveRuleLayers>[0]
 type RulesetsInput = LintRulesInput['rulesets']
 type FileOverrideInput = NonNullable<LintRulesInput['fileOverrides']>[number]
 
-type TwoSetLintRulesInput = Parameters<typeof validateLintRules>[0]
 type TwoSetRulesetsInput = TwoSetLintRulesInput['agentRulesets']
 type TwoSetFileOverrideInput = NonNullable<TwoSetLintRulesInput['fileOverrides']>[number]
 
@@ -133,16 +132,9 @@ export function buildConsumerLintRulesLeavingListsOut(
   return { tsconfigRootDir, agentRulesets, editorRulesets, ...fields }
 }
 
-/** The types refuse it; stripped of them, it reaches the runtime check. */
+/** The types refuse it, and nothing checks it at run time. */
 export function buildConsumerLintRulesWithoutTsconfigRootDir(): Omit<LintRules, 'tsconfigRootDir'> {
   return { agentRulesets: EVERY_RULESET, editorRulesets: EVERY_RULESET }
-}
-
-/** A later piece's setting of a rule wins, and entries keep the order given. */
-export function buildConsumerLintRulesFrom(tsconfigRootDir: string, pieces: readonly LintRulesPiece[]): LintRules {
-  const rules = pieces.reduce<NonNullable<LintRules['rules']>>((joined, { rules: pieceRules = {} }) => ({ ...joined, ...pieceRules }), {})
-  const fileOverrides = pieces.flatMap(({ fileOverrides: entries = [] }) => entries)
-  return buildConsumerLintRules(tsconfigRootDir, {}, { rules, fileOverrides })
 }
 
 function qualityRulesetInBothSets(ruleset: NonNullable<Rulesets['quality']>[number]): RulesetSets {
@@ -160,12 +152,12 @@ export function buildEveryRulesetLintRules(tsconfigRootDir: string, fields: Shar
   return { tsconfigRootDir, agentRulesets: EVERY_RULESET, editorRulesets: EVERY_RULESET, ...fields }
 }
 
-/** The types refuse it; stripped of them, it reaches the runtime check. */
+/** The types refuse it, and nothing checks it at run time. */
 export function buildConsumerLintRulesWithoutEditorRulesets(tsconfigRootDir: string): Omit<LintRules, 'editorRulesets'> {
   return { tsconfigRootDir, agentRulesets: EVERY_RULESET }
 }
 
-/** The types refuse it; stripped of them, it reaches the runtime check. */
+/** The types refuse it, and nothing checks it at run time. */
 export function buildConsumerLintRulesWithoutAgentRulesets(tsconfigRootDir: string): Omit<LintRules, 'agentRulesets'> {
   return { tsconfigRootDir, editorRulesets: EVERY_RULESET }
 }

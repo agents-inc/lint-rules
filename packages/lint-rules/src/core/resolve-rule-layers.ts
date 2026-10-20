@@ -1,9 +1,19 @@
-import { type Catalog, type Engine, routeOf, type RuleRoute, type RulesetList, type ShippedRule, type SuppressionMode } from '@workspace/rule-data'
+import { isDeepStrictEqual } from 'node:util'
+import {
+  type AllowanceLeftTo,
+  type Catalog,
+  type Engine,
+  routeOf,
+  type RuleRoute,
+  type RulesetList,
+  type ShippedRule,
+  type SuppressionMode,
+} from '@workspace/rule-data'
 import { foundOr, groupBy } from '@workspace/rule-data/collections'
 import { envOfRulesets, isSuppressionRoute, readsRuntimeGlobals, rulesetNamed, type SuppressionRoute } from './catalog-lookups.ts'
 import { formsOfAnIgnoresValue, normalizeGlob, normalizeGlobs } from './globs.ts'
+import { isRecord } from './is-record.ts'
 import {
-  describeSeverity,
   type FileOverrideInput,
   type LintRulesInput,
   listedRulesetNames,
@@ -19,15 +29,27 @@ import { type ReadsKept, readOnce } from './read-once.ts'
 
 export type RuleSetting = {
   readonly severity: Severity
+  /** In every file the rule runs on, but those `optionsInFiles` gives others. */
   readonly options: readonly unknown[]
   readonly files: readonly string[] | null
   readonly ignores: readonly string[] | null
+  /** Where an options entry is left to a rule that runs on some files alone: the options there, in order, the later winning in a file both name. Left out where there are none. */
+  readonly optionsInFiles?: readonly OptionsInFiles[]
+}
+
+type Globs = readonly string[]
+
+/** A rule's options in the files of its own that match a glob of every list and none of the ignores. */
+export type OptionsInFiles = {
+  readonly files: readonly Globs[]
+  readonly ignores: Globs
+  readonly options: readonly unknown[]
 }
 
 export type RuleSettings = Readonly<Record<string, RuleSetting>>
 
 /** Off alone, else its severity and options. */
-export type RuleEntryWritten = 'off' | [Severity, ...unknown[]]
+type RuleEntryWritten = 'off' | [Severity, ...unknown[]]
 
 export type StatedRule = { readonly id: string; readonly setting: RuleSetting }
 
@@ -42,7 +64,7 @@ export type SuppressionLayer = {
 export type FileOverrideLayer = {
   readonly files: readonly string[]
   readonly env: EnvChanges
-  /** Dropped rules off and added rules on, against the top level's; plus each rule an earlier entry changed in a list this entry gives. */
+  /** Dropped rules off, added rules on and rules whose options change, against the top level's; plus each rule an earlier entry changed in a list this entry gives. */
   readonly rulesetChanges: RuleSettings
   /** Applied within the entry's files, after its ruleset changes. */
   readonly rules: RuleSettings
@@ -71,6 +93,18 @@ type SettingEntry = [id: string, setting: RuleSetting]
 type KeepsRule = (rule: StatedRule) => boolean
 
 type ChangesRuleMap = (settings: RuleSettings) => RuleSettings
+
+/** Whether a rule's options are settled for the layer already: as a `rules` entry writes them, or as the layer resolved them. */
+type HasOptionsSettled = (id: string) => boolean
+
+type OptionsOfASetting = Pick<RuleSetting, 'options' | 'optionsInFiles'>
+
+type Scope = Pick<RuleSetting, 'files' | 'ignores'>
+
+/** The options entries left to rules a layer runs in the same files of their own. */
+type EntriesKeptTo = { readonly scope: Scope; readonly allowances: readonly AllowanceLeftTo[] }
+
+type AllowanceInScope = { readonly allowance: AllowanceLeftTo; readonly scope: Scope }
 
 type ShippedRoute = RuleRoute & { readonly shipped: ShippedRule }
 
@@ -162,7 +196,7 @@ export function tsFileRulesOf({ tsFileRules }: Pick<RuleLayers, 'tsFileRules'>):
   return tsFileRules === undefined ? {} : tsFileRules
 }
 
-export function layersOfRulesOn(layers: RuleLayers): RuleLayers {
+function layersOfRulesOn(layers: RuleLayers): RuleLayers {
   return layersWithEachRuleMap(layers, settingsOn)
 }
 
@@ -182,7 +216,7 @@ export function suppressionRulesOf(layer: FileOverrideLayer): RuleSettings {
   return layer.suppressions === undefined ? {} : layer.suppressions.rules
 }
 
-export function topLevelSuppressionMode(allowSuppressions: unknown): SuppressionMode {
+export function topLevelSuppressionMode(allowSuppressions: boolean | undefined): SuppressionMode {
   const modeSet = suppressionModeSetBy(allowSuppressions)
   return modeSet === null ? SUPPRESSION_MODE_BY_DEFAULT : modeSet
 }
@@ -218,13 +252,13 @@ function resolveFileOverride(
     files: files.map(normalizeGlob),
     env: envChanges(topLevel.env, envOfRulesets(listedRulesetNames(entryRulesets), catalog), restated.envs),
     rulesetChanges: rulesetChanges(topLevel.rulesOn, entryRulesOn, restated.ruleIds),
-    rules: entryRuleSettings(rules, entryRulesOn, catalog),
+    rules: entryRulesOf(rules, entryRulesOn, catalog),
     ...suppressionsSetBy(allowSuppressions, catalog),
   }
 }
 
 /** States every rule it decides, so it wins over the top level and earlier entries. */
-function suppressionsSetBy(allowSuppressions: unknown, catalog: Catalog): Pick<FileOverrideLayer, 'suppressions'> {
+function suppressionsSetBy(allowSuppressions: boolean | undefined, catalog: Catalog): Pick<FileOverrideLayer, 'suppressions'> {
   const mode = suppressionModeSetBy(allowSuppressions)
   if (mode === null) return {}
   return { suppressions: { mode, rules: suppressionRulesIn(mode, catalog) } }
@@ -272,9 +306,20 @@ function listsGivenBy(rulesets: Partial<RulesetsInput>): ReadonlySet<string> {
   )
 }
 
-/** A covered rule's covers' lists count too, since listing their rulesets leaves the covered rule out. */
+/**
+ * A covered rule's covers' lists count too, since listing their rulesets leaves the covered rule out, and so
+ * do the lists of the rules a rule's options entries are left to, since listing them keeps the entries.
+ */
 function listsChanging(id: string, covers: Covers, catalog: Catalog): RulesetList[] {
-  return [id, ...coversOf(id, covers)].map((ruleId) => listOfRulesetRule(ruleId, catalog))
+  return [id, ...coversOf(id, covers), ...rulesAllowancesAreLeftTo(id, catalog)].map((ruleId) => listOfRulesetRule(ruleId, catalog))
+}
+
+function rulesAllowancesAreLeftTo(id: string, catalog: Catalog): string[] {
+  return allowancesLeftToBy(routeOf(id, catalog)).map(({ rule }) => rule)
+}
+
+function allowancesLeftToBy({ shipped }: RuleRoute): readonly AllowanceLeftTo[] {
+  return shipped === null ? [] : shipped.allowancesLeftTo
 }
 
 /** Only rules shipped in a ruleset change with it: an always-on rule is on under every ruleset, and `allowSuppressions` decides its own. */
@@ -291,7 +336,109 @@ function rulesOnUnder(rulesets: RulesetsInput, rules: RuleSettingsInput, covers:
     id,
     scopedSettingOf(id, entry, shippedRules, catalog),
   ])
-  return withoutCoveredRules(settingsOn({ ...shippedRules, ...Object.fromEntries(settingsGiven) }), rules, covers)
+  const rulesOn = withoutCoveredRules(settingsOn({ ...shippedRules, ...Object.fromEntries(settingsGiven) }), rules, covers)
+  return withAllowancesWhereTheirRulesRun(rulesOn, (id) => isWrittenWithOptions(rules, id), rulesOn, catalog)
+}
+
+/**
+ * Each options entry left to another rule is kept in the files where that rule runs in the layer, turned on
+ * by its lists or the top-level `rules`, and dropped elsewhere; options settled for the layer are used as
+ * they are. An entry's own `rules` turning that rule on or off do not move it (a known limit, as for a cover).
+ */
+function withAllowancesWhereTheirRulesRun(settings: RuleSettings, hasOptionsSettled: HasOptionsSettled, layerRulesOn: RuleSettings, catalog: Catalog): RuleSettings {
+  const trimmed = Object.entries(settings)
+    .filter(([id]) => !hasOptionsSettled(id))
+    .map(([id, setting]): SettingEntry => [id, settingWithAllowancesWhereTheirRulesRun(setting, allowancesLeftToBy(routeOf(id, catalog)), layerRulesOn)])
+  return { ...settings, ...Object.fromEntries(trimmed) }
+}
+
+function isWrittenWithOptions(written: RuleSettingsInput, id: string): boolean {
+  const entry = written[id]
+  return entry !== undefined && optionsGivenBy(entry) !== null
+}
+
+/** An entry whose rule runs in every file stays in the options, one whose rule runs in some files moves to the options in those files, and one whose rule is off goes. */
+function settingWithAllowancesWhereTheirRulesRun(setting: RuleSetting, allowances: readonly AllowanceLeftTo[], layerRulesOn: RuleSettings): RuleSetting {
+  if (setting.severity === 'off' || allowances.length === 0) return setting
+  const notKeptEverywhere = allowances.filter(({ rule }) => !runsInEveryFile(rule, layerRulesOn))
+  const keptToSomeFiles = entriesKeptToSomeFiles(allowances, layerRulesOn)
+  const optionsInFiles = nonEmptySetsOf(keptToSomeFiles).map((kept) => optionsWhereEachRuns(kept, setting.options, notKeptEverywhere))
+  return { ...setting, options: optionsWithout(setting.options, notKeptEverywhere), ...optionsInFilesUnlessNone(optionsInFiles) }
+}
+
+function runsInEveryFile(ruleId: string, layerRulesOn: RuleSettings): boolean {
+  const scope = scopeWhereOn(ruleId, layerRulesOn)
+  return scope !== null && isEveryFile(scope)
+}
+
+/** null where the layer leaves the rule off. */
+function scopeWhereOn(ruleId: string, layerRulesOn: RuleSettings): Scope | null {
+  const ruleSetting = layerRulesOn[ruleId]
+  if (ruleSetting === undefined) return null
+  return { files: ruleSetting.files, ignores: ruleSetting.ignores }
+}
+
+function isEveryFile({ files, ignores }: Scope): boolean {
+  return files === null && ignores === null
+}
+
+/** Grouped by the files their rules run in, in the order the entries come. */
+function entriesKeptToSomeFiles(allowances: readonly AllowanceLeftTo[], layerRulesOn: RuleSettings): EntriesKeptTo[] {
+  const inScopes = allowances.flatMap((allowance) => inScopeOfItsRule(allowance, layerRulesOn))
+  return eachOnce(inScopes.map(({ scope }) => scope)).map((scope) => ({ scope, allowances: allowancesIn(scope, inScopes) }))
+}
+
+function inScopeOfItsRule(allowance: AllowanceLeftTo, layerRulesOn: RuleSettings): AllowanceInScope[] {
+  const scope = scopeWhereOn(allowance.rule, layerRulesOn)
+  if (scope === null || isEveryFile(scope)) return []
+  return [{ allowance, scope }]
+}
+
+function allowancesIn(scope: Scope, inScopes: readonly AllowanceInScope[]): AllowanceLeftTo[] {
+  return inScopes.filter((inScope) => isDeepStrictEqual(inScope.scope, scope)).map(({ allowance }) => allowance)
+}
+
+/** Equal values once, in the order they first come. */
+function eachOnce<Item>(items: readonly Item[]): Item[] {
+  return items.filter((item, index) => items.findIndex((other) => isDeepStrictEqual(other, item)) === index)
+}
+
+/** Smallest first: of the sets naming a file, the last to apply is the largest, which holds every rule running there. */
+function nonEmptySetsOf<Item>(items: readonly Item[]): Item[][] {
+  const everySet = items.reduce<Item[][]>((setsSoFar, item) => setsSoFar.flatMap((set) => [set, [...set, item]]), [[]])
+  return everySet.filter((set) => set.length > 0).toSorted((set, other) => set.length - other.length)
+}
+
+/** In the files where every rule of the set runs, the entries left to them are kept. */
+function optionsWhereEachRuns(kept: readonly EntriesKeptTo[], options: readonly unknown[], notKeptEverywhere: readonly AllowanceLeftTo[]): OptionsInFiles {
+  const keptHere = new Set(kept.flatMap(({ allowances }) => allowances))
+  const droppedHere = notKeptEverywhere.filter((allowance) => !keptHere.has(allowance))
+  return { files: fileListsOf(kept), ignores: ignoresOf(kept), options: optionsWithout(options, droppedHere) }
+}
+
+/** A file is in the set's files where it matches a glob of each list. */
+function fileListsOf(kept: readonly EntriesKeptTo[]): Globs[] {
+  return eachOnce(kept.flatMap(({ scope: { files } }) => (files === null ? [] : [files])))
+}
+
+function ignoresOf(kept: readonly EntriesKeptTo[]): string[] {
+  return [...new Set(kept.flatMap(({ scope: { ignores } }) => (ignores === null ? [] : ignores)))]
+}
+
+function optionsInFilesUnlessNone(optionsInFiles: readonly OptionsInFiles[]): Pick<RuleSetting, 'optionsInFiles'> {
+  return optionsInFiles.length === 0 ? {} : { optionsInFiles }
+}
+
+function optionsWithout(options: readonly unknown[], allowances: readonly AllowanceLeftTo[]): readonly unknown[] {
+  return options.map((given) => allowances.reduce(optionWithoutTheEntry, given))
+}
+
+/** An object of the options without the entry in the list under the allowance's key; anything else as given. */
+function optionWithoutTheEntry(given: unknown, { option, entry }: AllowanceLeftTo): unknown {
+  if (!isRecord(given)) return given
+  const listed = given[option]
+  if (!Array.isArray(listed)) return given
+  return { ...given, [option]: listed.filter((held: unknown) => !isDeepStrictEqual(held, entry)) }
 }
 
 /** A rule is left out where a broader rule covering it is on, unless the top-level `rules` state it. A cover running in only some files still leaves the rule out of the whole layer (a known limit). */
@@ -381,6 +528,18 @@ export function shippedScopeOf({ shipped }: RuleRoute): Pick<RuleSetting, 'files
   return { files: normalizeGlobs(shipped.files), ignores: normalizeGlobs(shipped.ignores) }
 }
 
+/**
+ * Options the entry writes are used as written. A severity alone takes the options in force in its files,
+ * settled there already (as the top-level `rules` write them, or trimmed); only a rule off there falls back
+ * to its shipped options, which are trimmed for those files.
+ */
+function entryRulesOf(rules: RuleSettingsInput, entryRulesOn: RuleSettings, catalog: Catalog): RuleSettings {
+  function hasOptionsSettled(id: string): boolean {
+    return isWrittenWithOptions(rules, id) || Object.hasOwn(entryRulesOn, id)
+  }
+  return withAllowancesWhereTheirRulesRun(entryRuleSettings(rules, entryRulesOn, catalog), hasOptionsSettled, entryRulesOn, catalog)
+}
+
 function entryRuleSettings(rules: RuleSettingsInput, entryRulesOn: RuleSettings, catalog: Catalog): RuleSettings {
   return Object.fromEntries(
     Object.entries(rules).map(([id, entry]): SettingEntry => [id, scopedSettingOf(id, entry, entryRulesOn, catalog)]),
@@ -392,21 +551,24 @@ function severityAndOptions(
   entry: RuleEntryInput,
   inForce: RuleSettings,
   catalog: Catalog,
-): Pick<RuleSetting, 'severity' | 'options'> {
+): Pick<RuleSetting, 'severity'> & OptionsOfASetting {
   const severity = severityOf(entry)
-  if (severity === null) throw new Error(`invalid severity ${describeSeverity(entry)} for "${id}"`)
   if (severity === 'off') return { severity, options: [] }
   const optionsGiven = optionsGivenBy(entry)
-  if (optionsGiven === null) return { severity, options: optionsInForce(id, inForce, catalog) }
+  if (optionsGiven === null) return { severity, ...optionsInForce(id, inForce, catalog) }
   return { severity, options: optionsGiven }
 }
 
-/** What a severity alone keeps: the options already set for the rule, else its shipped ones. */
-function optionsInForce(id: string, inForce: RuleSettings, catalog: Catalog): readonly unknown[] {
+/** What a severity alone keeps: the options already set for the rule, in each of its files, else its shipped ones. */
+function optionsInForce(id: string, inForce: RuleSettings, catalog: Catalog): OptionsOfASetting {
   const current = inForce[id]
-  if (current !== undefined) return current.options
+  if (current !== undefined) return optionsOf(current)
   const { shipped } = routeOf(id, catalog)
-  return shipped === null ? [] : shipped.options
+  return { options: shipped === null ? [] : shipped.options }
+}
+
+function optionsOf({ options, optionsInFiles }: RuleSetting): OptionsOfASetting {
+  return optionsInFiles === undefined ? { options } : { options, optionsInFiles }
 }
 
 function rulesetChanges(
@@ -414,12 +576,16 @@ function rulesetChanges(
   entryRulesOn: RuleSettings,
   restatedRuleIds: readonly string[],
 ): RuleSettings {
-  const switched = [...Object.keys(topLevelRulesOn), ...Object.keys(entryRulesOn)].filter(
-    (id) => Object.hasOwn(topLevelRulesOn, id) !== Object.hasOwn(entryRulesOn, id),
-  )
+  const changed = ruleIdsSetDifferently(topLevelRulesOn, entryRulesOn)
   return Object.fromEntries(
-    [...switched, ...restatedRuleIds].map((id): SettingEntry => [id, settingUnder(entryRulesOn, id)]),
+    [...changed, ...restatedRuleIds].map((id): SettingEntry => [id, settingUnder(entryRulesOn, id)]),
   )
+}
+
+/** Each rule on in one layer alone, or on in both with other options: an entry left to a rule the lists switch. */
+function ruleIdsSetDifferently(topLevelRulesOn: RuleSettings, entryRulesOn: RuleSettings): string[] {
+  const ruleIdsOnInEither = new Set([...Object.keys(topLevelRulesOn), ...Object.keys(entryRulesOn)])
+  return [...ruleIdsOnInEither].filter((id) => !isDeepStrictEqual(topLevelRulesOn[id], entryRulesOn[id]))
 }
 
 function settingUnder(entryRulesOn: RuleSettings, id: string): RuleSetting {

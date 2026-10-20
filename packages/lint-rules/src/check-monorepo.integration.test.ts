@@ -196,7 +196,7 @@ describe("check in a monorepo, where the config's file overrides name a folder o
   const FILE_OVERRIDES = [
     { files: ['src/**'], rules: OFF },
     { files: ['**/*.test.ts'], rules: OFF },
-  ]
+  ] as const
   const SRC_AND_TESTS = { include: ['src', 'tests'], paths: {} }
   const CONFIG_FOLDERS = [
     { folder: WEB_PACKAGE, kind: 'web' },
@@ -247,7 +247,7 @@ describe("check, where the config's file overrides name files at its folder's ro
   const FILE_OVERRIDES = [
     { files: [`./${LED_BY_DOT_SLASH}`], rules: OFF },
     { files: [`/${LED_BY_SLASH}`], rules: OFF },
-  ]
+  ] as const
   const AT_ITS_ROOT = { include: ['*.ts'], paths: {} }
   const CONFIG_FOLDERS = [
     { folder: WEB_PACKAGE, kind: 'a config in a package' },

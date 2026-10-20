@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { findPackageJSON } from 'node:module'
 import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
 import type { ESLint, Rule } from 'eslint'
@@ -52,6 +53,11 @@ const OXLINT_PACKAGE = 'oxlint'
 const OXLINT_BIN = 'oxlint'
 const ESLINT_PACKAGE = 'eslint'
 const OXLINT_LIST_RULES_ARGS = ['--rules', '--format=json']
+/**
+ * Named on the command line, so oxlint loads no config it would find from the folder it runs in up: `--rules`
+ * loads one, and exits 1 where it cannot load (this repo's own imports lint-rules' dist, which a build rewrites).
+ */
+const OXLINT_CONFIG_SETTING_NOTHING = ['-c', fileURLToPath(new URL('./oxlint-config-setting-nothing.json', import.meta.url))]
 
 const execFileAsync = promisify(execFile)
 
@@ -84,7 +90,7 @@ function packageNameOf(prefix: string): string {
 }
 
 async function readOxlintRules(): Promise<readonly InstalledOxlintRule[]> {
-  const { stdout } = await execFileAsync(process.execPath, [await oxlintCliPath(), ...OXLINT_LIST_RULES_ARGS])
+  const { stdout } = await execFileAsync(process.execPath, [await oxlintCliPath(), ...OXLINT_LIST_RULES_ARGS, ...OXLINT_CONFIG_SETTING_NOTHING])
   return parseOxlintRuleListings(stdout).map(installedOxlintRuleOf)
 }
 

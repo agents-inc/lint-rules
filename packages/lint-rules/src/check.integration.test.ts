@@ -1,6 +1,5 @@
 import { join } from 'node:path'
 import { realpathSync } from 'node:fs'
-import { catalog } from '@workspace/rule-data'
 import { describe, expect, it } from 'vitest'
 import {
   A_CLEAN_COMPONENT,
@@ -94,7 +93,8 @@ import { createGitProject, gitStatusOf } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { entriesUnder, INSTALLED_OXLINT, setUpEmptyFolders, THIS_PACKAGE } from './__tests__/temp-projects.ts'
-import { validateLintRules } from './core/validate-lint-rules.ts'
+import type { TwoSetLintRulesInput } from './core/lint-rules-input.ts'
+import { refuseATsconfigRootDirThatIsNoFolder } from './core/tsconfig-root-dir-folder.ts'
 
 // The fixtures fire only rules that never fix, so the fix step changes nothing here:
 // check-fixes.integration.test.ts covers it.
@@ -522,10 +522,22 @@ describe('two checks started together in one project', () => {
   })
 })
 
+/** The message defineLintRules throws for these settings, which check prints as it is. */
+function validationMessageFor({ tsconfigRootDir }: TwoSetLintRulesInput): string {
+  try {
+    refuseATsconfigRootDirThatIsNoFolder(tsconfigRootDir)
+  } catch (error) {
+    if (error instanceof Error) return error.message
+    throw error
+  }
+  throw new Error('defineLintRules accepted settings the test needs it to refuse')
+}
+
 describe('check where it cannot run', () => {
-  // A ruleset name no catalog has: defineLintRules refuses it.
-  const REFUSED_SETTINGS: Omit<Parameters<typeof validateLintRules>[0], 'tsconfigRootDir'> = {
-    agentRulesets: { quality: ['no-such-ruleset'], libs: {}, runtimes: [] },
+  // A relative tsconfigRootDir: defineLintRules refuses it.
+  const REFUSED_SETTINGS: TwoSetLintRulesInput = {
+    tsconfigRootDir: '.',
+    agentRulesets: { quality: [], libs: {}, runtimes: [] },
     editorRulesets: { quality: [], libs: {}, runtimes: [] },
   }
   const OLD_NODE = nodeBelowTheFloor()
@@ -555,24 +567,13 @@ describe('check where it cannot run', () => {
     return {
       notARepo: { dir: notARepo.dir, run: runCheck(notARepo.dir) },
       noConfig: { dir: noConfig.dir, run: runCheck(noConfig.dir), fromBelow: runCheck(noConfig.pathOf('src')) },
-      configError: { message: validationMessageFor({ ...REFUSED_SETTINGS, tsconfigRootDir: configError.dir }), run: runCheck(configError.dir) },
+      configError: { message: validationMessageFor(REFUSED_SETTINGS), run: runCheck(configError.dir) },
       notInstalled: runCheck(notInstalled.dir),
       otherCopy: { otherCopyDir, run: runCheck(otherCopy.dir) },
       gitFails: runCheck(gitFails.dir),
       oldNode: OLD_NODE === undefined ? null : { check: runCheck(oldNode.dir, { node: OLD_NODE.path }), init: runInit(initOnOldNode.dir, { node: OLD_NODE.path }), initDir: initOnOldNode.dir },
     }
   })
-
-  /** The message defineLintRules throws for these settings, which check prints as it is. */
-  function validationMessageFor(settings: Parameters<typeof validateLintRules>[0]): string {
-    try {
-      validateLintRules(settings, catalog)
-    } catch (error) {
-      if (error instanceof Error) return error.message
-      throw error
-    }
-    throw new Error('defineLintRules accepted settings the test needs it to refuse')
-  }
 
   it('exits 2 outside a git repository', () => {
     const { dir, run } = runs().notARepo
@@ -662,8 +663,10 @@ describe('check where it cannot run', () => {
 })
 
 describe('check where a file override lists no file', () => {
-  // defineLintRules lets an empty `files` through, and ESLint refuses the block check builds for that entry's component files.
+  // The types refuse an empty `files`; check loads the config with them stripped, so defineLintRules lets it
+  // through, and ESLint refuses the block check builds for that entry's component files.
   function suppressionsOffIn(files: readonly string[]): Parameters<typeof checkedPackageFiles>[1] {
+    // @ts-expect-error a files list that may be empty is a type error: this pins what the config does without types
     return { allowSuppressions: true, fileOverrides: [{ files: [...files], allowSuppressions: false }] }
   }
 

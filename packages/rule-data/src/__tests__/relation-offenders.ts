@@ -1,10 +1,16 @@
+import { isDeepStrictEqual } from 'node:util'
+
 import { sharedKeys } from '../collections.ts'
-import type { CanonicalRule, RuleRelation } from '../generate/build-routing.ts'
+import type { CanonicalAllowanceLeftTo, CanonicalRule, RuleRelation } from '../generate/build-routing.ts'
+import { isObject } from '../is-object.ts'
 import { type Breach, breachesOf } from './breaches.ts'
 
 // "Covered by": each rule and its cover are turned on by rulesets of their own, and the cover is not
 // left out in turn. "Covered in oxlint by": the same, both run by oxlint. "Split by types": both rules
-// run in ESLint, on every file, turned on by a ruleset.
+// run in ESLint, on every file, turned on by a ruleset. "Left to": an options entry is kept exactly in the
+// files where the rule it is left to runs, so that rule is turned on by a ruleset, left out nowhere, run by
+// ESLint where oxlint is not, and run wherever types are known when the holder needs none; a holder
+// oxlint runs leaves entries only to rules run on every file.
 
 const TURNED_ON_BY_NO_RULESET: Breach<CanonicalRule> = ['is turned on by no ruleset', ({ ruleset, alwaysOn, whenSuppressions }) => ruleset === undefined || alwaysOn === true || whenSuppressions !== undefined]
 const RUN_BY_OXLINT: Breach<CanonicalRule> = ['is run by oxlint', ({ engine }) => engine === 'oxlint']
@@ -22,18 +28,27 @@ const TYPED_RULE_BREACHES: readonly Breach<CanonicalRule>[] = [UNTYPED, RUN_BY_O
 /** A way a covered rule and its cover can break what is guaranteed of the pair: what is wrong of them, if anything. */
 type PairBreach = (rule: CanonicalRule, cover: CanonicalRule) => readonly string[]
 
+/** A way the rule another names can run on fewer files than the rule naming it: where, said of the rule named. */
+type FilesLeft = (rule: CanonicalRule, named: CanonicalRule) => readonly string[]
+
 const COVERS_ITSELF: PairBreach = (rule, cover) => (cover.id === rule.id ? ['the rule covers itself'] : [])
 const SHARES_A_RULESET: PairBreach = (rule, cover) => (rule.ruleset !== undefined && cover.ruleset === rule.ruleset ? [`both are in ${rule.ruleset}`] : [])
 
-const RUNS_ONLY_ON_ITS_FILES: PairBreach = (rule, { files }) =>
-  files === undefined || isLimitedTo(rule, files) ? [] : [`the cover runs only on ${files.join(', ')}`]
-const SKIPS_WHAT_THE_RULE_RUNS_ON: PairBreach = (rule, cover) =>
-  (cover.ignores ?? []).filter((glob) => !(rule.ignores ?? []).includes(glob)).map((glob) => `the cover skips ${glob}`)
-const RUNS_ONLY_WHERE_TYPES_ARE_KNOWN: PairBreach = (rule, cover) => (cover.typed && !rule.typed ? ['the cover runs only where types are known'] : [])
+const RUNS_ONLY_ON_ITS_FILES: FilesLeft = (rule, { files }) =>
+  files === undefined || isLimitedTo(rule, files) ? [] : [`runs only on ${files.join(', ')}`]
+const SKIPS_WHAT_THE_RULE_RUNS_ON: FilesLeft = (rule, named) =>
+  (named.ignores ?? []).filter((glob) => !(rule.ignores ?? []).includes(glob)).map((glob) => `skips ${glob}`)
+const RUNS_ONLY_WHERE_TYPES_ARE_KNOWN: FilesLeft = (rule, named) => (named.typed && !rule.typed ? ['runs only where types are known'] : [])
+const KEPT_TO_SOME_FILES_BY_ESLINT_ALONE = 'the rule holding it is run by oxlint, and only our ESLint config keeps an entry to the files the rule it is left to runs on'
 
 // Not counted: files only oxlint lints, such as `.vue`, which a cover ESLint runs never reaches (my-covered-by-components),
 // and files a cover's own code skips by name, such as a story in sonarjs/no-debug-commands-in-ui-tests (my-debugging-utils-stories).
-const FILES_A_COVER_CAN_LEAVE: readonly PairBreach[] = [RUNS_ONLY_ON_ITS_FILES, SKIPS_WHAT_THE_RULE_RUNS_ON, RUNS_ONLY_WHERE_TYPES_ARE_KNOWN]
+const FILES_THE_NAMED_RULE_CAN_LEAVE: readonly FilesLeft[] = [RUNS_ONLY_ON_ITS_FILES, SKIPS_WHAT_THE_RULE_RUNS_ON, RUNS_ONLY_WHERE_TYPES_ARE_KNOWN]
+
+/** Without oxlint, ESLint does not take over a rule the skip list names, so nothing runs it there. */
+function onTheEslintFallbackSkipList(eslintFallbackSkips: ReadonlyMap<string, string>): Breach<CanonicalRule> {
+  return ['is on the ESLint fallback skip list', ({ id }) => eslintFallbackSkips.has(id)]
+}
 
 /** A kind of cover: what a finding calls it, the cover a rule names by it, and what the covered rule, its cover and the pair must not be. */
 type CoverKind = {
@@ -70,6 +85,14 @@ type Relation = { readonly rule: CanonicalRule; readonly other: string }
 
 /** A rule and the cover it names, labelled as a finding names the pair; the cover is undefined where it does not ship. */
 type CoverPair = { readonly label: string; readonly rule: CanonicalRule; readonly cover: CanonicalRule | undefined }
+
+/** A rule holding an options entry left to another rule, labelled as a finding names it; that rule is undefined where it does not ship. */
+type AllowanceLeft = {
+  readonly label: string
+  readonly holder: CanonicalRule
+  readonly allowance: CanonicalAllowanceLeftTo
+  readonly leftTo: CanonicalRule | undefined
+}
 
 /**
  * `rule covered by cover: what is wrong` for each "covered by" the canonical list records that does
@@ -120,6 +143,18 @@ export function splitByTypesOffenders(rules: readonly CanonicalRule[]): string[]
   return [...broken, ...shared]
 }
 
+/**
+ * `holder leaves option entry <JSON> to rule: what is wrong` for each options entry the canonical list
+ * leaves to another rule that does not hold: a rule that does not ship, is turned on by no ruleset, is
+ * left out for a cover, is on the ESLint fallback skip list or runs only where types are known for a
+ * holder that needs none; a rule scoped by files or ignores for a holder oxlint runs; or an entry the
+ * holder's shipped options lack.
+ */
+export function allowancesLeftToOffenders(rules: readonly CanonicalRule[], eslintFallbackSkips: ReadonlyMap<string, string>): string[] {
+  const breachesOfTheRuleLeftTo = [TURNED_ON_BY_NO_RULESET, COVERED, COVERED_IN_OXLINT, onTheEslintFallbackSkipList(eslintFallbackSkips)]
+  return allowancesLeftIn(rules).flatMap((left) => wrongOfAllowance(left, breachesOfTheRuleLeftTo))
+}
+
 /** `rule <kind> cover: what is wrong` for each cover of the kind the canonical list records that does not hold. */
 function coverOffendersOf(rules: readonly CanonicalRule[], kind: CoverKind): string[] {
   return coverPairsOf(rules, kind).flatMap((pair) => wrongOfPair(pair, kind))
@@ -136,7 +171,57 @@ function wrongOfPair({ label, rule, cover }: CoverPair, { coveredRuleBreaches, c
 
 function filesLeftBy({ label, rule, cover }: CoverPair): string[] {
   if (cover === undefined) return []
-  return FILES_A_COVER_CAN_LEAVE.flatMap((leaves) => leaves(rule, cover)).map((where) => `${label}: ${where}`)
+  return filesLeftByTheNamedRule(rule, cover).map((where) => `${label}: the cover ${where}`)
+}
+
+function filesLeftByTheNamedRule(rule: CanonicalRule, named: CanonicalRule): string[] {
+  return FILES_THE_NAMED_RULE_CAN_LEAVE.flatMap((leaves) => leaves(rule, named))
+}
+
+function wrongOfAllowance({ label, holder, allowance, leftTo }: AllowanceLeft, breachesOfTheRuleLeftTo: readonly Breach<CanonicalRule>[]): string[] {
+  return [...wrongOfTheRuleLeftTo(holder, leftTo, breachesOfTheRuleLeftTo), ...wrongOfTheEntry(holder, allowance)].map((wrong) => `${label}: ${wrong}`)
+}
+
+function wrongOfTheRuleLeftTo(holder: CanonicalRule, leftTo: CanonicalRule | undefined, breachesOfTheRuleLeftTo: readonly Breach<CanonicalRule>[]): string[] {
+  if (leftTo === undefined) return ['the rule it is left to does not ship']
+  const wrongOfIt = [...breachesOf(leftTo, breachesOfTheRuleLeftTo), ...RUNS_ONLY_WHERE_TYPES_ARE_KNOWN(holder, leftTo)]
+  return [...wrongOfIt.map((wrong) => `the rule it is left to ${wrong}`), ...wrongOfAnOxlintHolder(holder, leftTo)]
+}
+
+/** Our oxlint config gives a rule one setting in every file. */
+function wrongOfAnOxlintHolder(holder: CanonicalRule, leftTo: CanonicalRule): string[] {
+  const isKeptToSomeFiles = leftTo.files !== undefined || leftTo.ignores !== undefined
+  return isKeptToSomeFiles && holder.engine === 'oxlint' ? [KEPT_TO_SOME_FILES_BY_ESLINT_ALONE] : []
+}
+
+function wrongOfTheEntry(holder: CanonicalRule, allowance: CanonicalAllowanceLeftTo): string[] {
+  return holdsTheEntry(holder.options, allowance) ? [] : ['the shipped options hold no such entry']
+}
+
+function allowancesLeftIn(rules: readonly CanonicalRule[]): AllowanceLeft[] {
+  const shippedById = new Map(rules.map((rule) => [rule.id, rule]))
+  return rules.flatMap((holder) => allowancesLeftBy(holder, shippedById))
+}
+
+function allowancesLeftBy(holder: CanonicalRule, shippedById: ReadonlyMap<string, CanonicalRule>): AllowanceLeft[] {
+  const { allowancesLeftTo = [] } = holder
+  return allowancesLeftTo.map((allowance) => ({
+    label: `${holder.id} leaves ${allowance.option} entry ${JSON.stringify(allowance.entry)} to ${allowance.rule}`,
+    holder,
+    allowance,
+    leftTo: shippedById.get(allowance.rule),
+  }))
+}
+
+/** Whether an object of the options lists the entry under the option's key. */
+function holdsTheEntry(options: readonly unknown[], { option, entry }: CanonicalAllowanceLeftTo): boolean {
+  return options.some((given) => entriesListedUnder(given, option).some((listed) => isDeepStrictEqual(listed, entry)))
+}
+
+function entriesListedUnder(given: unknown, option: string): readonly unknown[] {
+  if (!isObject(given)) return []
+  const fields: readonly (readonly [string, unknown])[] = Object.entries(given)
+  return fields.flatMap(([key, value]): readonly unknown[] => (key === option && Array.isArray(value) ? value : []))
 }
 
 function isLimitedTo({ files }: CanonicalRule, globs: readonly string[]): boolean {

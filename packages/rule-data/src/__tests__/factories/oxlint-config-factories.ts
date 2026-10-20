@@ -69,3 +69,8 @@ export function buildOxlintConfigRunningTheRuleWith(
     rules: { [rule]: [ERROR, ...options] },
   }
 }
+
+/** The text of an oxlint config module that throws, with the message given, whenever it is loaded. */
+export function buildOxlintConfigModuleThrowing(message: string): string {
+  return `throw new Error(${JSON.stringify(message)})\nexport default {}\n`
+}

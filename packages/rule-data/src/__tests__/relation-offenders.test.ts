@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { CanonicalRule } from '../generate/build-routing.ts'
 import { buildCanonicalRule } from './factories/inventory-factories.ts'
-import { coveredByOffenders, coveredInOxlintByOffenders, filesLeftUncovered, splitByTypesOffenders } from './relation-offenders.ts'
+import { allowancesLeftToOffenders, coveredByOffenders, coveredInOxlintByOffenders, filesLeftUncovered, splitByTypesOffenders } from './relation-offenders.ts'
 
 const BECAUSE = 'card: why'
 
@@ -306,5 +306,138 @@ describe('splitByTypesOffenders', () => {
     ]
 
     expect(splitByTypesOffenders(rules)).toStrictEqual(['c/typed: the typed partner of a/untyped, b/untyped'])
+  })
+})
+
+describe('allowancesLeftToOffenders', () => {
+  const SAFE_CALLS = 'allowForKnownSafeCalls'
+  // Another list of the same options object, which a mark on SAFE_CALLS does not name.
+  const SAFE_PROMISES = 'allowForKnownSafePromises'
+  const ENTRY_LEFT_TO_ANOTHER_RULE = { from: 'package', package: 'vitest', name: '__type' }
+  const ENTRY_THE_OPTIONS_LACK = { from: 'package', package: 'vitest', name: 'Promisify' }
+  const NO_FALLBACK_SKIPS: ReadonlyMap<string, string> = new Map()
+  const GOOD_PAIR = [holderLeaving('y/holder', 'z/reports-the-calls'), oxlintRule('z/reports-the-calls', 'tests')]
+
+  /** A typed rule ESLint runs on every file, allowing the entry and leaving its calls to the rule given. */
+  function holderLeaving(id: string, rule: string, fields: { readonly typed?: boolean; readonly entry?: unknown; readonly listedUnder?: string } = {}): CanonicalRule {
+    const { typed = true, entry = ENTRY_LEFT_TO_ANOTHER_RULE, listedUnder = SAFE_CALLS } = fields
+    return buildCanonicalRule(id, {
+      engine: 'eslint',
+      ruleset: 'correctness',
+      options: [{ [listedUnder]: [ENTRY_LEFT_TO_ANOTHER_RULE], ignoreVoid: true }],
+      typed,
+      allowancesLeftTo: [{ option: SAFE_CALLS, entry, rule, because: BECAUSE }],
+    })
+  }
+
+  /** An untyped rule oxlint runs on every file, allowing the entry and leaving its calls to the rule given. */
+  function oxlintHolderLeaving(id: string, rule: string): CanonicalRule {
+    return buildCanonicalRule(id, {
+      engine: 'oxlint',
+      oxlintName: id,
+      ruleset: 'correctness',
+      options: [{ [SAFE_CALLS]: [ENTRY_LEFT_TO_ANOTHER_RULE] }],
+      typed: false,
+      allowancesLeftTo: [{ option: SAFE_CALLS, entry: ENTRY_LEFT_TO_ANOTHER_RULE, rule, because: BECAUSE }],
+    })
+  }
+
+  function labelOf(holder: string, entry: unknown, rule: string): string {
+    return `${holder} leaves ${SAFE_CALLS} entry ${JSON.stringify(entry)} to ${rule}`
+  }
+
+  it('names nothing for an entry left to a rule shipped in a ruleset of its own, run on every file, covered by none', () => {
+    expect(allowancesLeftToOffenders(GOOD_PAIR, NO_FALLBACK_SKIPS)).toStrictEqual([])
+  })
+
+  it('names an entry left to a rule that does not ship, beside one left to a rule that does', () => {
+    expect(allowancesLeftToOffenders([holderLeaving('a/holder', 'b/unshipped'), ...GOOD_PAIR], NO_FALLBACK_SKIPS)).toStrictEqual([
+      `${labelOf('a/holder', ENTRY_LEFT_TO_ANOTHER_RULE, 'b/unshipped')}: the rule it is left to does not ship`,
+    ])
+  })
+
+  it.each([
+    { kind: 'on whatever rulesets are listed', fields: { alwaysOn: true } },
+    { kind: 'decided by allowSuppressions', fields: { whenSuppressions: { banned: 'on', allowed: 'off' } } },
+  ] as const)('names an entry left to a rule $kind, beside one left to a rule a ruleset turns on', ({ fields }) => {
+    expect(allowancesLeftToOffenders([holderLeaving('a/holder', 'b/not-by-a-ruleset'), eslintRule('b/not-by-a-ruleset', 'tests', fields), ...GOOD_PAIR], NO_FALLBACK_SKIPS)).toStrictEqual([
+      `${labelOf('a/holder', ENTRY_LEFT_TO_ANOTHER_RULE, 'b/not-by-a-ruleset')}: the rule it is left to is turned on by no ruleset`,
+    ])
+  })
+
+  it('names an entry left to a rule covered by another, and one left to a rule covered in oxlint by another, beside one left to a rule covered by none', () => {
+    const rules = [
+      holderLeaving('a/holder', 'b/covered'),
+      oxlintRule('b/covered', 'tests', coveredBy('x/broad')),
+      holderLeaving('c/holder', 'd/covered-in-oxlint'),
+      oxlintRule('d/covered-in-oxlint', 'tests', coveredInOxlintBy('w/broad')),
+      oxlintRule('x/broad', 'declarative'),
+      oxlintRule('w/broad', 'tests'),
+      ...GOOD_PAIR,
+    ]
+
+    expect(allowancesLeftToOffenders(rules, NO_FALLBACK_SKIPS)).toStrictEqual([
+      `${labelOf('a/holder', ENTRY_LEFT_TO_ANOTHER_RULE, 'b/covered')}: the rule it is left to is covered by another rule`,
+      `${labelOf('c/holder', ENTRY_LEFT_TO_ANOTHER_RULE, 'd/covered-in-oxlint')}: the rule it is left to is covered in oxlint by another rule`,
+    ])
+  })
+
+  // Without oxlint, ESLint does not take over a rule the skip list names, so nothing would report the calls.
+  it('names an entry left to a rule on the ESLint fallback skip list, beside one left to a rule off it', () => {
+    const rules = [holderLeaving('a/holder', 'b/skipped'), oxlintRule('b/skipped', 'tests'), ...GOOD_PAIR]
+
+    expect(allowancesLeftToOffenders(rules, new Map([['b/skipped', 'card: its fixture does not fire in ESLint']]))).toStrictEqual([
+      `${labelOf('a/holder', ENTRY_LEFT_TO_ANOTHER_RULE, 'b/skipped')}: the rule it is left to is on the ESLint fallback skip list`,
+    ])
+  })
+
+  // The entry is kept only in the files the rule it is left to runs on, as the testing-library rules run in test files alone.
+  it('names nothing for an entry left to a rule run only on some files, or to one skipping files', () => {
+    const rules = [
+      holderLeaving('a/holder', 'b/test-files-only'),
+      eslintRule('b/test-files-only', 'tests', { files: ['**/*.test.ts'] }),
+      holderLeaving('c/holder', 'd/skipping-legacy'),
+      oxlintRule('d/skipping-legacy', 'tests', { ignores: ['**/legacy/**'] }),
+      ...GOOD_PAIR,
+    ]
+
+    expect(allowancesLeftToOffenders(rules, NO_FALLBACK_SKIPS)).toStrictEqual([])
+  })
+
+  // Only our ESLint config keeps an entry to the files its rule runs on: our oxlint config gives a rule one setting in every file.
+  it('names an entry left to a rule run only on some files, and one left to a rule skipping files, by a holder oxlint runs, beside one left to a rule run on every file', () => {
+    const rules = [
+      oxlintHolderLeaving('a/oxlint-holder', 'b/test-files-only'),
+      eslintRule('b/test-files-only', 'tests', { files: ['**/*.test.ts'] }),
+      oxlintHolderLeaving('c/oxlint-holder', 'd/skipping-legacy'),
+      oxlintRule('d/skipping-legacy', 'tests', { ignores: ['**/legacy/**'] }),
+      oxlintHolderLeaving('e/oxlint-holder', 'z/reports-the-calls'),
+      ...GOOD_PAIR,
+    ]
+
+    expect(allowancesLeftToOffenders(rules, NO_FALLBACK_SKIPS)).toStrictEqual([
+      `${labelOf('a/oxlint-holder', ENTRY_LEFT_TO_ANOTHER_RULE, 'b/test-files-only')}: the rule holding it is run by oxlint, and only our ESLint config keeps an entry to the files the rule it is left to runs on`,
+      `${labelOf('c/oxlint-holder', ENTRY_LEFT_TO_ANOTHER_RULE, 'd/skipping-legacy')}: the rule holding it is run by oxlint, and only our ESLint config keeps an entry to the files the rule it is left to runs on`,
+    ])
+  })
+
+  it('names an entry left to a typed rule by an untyped holder, beside one left to an untyped rule by a typed holder', () => {
+    const rules = [holderLeaving('e/untyped-holder', 'f/typed', { typed: false }), eslintRule('f/typed', 'tests', { typed: true }), ...GOOD_PAIR]
+
+    expect(allowancesLeftToOffenders(rules, NO_FALLBACK_SKIPS)).toStrictEqual([
+      `${labelOf('e/untyped-holder', ENTRY_LEFT_TO_ANOTHER_RULE, 'f/typed')}: the rule it is left to runs only where types are known`,
+    ])
+  })
+
+  it("names an entry the holder's shipped options lack, beside one they hold", () => {
+    const rules = [holderLeaving('a/holder', 'z/reports-the-calls', { entry: ENTRY_THE_OPTIONS_LACK }), ...GOOD_PAIR]
+
+    expect(allowancesLeftToOffenders(rules, NO_FALLBACK_SKIPS)).toStrictEqual([`${labelOf('a/holder', ENTRY_THE_OPTIONS_LACK, 'z/reports-the-calls')}: the shipped options hold no such entry`])
+  })
+
+  it("names an entry the holder's shipped options list under another key alone, beside one listed under the mark's", () => {
+    const rules = [holderLeaving('a/holder', 'z/reports-the-calls', { listedUnder: SAFE_PROMISES }), ...GOOD_PAIR]
+
+    expect(allowancesLeftToOffenders(rules, NO_FALLBACK_SKIPS)).toStrictEqual([`${labelOf('a/holder', ENTRY_LEFT_TO_ANOTHER_RULE, 'z/reports-the-calls')}: the shipped options hold no such entry`])
   })
 })

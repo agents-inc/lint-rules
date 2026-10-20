@@ -14,9 +14,10 @@ const SHIPPED_RULE_DEFAULTS: Required<ShippedRuleFields> = {
   coveredInOxlintBy: null,
   splitByTypesWith: null,
   readsRuntimeGlobals: false,
+  allowancesLeftTo: [],
 }
 
-/** Turned on by its ruleset, with no options, on every file, related to no other rule, served by none of our runtime globals, unless given. */
+/** Turned on by its ruleset, with no options, on every file, related to no other rule, served by none of our runtime globals, leaving no options entry to another rule, unless given. */
 export function buildShippedRule(ruleset: string, fields: ShippedRuleFields = {}): ShippedRule {
   return { ruleset, ...SHIPPED_RULE_DEFAULTS, ...fields }
 }

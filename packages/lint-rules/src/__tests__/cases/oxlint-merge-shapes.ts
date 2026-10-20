@@ -111,35 +111,35 @@ const TEAM_STATED_RULE_NAME = 'jsx-no-duplicate-props'
 const TEAM_STATED_RULE = `react/${TEAM_STATED_RULE_NAME}`
 const TEST_TSX_FILES = ['**/*.test.tsx']
 const TSX_FILES = ['**/*.tsx']
-const LIB_FILES = ['lib/**']
-const SRC_FILES = ['src/**']
+const LIB_FILES: [string, ...string[]] = ['lib/**']
+const SRC_FILES: [string, ...string[]] = ['src/**']
 const APP_FILES = ['app/**']
 // No linted file is in vendor/: a listing there only makes the merge list its plugins at the root.
 const VENDOR_FILES = ['vendor/**']
 const TEST_AND_JSX_FILES = ['**/*.test.tsx', '**/*.jsx']
 const PLUGINS_LISTED_IN_OVERRIDES: OxlintOverride['plugins'] = ['promise', 'react']
 
-export const ROOT_PLUGINS_OMITTED = buildTeamShapeValue('root plugins left out', {})
-export const ROOT_PLUGINS_EMPTY = buildTeamShapeValue('root plugins []', { plugins: [] })
-export const ROOT_PLUGINS_LISTED = buildTeamShapeValue('root plugins [oxc, unicorn]', { plugins: ['oxc', 'unicorn'] })
+const ROOT_PLUGINS_OMITTED = buildTeamShapeValue('root plugins left out', {})
+const ROOT_PLUGINS_EMPTY = buildTeamShapeValue('root plugins []', { plugins: [] })
+const ROOT_PLUGINS_LISTED = buildTeamShapeValue('root plugins [oxc, unicorn]', { plugins: ['oxc', 'unicorn'] })
 // oxlint runs its eslint scope whatever `plugins` lists, so this root lists, for oxlint, no plugin.
-export const ROOT_PLUGINS_ESLINT_ONLY = buildTeamShapeValue('root plugins [eslint]', { plugins: ['eslint'] })
+const ROOT_PLUGINS_ESLINT_ONLY = buildTeamShapeValue('root plugins [eslint]', { plugins: ['eslint'] })
 
-export const NO_EXTENDS = buildTeamShapeValue('no extends', {})
-export const EXTENDS_LISTING_PLUGINS = buildTeamShapeValue('extends an object listing [unicorn]', { extends: [{ plugins: ['unicorn'] }] })
-export const EXTENDS_LISTING_NONE = buildTeamShapeValue('extends an object listing no plugins', { extends: [{ rules: {} }] })
-export const EXTENDS_NESTED = buildTeamShapeValue('extends an object extending one listing [unicorn], and react for lib/**', {
+const NO_EXTENDS = buildTeamShapeValue('no extends', {})
+const EXTENDS_LISTING_PLUGINS = buildTeamShapeValue('extends an object listing [unicorn]', { extends: [{ plugins: ['unicorn'] }] })
+const EXTENDS_LISTING_NONE = buildTeamShapeValue('extends an object listing no plugins', { extends: [{ rules: {} }] })
+const EXTENDS_NESTED = buildTeamShapeValue('extends an object extending one listing [unicorn], and react for lib/**', {
   extends: [{ extends: [{ plugins: ['unicorn'], overrides: [{ files: LIB_FILES, plugins: ['react'] }] }] }],
 })
-export const EXTENDS_SETTING_CATEGORIES = buildTeamShapeValue('extends an object listing [oxc], with categories { style: warn }', {
+const EXTENDS_SETTING_CATEGORIES = buildTeamShapeValue('extends an object listing [oxc], with categories { style: warn }', {
   extends: [{ plugins: ['oxc'], categories: { style: 'warn' } }],
 })
-export const EXTENDS_STATING_IN_AN_OVERRIDE = buildTeamShapeValue(
+const EXTENDS_STATING_IN_AN_OVERRIDE = buildTeamShapeValue(
   `extends an object listing [], whose override states ${TEAM_STATED_RULE} error for **/*.tsx, listing no plugin`,
   { extends: [{ plugins: [], overrides: [{ files: TSX_FILES, rules: { [TEAM_STATED_RULE]: 'error' } }] }] },
 )
 // oxlint ignores both statements while react is not listed at the root.
-export const EXTENDS_STATING_AT_ITS_ROOT_AND_IN_A_NESTED_OVERRIDE = buildTeamShapeValue(
+const EXTENDS_STATING_AT_ITS_ROOT_AND_IN_A_NESTED_OVERRIDE = buildTeamShapeValue(
   `extends an object listing [] stating ${TEAM_STATED_RULE} error at its root, and extending one listing [] whose override states it error for **/*.tsx, listing no plugin`,
   {
     extends: [
@@ -151,28 +151,28 @@ export const EXTENDS_STATING_AT_ITS_ROOT_AND_IN_A_NESTED_OVERRIDE = buildTeamSha
     ],
   },
 )
-export const EXTENDS_LISTING_AND_STATING_IN_AN_OVERRIDE = buildTeamShapeValue(
+const EXTENDS_LISTING_AND_STATING_IN_AN_OVERRIDE = buildTeamShapeValue(
   `extends an object whose override lists [react] and states ${TEAM_STATED_RULE} error for **/*.tsx`,
   { extends: [{ overrides: [{ files: TSX_FILES, plugins: ['react'], rules: { [TEAM_STATED_RULE]: 'error' } }] }] },
 )
-export const EXTENDS_NESTED_LISTING_REACT_WITH_STYLE = buildTeamShapeValue(
+const EXTENDS_NESTED_LISTING_REACT_WITH_STYLE = buildTeamShapeValue(
   'extends an object listing [] that extends one listing [react], with categories { style: warn }',
   { extends: [{ plugins: [], extends: [{ plugins: ['react'], categories: { style: 'warn' } }] }] },
 )
 // The later of two extended configs sets the category (measured, oxlint 1.87): style is off.
-export const EXTENDS_TWO_SETTING_STYLE = buildTeamShapeValue(
+const EXTENDS_TWO_SETTING_STYLE = buildTeamShapeValue(
   'extends two objects listing [], the first with categories { style: warn }, the second { style: off }',
   { extends: [{ plugins: [], categories: { style: 'warn' } }, { plugins: [], categories: { style: 'off' } }] },
 )
 
-export const NO_LISTING = buildTeamShapeValue('no override lists a plugin', {})
-export const ONE_LISTING = buildTeamShapeValue('an override lists [promise, react] for **/*.tsx', {
+const NO_LISTING = buildTeamShapeValue('no override lists a plugin', {})
+const ONE_LISTING = buildTeamShapeValue('an override lists [promise, react] for **/*.tsx', {
   overrides: [{ files: TSX_FILES, plugins: PLUGINS_LISTED_IN_OVERRIDES }],
 })
-export const ONE_LISTING_EXCLUDING = buildTeamShapeValue('an override lists [promise, react] for src/** but **/*.jsx', {
+const ONE_LISTING_EXCLUDING = buildTeamShapeValue('an override lists [promise, react] for src/** but **/*.jsx', {
   overrides: [{ files: SRC_FILES, excludeFiles: ['**/*.jsx'], plugins: PLUGINS_LISTED_IN_OVERRIDES }],
 })
-export const TWO_LISTINGS_OVERLAPPING = buildTeamShapeValue(
+const TWO_LISTINGS_OVERLAPPING = buildTeamShapeValue(
   'two overrides list [promise, react], for lib/** and for **/*.tsx, both but test files',
   {
     overrides: [
@@ -181,20 +181,20 @@ export const TWO_LISTINGS_OVERLAPPING = buildTeamShapeValue(
     ],
   },
 )
-export const TWO_LISTINGS_OF_TWO_SETS = buildTeamShapeValue('two overrides list [react] for **/*.tsx but test files, and [promise] for src/**', {
+const TWO_LISTINGS_OF_TWO_SETS = buildTeamShapeValue('two overrides list [react] for **/*.tsx but test files, and [promise] for src/**', {
   overrides: [
     { files: TSX_FILES, excludeFiles: TEST_TSX_FILES, plugins: ['react'] },
     { files: SRC_FILES, plugins: ['promise'] },
   ],
 })
-export const THREE_LISTINGS_OF_TWO_SETS = buildTeamShapeValue('[react] listed for **/*.tsx; [promise] for **/*.tsx but test files, and for src/**', {
+const THREE_LISTINGS_OF_TWO_SETS = buildTeamShapeValue('[react] listed for **/*.tsx; [promise] for **/*.tsx but test files, and for src/**', {
   overrides: [
     { files: TSX_FILES, plugins: ['react'] },
     { files: TSX_FILES, excludeFiles: TEST_TSX_FILES, plugins: ['promise'] },
     { files: SRC_FILES, plugins: ['promise'] },
   ],
 })
-export const TWO_LISTINGS_EXCLUDING_ALIKE = buildTeamShapeValue(
+const TWO_LISTINGS_EXCLUDING_ALIKE = buildTeamShapeValue(
   '[react] listed for **/*.tsx; [promise] for lib/** and for **/*.tsx, both but test and .jsx files, given in two orders',
   {
     overrides: [
@@ -205,17 +205,17 @@ export const TWO_LISTINGS_EXCLUDING_ALIKE = buildTeamShapeValue(
   },
 )
 // oxlint switches no category on for eslint, nor for a plugin its root lists.
-export const LISTING_ESLINT_AND_A_ROOT_PLUGIN = buildTeamShapeValue(
+const LISTING_ESLINT_AND_A_ROOT_PLUGIN = buildTeamShapeValue(
   'an override lists [eslint, react, unicorn] for **/*.tsx; no-compare-neg-zero error at the root',
   { rules: { 'no-compare-neg-zero': 'error' }, overrides: [{ files: TSX_FILES, plugins: ['eslint', 'react', 'unicorn'] }] },
 )
-export const LISTINGS_OF_NESTED_SETS = buildTeamShapeValue('an override lists [promise, react] for **/*.tsx, and another [react] for lib/**', {
+const LISTINGS_OF_NESTED_SETS = buildTeamShapeValue('an override lists [promise, react] for **/*.tsx, and another [react] for lib/**', {
   overrides: [
     { files: TSX_FILES, plugins: PLUGINS_LISTED_IN_OVERRIDES },
     { files: LIB_FILES, plugins: ['react'] },
   ],
 })
-export const LISTINGS_OF_EQUAL_SETS_SHARING_A_PLUGIN = buildTeamShapeValue(
+const LISTINGS_OF_EQUAL_SETS_SHARING_A_PLUGIN = buildTeamShapeValue(
   'an override lists [promise, react] for **/*.tsx, and another [jsx-a11y, promise] for src/**',
   {
     overrides: [
@@ -225,26 +225,26 @@ export const LISTINGS_OF_EQUAL_SETS_SHARING_A_PLUGIN = buildTeamShapeValue(
   },
 )
 
-export const NO_STATEMENT = buildTeamShapeValue(`no statement of ${TEAM_STATED_RULE}`, {})
-export const ROOT_STATES_ON = buildTeamShapeValue(`${TEAM_STATED_RULE} error at the root`, { rules: { [TEAM_STATED_RULE]: 'error' } })
-export const ROOT_STATES_OFF = buildTeamShapeValue(`${TEAM_STATED_RULE} off at the root`, { rules: { [TEAM_STATED_RULE]: 'off' } })
-export const LISTING_OVERRIDE_STATES_ON = buildTeamShapeValue(`${TEAM_STATED_RULE} error for test files, in an override listing react`, {
+const NO_STATEMENT = buildTeamShapeValue(`no statement of ${TEAM_STATED_RULE}`, {})
+const ROOT_STATES_ON = buildTeamShapeValue(`${TEAM_STATED_RULE} error at the root`, { rules: { [TEAM_STATED_RULE]: 'error' } })
+const ROOT_STATES_OFF = buildTeamShapeValue(`${TEAM_STATED_RULE} off at the root`, { rules: { [TEAM_STATED_RULE]: 'off' } })
+const LISTING_OVERRIDE_STATES_ON = buildTeamShapeValue(`${TEAM_STATED_RULE} error for test files, in an override listing react`, {
   overrides: [{ files: TEST_TSX_FILES, plugins: ['react'], rules: { [TEAM_STATED_RULE]: 'error' } }],
 })
-export const LISTING_OVERRIDE_STATES_OFF = buildTeamShapeValue(`${TEAM_STATED_RULE} off for test files, in an override listing react`, {
+const LISTING_OVERRIDE_STATES_OFF = buildTeamShapeValue(`${TEAM_STATED_RULE} off for test files, in an override listing react`, {
   overrides: [{ files: TEST_TSX_FILES, plugins: ['react'], rules: { [TEAM_STATED_RULE]: 'off' } }],
 })
-export const OTHER_OVERRIDE_STATES_ON = buildTeamShapeValue(`${TEAM_STATED_RULE} error for test files, in an override listing no plugin`, {
+const OTHER_OVERRIDE_STATES_ON = buildTeamShapeValue(`${TEAM_STATED_RULE} error for test files, in an override listing no plugin`, {
   overrides: [{ files: TEST_TSX_FILES, rules: { [TEAM_STATED_RULE]: 'error' } }],
 })
-export const OTHER_OVERRIDE_STATES_OFF = buildTeamShapeValue(`${TEAM_STATED_RULE} off for test files, in an override listing no plugin`, {
+const OTHER_OVERRIDE_STATES_OFF = buildTeamShapeValue(`${TEAM_STATED_RULE} off for test files, in an override listing no plugin`, {
   overrides: [{ files: TEST_TSX_FILES, rules: { [TEAM_STATED_RULE]: 'off' } }],
 })
 
 // Keys oxlint takes for its rules (parse_rule_key, oxlint 1.87) that the catalog's oxlintSpellings miss,
 // each stated where oxlint ignores it for the team.
-export const NO_STATEMENT_UNDER_ANOTHER_KEY = buildTeamShapeValue('no statement under a key the catalog does not spell', {})
-export const REACT_UNDER_OTHER_PREFIXES = buildTeamShapeValue(
+const NO_STATEMENT_UNDER_ANOTHER_KEY = buildTeamShapeValue('no statement under a key the catalog does not spell', {})
+const REACT_UNDER_OTHER_PREFIXES = buildTeamShapeValue(
   `react listed for lib/**; react_hooks/${TEAM_STATED_RULE_NAME} error for src/**, and oxlint-plugin-react/${TEAM_STATED_RULE_NAME} for lib/**, in overrides listing no plugin`,
   {
     overrides: [
@@ -254,7 +254,7 @@ export const REACT_UNDER_OTHER_PREFIXES = buildTeamShapeValue(
     ],
   },
 )
-export const TYPESCRIPT_UNDER_OTHER_PREFIXES = buildTeamShapeValue(
+const TYPESCRIPT_UNDER_OTHER_PREFIXES = buildTeamShapeValue(
   'typescript listed for lib/**; typescript_eslint/array-type error at the root, and @typescript-eslint/oxlint-plugin/no-duplicate-enum-values for src/**, in an override listing no plugin',
   {
     rules: { 'typescript_eslint/array-type': 'error' },
@@ -264,7 +264,7 @@ export const TYPESCRIPT_UNDER_OTHER_PREFIXES = buildTeamShapeValue(
     ],
   },
 )
-export const JSX_A11Y_UNDER_OTHER_PREFIXES = buildTeamShapeValue(
+const JSX_A11Y_UNDER_OTHER_PREFIXES = buildTeamShapeValue(
   'jsx-a11y listed for lib/**; jsx-a11y-x/alt-text error for src/**, and jsx_a11y-x/alt-text for test files, in overrides listing no plugin',
   {
     overrides: [
@@ -275,7 +275,7 @@ export const JSX_A11Y_UNDER_OTHER_PREFIXES = buildTeamShapeValue(
   },
 )
 // oxlint takes a bare key as the first of its rules so named, of whatever plugin (parse_rule_key).
-export const REACT_UNDER_NO_PREFIX = buildTeamShapeValue(
+const REACT_UNDER_NO_PREFIX = buildTeamShapeValue(
   `react listed for lib/**; ${TEAM_STATED_RULE_NAME}, with no prefix, error for src/**, in an override listing no plugin`,
   {
     overrides: [
@@ -286,7 +286,7 @@ export const REACT_UNDER_NO_PREFIX = buildTeamShapeValue(
 )
 
 // The allowed case: a JS plugin's rule under its own prefix runs whatever plugins are listed.
-export const JS_PLUGIN_RULE_NAMED_AS_OXLINTS = buildTeamShapeValue(
+const JS_PLUGIN_RULE_NAMED_AS_OXLINTS = buildTeamShapeValue(
   `react listed for lib/**; the team's JS plugin's ${JS_PLUGIN_RULE} error for src/**, in an override listing no plugin`,
   {
     jsPlugins: [`./${JS_PLUGIN_FILE}`],
@@ -299,7 +299,7 @@ export const JS_PLUGIN_RULE_NAMED_AS_OXLINTS = buildTeamShapeValue(
 
 // Other names oxlint takes for its plugins (unalias_plugin_name, normalize_plugin_name; measured, 1.87), listed
 // only where no file is, so oxlint ignores each statement. Allowed case: an @next JS plugin under its package name.
-export const OTHER_NAMES_OF_OXLINTS_PLUGINS = buildTeamShapeValue(
+const OTHER_NAMES_OF_OXLINTS_PLUGINS = buildTeamShapeValue(
   'import, jsx-a11y, nextjs, oxc, react, react-perf and typescript listed for vendor/** only; for app/**, in an override listing no plugin, a rule of each under another name oxlint takes for it, and the team JS plugin @next/local rule under its package name',
   {
     jsPlugins: [`./${SCOPED_JS_PLUGIN_FILE}`],
@@ -327,7 +327,7 @@ export const OTHER_NAMES_OF_OXLINTS_PLUGINS = buildTeamShapeValue(
 )
 
 // oxlint reads a bare name several of its plugins share as the first such plugin's rule (parse_rule_key).
-export const BARE_NAMES_OF_SHARED_RULES = buildTeamShapeValue(
+const BARE_NAMES_OF_SHARED_RULES = buildTeamShapeValue(
   'import, jest and react listed for vendor/** only; no-namespace, no-anonymous-default-export, require-render-return and no-focused-tests error at the root; require-await, no-nested-ternary and no-dupe-keys error for app/**, in an override listing no plugin',
   {
     rules: {
@@ -344,8 +344,8 @@ export const BARE_NAMES_OF_SHARED_RULES = buildTeamShapeValue(
 )
 
 // Where oxlint counts the team's statement of a rule ours states, the team's setting decides; where it ignores it, ours does.
-export const NO_STATEMENT_OF_OURS = buildTeamShapeValue('no statement of a rule our part may state', {})
-export const ROOT_STATES_OURS = buildTeamShapeValue(
+const NO_STATEMENT_OF_OURS = buildTeamShapeValue('no statement of a rule our part may state', {})
+const ROOT_STATES_OURS = buildTeamShapeValue(
   '@typescript-eslint/consistent-type-imports warn preferring no type imports, eslint/no-compare-neg-zero warn and react-hooks/jsx-key warn at the root',
   {
     rules: {
@@ -355,19 +355,19 @@ export const ROOT_STATES_OURS = buildTeamShapeValue(
     },
   },
 )
-export const EXTENDED_ROOT_STATES_OURS = buildTeamShapeValue(
+const EXTENDED_ROOT_STATES_OURS = buildTeamShapeValue(
   'extends an object listing [] stating typescript/consistent-type-imports warn, react/jsx-key warn and no-compare-neg-zero off at its root',
   { extends: [{ plugins: [], rules: { 'typescript/consistent-type-imports': 'warn', 'react/jsx-key': 'warn', 'no-compare-neg-zero': 'off' } }] },
 )
-export const LISTING_OVERRIDE_STATES_OURS = buildTeamShapeValue(
+const LISTING_OVERRIDE_STATES_OURS = buildTeamShapeValue(
   'eslint-plugin-react/jsx-key warn and typescript/consistent-type-imports off for **/*.tsx, in an override listing react',
   { overrides: [{ files: TSX_FILES, plugins: ['react'], rules: { 'eslint-plugin-react/jsx-key': 'warn', 'typescript/consistent-type-imports': 'off' } }] },
 )
-export const OTHER_OVERRIDE_TURNS_OURS_OFF = buildTeamShapeValue(
+const OTHER_OVERRIDE_TURNS_OURS_OFF = buildTeamShapeValue(
   'typescript/consistent-type-imports, react/jsx-key and no-compare-neg-zero off for src/**, in an override listing no plugin',
   { overrides: [{ files: SRC_FILES, rules: { 'typescript/consistent-type-imports': 'off', 'react/jsx-key': 'off', 'no-compare-neg-zero': 'off' } }] },
 )
-export const EXTENDED_OVERRIDES_STATE_OURS = buildTeamShapeValue(
+const EXTENDED_OVERRIDES_STATE_OURS = buildTeamShapeValue(
   'extends an object listing [] whose overrides turn react/jsx-key off for lib/**, listing react, and state no-compare-neg-zero warn for test files',
   {
     extends: [
@@ -382,20 +382,20 @@ export const EXTENDED_OVERRIDES_STATE_OURS = buildTeamShapeValue(
   },
 )
 // Both statements count only where react is listed at the root: the override lists promise alone.
-export const STATEMENTS_OF_OURS_OXLINT_MAY_IGNORE = buildTeamShapeValue(
+const STATEMENTS_OF_OURS_OXLINT_MAY_IGNORE = buildTeamShapeValue(
   'react/jsx-key warn at the root, and for lib/** in an override listing [promise]',
   { rules: { 'react/jsx-key': 'warn' }, overrides: [{ files: LIB_FILES, plugins: ['promise'], rules: { 'react/jsx-key': 'warn' } }] },
 )
 
-export const NO_CATEGORIES = buildTeamShapeValue('categories left out', {})
-export const STYLE_ON = buildTeamShapeValue('categories { style: warn }', { categories: { style: 'warn' } })
-export const CORRECTNESS_OFF = buildTeamShapeValue('categories { correctness: off }', { categories: { correctness: 'off' } })
+const NO_CATEGORIES = buildTeamShapeValue('categories left out', {})
+const STYLE_ON = buildTeamShapeValue('categories { style: warn }', { categories: { style: 'warn' } })
+const CORRECTNESS_OFF = buildTeamShapeValue('categories { correctness: off }', { categories: { correctness: 'off' } })
 
-export const NO_RULE_OF_A_DEFAULT_PLUGIN = buildOurShapeValue('ours: no typescript rule', {})
-export const OUR_RULE_OF_A_DEFAULT_PLUGIN = buildOurShapeValue('ours: @typescript-eslint/consistent-type-imports', {
+const NO_RULE_OF_A_DEFAULT_PLUGIN = buildOurShapeValue('ours: no typescript rule', {})
+const OUR_RULE_OF_A_DEFAULT_PLUGIN = buildOurShapeValue('ours: @typescript-eslint/consistent-type-imports', {
   rules: { '@typescript-eslint/consistent-type-imports': 'error' },
 })
-export const OUR_RULE_OF_A_DEFAULT_PLUGIN_OFF_IN_AN_ENTRY = buildOurShapeValue(
+const OUR_RULE_OF_A_DEFAULT_PLUGIN_OFF_IN_AN_ENTRY = buildOurShapeValue(
   'ours: @typescript-eslint/consistent-type-imports, off in an entry for src/**',
   {
     rules: { '@typescript-eslint/consistent-type-imports': 'error' },
@@ -403,53 +403,53 @@ export const OUR_RULE_OF_A_DEFAULT_PLUGIN_OFF_IN_AN_ENTRY = buildOurShapeValue(
   },
 )
 
-export const NO_REACT_RULE = buildOurShapeValue('ours: no react rule', {})
-export const OUR_REACT_RULE = buildOurShapeValue('ours: react/jsx-key', { rules: { 'react/jsx-key': 'error' } })
-export const OUR_REACT_RULE_OFF_IN_AN_ENTRY = buildOurShapeValue('ours: react/jsx-key, off in an entry for lib/**', {
+const NO_REACT_RULE = buildOurShapeValue('ours: no react rule', {})
+const OUR_REACT_RULE = buildOurShapeValue('ours: react/jsx-key', { rules: { 'react/jsx-key': 'error' } })
+const OUR_REACT_RULE_OFF_IN_AN_ENTRY = buildOurShapeValue('ours: react/jsx-key, off in an entry for lib/**', {
   rules: { 'react/jsx-key': 'error' },
   fileOverrides: [{ files: LIB_FILES, rules: { 'react/jsx-key': 'off' } }],
 })
-export const OUR_ENTRY_TURNING_OFF_A_RULE_WE_DO_NOT_RUN = buildOurShapeValue('ours: react/jsx-key off in an entry for lib/**, and on nowhere', {
+const OUR_ENTRY_TURNING_OFF_A_RULE_WE_DO_NOT_RUN = buildOurShapeValue('ours: react/jsx-key off in an entry for lib/**, and on nowhere', {
   fileOverrides: [{ files: LIB_FILES, rules: { 'react/jsx-key': 'off' } }],
 })
-export const OUR_REACT_RULE_ONLY_IN_AN_ENTRY = buildOurShapeValue('ours: react/jsx-key on in an entry for lib/** only', {
+const OUR_REACT_RULE_ONLY_IN_AN_ENTRY = buildOurShapeValue('ours: react/jsx-key on in an entry for lib/** only', {
   fileOverrides: [{ files: LIB_FILES, rules: { 'react/jsx-key': 'error' } }],
 })
 // Our top-level off removes only ours: the team's config alone decides the rule.
-export const OUR_REACT_RULE_OFF_AT_THE_TOP_LEVEL = buildOurShapeValue('ours: react/jsx-key off at the top level', {
+const OUR_REACT_RULE_OFF_AT_THE_TOP_LEVEL = buildOurShapeValue('ours: react/jsx-key off at the top level', {
   rules: { 'react/jsx-key': 'off' },
 })
 
 // A core rule of oxlint's: its plugin is eslint, which oxlint always runs.
-export const NO_CORE_RULE = buildOurShapeValue('ours: no core rule', {})
-export const OUR_CORE_RULE = buildOurShapeValue('ours: no-compare-neg-zero', { rules: { 'no-compare-neg-zero': 'error' } })
-export const OUR_CORE_RULE_ONLY_IN_AN_ENTRY = buildOurShapeValue('ours: no-compare-neg-zero on in an entry for lib/** only', {
+const NO_CORE_RULE = buildOurShapeValue('ours: no core rule', {})
+const OUR_CORE_RULE = buildOurShapeValue('ours: no-compare-neg-zero', { rules: { 'no-compare-neg-zero': 'error' } })
+const OUR_CORE_RULE_ONLY_IN_AN_ENTRY = buildOurShapeValue('ours: no-compare-neg-zero on in an entry for lib/** only', {
   fileOverrides: [{ files: LIB_FILES, rules: { 'no-compare-neg-zero': 'error' } }],
 })
 
 // Our ignores remove only our rules from the files they match; the team's findings there stay.
 // Written as a folder, an ignore covers what ignorePatterns and ESLint's global ignores cover.
-export const NO_IGNORES_OF_OURS = buildOurShapeValue('ours: no ignores', {})
-export const OUR_IGNORES = buildOurShapeValue('ours: ignores lib/**', { ignores: LIB_FILES })
-export const OUR_IGNORES_OF_A_FOLDER = buildOurShapeValue('ours: ignores lib, a folder', { ignores: ['lib'] })
-export const OUR_IGNORES_OF_A_FOLDER_ENDING_IN_A_SLASH = buildOurShapeValue('ours: ignores lib/, a folder', { ignores: ['lib/'] })
+const NO_IGNORES_OF_OURS = buildOurShapeValue('ours: no ignores', {})
+const OUR_IGNORES = buildOurShapeValue('ours: ignores lib/**', { ignores: LIB_FILES })
+const OUR_IGNORES_OF_A_FOLDER = buildOurShapeValue('ours: ignores lib, a folder', { ignores: ['lib'] })
+const OUR_IGNORES_OF_A_FOLDER_ENDING_IN_A_SLASH = buildOurShapeValue('ours: ignores lib/, a folder', { ignores: ['lib/'] })
 
 // Our ESLint-run rules are off in oxlint only where ESLint runs them: not in our ignores or entries turning them off.
-export const NO_RULE_ESLINT_RUNS = buildOurShapeValue('ours: no rule ESLint runs', {})
-export const OUR_RULES_ESLINT_RUNS = buildOurShapeValue('ours: @typescript-eslint/array-type and promise/param-names, which ESLint runs', {
+const NO_RULE_ESLINT_RUNS = buildOurShapeValue('ours: no rule ESLint runs', {})
+const OUR_RULES_ESLINT_RUNS = buildOurShapeValue('ours: @typescript-eslint/array-type and promise/param-names, which ESLint runs', {
   rules: { '@typescript-eslint/array-type': 'error', 'promise/param-names': 'error' },
 })
 // oxlint's own correctness: warn runs its no-this-alias copy under typescript, a default plugin; the merge turns it off everywhere.
-export const OUR_RULE_ESLINT_RUNS_IN_OXLINTS_DEFAULT_CATEGORY = buildOurShapeValue(
+const OUR_RULE_ESLINT_RUNS_IN_OXLINTS_DEFAULT_CATEGORY = buildOurShapeValue(
   "ours: @typescript-eslint/no-this-alias, which ESLint runs, and oxlint's correctness category holds",
   { rules: { '@typescript-eslint/no-this-alias': 'error' } },
 )
 // Likewise the core no-unused-vars, twin of typescript-eslint's, which correctness: warn runs under eslint.
-export const OUR_TWIN_RULE_ESLINT_RUNS_IN_OXLINTS_DEFAULT_CATEGORY = buildOurShapeValue(
+const OUR_TWIN_RULE_ESLINT_RUNS_IN_OXLINTS_DEFAULT_CATEGORY = buildOurShapeValue(
   "ours: @typescript-eslint/no-unused-vars, which ESLint runs, whose core twin oxlint's correctness category holds",
   { rules: { '@typescript-eslint/no-unused-vars': 'error' } },
 )
-export const OUR_RULES_ESLINT_RUNS_OFF_IN_AN_ENTRY = buildOurShapeValue(
+const OUR_RULES_ESLINT_RUNS_OFF_IN_AN_ENTRY = buildOurShapeValue(
   'ours: @typescript-eslint/array-type and promise/param-names, which ESLint runs, array-type off in an entry for src/**',
   {
     rules: { '@typescript-eslint/array-type': 'error', 'promise/param-names': 'error' },
@@ -542,8 +542,8 @@ export const OXLINT_MERGE_DIMENSIONS: readonly Dimension<OxlintMergeShapeValue>[
       OUR_REACT_RULE_OFF_AT_THE_TOP_LEVEL,
     ],
   },
-  { name: 'our core rule', values: [NO_CORE_RULE, OUR_CORE_RULE] },
-  { name: 'our ignores', values: [NO_IGNORES_OF_OURS, OUR_IGNORES, OUR_IGNORES_OF_A_FOLDER] },
+  { name: 'our core rule', values: [NO_CORE_RULE, OUR_CORE_RULE, OUR_CORE_RULE_ONLY_IN_AN_ENTRY] },
+  { name: 'our ignores', values: [NO_IGNORES_OF_OURS, OUR_IGNORES, OUR_IGNORES_OF_A_FOLDER, OUR_IGNORES_OF_A_FOLDER_ENDING_IN_A_SLASH] },
   {
     name: 'our rules ESLint runs',
     values: [

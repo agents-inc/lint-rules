@@ -37,7 +37,7 @@ import {
   installedEslintPlugin,
   type TeamBlockScope,
 } from './__tests__/factories/eslint-merge-factories.ts'
-import { buildConsumerLintRules, buildEveryRulesetLintRules } from './__tests__/factories/lint-rules-factories.ts'
+import { buildConsumerLintRules, buildEveryRulesetLintRules, buildTwoSetLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { buildTsconfig } from './__tests__/factories/tsconfig-factories.ts'
 import {
   buildPackageJsonListingOthers,
@@ -214,10 +214,10 @@ const TWINS_BOTH_WAYS: readonly TwinBesideOurs[] = [
     teamOptions: { capIsConstructor: false },
   },
 ]
-const LEGACY_FILES = ['legacy/**']
+const LEGACY_FILES: [string, ...string[]] = ['legacy/**']
 // A file a team block naming LEGACY_FILES applies to, and one it does not: TSX, where max-lines ships.
 const A1_FILES = ['legacy/a.tsx', 'src/a.tsx']
-const LEGACY_OLD_FILES = ['legacy/old/**']
+const LEGACY_OLD_FILES: [string, ...string[]] = ['legacy/old/**']
 // ~3.4 s alone and ~5.3 s in the full suite (measured), past vitest's 5 s default.
 const TWIN_WALK_TIMEOUT_MS = 20_000
 // A TS file a tsconfig including src takes in, and one no tsconfig does, both on disk.
@@ -1029,7 +1029,7 @@ describe('another ESLint name of a rule either editor part states', () => {
       { project: 'whose package.json lists oxlint', usesOxlint: true },
       { project: 'whose package.json lists no oxlint', usesOxlint: false },
     ])("is the team's in every file where the team turns it on, ESLint running ours, in a project $project", async ({ usesOxlint }) => {
-      const lintRules = buildConsumerLintRules(PROJECT_WITH_OXLINT, {}, { rules: { 'n/no-process-exit': 'error' } })
+      const lintRules = buildTwoSetLintRules({}, { tsconfigRootDir: PROJECT_WITH_OXLINT, rules: { 'n/no-process-exit': 'error' } })
       const { eslint } = editorPartsOf(lintRules, smallCatalog, usesOxlint)
       const config = mergeEslintPart(
         [buildTeamEslintBlockTurningOn('team', ['node/no-process-exit'])],

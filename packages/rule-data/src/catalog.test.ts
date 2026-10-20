@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import rulesetDefinitions from '../data/ruleset-definitions.json' with { type: 'json' }
 import { RULES_UNICORN_78_ADDS } from './__tests__/cases/plugin-upgrades.ts'
 import { ROUND_2_DROPS, RULES_NEEDING_NEWER_NODE } from './__tests__/cases/round-2-drops.ts'
+import { ALLOWANCES_LEFT_TO } from './__tests__/cases/rule-relations.ts'
 import { isOptInRuleset, isSortingRuleset } from './__tests__/cases/sorting-rulesets.ts'
 import { TEST_FILE_GLOBS } from './__tests__/cases/test-file-globs.ts'
 import { buildEslintRoute, buildOxlintRoute } from './__tests__/factories/inventory-factories.ts'
@@ -186,6 +187,26 @@ describe('the catalog, src/generated/routing.json', () => {
     })
   })
 
+  // rules.json records each options entry left to another rule on the rule holding it; the catalog gives every
+  // shipped rule a list of them, empty where rules.json records none.
+  describe('the options entries each shipped rule leaves to another rule', () => {
+    it("parses each as its option, entry and the other rule's ID on no-floating-promises, and as none on a rule recording none", () => {
+      const holder = '@typescript-eslint/no-floating-promises'
+      const leftToById = Object.fromEntries([holder, 'eqeqeq'].map((id) => [id, shippedRuleOf(routeOf(id, catalog)).allowancesLeftTo]))
+
+      expect(leftToById).toStrictEqual({
+        [holder]: ALLOWANCES_LEFT_TO.filter((allowance) => allowance.holder === holder).map(({ option, entry, leftTo }) => ({ option, entry, rule: leftTo })),
+        eqeqeq: [],
+      })
+    })
+
+    it('gives every shipped rule a list', () => {
+      const withoutOne = routes.filter(({ shipped }) => shipped !== null && !Array.isArray(shipped.allowancesLeftTo)).map(({ id }) => id)
+
+      expect(withoutOne).toStrictEqual([])
+    })
+  })
+
   // rules.json marks each rule our runtimes' globals serve; the catalog gives every shipped rule the
   // mark, false where rules.json gives none.
   describe("whether our runtimes' globals serve each shipped rule", () => {
@@ -269,7 +290,7 @@ describe('the catalog, src/generated/routing.json', () => {
       expect(routesById).toStrictEqual({
         'no-dupe-class-members': {
           engine: 'oxlint',
-          shipped: { ruleset: 'correctness', options: [], files: null, ignores: null, coveredBy: null, coveredInOxlintBy: null, splitByTypesWith: null, readsRuntimeGlobals: false },
+          shipped: { ruleset: 'correctness', options: [], files: null, ignores: null, coveredBy: null, coveredInOxlintBy: null, splitByTypesWith: null, readsRuntimeGlobals: false, allowancesLeftTo: [] },
         },
         'no-use-before-define': { engine: 'oxlint', shipped: null },
       })
@@ -354,7 +375,7 @@ describe('the catalog, src/generated/routing.json', () => {
 
       expect({ engine, shipped }).toStrictEqual({
         engine: 'eslint',
-        shipped: { ruleset: 'class-names', options: [], files: null, ignores: null, coveredBy: null, coveredInOxlintBy: null, splitByTypesWith: null, readsRuntimeGlobals: false },
+        shipped: { ruleset: 'class-names', options: [], files: null, ignores: null, coveredBy: null, coveredInOxlintBy: null, splitByTypesWith: null, readsRuntimeGlobals: false, allowancesLeftTo: [] },
       })
     })
 

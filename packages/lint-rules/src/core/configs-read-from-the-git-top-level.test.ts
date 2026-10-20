@@ -82,7 +82,7 @@ describe('the configs check builds for a project, read from the git top level', 
   const OUTSIDE_EVERY_TSCONFIG = 'scripts/seed.ts'
   const AT_THE_ROOT_OUTSIDE_EVERY_TSCONFIG = 'vite.config.ts'
   const IGNORES = ['src/generated/**', '!src/generated/keep.ts', './x/**', '**/dist/**']
-  const OVERRIDE_FILES = ['src/**']
+  const OVERRIDE_FILES: [string, ...string[]] = ['src/**']
   const TIED_AS_BUILT = ['src/generated/**', '!src/generated/keep.ts', './x/**', '/x/**', 'src/**', OUTSIDE_EVERY_TSCONFIG, AT_THE_ROOT_OUTSIDE_EVERY_TSCONFIG]
   const TIED_AS_READ = [
     'packages/web/src/generated/**',

@@ -5,10 +5,10 @@ import rulesetDefinitions from '../data/ruleset-definitions.json' with { type: '
 import { ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON } from './__tests__/cases/routed-to-eslint-for-a-reason.ts'
 import { DROPPED_ON_2026_10_16 } from './__tests__/cases/dropped-rules.ts'
 import { ROUND_2_DROPS } from './__tests__/cases/round-2-drops.ts'
-import { COVERED_BY, COVERED_IN_OXLINT_BY, FILES_LEFT_UNCOVERED_BY_CARD, SPLIT_BY_TYPES_WITH } from './__tests__/cases/rule-relations.ts'
+import { ALLOWANCES_LEFT_TO, COVERED_BY, COVERED_IN_OXLINT_BY, FILES_LEFT_UNCOVERED_BY_CARD, SPLIT_BY_TYPES_WITH } from './__tests__/cases/rule-relations.ts'
 import { isOptInRuleset, isSortingRuleset, RULES_THAT_SORT, SORTING_RULESETS } from './__tests__/cases/sorting-rulesets.ts'
 import { NAMES_TEST_FILES, RULES_SKIPPING_TEST_FILES, STORY_FILE_GLOB, TEST_FILE_GLOBS } from './__tests__/cases/test-file-globs.ts'
-import { coveredByOffenders, coveredInOxlintByOffenders, filesLeftUncovered, splitByTypesOffenders } from './__tests__/relation-offenders.ts'
+import { allowancesLeftToOffenders, coveredByOffenders, coveredInOxlintByOffenders, filesLeftUncovered, splitByTypesOffenders } from './__tests__/relation-offenders.ts'
 import { catalog } from './catalog.ts'
 import { canonicalRules as parsedCanonicalRules } from './generate/canonical-rules.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
@@ -216,6 +216,11 @@ describe('the canonical list, data/rules.json', () => {
     it('has no "split by types" that does not hold: an untyped and a typed rule, both shipped, run by ESLint on every file, each typed rule named once', () => {
       expect(splitByTypesOffenders(parsedCanonicalRules)).toStrictEqual([])
     })
+
+    // An entry is kept only in the files where the rule its calls are left to runs, so that rule must run wherever types are known when the holder does.
+    it('has no options entry left to another rule that does not hold: that rule shipped in a ruleset, covered by none, run by ESLint without oxlint and wherever types are known when the holder needs none, and the entry in the shipped options', () => {
+      expect(allowancesLeftToOffenders(parsedCanonicalRules, catalog.eslintFallbackSkips)).toStrictEqual([])
+    })
   })
 
   describe('the relations between shipped rules the owner chose', () => {
@@ -234,6 +239,14 @@ describe('the canonical list, data/rules.json', () => {
 
     it('records "split by types" on exactly the untyped rules of the cards a (T) option was chosen on, each naming its typed partner', () => {
       expect(namedByRelation(({ splitByTypesWith }) => splitByTypesWith)).toStrictEqual(SPLIT_BY_TYPES_WITH)
+    })
+
+    it("leaves exactly no-floating-promises' Testing Library and Vitest entries to the rule reporting their calls, each with a reason", () => {
+      const leftTo = parsedCanonicalRules.flatMap(({ id, allowancesLeftTo = [] }) =>
+        allowancesLeftTo.map(({ option, entry, rule, because }) => ({ allowance: { holder: id, option, entry, leftTo: rule }, hasAReason: because.trim() !== '' })),
+      )
+
+      expect(leftTo).toStrictEqual(ALLOWANCES_LEFT_TO.map((allowance) => ({ allowance, hasAReason: true })))
     })
 
     it('gives each relation a reason', () => {
@@ -506,7 +519,7 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // generate/render-generated.ts renders exactly these as SuppressionRuleId, which `rules` cannot set.
+    // generate/render-generated.ts renders exactly these as SuppressionRuleId.
     it('has allowSuppressions decide exactly the two bans, the blanket-suppression rule and the hooks rule that reports suppressions', () => {
       expect(canonicalRules.filter((rule) => rule.whenSuppressions !== undefined).map((rule) => rule.id)).toStrictEqual([
         '@typescript-eslint/ban-ts-comment',

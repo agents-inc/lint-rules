@@ -1,6 +1,6 @@
 import { buildAlwaysOnShippedRule, buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import { describe, expect, it } from 'vitest'
-import type { Catalog, RuleRoute, ShippedRule } from '@workspace/rule-data'
+import type { Catalog, RuleRoute, RulesetDefinition, ShippedRule } from '@workspace/rule-data'
 import { blockNamed } from '../__tests__/eslint-config-reads.ts'
 import {
   buildCatalog,
@@ -175,16 +175,6 @@ describe('resolveRuleLayers', () => {
           ignores: null,
         },
       })
-    })
-
-    // Read again after the config is checked, so a severity the check let through still throws, describing it.
-    it.each([
-      { given: 'a word that is no severity', entry: 'warning', described: '"warning"' },
-      { given: 'options with no severity before them', entry: [{ allow: true }], described: 'an object' },
-    ])('throw on $given', ({ entry, described }) => {
-      const lintRules = buildLintRules({ quality: ['correctness'] }, { rules: { eqeqeq: entry } })
-
-      expect(() => resolveRuleLayers(lintRules, catalog)).toThrowError(new Error(`invalid severity ${described} for "eqeqeq"`))
     })
   })
 
@@ -579,3 +569,190 @@ describe('a rule covered in oxlint by another', () => {
     })
   })
 })
+
+// An entry of a rule's options may allow calls another shipped rule reports: no-floating-promises leaves an
+// unawaited Vitest assertion to vitest/valid-expect. The entry is kept in each layer where that rule is on,
+// by the layer's lists or the top-level rules, so each such call is reported once whichever rulesets are listed.
+describe.each([
+  { resolution: 'without oxlint', resolve: resolveRuleLayers },
+  { resolution: 'beside oxlint', resolve: resolveRuleLayersBesideOxlint },
+])('an options entry whose calls another rule reports, $resolution', ({ resolve }) => {
+  type EntryRuleMaps = Pick<FileOverrideLayer, 'rulesetChanges' | 'rules'>
+
+  const HOLDER = '@typescript-eslint/no-floating-promises'
+  const COVER = 'vitest/valid-expect'
+  const SAFE_CALLS = 'allowForKnownSafeCalls'
+  // Left to no other rule: kept wherever the holder runs.
+  const UNMARKED_ENTRY = { from: 'package', package: '@testing-library/dom', name: ['waitFor'] }
+  const VITEST_ENTRY = { from: 'package', package: 'vitest', name: '__type' }
+  const VITEST_3_ENTRY = { from: 'package', package: '@vitest/expect', name: 'Promisify' }
+  const LEGACY_FILES = 'legacy/**'
+  const KEPT_LEGACY_FILES = 'legacy/kept/**'
+  const CORRECTNESS = buildQualityRuleset('correctness')
+  const TESTS = buildQualityRuleset('tests')
+  // The cover ships in a list the holder does not, so only the cover's list changes the holder's options.
+  const VITEST = buildLibsRuleset('vitest', 'testing')
+  const COVER_ON: RuleSetting = { severity: 'error', options: [], files: null, ignores: null }
+  const COVER_OFF: RuleSetting = { severity: 'off', options: [], files: null, ignores: null }
+  const ALLOWING_EVERY_ENTRY = holderOptionsAllowing([UNMARKED_ENTRY, VITEST_ENTRY, VITEST_3_ENTRY])
+  const ALLOWING_THE_UNMARKED_ENTRY_ALONE = holderOptionsAllowing([UNMARKED_ENTRY])
+  const OPTIONS_A_TEAM_WRITES = { [SAFE_CALLS]: [VITEST_ENTRY] }
+  const WITH_TESTS = { quality: [CORRECTNESS.name, TESTS.name] }
+  const WITHOUT_TESTS = { quality: [CORRECTNESS.name] }
+
+  /** Another key of the same options object, kept as shipped. */
+  function holderOptionsAllowing(entries: readonly unknown[]): readonly unknown[] {
+    return [{ [SAFE_CALLS]: entries, ignoreVoid: true }]
+  }
+
+  function leftToTheCover(entry: unknown): { readonly option: string; readonly entry: unknown; readonly rule: string } {
+    return { option: SAFE_CALLS, entry, rule: COVER }
+  }
+
+  function catalogShippingTheCoverIn(coverRuleset: Readonly<RulesetDefinition>): Catalog {
+    return buildCatalog({
+      rulesets: [CORRECTNESS, coverRuleset],
+      rules: [
+        buildEslintRoute(HOLDER, {
+          typed: true,
+          shipped: buildShippedRule(CORRECTNESS.name, { options: ALLOWING_EVERY_ENTRY, allowancesLeftTo: [leftToTheCover(VITEST_ENTRY), leftToTheCover(VITEST_3_ENTRY)] }),
+        }),
+        buildOxlintRoute(COVER, { oxlintName: COVER, oxlintPlugin: 'vitest', shipped: buildShippedRule(coverRuleset.name) }),
+      ],
+    })
+  }
+
+  const coverInTests = catalogShippingTheCoverIn(TESTS)
+  const coverInALibsRuleset = catalogShippingTheCoverIn(VITEST)
+
+  function topLevelHolderOf(lintRules: Parameters<typeof resolveRuleLayers>[0]): RuleSetting | undefined {
+    return resolve(lintRules, coverInTests).rules[HOLDER]
+  }
+
+  function entriesOf(lintRules: Parameters<typeof resolveRuleLayers>[0], shippedIn: Readonly<Catalog>): readonly EntryRuleMaps[] {
+    return resolve(lintRules, shippedIn).fileOverrides.map(({ rulesetChanges, rules }) => ({ rulesetChanges, rules }))
+  }
+
+  describe('at the top level', () => {
+    it("keeps it where the cover's ruleset is listed", () => {
+      expect(topLevelHolderOf(buildLintRules(WITH_TESTS))).toStrictEqual(holderSetting(ALLOWING_EVERY_ENTRY))
+    })
+
+    it("drops it where the cover's ruleset is not listed, keeping the entry left to no rule and the other options", () => {
+      expect(topLevelHolderOf(buildLintRules(WITHOUT_TESTS))).toStrictEqual(holderSetting(ALLOWING_THE_UNMARKED_ENTRY_ALONE))
+    })
+
+    it.each(['error', 'warn'] as const)('keeps it where the top-level rules turn the cover on at %s, its ruleset not listed', (severity) => {
+      expect(topLevelHolderOf(buildLintRules(WITHOUT_TESTS, { rules: { [COVER]: severity } }))).toStrictEqual(holderSetting(ALLOWING_EVERY_ENTRY))
+    })
+
+    it('drops it where the top-level rules turn the cover off, its ruleset listed', () => {
+      expect(topLevelHolderOf(buildLintRules(WITH_TESTS, { rules: { [COVER]: 'off' } }))).toStrictEqual(holderSetting(ALLOWING_THE_UNMARKED_ENTRY_ALONE))
+    })
+
+    it('uses the options the top-level rules write for the holder as written, the cover off', () => {
+      expect(topLevelHolderOf(buildLintRules(WITHOUT_TESTS, { rules: { [HOLDER]: ['error', OPTIONS_A_TEAM_WRITES] } }))).toStrictEqual(holderSetting([OPTIONS_A_TEAM_WRITES]))
+    })
+
+    it('gives a severity alone the options in force, without the entry, the cover off', () => {
+      expect(topLevelHolderOf(buildLintRules(WITHOUT_TESTS, { rules: { [HOLDER]: 'warn' } }))).toStrictEqual(holderSetting(ALLOWING_THE_UNMARKED_ENTRY_ALONE, 'warn'))
+    })
+  })
+
+  describe('in an entry', () => {
+    it("restates the holder without it in the files of an entry whose lists drop the cover's ruleset", () => {
+      const lintRules = buildLintRules(WITH_TESTS, { fileOverrides: [buildFileOverride([LEGACY_FILES], { rulesets: WITHOUT_TESTS })] })
+
+      expect(entriesOf(lintRules, coverInTests)).toStrictEqual([{ rulesetChanges: { [COVER]: COVER_OFF, [HOLDER]: holderSetting(ALLOWING_THE_UNMARKED_ENTRY_ALONE) }, rules: {} }])
+    })
+
+    it("restates the holder with it in the files of an entry whose lists add the cover's ruleset", () => {
+      const lintRules = buildLintRules(WITHOUT_TESTS, { fileOverrides: [buildFileOverride([LEGACY_FILES], { rulesets: WITH_TESTS })] })
+
+      expect(entriesOf(lintRules, coverInTests)).toStrictEqual([{ rulesetChanges: { [COVER]: COVER_ON, [HOLDER]: holderSetting(ALLOWING_EVERY_ENTRY) }, rules: {} }])
+    })
+
+    it('restates nothing in the files of an entry whose lists leave the cover as the top level has it', () => {
+      const lintRules = buildLintRules(WITH_TESTS, { fileOverrides: [buildFileOverride([LEGACY_FILES], { rulesets: WITH_TESTS })] })
+
+      expect(entriesOf(lintRules, coverInTests)).toStrictEqual([{ rulesetChanges: {}, rules: {} }])
+    })
+
+    it("restates the holder with it again in a later entry re-adding the cover's ruleset over an earlier entry that dropped it", () => {
+      const lintRules = buildLintRules(WITH_TESTS, {
+        fileOverrides: [buildFileOverride([LEGACY_FILES], { rulesets: WITHOUT_TESTS }), buildFileOverride([KEPT_LEGACY_FILES], { rulesets: WITH_TESTS })],
+      })
+
+      expect(entriesOf(lintRules, coverInTests)).toStrictEqual([
+        { rulesetChanges: { [COVER]: COVER_OFF, [HOLDER]: holderSetting(ALLOWING_THE_UNMARKED_ENTRY_ALONE) }, rules: {} },
+        { rulesetChanges: { [COVER]: COVER_ON, [HOLDER]: holderSetting(ALLOWING_EVERY_ENTRY) }, rules: {} },
+      ])
+    })
+
+    // The holder ships in the quality list, which neither entry gives: the cover's list counts for it too.
+    it("restates the holder in entries giving only the cover's list, where the cover ships in a list the holder does not", () => {
+      const lintRules = buildLintRules(
+        { quality: [CORRECTNESS.name], libs: { testing: [VITEST.name] } },
+        { fileOverrides: [buildFileOverride([LEGACY_FILES], { rulesets: { libs: { testing: [] } } }), buildFileOverride([KEPT_LEGACY_FILES], { rulesets: { libs: { testing: [VITEST.name] } } })] },
+      )
+
+      expect(entriesOf(lintRules, coverInALibsRuleset)).toStrictEqual([
+        { rulesetChanges: { [COVER]: COVER_OFF, [HOLDER]: holderSetting(ALLOWING_THE_UNMARKED_ENTRY_ALONE) }, rules: {} },
+        { rulesetChanges: { [COVER]: COVER_ON, [HOLDER]: holderSetting(ALLOWING_EVERY_ENTRY) }, rules: {} },
+      ])
+    })
+
+    it("gives a severity alone in an entry's own rules the options in force in its files, without the entry where its lists drop the cover", () => {
+      const lintRules = buildLintRules(WITH_TESTS, { fileOverrides: [buildFileOverride([LEGACY_FILES], { rulesets: WITHOUT_TESTS, rules: { [HOLDER]: 'warn' } })] })
+
+      expect(entriesOf(lintRules, coverInTests).map(({ rules }) => rules)).toStrictEqual([{ [HOLDER]: holderSetting(ALLOWING_THE_UNMARKED_ENTRY_ALONE, 'warn') }])
+    })
+
+    // Its lists turn the holder off too, so the options in force are the shipped ones, entry and all.
+    it("gives a severity alone in an entry's own rules the shipped options without the entry, where its lists turn neither rule on", () => {
+      const lintRules = buildLintRules(WITH_TESTS, { fileOverrides: [buildFileOverride([LEGACY_FILES], { rulesets: { quality: [] }, rules: { [HOLDER]: 'warn' } })] })
+
+      expect(entriesOf(lintRules, coverInTests).map(({ rules }) => rules)).toStrictEqual([{ [HOLDER]: holderSetting(ALLOWING_THE_UNMARKED_ENTRY_ALONE, 'warn') }])
+    })
+
+    // The options in force in its files are the team's, so the severity is all that changes there.
+    it("gives a severity alone in an entry's own rules the options the top-level rules write for the holder, as written, the cover off", () => {
+      const lintRules = buildLintRules(WITHOUT_TESTS, {
+        rules: { [HOLDER]: ['error', OPTIONS_A_TEAM_WRITES] },
+        fileOverrides: [buildFileOverride([LEGACY_FILES], { rules: { [HOLDER]: 'warn' } })],
+      })
+
+      expect(entriesOf(lintRules, coverInTests).map(({ rules }) => rules)).toStrictEqual([{ [HOLDER]: holderSetting([OPTIONS_A_TEAM_WRITES], 'warn') }])
+    })
+
+    it("uses the options an entry's own rules write for the holder as written, where its lists turn neither rule on", () => {
+      const lintRules = buildLintRules(WITH_TESTS, { fileOverrides: [buildFileOverride([LEGACY_FILES], { rulesets: { quality: [] }, rules: { [HOLDER]: ['error', OPTIONS_A_TEAM_WRITES] } })] })
+
+      expect(entriesOf(lintRules, coverInTests).map(({ rules }) => rules)).toStrictEqual([{ [HOLDER]: holderSetting([OPTIONS_A_TEAM_WRITES]) }])
+    })
+
+    it("uses the options an entry's own rules write for the holder as written, its lists dropping the cover", () => {
+      const lintRules = buildLintRules(WITH_TESTS, { fileOverrides: [buildFileOverride([LEGACY_FILES], { rulesets: WITHOUT_TESTS, rules: { [HOLDER]: ['error', OPTIONS_A_TEAM_WRITES] } })] })
+
+      expect(entriesOf(lintRules, coverInTests).map(({ rules }) => rules)).toStrictEqual([{ [HOLDER]: holderSetting([OPTIONS_A_TEAM_WRITES]) }])
+    })
+
+    // A known limit, as for a cover: an entry's own rules do not move the entry, in either direction.
+    it("restates nothing where an entry's own rules turn the cover on, the top level dropping the entry", () => {
+      const lintRules = buildLintRules(WITHOUT_TESTS, { fileOverrides: [buildFileOverride([LEGACY_FILES], { rules: { [COVER]: 'error' } })] })
+
+      expect(entriesOf(lintRules, coverInTests)).toStrictEqual([{ rulesetChanges: {}, rules: { [COVER]: COVER_ON } }])
+    })
+
+    it("restates nothing where an entry's own rules turn the cover off, the top level keeping the entry", () => {
+      const lintRules = buildLintRules(WITH_TESTS, { fileOverrides: [buildFileOverride([LEGACY_FILES], { rules: { [COVER]: 'off' } })] })
+
+      expect(entriesOf(lintRules, coverInTests)).toStrictEqual([{ rulesetChanges: {}, rules: { [COVER]: COVER_OFF } }])
+    })
+  })
+})
+
+/** The rule holding the entries, on every file. */
+function holderSetting(options: readonly unknown[], severity: RuleSetting['severity'] = 'error'): RuleSetting {
+  return { severity, options, files: null, ignores: null }
+}

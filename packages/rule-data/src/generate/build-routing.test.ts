@@ -196,6 +196,42 @@ describe('buildRouting', () => {
     })
   })
 
+  // rules.json records each options entry left to another rule with its reason; routing carries the entry, its
+  // option and the other rule's ID, and only where rules.json gives one.
+  describe('an options entry left to another rule', () => {
+    const SAFE_CALLS = 'allowForKnownSafeCalls'
+    const ENTRY = { from: 'package', package: 'vitest', name: '__type' }
+    const OPTIONS = [{ [SAFE_CALLS]: [ENTRY] }]
+    const inventory = buildInventory([
+      buildInventoryRule('@typescript-eslint/no-floating-promises', { oxlint: TYPE_AWARE_OXLINT_NO_FLOATING_PROMISES, eslint: TYPED_ESLINT_VERSION }),
+      buildInventoryRule('vitest/valid-expect', {
+        oxlint: buildOxlintImplementation('vitest/valid-expect', { oxlintPlugin: 'vitest', typeAware: false, eslintAliases: [] }),
+        eslint: UNTYPED_ESLINT_VERSION,
+      }),
+    ])
+
+    it("carries each one's option, entry and rule without its reason, and leaves the field out of a rule leaving none", () => {
+      const canonicalRules = [
+        buildCanonicalRule('@typescript-eslint/no-floating-promises', {
+          engine: 'eslint',
+          ruleset: 'correctness',
+          options: OPTIONS,
+          typed: true,
+          allowancesLeftTo: [{ option: SAFE_CALLS, entry: ENTRY, rule: 'vitest/valid-expect', because: 'card: vitest/valid-expect reports the call' }],
+        }),
+        buildCanonicalRule('vitest/valid-expect', { engine: 'oxlint', oxlintName: 'vitest/valid-expect', ruleset: 'tests', options: [], typed: false }),
+      ]
+
+      expect(buildRouting({ inventory, canonicalRules }).map(({ id, shipped }) => [id, shipped])).toStrictEqual([
+        [
+          '@typescript-eslint/no-floating-promises',
+          { ruleset: 'correctness', options: OPTIONS, files: null, ignores: null, allowancesLeftTo: [{ option: SAFE_CALLS, entry: ENTRY, rule: 'vitest/valid-expect' }] },
+        ],
+        ['vitest/valid-expect', { ruleset: 'tests', options: [], files: null, ignores: null }],
+      ])
+    })
+  })
+
   // A relation of the oxlint part alone, which the catalog reads as it reads "covered by".
   describe('a rule covered in oxlint by another', () => {
     const inventory = buildInventory(

@@ -82,7 +82,7 @@ export function buildEslintImplementation(fields: EslintImplementation): EslintI
 export function buildCanonicalRule(
   id: string,
   fields: Pick<CanonicalRule, 'engine' | 'options' | 'ruleset' | 'typed'> &
-    Partial<Pick<CanonicalRule, 'alwaysOn' | 'coveredBy' | 'coveredInOxlintBy' | 'files' | 'ignores' | 'oxlintName' | 'readsRuntimeGlobals' | 'splitByTypesWith' | 'whenSuppressions'>>,
+    Partial<Pick<CanonicalRule, 'allowancesLeftTo' | 'alwaysOn' | 'coveredBy' | 'coveredInOxlintBy' | 'files' | 'ignores' | 'oxlintName' | 'readsRuntimeGlobals' | 'splitByTypesWith' | 'whenSuppressions'>>,
 ): CanonicalRule {
   return { id, assignment: { confidence: 'high', by: 'plugin' }, ...fields }
 }

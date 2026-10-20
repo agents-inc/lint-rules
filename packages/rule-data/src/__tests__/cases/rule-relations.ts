@@ -78,6 +78,49 @@ export const COVERED_IN_OXLINT_BY: Readonly<Record<string, string>> = {
   'jsx-a11y/html-has-lang': 'jsx-a11y/lang',
 }
 
+/** Each options entry left to another rule: the rule holding it, its option, the entry, and the rule its calls are left to. */
+export type AllowanceLeftTo = { readonly holder: string; readonly option: string; readonly entry: unknown; readonly leftTo: string }
+
+/** The Testing Library helpers await-async-utils reports unawaited. */
+const TESTING_LIBRARY_ASYNC_UTILS = ['waitFor', 'waitForElementToBeRemoved']
+
+/** The Testing Library queries await-async-queries reports unawaited. */
+const TESTING_LIBRARY_FIND_QUERIES = [
+  'findByRole',
+  'findAllByRole',
+  'findByLabelText',
+  'findAllByLabelText',
+  'findByPlaceholderText',
+  'findAllByPlaceholderText',
+  'findByText',
+  'findAllByText',
+  'findByDisplayValue',
+  'findAllByDisplayValue',
+  'findByAltText',
+  'findAllByAltText',
+  'findByTitle',
+  'findAllByTitle',
+  'findByTestId',
+  'findAllByTestId',
+]
+
+/** user-event 14's methods, which await-async-events reports unawaited. */
+const USER_EVENT_METHODS = ['clear', 'click', 'copy', 'cut', 'dblClick', 'deselectOptions', 'hover', 'keyboard', 'paste', 'pointer', 'selectOptions', 'tab', 'tripleClick', 'type', 'unhover', 'upload']
+
+/**
+ * The owner's a3v-testing-calls-without-tests and lint-a4-vitest-only cards: each testing call is left to the
+ * rule that reports it unawaited, wherever that rule runs. One entry per rule, so the Testing Library DOM
+ * helpers and queries are two entries; in the order the shipped options list them.
+ */
+export const ALLOWANCES_LEFT_TO: readonly AllowanceLeftTo[] = [
+  { holder: '@typescript-eslint/no-floating-promises', option: 'allowForKnownSafeCalls', entry: { from: 'package', package: '@testing-library/dom', name: TESTING_LIBRARY_ASYNC_UTILS }, leftTo: 'testing-library/await-async-utils' },
+  { holder: '@typescript-eslint/no-floating-promises', option: 'allowForKnownSafeCalls', entry: { from: 'package', package: '@testing-library/dom', name: TESTING_LIBRARY_FIND_QUERIES }, leftTo: 'testing-library/await-async-queries' },
+  { holder: '@typescript-eslint/no-floating-promises', option: 'allowForKnownSafeCalls', entry: { from: 'package', package: '@testing-library/user-event', name: USER_EVENT_METHODS }, leftTo: 'testing-library/await-async-events' },
+  { holder: '@typescript-eslint/no-floating-promises', option: 'allowForKnownSafeCalls', entry: { from: 'package', package: '@testing-library/user-event', name: '__type' }, leftTo: 'testing-library/await-async-events' },
+  { holder: '@typescript-eslint/no-floating-promises', option: 'allowForKnownSafeCalls', entry: { from: 'package', package: 'vitest', name: '__type' }, leftTo: 'vitest/valid-expect' },
+  { holder: '@typescript-eslint/no-floating-promises', option: 'allowForKnownSafeCalls', entry: { from: 'package', package: '@vitest/expect', name: 'Promisify' }, leftTo: 'vitest/valid-expect' },
+]
+
 /** "Split by types": each untyped rule, and the typed rule that runs in its place with type information. */
 export const SPLIT_BY_TYPES_WITH: Readonly<Record<string, string>> = {
   'unicorn/no-useless-template-literals': '@typescript-eslint/no-unnecessary-template-expression',

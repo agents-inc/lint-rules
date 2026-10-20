@@ -1,4 +1,4 @@
-import type { Engine, RuleRoute, ShippedScope } from '../catalog.ts'
+import type { AllowanceLeftTo, Engine, RuleRoute, ShippedScope } from '../catalog.ts'
 import { compareCodeUnits, foundOr, sharedKeys } from '../collections.ts'
 import { oxlintSpellingsOf } from '../rule-id-parts.ts'
 import {
@@ -13,7 +13,7 @@ import {
 import type { Inventory, InventoryRule } from './build-inventory.ts'
 
 /** How a rule came by its ruleset, or by `alwaysOn`: the draft's confidence and author, kept for review. */
-export type RulesetAssignment = {
+type RulesetAssignment = {
   confidence: string
   alternative?: string
   note?: string
@@ -26,6 +26,9 @@ export type CanonicalSuppressionModeSetting = 'on' | SuppressionModeSetting
 /** Another shipped rule this one is related to, and why: the card it was decided on, then one line. */
 export type RuleRelation = { readonly rule: string; readonly because: string }
 
+/** An entry of the rule's options left to another rule, and why, as `data/rules.json` records it. */
+export type CanonicalAllowanceLeftTo = AllowanceLeftTo & Pick<RuleRelation, 'because'>
+
 /** The test files, the files under `__tests__`, and Vitest's type tests (`*.test-d.ts`): the files a rule's test-file setting is for. */
 const TEST_FILE_GLOBS: readonly string[] = ['**/*.{test,spec}.{ts,tsx,js,jsx}', '**/__tests__/**', '**/*.{test,spec}-d.{ts,tsx,js,jsx}']
 
@@ -33,12 +36,13 @@ const TEST_FILE_GLOBS: readonly string[] = ['**/*.{test,spec}.{ts,tsx,js,jsx}', 
  * A route's `shipped` as the generated routing writes it: each relation is the other rule's ID, and
  * present only where `data/rules.json` records it. The catalog gives every shipped rule each.
  */
-export type RoutedShippedRule = TurnedOnBy &
+type RoutedShippedRule = TurnedOnBy &
   ShippedScope & {
     readonly coveredBy?: string
     readonly coveredInOxlintBy?: string
     readonly splitByTypesWith?: string
     readonly readsRuntimeGlobals?: true
+    readonly allowancesLeftTo?: readonly AllowanceLeftTo[]
   }
 
 export type RoutingEntry = Omit<RuleRoute, 'shipped'> & { shipped: RoutedShippedRule | null }
@@ -78,6 +82,8 @@ export type CanonicalRule = {
   splitByTypesWith?: RuleRelation
   /** `true`: our runtimes' globals serve the rule, so the editor merges give them where it runs. */
   readsRuntimeGlobals?: boolean
+  /** Each entry of the rule's options whose calls another shipped rule reports: kept exactly where that rule is on. */
+  allowancesLeftTo?: readonly CanonicalAllowanceLeftTo[]
   assignment: RulesetAssignment
 }
 
@@ -139,7 +145,14 @@ function shippedRuleOf(canonical: CanonicalRule): RoutedShippedRule {
     ignores: ignores ?? null,
     ...relatedRuleIdsOf(canonical),
     ...(canonical.readsRuntimeGlobals === true ? { readsRuntimeGlobals: true } : {}),
+    ...allowancesLeftToOf(canonical),
   }
+}
+
+/** Each allowance the canonical list records, without its reason: the field left out where it records none. */
+function allowancesLeftToOf({ allowancesLeftTo }: CanonicalRule): Pick<RoutedShippedRule, 'allowancesLeftTo'> {
+  if (allowancesLeftTo === undefined) return {}
+  return { allowancesLeftTo: allowancesLeftTo.map(({ option, entry, rule }) => ({ option, entry, rule })) }
 }
 
 /** Each relation the canonical list records, as the other rule's ID: none where it records none. */
