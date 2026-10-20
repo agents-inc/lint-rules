@@ -77,6 +77,15 @@ const BANNED_IN_TEST_FILES: SuppressionSettings = { ...BANNED, tsCommentBan: ['e
 /** ESLint does not run the hooks rule without oxlint (eslint-fallback-skips.json). */
 const ALLOWED_WITHOUT_OXLINT: SuppressionSettings = { ...ALLOWED, hooksSuppressionRule: 'off' }
 
+/** ESLint still reads no directive, so it still ignores the comments the ban no longer reports. */
+const BANNED_BUT_THE_BAN_OFF: SuppressionSettings = { ...BANNED, suppressionBan: 'off' }
+
+// Typed with an index signature: the types let a rule allowSuppressions sets into rules in this shape.
+const THE_BAN_OFF: Record<string, 'off'> = { 'house/no-suppressions': 'off' }
+const TS_COMMENTS_BANNED_OUTRIGHT: Record<string, readonly ['error', typeof BAN_TS_COMMENTS_OUTRIGHT]> = {
+  [TS_COMMENT_BAN]: ['error', BAN_TS_COMMENTS_OUTRIGHT],
+}
+
 const NO_RULESETS = { quality: [], libs: {}, runtimes: [] }
 
 const { lintedConfigFor } = setUpEslintConfigOracle()
@@ -283,6 +292,64 @@ describe('allowSuppressions in file overrides, in the agent build', () => {
       file: 'apps/web/a.test.ts',
       config: 'apps/** allowing them, then apps/web/** banning them: the later entry wins',
       lintRules: allowedForAppsThenBannedForWeb,
+      expected: BANNED_IN_TEST_FILES,
+    },
+  ])('sets the suppression rules for $file under $config', async ({ lintRules, file, expected }) => {
+    expect(await suppressionSettingsFor(agentConfigsFor(lintRules), file)).toStrictEqual(expected)
+  })
+})
+
+// An entry's rules naming a rule allowSuppressions sets set it in the entry's files, which the owner accepts
+// (docs/plan.md, Open, "Written limit of the config's types"). At the top level, allowSuppressions wins.
+describe('house/no-suppressions named in rules, in the agent build', () => {
+  const banOffForLegacy = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+    fileOverrides: [{ files: ['legacy/**'], rules: THE_BAN_OFF }],
+  })
+  const banOffForLegacyWhileBanned = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+    fileOverrides: [{ files: ['legacy/**'], allowSuppressions: false, rules: THE_BAN_OFF }],
+  })
+  const banOffAtTheTopLevel = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, { rules: THE_BAN_OFF })
+
+  it.each([
+    { file: 'legacy/a.ts', config: "an entry's rules turning it off", lintRules: banOffForLegacy, expected: BANNED_BUT_THE_BAN_OFF },
+    { file: 'src/a.ts', config: "an entry's rules turning it off", lintRules: banOffForLegacy, expected: BANNED },
+    {
+      file: 'legacy/a.ts',
+      config: "an entry's rules turning it off, the entry also setting allowSuppressions: false",
+      lintRules: banOffForLegacyWhileBanned,
+      expected: BANNED_BUT_THE_BAN_OFF,
+    },
+    { file: 'src/a.ts', config: 'the top-level rules turning it off', lintRules: banOffAtTheTopLevel, expected: BANNED },
+  ])('sets the suppression rules for $file under $config', async ({ lintRules, file, expected }) => {
+    expect(await suppressionSettingsFor(agentConfigsFor(lintRules), file)).toStrictEqual(expected)
+  })
+})
+
+describe("@typescript-eslint/ban-ts-comment named in an entry's rules, in the agent build, in test files", () => {
+  const tsCommentsBannedOutrightForSrc = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+    fileOverrides: [{ files: ['src/**'], rules: TS_COMMENTS_BANNED_OUTRIGHT }],
+  })
+  const tsCommentsBannedOutrightForSrcWhileBanned = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+    fileOverrides: [{ files: ['src/**'], allowSuppressions: false, rules: TS_COMMENTS_BANNED_OUTRIGHT }],
+  })
+
+  it.each([
+    {
+      file: 'src/a.test.ts',
+      config: "an entry's rules banning ts comments outright: the test-file allowance undone",
+      lintRules: tsCommentsBannedOutrightForSrc,
+      expected: BANNED,
+    },
+    {
+      file: 'lib/a.test.ts',
+      config: "an entry's rules for src/** banning ts comments outright",
+      lintRules: tsCommentsBannedOutrightForSrc,
+      expected: BANNED_IN_TEST_FILES,
+    },
+    {
+      file: 'src/a.test.ts',
+      config: "an entry's rules banning ts comments outright, the entry also setting allowSuppressions: false: the allowance kept",
+      lintRules: tsCommentsBannedOutrightForSrcWhileBanned,
       expected: BANNED_IN_TEST_FILES,
     },
   ])('sets the suppression rules for $file under $config', async ({ lintRules, file, expected }) => {

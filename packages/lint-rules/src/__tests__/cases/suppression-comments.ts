@@ -60,3 +60,10 @@ export const total = 1
 export const disableNextLineOverADebugger = `// eslint-disable-next-line no-debugger
 debugger
 `
+
+export const DEBUGGER_LINE = 2
+
+/** What disableNextLineOverADebugger suppresses, unsuppressed and on the same line. */
+export const unsuppressedDebugger = `export const total = 1
+debugger
+`

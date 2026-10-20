@@ -19,6 +19,7 @@ import {
   type FileOverrideLayer,
   layersKeepingRules,
   OFF_SETTING,
+  type OptionsInFiles,
   type RuleLayers,
   type RuleSetting,
   type RuleSettings,
@@ -166,6 +167,7 @@ const WITHOUT_TYPES = 'without-types'
 const TS_EXTENSIONS = 'ts-extensions'
 const TYPED_TS_EXTENSIONS = 'typed-ts-extensions'
 const TEST_FILES = 'test-files'
+const OPTIONS_IN_FILES = 'options-in-files'
 // A plugin holding a do-nothing rule with another rule's meta, for ESLint to check options against.
 const OPTIONS_PROBE_PLUGIN = 'options-probe'
 const OPTIONS_PROBE_RULE = 'rule'
@@ -246,6 +248,7 @@ export function eslintBlocksBeforeTheOffSwitch(source: BlocksSource, catalog: Ca
       ...typedBlocks(typeInformation, settingsPlaced('typed', topLevel.settings), untypedStatementsAtTheTopLevel(splits, topLevel), runsTypedRule),
       ...settingsPlaced('scoped', topLevel.settings).flatMap((scoped) => scopeBlocks(`${BLOCK}/scope`, [], scoped, topLevel, typeInformation)),
       ...blocksOnTsFilesAlone(`${BLOCK}/scope`, [], topLevelOnTsFiles, typeInformation),
+      ...blocksOfOptionsInFiles(`${BLOCK}/${OPTIONS_IN_FILES}`, [], topLevel.settings, typeInformation),
       ...blocksInTestFilesWhileBanned(`${BLOCK}/${TEST_FILES}`, [], topLevelSuppressions, inTestFiles, typeInformation),
       ...entries.flatMap((entry, index) => fileOverrideBlocks(entry, index, source, inTestFiles)),
     ],
@@ -458,6 +461,7 @@ function fileOverrideBlocks({ layer, rules, onTsFiles, untyped }: EntryBlocksSou
     ...entryTypedBlocksIfNotEmpty(`${entry.name}/typed`, layer.files, { rules: settingsPlaced('typed', settings), untyped }, source.typeInformation),
     ...settingsPlaced('scoped', settings).flatMap((scoped) => scopeBlocks(`${entry.name}/scope`, [layer.files], scoped, rules, source.typeInformation)),
     ...blocksOnTsFilesAlone(`${entry.name}/scope`, [layer.files], onTsFiles, source.typeInformation),
+    ...blocksOfOptionsInFiles(`${entry.name}/${OPTIONS_IN_FILES}`, [layer.files], settings, source.typeInformation),
     ...blocksInTestFilesWhileBanned(`${entry.name}/${TEST_FILES}`, [layer.files], layer.suppressions, inTestFiles, source.typeInformation),
   ]
 }
@@ -492,6 +496,27 @@ function settingInTestFilesWhileBannedOf(route: SuppressionRoute): SettingInTest
   if (bannedInTestFiles === undefined) return []
   if (!isEslintRoute(route)) throw new Error(`${route.id}: given a setting for test files while suppressions are banned, which only the ESLint build writes, so the catalog must route it to ESLint`)
   return [{ route, files: bannedInTestFiles.files.map(normalizeGlob), options: bannedInTestFiles.options }]
+}
+
+/** A rule with other options in some of its files restates them there, in a block each after the layer's others, in order, within its own files and ignores. */
+function blocksOfOptionsInFiles(namePrefix: string, layerFiles: readonly Globs[], settings: readonly EslintSetting[], typeInformation: TypeInformation): Linter.Config[] {
+  return settings.flatMap((setting) => blocksOfItsOptionsInFiles(namePrefix, layerFiles, setting, typeInformation))
+}
+
+function blocksOfItsOptionsInFiles(namePrefix: string, layerFiles: readonly Globs[], { route, setting }: EslintSetting, typeInformation: TypeInformation): Linter.Config[] {
+  return optionsInFilesOf(setting).flatMap((inFiles, index) => {
+    const restated: EslintSetting = { route, setting: settingInFiles(setting, inFiles) }
+    return scopeBlocks(`${namePrefix}/${String(index)}`, [...layerFiles, ...inFiles.files], restated, NO_LAYER_RULES, typeInformation)
+  })
+}
+
+function optionsInFilesOf({ optionsInFiles }: RuleSetting): readonly OptionsInFiles[] {
+  return optionsInFiles === undefined ? [] : optionsInFiles
+}
+
+function settingInFiles({ severity, files, ignores }: RuleSetting, inFiles: OptionsInFiles): RuleSetting {
+  const ownIgnores = ignores === null ? [] : ignores
+  return { severity, options: inFiles.options, files, ignores: [...ownIgnores, ...inFiles.ignores] }
 }
 
 /** Beside oxlint, a layer stating both names of a twin pair gives the extension its setting on TS files alone, in a block per rule after the layer's others. */

@@ -10,7 +10,7 @@ export type BySuppressionMode<Setting> = { readonly [mode in SuppressionMode]: S
 export type TestFileOptions = { readonly options: readonly unknown[] }
 
 /** Those options with the globs of the test and type-test files, as the generated routing and the catalog give them. */
-export type TestFileSetting = TestFileOptions & { readonly files: readonly string[] }
+type TestFileSetting = TestFileOptions & { readonly files: readonly string[] }
 
 /** Each mode's setting and, on a rule that differs there, its setting in test and type-test files while suppressions are banned. */
 export type WhenSuppressions<Setting, InTestFiles> = BySuppressionMode<Setting> & { readonly bannedInTestFiles?: InTestFiles }
@@ -21,7 +21,7 @@ export type SettingBySuppressionMode = WhenSuppressions<SuppressionModeSetting, 
 /**
  * What turns a shipped rule on: its ruleset, when a consumer lists it; nothing, for a rule that is on
  * whatever rulesets are listed; or `allowSuppressions`, whatever rulesets are listed. A consumer can
- * turn the first two kinds off by ID in `rules`, and cannot set the third there.
+ * turn the first two kinds off by ID in `rules`.
  * `ruleset?: never` lets `ruleset` be read on every kind; `in` tells the other two apart.
  */
 export type TurnedOnBy =
@@ -33,7 +33,7 @@ export type TurnedOnBy =
 export type SuppressionModeSettingField = string | { readonly options: readonly unknown[] }
 
 /** The settings as the generated routing gives them. */
-export type SettingFieldBySuppressionMode = WhenSuppressions<SuppressionModeSettingField, TestFileSetting | undefined>
+type SettingFieldBySuppressionMode = WhenSuppressions<SuppressionModeSettingField, TestFileSetting | undefined>
 
 /** The three fields as the generated routing gives them; `data/rules.json` gives the first two the same way. */
 export type TurnedOnByFields = {

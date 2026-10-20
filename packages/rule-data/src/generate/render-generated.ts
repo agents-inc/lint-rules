@@ -16,7 +16,7 @@ export function renderRuleIds(routes: readonly RouteTurnedOnBy[]): string {
   return renderTypeFile([renderUnionType('RuleId', routes.map(({ id }) => id))])
 }
 
-/** `rule-ids.ts`: every RuleId, then the ones `allowSuppressions` decides, which a consumer cannot set in `rules`. */
+/** `rule-ids.ts`: every RuleId, then the ones `allowSuppressions` decides. */
 export function renderRuleIdsFile(routes: readonly RouteTurnedOnBy[]): string {
   const suppressionRuleIds = routes.filter(isDecidedBySuppressions).map(({ id }) => id)
   return `${renderRuleIds(routes)}\n${renderUnionType('SuppressionRuleId', suppressionRuleIds)}\n`

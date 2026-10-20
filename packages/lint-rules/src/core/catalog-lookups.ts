@@ -9,7 +9,7 @@ export function rulesetNamed(name: string, catalog: Catalog): RulesetDefinition 
   return catalog.rulesets.find((ruleset) => ruleset.name === name)
 }
 
-/** No ruleset turns it on, and `rules` cannot set it. */
+/** No ruleset turns it on: `allowSuppressions` sets it. */
 export function isSuppressionRoute(route: RuleRoute): route is SuppressionRoute {
   return route.shipped !== null && 'whenSuppressions' in route.shipped
 }
@@ -19,7 +19,7 @@ export function isEslintRoute(route: RuleRoute): boolean {
 }
 
 /** Aliases, other names its plugin binds its module to, and oxlint spellings that are ESLint rule IDs. A twin is not one: in ESLint it is another rule. */
-export function otherEslintNamesOf(route: RuleRoute, catalog: Catalog): string[] {
+function otherEslintNamesOf(route: RuleRoute, catalog: Catalog): string[] {
   const { id, eslintAliases, sameModuleAs = [], oxlintSpellings } = route
   const prefix = pluginPrefixOf(id)
   const twins = new Set(twinsOf(route, catalog))
