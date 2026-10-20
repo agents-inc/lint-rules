@@ -28,7 +28,7 @@ export const TEAM_OXLINT_CONFIG_SETTING_NO_RULE: TeamOxlintConfigPath = { oxlint
 export const NO_TEAM_ESLINT_CONFIG: TeamEslintConfigPath = { eslintConfig: null }
 
 /** A module exporting no block, calling no merge of ours. */
-export const TEAM_ESLINT_CONFIG_SETTING_NO_RULE_FILE = 'team.eslint.config.mjs'
+const TEAM_ESLINT_CONFIG_SETTING_NO_RULE_FILE = 'team.eslint.config.mjs'
 
 /** For a project whose ESLint config is not under test. */
 export const teamEslintConfigSettingNoRuleFiles: Readonly<Record<string, string>> = { [TEAM_ESLINT_CONFIG_SETTING_NO_RULE_FILE]: 'export default []\n' }

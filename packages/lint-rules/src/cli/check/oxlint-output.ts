@@ -17,7 +17,7 @@ export type OxlintDiagnostic = {
 
 export type OxlintReport = { readonly diagnostics: readonly OxlintDiagnostic[] }
 
-export type OxlintOutput = { readonly stdout: string; readonly stderr: string }
+type OxlintOutput = { readonly stdout: string; readonly stderr: string }
 
 type RawOxlintDiagnostic = {
   readonly code?: string

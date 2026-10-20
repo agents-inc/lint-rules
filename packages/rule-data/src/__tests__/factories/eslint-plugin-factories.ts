@@ -8,7 +8,7 @@ export function buildRulesPlugin(ruleNames: readonly string[]): ESLint.Plugin {
 }
 
 /** A rule module that reports nothing, of its own: each call gives another object. */
-export function buildRuleModule(): Rule.RuleModule {
+function buildRuleModule(): Rule.RuleModule {
   return { create: () => ({}) }
 }
 

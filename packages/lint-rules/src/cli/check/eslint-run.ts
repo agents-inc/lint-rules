@@ -18,7 +18,7 @@ export type EslintEngine = {
 }
 
 /** `inTheConfigFolder` runs from the config's folder, `elsewhere` from the git top level. */
-export type EslintEnginesByFolder = { readonly inTheConfigFolder: EslintEngine; readonly elsewhere: EslintEngine }
+type EslintEnginesByFolder = { readonly inTheConfigFolder: EslintEngine; readonly elsewhere: EslintEngine }
 
 // ESLint reads comments only where suppressions are allowed, so it reports none elsewhere.
 const UNUSED_SUPPRESSIONS_REPORTED: Linter.Config = { linterOptions: { reportUnusedDisableDirectives: 'error' } }

@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint'
 import { isRecord } from '../../core/is-record.ts'
 import type { OxlintDiagnostic, OxlintSpan } from './oxlint-output.ts'
 
-export type UnusedSuppression = { readonly line: number; readonly ruleName: string }
+type UnusedSuppression = { readonly line: number; readonly ruleName: string }
 
 type SuppressionForm = 'eslint' | 'oxlint'
 

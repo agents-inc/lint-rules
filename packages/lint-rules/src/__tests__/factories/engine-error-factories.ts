@@ -7,7 +7,7 @@ export function buildEslintError(ruleId: string, line: number): ErrorAt {
 }
 
 /** An error oxlint reports, under its diagnostic code: `typescript(ban-ts-comment)`. */
-export function buildOxlintError(code: string, line: number): ErrorAt {
+function buildOxlintError(code: string, line: number): ErrorAt {
   return { engine: 'oxlint', rule: code, line }
 }
 

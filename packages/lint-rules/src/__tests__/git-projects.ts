@@ -4,7 +4,7 @@ import { devNull } from 'node:os'
 import { dirname, join } from 'node:path'
 import { CONSUMER_INSTALL, type LinkedPackage, type ProjectFiles, type TempProjects, writeFileCreatingItsDir } from './temp-projects.ts'
 
-export type RepoState = 'committed' | 'no commits' | 'not a repo'
+type RepoState = 'committed' | 'no commits' | 'not a repo'
 
 export type GitProjectSpec = {
   /** The first commit, where the repo has one. */
@@ -83,7 +83,7 @@ export function createGitProject(tempProjects: TempProjects, { files, repo, link
 }
 
 /** Runs git in the folder: its stdout, or throws with what it printed. */
-export function gitIn(dir: string, args: readonly string[]): string {
+function gitIn(dir: string, args: readonly string[]): string {
   const { status, stdout, stderr } = spawnSync('git', args, { cwd: dir, env: testEnv(NO_OPTIONAL_LOCKS), encoding: 'utf8' })
   if (status !== 0) throw new Error(`git ${args.join(' ')} failed in ${dir} (exit ${String(status)}): ${stderr}`)
   return stdout

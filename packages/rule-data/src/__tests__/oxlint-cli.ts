@@ -16,7 +16,7 @@ export type PrintedOxlintConfig =
   | { readonly status: 'refused'; readonly output: string }
 
 /** Where in its file a diagnostic points: the line its span starts on. */
-export type OxlintJsonLabel = { readonly span: { readonly line: number } }
+type OxlintJsonLabel = { readonly span: { readonly line: number } }
 
 /** A diagnostic in oxlint's JSON report: a rule's finding links to the rule's page, a parse error links nowhere. */
 export type OxlintJsonDiagnostic = { readonly filename: string; readonly url?: string; readonly labels: readonly OxlintJsonLabel[] }

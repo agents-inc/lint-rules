@@ -16,7 +16,7 @@ export type CheckFinding = {
 /** A file, as printed, or oxlint's rules, and why check could not lint it with them. */
 export type NotCheckedEntry = { readonly subject: string; readonly reason: string }
 
-export type CheckReportInput = {
+type CheckReportInput = {
   readonly findings: readonly CheckFinding[]
   readonly changedFileCount: number
   readonly autofixedFiles: readonly string[]
@@ -65,7 +65,7 @@ export function autofixedStdout(autofixedFiles: readonly string[]): string {
 }
 
 /** `src/cart.ts:30 no-console (warning) — <message>` */
-export function findingLine({ file, line, label, severity, message }: CheckFinding): string {
+function findingLine({ file, line, label, severity, message }: CheckFinding): string {
   return `${file}:${String(line)} ${label}${severity === 'warning' ? WARNING_MARK : ''}${MESSAGE_SEPARATOR}${message}`
 }
 

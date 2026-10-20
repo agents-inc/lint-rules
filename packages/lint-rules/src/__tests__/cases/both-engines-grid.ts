@@ -11,7 +11,7 @@ export type OurFields = Pick<LintRules, 'rules' | 'fileOverrides' | 'ignores'>
 
 type OurRules = NonNullable<LintRules['rules']>
 
-export type GridRuleId = keyof typeof OUR_GRID_RULES
+type GridRuleId = keyof typeof OUR_GRID_RULES
 
 /** Every name either engine reports it under, the team's name for it, and the engine the team runs it in. */
 export type GridRule = RuleByItsNames & { readonly rule: GridRuleId; readonly teamsName: string; readonly teamsEngine: 'eslint' | 'oxlint' }

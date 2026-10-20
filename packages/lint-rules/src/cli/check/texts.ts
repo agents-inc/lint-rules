@@ -21,7 +21,7 @@ export function notCheckedLine(subject: string, reason: string): string {
 }
 
 /** `1 error`, `2 errors`. */
-export function countOf(count: number, singular: string, plural: string): string {
+function countOf(count: number, singular: string, plural: string): string {
   return `${String(count)} ${count === 1 ? singular : plural}`
 }
 
@@ -41,7 +41,7 @@ export function cutLine(findingCount: number, fileCount: number): string {
 /** `partial`: something was cut or not checked. */
 export type ListPrinted = 'complete' | 'partial'
 
-export type SummaryCounts = {
+type SummaryCounts = {
   readonly errors: number
   readonly warnings: number
   readonly filesWithFindings: number

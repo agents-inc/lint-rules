@@ -72,7 +72,7 @@ export function isIgnoredByOxlintConfig({ ignorePatterns = [] }: OxlintConfig, f
 }
 
 /** A glob with no slash matches that file name in any folder; `./` starts at the config's folder. */
-export function oxlintGlobMatches(glob: string, file: string): boolean {
+function oxlintGlobMatches(glob: string, file: string): boolean {
   const fromTheConfigFolder = glob.startsWith(FROM_THE_CONFIG_FOLDER) ? glob.slice(FROM_THE_CONFIG_FOLDER.length) : glob
   return matchesGlob(file, fromTheConfigFolder.includes(PATH_SEPARATOR) ? fromTheConfigFolder : `${ANY_FOLDERS}${fromTheConfigFolder}`)
 }

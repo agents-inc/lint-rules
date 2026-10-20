@@ -55,10 +55,6 @@ export function buildRuntimeRuleset(name: string, env: string): RulesetDefinitio
   return { name, list: 'runtimes', domain: null, env, optIn: NOT_OPT_IN, sortsCode: SORTS_NO_CODE }
 }
 
-export function buildLanguageRuleset(name: string): RulesetDefinition {
-  return { name, list: 'languages', domain: null, env: null, optIn: NOT_OPT_IN, sortsCode: SORTS_NO_CODE }
-}
-
 /** On where suppressions are banned, the default, and off where allowed, as `house/no-suppressions` ships. */
 export function buildSuppressionModeShippedRule(fields: ShippedRuleFields = {}): ShippedRule {
   return buildShippedRuleDecidedBySuppressions({ banned: { options: [] }, allowed: 'off' }, fields)

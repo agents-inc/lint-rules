@@ -16,7 +16,7 @@ export function canonicalIdOfOxlintName(oxlintName: string): string {
 }
 
 /** An entry that turns a rule on: the package always writes one as `[severity, ...options]`. */
-export function isOn(entry: unknown): entry is readonly [unknown, ...unknown[]] {
+function isOn(entry: unknown): entry is readonly [unknown, ...unknown[]] {
   return Array.isArray(entry) && entry[0] !== 'off' && entry[0] !== 0
 }
 

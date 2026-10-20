@@ -8,7 +8,7 @@ import { severityOfCalculatedEntry } from './calculated-rule-severity.ts'
 import { projectPathOf } from './project-paths.ts'
 
 /** One message ESLint reports: `ruleId` null for ESLint's own, a parse error or a directive warning. */
-export type ReportedMessage = { readonly ruleId: string | null; readonly message: string }
+type ReportedMessage = { readonly ruleId: string | null; readonly message: string }
 
 /** ESLint's calculated rule entries for a file, by rule ID: none where no block sets a rule. */
 export type CalculatedRules = Readonly<Record<string, unknown>>

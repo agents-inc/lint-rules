@@ -65,7 +65,7 @@ export type BothEnginesRuns = {
   readonly oxlintRefusals: readonly string[]
 }
 
-export type BuildName = 'agent' | 'mergedIntoEmptyTeamConfigs' | 'mergedIntoTheTeamsConfigs' | 'teamAlone'
+type BuildName = 'agent' | 'mergedIntoEmptyTeamConfigs' | 'mergedIntoTheTeamsConfigs' | 'teamAlone'
 
 type BuildConfigs = { readonly name: string; readonly eslint: string | Linter.Config[]; readonly oxlintConfigFile: string }
 

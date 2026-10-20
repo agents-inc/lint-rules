@@ -39,7 +39,7 @@ export const FOLDER_LAYOUT_JS_FILES = [
   'src/kept.js',
 ] as const
 
-export const FOLDER_LAYOUT_TS_FILES = ['src/b.ts', 'lib/b.ts'] as const
+const FOLDER_LAYOUT_TS_FILES = ['src/b.ts', 'lib/b.ts'] as const
 
 /** Sorted as oxlint's findings are. */
 export const FOLDER_LAYOUT_FILES: readonly string[] = [...FOLDER_LAYOUT_JS_FILES, ...FOLDER_LAYOUT_TS_FILES].toSorted()

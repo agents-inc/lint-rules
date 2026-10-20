@@ -141,7 +141,7 @@ export const OWED_BY_ESLINT = {
 }
 
 /** Every oxlint config of ours opens with these: Svelte, Vue and Astro globals in their own files. */
-export const FRAMEWORK_GLOBALS_OXLINT_OVERRIDES: readonly OxlintOverride[] = [
+const FRAMEWORK_GLOBALS_OXLINT_OVERRIDES: readonly OxlintOverride[] = [
   { files: ['**/*.svelte', '**/*.svelte.js', '**/*.svelte.ts', '**/*.svelte.*.js', '**/*.svelte.*.ts'], env: { svelte: true } },
   { files: ['**/*.svelte'], globals: { $$props: 'readonly', $$restProps: 'readonly', $$slots: 'readonly' } },
   { files: ['**/*.vue'], env: { vue: true } },
@@ -152,7 +152,7 @@ export const FRAMEWORK_GLOBALS_OXLINT_OVERRIDES: readonly OxlintOverride[] = [
 export const SVELTE_RUNES_ESLINT_BLOCK_NAME = 'agents-inc/svelte-runes'
 
 /** Vitest's and Jest's globals, read-only, in test and type-test files of every JS and TS extension. */
-export const TEST_RUNNER_GLOBALS_OXLINT_OVERRIDE: OxlintOverride = {
+const TEST_RUNNER_GLOBALS_OXLINT_OVERRIDE: OxlintOverride = {
   files: [
     '**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
     '**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',

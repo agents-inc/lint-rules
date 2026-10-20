@@ -26,7 +26,7 @@ export const OTHER_FRAMEWORK_ENVS: readonly FrameworkEnv[] = [
   { files: ['**/*.astro'], env: 'astro' },
 ]
 
-export type TestRunnerEnvs = { readonly files: readonly string[]; readonly envs: readonly string[] }
+type TestRunnerEnvs = { readonly files: readonly string[]; readonly envs: readonly string[] }
 
 const BRACE_SEPARATOR = ','
 const TEST_FILE_EXTENSIONS = `{${[...JS_AND_TS_EXTENSIONS].join(BRACE_SEPARATOR)}}`

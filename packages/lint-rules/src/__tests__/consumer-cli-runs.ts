@@ -91,7 +91,7 @@ export function bothEnginesFindingsOf(runs: ConsumerCliRuns): EngineFinding[] {
 }
 
 /** Under oxlint's code for the rule (`eslint(no-debugger)`): throws where it refused the config. */
-export function oxlintEngineFindingsOf({ projectDir, oxlint }: ConsumerCliRuns): EngineFinding[] {
+function oxlintEngineFindingsOf({ projectDir, oxlint }: ConsumerCliRuns): EngineFinding[] {
   if (oxlint.outcome === 'refused') throw new Error(`oxlint could not run on ${projectDir}: ${oxlint.output}`)
   return oxlintEngineFindingsIn(oxlint.run.report)
 }

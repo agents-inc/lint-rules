@@ -8,7 +8,7 @@ import { rawOxlintOutput, rawOxlintOutputFindingItsConfigs } from './oxlint-raw-
 import { projectPathOf } from './project-paths.ts'
 
 /** One ESLint message as `eslint -f json` prints it: `ruleId` null for a parse error or ESLint's own. */
-export type EslintCliMessage = {
+type EslintCliMessage = {
   readonly ruleId: string | null
   readonly fatal?: boolean | undefined
   readonly message: string

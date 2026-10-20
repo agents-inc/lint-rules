@@ -32,7 +32,7 @@ export type CliOptions = {
   readonly node?: string
 }
 
-export type StartedCli = {
+type StartedCli = {
   readonly pid: number
   readonly send: (signal: NodeJS.Signals) => void
   readonly ended: Promise<CliRun>
@@ -119,7 +119,7 @@ export function setUpCheckAfterTheAgent(committed: ProjectFiles, agentEdits: (pr
   })
 }
 
-export function startCli(cwd: string, args: readonly string[], { env = {}, node = process.execPath }: CliOptions = {}): StartedCli {
+function startCli(cwd: string, args: readonly string[], { env = {}, node = process.execPath }: CliOptions = {}): StartedCli {
   const child = spawn(node, [CLI_FILE, ...args], { cwd, env: testEnv(env), stdio: ['ignore', 'pipe', 'pipe'] })
   const { pid } = child
   if (pid === undefined) throw new Error(`${node} could not be started`)
@@ -129,7 +129,7 @@ export function startCli(cwd: string, args: readonly string[], { env = {}, node 
   return { pid, send: (signal) => child.kill(signal), ended }
 }
 
-export function startCheck(cwd: string, options: CliOptions = {}): StartedCli {
+function startCheck(cwd: string, options: CliOptions = {}): StartedCli {
   return startCli(cwd, ['check'], options)
 }
 

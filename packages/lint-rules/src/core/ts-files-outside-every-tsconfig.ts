@@ -10,7 +10,7 @@ type ReleaseLine = { readonly major: number; readonly minor: number }
 type ConfigFileRead = { readonly ownFiles: ReadonlySet<string>; readonly loadedReferences: readonly string[] }
 
 /** TS files relative to tsconfigRootDir; config files absolute. */
-export type TsconfigWalk = { readonly tsFilesOutsideEveryTsconfig: readonly string[]; readonly tsconfigFiles: readonly string[] }
+type TsconfigWalk = { readonly tsFilesOutsideEveryTsconfig: readonly string[]; readonly tsconfigFiles: readonly string[] }
 
 type Reads = {
   readonly configFiles: Map<string, ConfigFileRead>

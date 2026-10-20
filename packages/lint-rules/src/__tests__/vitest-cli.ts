@@ -4,7 +4,7 @@ import { createRequire } from 'node:module'
 import { basename, dirname, join } from 'node:path'
 
 /** A test by its title, and how it ended: `passed`, `failed` or `skipped`. */
-export type TestOutcome = { readonly title: string; readonly status: string }
+type TestOutcome = { readonly title: string; readonly status: string }
 
 /** A file that fails while collected runs no test; its error is the message. */
 export type TestFileOutcome = {

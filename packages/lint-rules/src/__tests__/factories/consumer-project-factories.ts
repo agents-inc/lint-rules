@@ -46,7 +46,7 @@ export const { eslint, oxlint } = defineLintRules({ tsconfigRootDir: import.meta
 }
 
 /** Unless the team's config names others. */
-export const TEAM_JS_AND_TS_EXTENSIONS: readonly string[] = ['js', 'ts']
+const TEAM_JS_AND_TS_EXTENSIONS: readonly string[] = ['js', 'ts']
 
 /**
 * The team's .vue, .svelte and .astro files go through a stand-in parser that blanks the fence lines;

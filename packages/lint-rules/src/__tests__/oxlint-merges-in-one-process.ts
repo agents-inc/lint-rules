@@ -7,7 +7,7 @@ import { runNodeScript } from './node-process.ts'
 import { setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
 import { BUILT_DIST_DIR, INSTALLED_OXLINT, type LinkedPackage, type ProjectFiles, THIS_PACKAGE } from './temp-projects.ts'
 
-export type OxlintMergesOutcome = { readonly merged: readonly OxlintConfig[] } | { readonly refused: string }
+type OxlintMergesOutcome = { readonly merged: readonly OxlintConfig[] } | { readonly refused: string }
 
 /** Each merges our oxlint part into `theirs`, naming `eslintConfig`. */
 export type OxlintMerges = { readonly theirs: OxlintConfig; readonly eslintConfig: string; readonly times: number }

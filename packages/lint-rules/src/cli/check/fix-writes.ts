@@ -3,7 +3,7 @@ import { hasErrorCode } from '../caught-errors.ts'
 
 export type InPlaceFixer = (paths: readonly string[], signal: AbortSignal) => Promise<void>
 
-export type InPlaceFixRun = { readonly outcome: 'completed' } | { readonly outcome: 'stopped'; readonly reason: unknown }
+type InPlaceFixRun = { readonly outcome: 'completed' } | { readonly outcome: 'stopped'; readonly reason: unknown }
 
 export type Snapshots = ReadonlyMap<string, string>
 

@@ -310,12 +310,12 @@ export function vueComponentScripting(lines: readonly string[]): string[] {
 }
 
 /** A Svelte component whose script holds the lines given, from line 2. */
-export function svelteComponentScripting(lines: readonly string[]): string[] {
+function svelteComponentScripting(lines: readonly string[]): string[] {
   return ['<script lang="ts">', ...lines, '</script>', '<p>hi</p>']
 }
 
 /** An Astro component whose frontmatter holds the lines given, from line 2. */
-export function astroComponentScripting(lines: readonly string[]): string[] {
+function astroComponentScripting(lines: readonly string[]): string[] {
   return ['---', ...lines, '---', '<p>hi</p>']
 }
 

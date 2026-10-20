@@ -35,7 +35,7 @@ export function ourEslintPartOf(layers: RuleLayers): OurEslintPart {
 }
 
 /** The top-level rules and env as one override for every file, then its own, as the agent build lays them out. */
-export function ourOxlintPartInLine(layers: RuleLayers, catalog: Catalog): OxlintOverride[] {
+function ourOxlintPartInLine(layers: RuleLayers, catalog: Catalog): OxlintOverride[] {
   return [{ files: [EVERY_FILE_AT_ANY_DEPTH], env: oxlintEnvOf(layers), rules: topLevelRuleMap(layers, catalog) }, ...oxlintOverridesOf(layers, catalog)]
 }
 

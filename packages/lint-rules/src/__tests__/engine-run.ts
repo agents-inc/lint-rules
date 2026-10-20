@@ -14,7 +14,7 @@ import { setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
 import { NO_TEAM_ESLINT_CONFIG, type TeamEslintConfigPath } from './team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, type LinkedPackage, type ProjectFiles } from './temp-projects.ts'
 
-export type ProcessOutput = { readonly exitCode: number | null; readonly stdout: string }
+type ProcessOutput = { readonly exitCode: number | null; readonly stdout: string }
 
 /** One ESLint message: `ruleId` null for ESLint's own, a parse error or an inline-config warning. */
 export type EslintMessageAt = { readonly ruleId: string | null; readonly severity: number; readonly line: number }
@@ -22,7 +22,7 @@ export type EslintMessageAt = { readonly ruleId: string | null; readonly severit
 /** At error severity, under the engine's own name for the rule. */
 export type ErrorAt = { readonly engine: 'eslint' | 'oxlint'; readonly rule: string | null; readonly line: number | null }
 
-export type OxlintReport = { readonly diagnostics: readonly OxlintCliDiagnostic[]; readonly number_of_rules: number }
+type OxlintReport = { readonly diagnostics: readonly OxlintCliDiagnostic[]; readonly number_of_rules: number }
 
 export type TeamConfigs = {
   readonly teamEslintConfig: Parameters<typeof mergeEslintConfig>[0]

@@ -27,7 +27,7 @@ export type LayerStatements = { readonly settings: RuleSettings; readonly stated
 
 export type TwinPair = { readonly core: RuleRoute; readonly extension: RuleRoute }
 
-export type DecidingPart = { readonly decidesTheExtension: boolean; readonly decidesTheCore: boolean }
+type DecidingPart = { readonly decidesTheExtension: boolean; readonly decidesTheCore: boolean }
 
 // Off in the TS files alone of the layer stating it, which oxlint writes as an override of its own.
 const OFF_ON_TS_FILES: RuleSetting = { ...OFF_SETTING, files: [TS_FILES] }
@@ -63,7 +63,7 @@ export function whatTheDecidingPartStates({ core, extension }: TwinPair, layer: 
 }
 
 /** None for an ESLint-routed rule. */
-export function extensionsOfACoreRuleRoutedToOxlint(route: RuleRoute, catalog: Catalog): RuleRoute[] {
+function extensionsOfACoreRuleRoutedToOxlint(route: RuleRoute, catalog: Catalog): RuleRoute[] {
   if (!isOxlintRoute(route)) return []
   return currentExtensionsOf(route, catalog).map((id) => routeOf(id, catalog))
 }

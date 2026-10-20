@@ -18,7 +18,7 @@ export type FixStepResult = {
   readonly notChecked: readonly NotChecked[]
 }
 
-export type OxlintFixRun = { readonly config: TempOxlintConfig; readonly fixRunConfig: OxlintConfig }
+type OxlintFixRun = { readonly config: TempOxlintConfig; readonly fixRunConfig: OxlintConfig }
 
 type OxlintFixed = { readonly file: CheckedFile; readonly original: string; readonly fixed: string | null }
 
@@ -36,7 +36,7 @@ type EslintCall = { readonly result: ESLint.LintResult } | { readonly notChecked
 /** Each file a kept fix rewrote: check names them however the run ends. */
 export type RewrittenFiles = { readonly record: (path: string) => void }
 
-export type FixStepRun = { readonly signal: AbortSignal; readonly rewritten: RewrittenFiles }
+type FixStepRun = { readonly signal: AbortSignal; readonly rewritten: RewrittenFiles }
 
 export type FixStepEngines = {
   readonly oxlint: InPlaceFixer

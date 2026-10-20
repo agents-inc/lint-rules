@@ -1,5 +1,6 @@
-export { catalog, isOxlintRoute, routeOf, ruleIdsOxlintRunsTypeAware, shippedRuleOf } from './catalog.ts'
+export { catalog, isOxlintRoute, routeOf, ruleIdsOxlintRunsTypeAware } from './catalog.ts'
 export type {
+  AllowanceLeftTo,
   Catalog,
   Engine,
   OxlintCategory,
@@ -18,9 +19,4 @@ export type {
   RuntimeRulesetName,
 } from './generated/ruleset-names.ts'
 export { pluginPrefixOf } from './rule-id-parts.ts'
-export type {
-  SettingBySuppressionMode,
-  SuppressionMode,
-  SuppressionModeSetting,
-  TurnedOnBy,
-} from './turned-on-by.ts'
+export type { SuppressionMode } from './turned-on-by.ts'

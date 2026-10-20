@@ -12,9 +12,9 @@ import { buildPackageJson, lintRulesPackageVersion, packageJsonText } from './pa
 export type InitRulesetDefinition = Parameters<typeof initConfigText>[0][number]
 
 /** The opt-in ones its comment names, and those of them that sort code, which the formatter warning names. */
-export type InitList = { readonly listed: readonly string[]; readonly optIn: readonly string[]; readonly sortsCode?: readonly string[] }
+type InitList = { readonly listed: readonly string[]; readonly optIn: readonly string[]; readonly sortsCode?: readonly string[] }
 
-export type InitDomainList = InitList & { readonly domain: string }
+type InitDomainList = InitList & { readonly domain: string }
 
 /** In the order the file gives them. */
 export type InitLists = {
@@ -27,9 +27,9 @@ export type InitLists = {
 export type JsonLayout = { readonly indent: string; readonly eol: '\n' | '\r\n'; readonly finalNewline: boolean }
 
 /** A value kept as it is written, such as an array on one line, which JSON.stringify would lay out otherwise. */
-export type WrittenAsIs = { readonly writtenAsIs: string }
+type WrittenAsIs = { readonly writtenAsIs: string }
 
-export type PackageJsonValue = string | boolean | WrittenAsIs | PackageJsonObject
+type PackageJsonValue = string | boolean | WrittenAsIs | PackageJsonObject
 
 /** A package.json's fields, in their order in the file. */
 export type PackageJsonObject = { readonly [key: string]: PackageJsonValue }
@@ -48,7 +48,7 @@ export type InitWriteOrder = 'package.json first' | 'config first'
 export type InitFilesState = { readonly entries: readonly string[]; readonly packageJson: string }
 
 /** The gate's list, generated folders and common generated files, in the `**\/` form. */
-export const INIT_IGNORES = [
+const INIT_IGNORES = [
   '**/build/**',
   '**/coverage/**',
   '**/dist/**',
@@ -63,7 +63,7 @@ export const INIT_IGNORES = [
 ]
 
 /** Opt-in, so init names them in quality's comment, with the formatter warning. */
-export const SORTING_RULESETS: readonly string[] = ['import-order', 'ordering']
+const SORTING_RULESETS: readonly string[] = ['import-order', 'ordering']
 /** init names each in its own list's comment. */
 const OPT_IN_RULESETS: readonly string[] = [...SORTING_RULESETS, 'tailwind', 'browser-targets']
 

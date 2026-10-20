@@ -11,7 +11,7 @@ import { oxlintPartAlone } from './oxlint-part-alone.ts'
 import { ruleIdsTheTeamsOxlintConfigSets } from './oxlint-rules-the-team-sets.ts'
 
 /** Whose findings of a code the merged oxlint config owes in a file: the team config alone's, our oxlint part alone's, or none. */
-export type FindingOwner = 'the team' | 'ours' | 'nobody'
+type FindingOwner = 'the team' | 'ours' | 'nobody'
 
 /** By the file's path relative to the config. */
 export type OwnerOfFindings = (file: string, code: string) => FindingOwner
