@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/knip/schema-jsonc.json",
+  // Exports only. `files` too: a new file whose every export nothing imports is reported only as an unused file.
+  "include": ["files", "exports", "types", "nsExports", "nsTypes", "enumMembers", "namespaceMembers", "duplicates"],
+  // A stale exemption below (an entry or ignore matching nothing, or a redundant entry) fails the check.
+  "treatConfigHintsAsErrors": true,
+  "workspaces": {
+    ".": {
+      "entry": [
+        // oxlint loads it by name; knip's oxlint plugin knows only oxlint.config.ts.
+        "oxlint.config.mts",
+        // `stryker run <file>` loads them by path; knip's Stryker plugin knows only stryker.config.*.
+        "stryker.*.config.mjs",
+        // Run as `node scripts/…`, from no package.json script.
+        "scripts/*.mts",
+      ],
+      // Written by the agents-inc CLI, not this repo's source.
+      "ignore": [".agents-inc/**"],
+    },
+    "packages/lint-rules": {
+      // Type tests: tsc checks them, vitest never runs them.
+      "entry": ["src/**/*.test-d.ts"],
+      // The Stryker configs hand vitest the mutation configs, whose setupFiles live in mutation-testing/.
+      "vitest": { "config": ["vitest.config.ts", "vitest.mutation.config.ts", "vitest.mutation.in-process.config.ts"] },
+      // Linted on purpose and read by path, never imported.
+      "ignore": ["test-fixtures/**"],
+      // includeEntryExports stays off: the entries tsdown builds are the published API, which consumers import.
+    },
+    "packages/rule-data": {
+      // Private and inlined by the build, so only this repo imports its entries.
+      "includeEntryExports": true,
+      // stryker.rule-data.config.mjs hands vitest the mutation config.
+      "vitest": { "config": ["vitest.config.ts", "vitest.mutation.config.ts"] },
+    },
+    "packages/eslint-plugin-house": {
+      // Private and inlined by the build, so only this repo imports its entries.
+      "includeEntryExports": true,
+      // stryker.eslint-plugin-house.config.mjs hands vitest the mutation config.
+      "vitest": { "config": ["vitest.config.ts", "vitest.mutation.config.ts"] },
+    },
+  },
+}

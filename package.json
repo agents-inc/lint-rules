@@ -13,6 +13,8 @@
     "build": "turbo build",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
+    "//unused-exports": "Fails on an export or file nothing imports; every typecheck runs it first (turbo.json). What counts, and each exemption with its reason: knip.jsonc.",
+    "unused-exports": "knip",
     "mutation": "stryker run"
   },
   "devDependencies": {
@@ -21,6 +23,7 @@
     "@stryker-mutator/typescript-checker": "10.0.0",
     "@stryker-mutator/vitest-runner": "10.0.0",
     "eslint": "10.12.0",
+    "knip": "6.32.0",
     "oxlint": "1.87.0",
     "turbo": "2.11.7"
   },
