@@ -433,3 +433,4 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   the prefixed config, for the rest (`eslintEngineByFolder`). Run from the git top level, ESLint read what it resolves
   from its `cwd` (import-x's `devDependencies` globs) from there, which changed what the files in the config's folder
   drew; the spec keeps their output as it was (lane B's call, fix round 2).
+- 2026-10-19 owner: an invalid config is refused by TypeScript's types, not by a runtime check of ours ("if they use mjs it's on them"), as far as the types can express it. First cases: `files: []` and a `files` entry starting with `/`. Follow-up: the runtime checks on the config that a type can replace.
