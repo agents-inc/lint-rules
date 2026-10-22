@@ -1,5 +1,6 @@
-// rule-data's tests run in-process and fast, so static mutants are tested here too (`ignoreStatic`
-// off) and need no second pass. Generated files are compared on disk by a test, so not mutated.
+// rule-data's tests are fast, so static mutants are tested here too (`ignoreStatic` off) and need no
+// second pass. The bridge its vitest config loads hands the mutant to the Node process
+// read-installed.integration.test.ts spawns. Generated files are compared on disk by a test, so not mutated.
 import { readFileSync } from 'node:fs'
 
 const lintRulesConfig = JSON.parse(readFileSync(new URL('./stryker.config.json', import.meta.url), 'utf8'))

@@ -47,20 +47,21 @@ What each result means:
 
 lint-rules' integration tests run the real ESLint and oxlint CLIs in child processes, which load the
 built `dist/`. Stryker rebuilds `dist/` from the mutated source in its copy (`buildCommand`), but it
-tells only the test worker which mutant is on, and reads coverage only from that worker.
+tells only the test worker which mutant is on, and reads coverage only from that worker. rule-data's
+`read-installed.integration.test.ts` runs rule-data's source in a Node process of its own.
 
-`packages/lint-rules/vitest.mutation.config.ts`, which only Stryker loads, adds
-`mutation-testing/child-process-bridge.ts` to the package's vitest config. In a mutant run, the bridge
+`packages/lint-rules/vitest.mutation.config.ts` and `packages/rule-data/vitest.mutation.config.ts`,
+which only Stryker loads, add `packages/lint-rules/mutation-testing/child-process-bridge.ts` to their
+package's vitest config. In a mutant run, the bridge
 hands the active mutant to every child through the `__STRYKER_ACTIVE_MUTANT__` variable, which the
 mutated code reads. In the initial run, it loads `mutation-testing/child-coverage-hook.mjs` into every
 child (`NODE_OPTIONS`), so the mutants a child covers are credited to the test that spawned it, and
 the mutants a file's `beforeAll` and `afterAll` hooks cover go to every test of that file.
 
-The bridge also gives the copy an empty `.git` folder. oxlint honours `.gitignore` up to the nearest
-folder holding `.git`, so without one it reads the repo's own `.gitignore`, which ignores
-`.stryker-tmp/`, finds no file to lint in the copy, and `oxlint --rules` exits 1 (measured).
-`packages/rule-data/vitest.mutation.config.ts` does the same for rule-data's tests, which run oxlint
-too.
+The bridge also gives the copy an empty `.git` folder, as rule-data's mutation config does itself when
+it loads. oxlint honours `.gitignore` up to the nearest folder holding `.git`, so without one it reads
+the repo's own `.gitignore`, which ignores `.stryker-tmp/`, finds no file to lint in the copy, and
+`oxlint --rules` exits 1 (measured).
 
 The bridge relies on Stryker's internals: the `__stryker__` global and the order of its hooks. A
 Stryker upgrade can break it without an error. After one, run

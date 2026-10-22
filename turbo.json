@@ -12,6 +12,10 @@
     "//#unused-exports": {
       "cache": false
     },
+    "//#typecheck-scripts": {
+      "dependsOn": ["//#unused-exports"],
+      "cache": false
+    },
     "test": {
       "dependsOn": ["^build"],
       "outputs": []
