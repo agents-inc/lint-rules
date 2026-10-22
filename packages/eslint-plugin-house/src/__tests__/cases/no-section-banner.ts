@@ -162,3 +162,149 @@ export const titledBannerWithShortLeadingRun = `export const x = 1
 // -- Module shape ------------------------------------------------------------
 export const y = 2
 `
+
+export const blockBannerJoiningAKeywordToAName = `export const kind = typeof/*----*/globalThis
+`
+
+export const blockBannerAfterASpacedKeyword = `export const kind = typeof /*----*/globalThis
+`
+
+export const keywordSpacedFromAName = `export const kind = typeof globalThis
+`
+
+// Joined, the two operators read as one `++`, which does not parse here.
+export const blockBannerJoiningTwoPluses = `export const sum = 1 +/*----*/+'2'
+`
+
+export const plusSpacedFromAUnaryPlus = `export const sum = 1 + +'2'
+`
+
+export const blockBannerInsideEmptyParentheses = `export const empty = String(/*----*/)
+`
+
+export const emptyCall = `export const empty = String()
+`
+
+export const blockBannerJoiningTwoMinuses = `export const difference = 1 -/*----*/-1
+`
+
+export const minusSpacedFromAUnaryMinus = `export const difference = 1 - -1
+`
+
+// Joined, the division and the regular expression read as a \`//\` comment running to the end of the line.
+export const blockBannerBetweenADivisionAndARegularExpression = `export const ratio = 1 / /*----*//a/.lastIndex
+`
+
+export const divisionSpacedFromARegularExpression = `export const ratio = 1 / /a/.lastIndex
+`
+
+// Joined, the name reads as the regular expression's flags.
+export const blockBannerJoiningARegularExpressionToAName = `export const isRegExp = /a//*----*/instanceof RegExp
+`
+
+export const regularExpressionSpacedFromAName = `export const isRegExp = /a/ instanceof RegExp
+`
+
+// Joined, the dot reads as the number's decimal point.
+export const blockBannerJoiningANumberToAMemberAccess = `export const fixed = 1/*----*/.toFixed(2)
+`
+
+export const numberSpacedFromAMemberAccess = `export const fixed = 1 .toFixed(2)
+`
+
+export const blockBannerJoiningAKeywordToADollarName = `export const kind = typeof/*----*/$ref
+`
+
+export const keywordSpacedFromADollarName = `export const kind = typeof $ref
+`
+
+export const blockBannerJoiningAKeywordToAnEscapedName = `export const kind = typeof/*----*/\\u0067lobalThis
+`
+
+export const keywordSpacedFromAnEscapedName = `export const kind = typeof \\u0067lobalThis
+`
+
+// `𝑎` and `𠮷` lie outside Unicode's basic plane, so JavaScript holds each as two UTF-16 units.
+export const blockBannerJoiningAKeywordToANameOutsideTheBasicPlane = `export const kind = typeof/*----*/𝑎
+`
+
+export const keywordSpacedFromANameOutsideTheBasicPlane = `export const kind = typeof 𝑎
+`
+
+export const blockBannerJoiningANameOutsideTheBasicPlaneToAKeyword = `const 𠮷 = 'kind'
+export const has = 𠮷/*----*/in globalThis
+`
+
+export const nameOutsideTheBasicPlaneSpacedFromAKeyword = `const 𠮷 = 'kind'
+export const has = 𠮷 in globalThis
+`
+
+// Joined, the non-null assertion and the assignment read as \`!=\`, a comparison.
+export const blockBannerJoiningANonNullAssertionToAnAssignment = `export let count: number | undefined
+count!/*----*/= 1
+`
+
+export const nonNullAssertionSpacedFromAnAssignment = `export let count: number | undefined
+count! = 1
+`
+
+// Joined, the comparison and the type assertion read as a \`<<\` shift.
+export const blockBannerJoiningAComparisonToATypeAssertion = `export const less = 1 < /*----*/<number>2
+`
+
+export const comparisonSpacedFromATypeAssertion = `export const less = 1 < <number>2
+`
+
+// Joined, either way, the comparison, negation and decrement read as \`<!--\`, which opens a comment in CommonJS.
+export const blockBannerJoiningAComparisonToANegation = `export const c = a </*----*/!--b
+`
+
+export const comparisonSpacedFromANegation = `export const c = a < !--b
+`
+
+export const blockBannerJoiningANegationToADecrement = `export const c = a <!/*----*/--b
+`
+
+export const negationSpacedFromADecrement = `export const c = a <! --b
+`
+
+export const blockBannerBetweenAParenthesisAndAName = `export const name = String(/*----*/globalThis)
+`
+
+export const callOnAName = `export const name = String(globalThis)
+`
+
+export const blockBannerBeforeAMemberAccess = `export const name = globalThis/*----*/.name
+`
+
+export const memberAccessOnAName = `export const name = globalThis.name
+`
+
+export const blockBannerBetweenANumberAndAParenthesis = `export const one = String(1/*----*/)
+`
+
+export const callOnANumber = `export const one = String(1)
+`
+
+export const blockLabel = `export const x = 1
+/*
+ Helpers
+*/
+export const y = 2
+`
+
+export const blockCommentListingTwoLabels = `export const x = 1
+/*
+ Helpers
+ Utils
+*/
+export const y = 2
+`
+
+export const titledLineAmongBlankLines = `export const x = 1
+/*
+
+ --- Setup ---
+*/
+export const y = 2
+`
