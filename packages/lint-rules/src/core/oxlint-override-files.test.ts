@@ -55,6 +55,16 @@ describe('overrideFilesOf', () => {
       written: [],
     },
     {
+      how: 'a path beside a glob of several extensions, its own among them, as the path alone',
+      term: buildFilesTerm(['src/a.ts', '**/*.{js,ts}']),
+      written: [{ files: ['src/a.ts'] }],
+    },
+    {
+      how: 'a path beside a glob of several extensions, its own not among them, as no override',
+      term: buildFilesTerm(['src/a.ts', '**/*.{js,jsx}']),
+      written: [],
+    },
+    {
       how: "a path ending in an extension's letters with no dot before them, beside a glob of that extension, as no override",
       term: buildFilesTerm(['src/gets', '**/*.ts']),
       written: [],

@@ -2138,6 +2138,21 @@ describe('a team block setting an import-x resolver whose basePath lies outside 
   })
 })
 
+// ESLint merges settings key by key, so a setting stated again in a block of its own changes no file's
+// settings: only the blocks written tell these placements apart.
+describe('a team block setting an import-x resolver in some files', () => {
+  it('leaves our other settings in our base block, and moves only our resolver into a block kept out of those files', () => {
+    const teamBlock = buildTeamEslintBlock('team/resolver', { files: ['src/**'], settings: { 'import-x/resolver': { node: { extensions: ['.ts', '.js'] } } } })
+    const merged = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, { rules: { 'import-x/named': 'error' } }, [teamBlock])
+
+    expect(merged.flatMap(({ name, ignores, settings }) => (settings === undefined ? [] : { name, ignores, settings: Object.keys(settings) }))).toStrictEqual([
+      { name: 'agents-inc/base', ignores: undefined, settings: ['import-x/extensions', 'immutability', 'n', 'react'] },
+      { name: 'agents-inc/base/settings/0', ignores: ['src/**'], settings: ['import-x/resolver-next'] },
+      { name: 'team/resolver', ignores: undefined, settings: ['import-x/resolver'] },
+    ])
+  })
+})
+
 // The team's language options, settings and linter options stand, key by key, in the files of the team
 // block setting them; ours apply elsewhere. The probed global is a Svelte rune, ours in every rune
 // module, as beside oxlint our runtime globals are nowhere in ESLint.

@@ -13,6 +13,7 @@ import { tsFilesOutsideEveryTsconfig } from './ts-files-outside-every-tsconfig.t
 
 const REPO_ROOT = fileURLToPath(new URL('../../../..', import.meta.url))
 const LOCKED_DIRECTORY = 'locked'
+const LOCKED_TSCONFIG = 'tsconfig.json'
 const NO_PERMISSIONS = 0o000
 const OWNER_ONLY_PERMISSIONS = 0o700
 
@@ -63,6 +64,30 @@ describe('tsFilesOutsideEveryTsconfig, given a directory it cannot read', () => 
     chmodSync(join(root, LOCKED_DIRECTORY), NO_PERMISSIONS)
     onTestFinished(() => {
       chmodSync(join(root, LOCKED_DIRECTORY), OWNER_ONLY_PERMISSIONS)
+    })
+
+    expect(tsFilesOutsideEveryTsconfig(root).toSorted()).toStrictEqual(['scripts/b.ts'])
+  })
+})
+
+describe('tsFilesOutsideEveryTsconfig, given a tsconfig it cannot read', () => {
+  it('reads it as listing no file, and still tries the tsconfigs above it', () => {
+    const root = tempProjects.create({
+      files: {
+        'tsconfig.json': configFileText({ include: ['src'] }),
+        [`src/${LOCKED_TSCONFIG}`]: configFileText({ include: ['**'] }),
+        [`scripts/${LOCKED_TSCONFIG}`]: configFileText({ include: ['**'] }),
+        ...standaloneSources(['src/a.ts', 'scripts/b.ts']),
+      },
+    })
+    const lockedTsconfigs = ['src', 'scripts'].map((folder) => join(root, folder, LOCKED_TSCONFIG))
+    for (const path of lockedTsconfigs) {
+      chmodSync(path, NO_PERMISSIONS)
+    }
+    onTestFinished(() => {
+      for (const path of lockedTsconfigs) {
+        chmodSync(path, OWNER_ONLY_PERMISSIONS)
+      }
     })
 
     expect(tsFilesOutsideEveryTsconfig(root).toSorted()).toStrictEqual(['scripts/b.ts'])

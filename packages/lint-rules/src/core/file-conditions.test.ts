@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildDrawnTerms, type Draw, seededDraws } from '../__tests__/factories/files-condition-factories.ts'
 import { filesTheConditionMatches } from '../__tests__/files-condition-oracle.ts'
-import { bothOf, eitherOf, type FilesCondition, type FilesTerm, notOf } from './file-conditions.ts'
+import { bothOf, eitherOf, type FilesCondition, type FilesTerm, filesAndIgnoresOf, notOf } from './file-conditions.ts'
 
 // Each case checks the files algebra file by file against plain sets.
 
@@ -102,6 +102,38 @@ function timed(shape: () => FilesCondition): { readonly condition: FilesConditio
 describe('bothOf, eitherOf and notOf, against plain sets of files', () => {
   it(`match the files the sets give, in each of ${String(CASES)} drawn cases`, { timeout: DRAWN_CASES_TIMEOUT_MS }, () => {
     expect(mismatchesOverCases()).toStrictEqual([])
+  })
+})
+
+// ESLint reads an empty files entry as every file (measured, 10.12), so only the written block tells these apart.
+describe('filesAndIgnoresOf', () => {
+  it('writes a term needing no glob as every file, its exclusions as ignores', () => {
+    expect(filesAndIgnoresOf([{ all: [], none: ['legacy/**'] }])).toStrictEqual([{ files: null, ignores: ['legacy/**'] }])
+  })
+
+  it('writes terms sharing their exclusions as every file where one of them needs no glob', () => {
+    expect(filesAndIgnoresOf([{ all: ['src/**'], none: ['legacy/**'] }, { all: [], none: ['legacy/**'] }])).toStrictEqual([
+      { files: null, ignores: ['legacy/**'] },
+    ])
+  })
+
+  it('lists the globs of terms sharing their exclusions where each needs one', () => {
+    expect(filesAndIgnoresOf([{ all: ['src/**'], none: [] }, { all: ['lib/**', '**/*.ts'], none: [] }])).toStrictEqual([
+      { files: [['src/**'], ['lib/**', '**/*.ts']], ignores: [] },
+    ])
+  })
+})
+
+// The drawn cases compare files alone, which an exclusion of another path never changes.
+describe('a term naming one literal path, as bothOf writes it', () => {
+  it('keeps the exclusions naming no path and drops one naming another path', () => {
+    expect(bothOf([{ all: ['src/**'], none: [] }], [{ all: ['./src/a.ts'], none: ['src/b.ts', '**/gen/**'] }])).toStrictEqual([
+      { all: ['src/**', 'src/a.ts'], none: ['**/gen/**'] },
+    ])
+  })
+
+  it('meets no file where an exclusion names its own path, written with a leading ./', () => {
+    expect(bothOf([{ all: ['src/a.ts'], none: [] }], [{ all: ['**/*.ts'], none: ['./src/a.ts'] }])).toStrictEqual([])
   })
 })
 

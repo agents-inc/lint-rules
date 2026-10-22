@@ -33,6 +33,15 @@ describe("the sweep of other runs' temporary oxlint configs", () => {
       reserved: { folder, isThisRuns: true },
     })
   })
+
+  // A run of this process is live, so a second check called in it never removes the first one's config.
+  it('keeps a config another run of this process holds', () => {
+    const heldByThisProcess = tempConfigNameOf(process.pid, 'held')
+    const folder = tempProjects.create({ files: { [heldByThisProcess]: '{}' } })
+    tempOxlintConfigIn(folder)
+
+    expect(readdirSync(folder)).toStrictEqual([heldByThisProcess])
+  })
 })
 
 describe("oxlint's fix run config", () => {

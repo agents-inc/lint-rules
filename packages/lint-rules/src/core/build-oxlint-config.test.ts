@@ -356,4 +356,35 @@ describe('buildOxlintConfig', () => {
       expect(buildOxlintConfig(lintRules, catalog).rules).toStrictEqual({ 'no-debugger': ['error'] })
     })
   })
+
+  // oxlint cannot turn a rule on in files of its own, so the catalog must route such a rule to ESLint.
+  describe('given a catalog routing to oxlint a rule shipped with files of its own', () => {
+    const catalogWithAFileScopedOxlintRule = buildCatalog({
+      rulesets: [buildQualityRuleset('correctness')],
+      rules: [
+        buildOxlintRoute('no-debugger', {
+          oxlintName: 'no-debugger',
+          oxlintPlugin: 'eslint',
+          shipped: buildShippedRule('correctness', { files: ['**/*.tsx'] }),
+        }),
+      ],
+    })
+
+    it('refuses to turn the rule on, naming it', () => {
+      const lintRules = buildLintRules({ quality: ['correctness'] })
+
+      expect(() => buildOxlintConfig(lintRules, catalogWithAFileScopedOxlintRule)).toThrow(
+        new Error('no-debugger: turned on in files of its own, so the catalog must route it to ESLint'),
+      )
+    })
+
+    it('turns the rule off where an entry does, within its own files', () => {
+      const lintRules = buildLintRules({}, { fileOverrides: [buildFileOverride(['src/**'], { rules: { 'no-debugger': 'off' } })] })
+
+      expect(buildOxlintConfig(lintRules, catalogWithAFileScopedOxlintRule).overrides).toStrictEqual([
+        ...GLOBALS_OXLINT_OVERRIDES,
+        { files: ['src/**/*.tsx'], rules: { 'no-debugger': 'off' } },
+      ])
+    })
+  })
 })

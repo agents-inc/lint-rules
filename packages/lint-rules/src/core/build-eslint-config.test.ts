@@ -256,6 +256,18 @@ describe('buildEslintConfig', () => {
     ])
   })
 
+  it("names an entry's block for a rule with its own files after the entry", () => {
+    const lintRules = buildLintRules({}, { fileOverrides: [buildFileOverride(['src/**'], { rules: { 'max-lines': 'warn' } })] })
+
+    expect(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()).map((block) => block.name)).toStrictEqual([
+      'agents-inc/base',
+      SVELTE_RUNES_ESLINT_BLOCK_NAME,
+      TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME,
+      'agents-inc/file-overrides/0/scope/max-lines',
+      'agents-inc/oxlint-rules-off',
+    ])
+  })
+
   describe('the ignores block', () => {
     const lintRules = buildLintRules({ quality: ['correctness'] }, { ignores: ['dist/**', '*.gen.ts'] })
 

@@ -11,7 +11,8 @@ import { offBlocksOf } from './eslint-off-blocks.ts'
 const RULE = 'no-debugger'
 const VUE_FILES = '**/*.vue'
 const SVELTE_FILES = '**/*.svelte'
-const OUTSIDE_THE_LEGACY_FOLDER = '!legacy/**'
+const LEGACY_FOLDER = 'legacy/**'
+const OUTSIDE_THE_LEGACY_FOLDER = `!${LEGACY_FOLDER}`
 const IN_THE_SRC_FOLDER = 'src/**'
 const IN_THE_LIB_FOLDER = 'lib/**'
 const IN_A_COMPONENTS_FOLDER = '**/components/**'
@@ -21,6 +22,7 @@ const VUE_FILE_IN_THE_LEGACY_FOLDER = 'legacy/a.vue'
 const VUE_FILE_IN_THE_LIB_FOLDER = 'lib/a.vue'
 const VUE_FILE_IN_THE_TEST_FOLDER = 'test/a.vue'
 const VUE_FILE_IN_A_COMPONENTS_FOLDER = 'src/components/a.vue'
+const VUE_FILE_IN_THE_LIB_COMPONENTS_FOLDER = 'lib/components/a.vue'
 const VUE_FILE_IN_A_ROUTES_FOLDER = 'src/routes/a.vue'
 const SVELTE_FILE_IN_A_COMPONENTS_FOLDER = 'src/components/a.svelte'
 const SVELTE_FILE_IN_A_ROUTES_FOLDER = 'src/routes/a.svelte'
@@ -50,6 +52,12 @@ async function severitiesOf(
 }
 
 describe('offBlocksOf, for files of another type outside a folder', () => {
+  it('writes one block, whose ignores leave out the folder and every file of another type', () => {
+    const offs = offBlocksOf([{ names: [RULE], where: [buildFilesTerm([VUE_FILES, OUTSIDE_THE_LEGACY_FOLDER])] }], offBlockName)
+
+    expect(offs).toStrictEqual([{ name: offBlockName(0), ignores: [LEGACY_FOLDER, EVERY_FILE_BUT_A_VUE_FILE], rules: { [RULE]: 'off' } }])
+  })
+
   it('turns the rule off in those files, and leaves it as it was in the folder', async () => {
     const offs = offBlocksOf([{ names: [RULE], where: [buildFilesTerm([VUE_FILES, OUTSIDE_THE_LEGACY_FOLDER])] }], offBlockName)
     const config = [VUE_FILES_RUNNING_THE_RULE, ...offs]
@@ -121,6 +129,30 @@ describe('offBlocksOf, for files of another type in two folders at once', () => 
 
     expect(await severitiesOf(VUE_FILES_RUNNING_THE_RULE, offs, [VUE_FILE_IN_THE_LIB_FOLDER])).toStrictEqual([
       { file: VUE_FILE_IN_THE_LIB_FOLDER, severity: 'error' },
+    ])
+  })
+
+  // Ignores cannot AND two globs: taking back each would turn the rule off in a file of either folder.
+  it('leaves the rule as it was in a file of that type in only one of them', async () => {
+    const offs = offBlocksOf([{ names: [RULE], where: [buildFilesTerm([VUE_FILES, IN_THE_SRC_FOLDER, IN_A_COMPONENTS_FOLDER])] }], offBlockName)
+
+    expect(await severitiesOf(VUE_FILES_RUNNING_THE_RULE, offs, [VUE_FILE, VUE_FILE_IN_THE_LIB_COMPONENTS_FOLDER])).toStrictEqual([
+      { file: VUE_FILE, severity: 'error' },
+      { file: VUE_FILE_IN_THE_LIB_COMPONENTS_FOLDER, severity: 'error' },
+    ])
+  })
+})
+
+describe('offBlocksOf, for files of one type in a folder, or in two other folders at once', () => {
+  it('turns the rule off in the one folder, and leaves it as it was in a file of that type in none of them', async () => {
+    const offs = offBlocksOf(
+      [{ names: [RULE], where: [buildFilesTerm([VUE_FILES, IN_THE_SRC_FOLDER]), buildFilesTerm([VUE_FILES, IN_THE_LIB_FOLDER, IN_A_COMPONENTS_FOLDER])] }],
+      offBlockName,
+    )
+
+    expect(await severitiesOf(VUE_FILES_RUNNING_THE_RULE, offs, [VUE_FILE, VUE_FILE_IN_THE_TEST_FOLDER])).toStrictEqual([
+      { file: VUE_FILE, severity: 'off' },
+      { file: VUE_FILE_IN_THE_TEST_FOLDER, severity: 'error' },
     ])
   })
 })

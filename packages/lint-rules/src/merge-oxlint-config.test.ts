@@ -417,6 +417,16 @@ describe('mergeOxlintConfig, given a team config stating a rule our part runs', 
 
     expect(oxlintConfigForFile(config, 'src/f.test.tsx').rules[JSX_KEY]).toStrictEqual(['error'])
   })
+
+  it('gives it our entry where an override of a config the team extends states it of a plugin no root nor the override lists, which oxlint ignores', () => {
+    const config = mergedEditorOxlintConfig(
+      PROJECT_WITH_OXLINT,
+      ours,
+      buildTeamOxlintConfig({ plugins: [], extends: [{ plugins: [], overrides: [{ files: TEST_TSX_FILES, rules: { [JSX_KEY]: 'off' } }] }] }),
+    )
+
+    expect(oxlintConfigForFile(config, 'src/f.test.tsx').rules[JSX_KEY]).toStrictEqual(['error'])
+  })
 })
 
 // Each rule of ours is on exactly where our part alone runs it, with its options there, through
