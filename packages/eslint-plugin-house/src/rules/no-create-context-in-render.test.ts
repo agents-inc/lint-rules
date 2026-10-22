@@ -1,5 +1,7 @@
 import {
   classFieldAndMethod,
+  computedCreateContextKeyInComponent,
+  contextFromAPropertyNamedReact,
   contextInLazyUseMemo,
   contextInViMockFactory,
   contextRetainedByUseRef,
@@ -13,6 +15,8 @@ import {
   moduleScopeContext,
   moduleScopeContextWithMemoisedValue,
   namespacedContextInUseMemo,
+  namespacedCreateContextBesideNodeVmImport,
+  namespacedCreateContextInComponent,
   nodeVmNamedImportCreateContext,
   nodeVmNamespaceCreateContext,
   pascalCaseFactoryWithoutJsx,
@@ -41,6 +45,14 @@ houseRuleTester.run('no-create-context-in-render', housePlugin.rules['no-create-
     buildValidCase('stays silent on a PascalCase factory that renders no JSX itself', pascalCaseFactoryWithoutJsx),
     buildValidCase('stays silent on React.createContext inside React.useMemo', namespacedContextInUseMemo),
     buildValidCase('stays silent on createContext in a class field and a class method', classFieldAndMethod),
+    buildValidCase(
+      'stays silent on React[createContext](…) in a component, whose computed key it cannot read',
+      computedCreateContextKeyInComponent,
+    ),
+    buildValidCase(
+      'stays silent on createContext reached through a React that is a property of another object',
+      contextFromAPropertyNamedReact,
+    ),
   ],
   invalid: [
     buildInvalidCase('reports createContext called inside a component', createContextInComponent, {
@@ -51,5 +63,21 @@ houseRuleTester.run('no-create-context-in-render', housePlugin.rules['no-create-
       filename: 'no-create-context-in-render.tsx',
       errors: [{ messageId: 'inRender', line: 4, data: { name: 'useThemeContext' } }],
     }),
+    buildInvalidCase(
+      'reports React.createContext called inside a component, naming the component',
+      namespacedCreateContextInComponent,
+      {
+        filename: 'no-create-context-in-render.tsx',
+        errors: [{ messageId: 'inRender', line: 4, data: { name: 'ThemeProvider' } }],
+      },
+    ),
+    buildInvalidCase(
+      "reports React.createContext inside a component in a file importing node:vm's createContext by name",
+      namespacedCreateContextBesideNodeVmImport,
+      {
+        filename: 'no-create-context-in-render.tsx',
+        errors: [{ messageId: 'inRender', line: 7, data: { name: 'ThemeProvider' } }],
+      },
+    ),
   ],
 })

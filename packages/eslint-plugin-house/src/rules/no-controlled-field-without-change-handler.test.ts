@@ -10,6 +10,7 @@ import {
   formLevelOnChangeAroundMappedFields,
   hiddenResetAndSubmitInputs,
   inputWithValueTypedBy,
+  inputWithValueWrittenAs,
   radioAndCheckboxValues,
   readOnlyField,
   textareaAndSelectWithoutHandler,
@@ -18,6 +19,7 @@ import {
 import {
   fixedTextAttributeForms,
   interpolatedTemplateAttribute,
+  quotedAttribute,
   templateAttribute,
 } from '../__tests__/factories/attribute-factories.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
@@ -26,6 +28,7 @@ import { housePlugin } from '../index.ts'
 
 // `\x65` is "e", so the template renders "hidden".
 const HIDDEN_SPELLED_WITH_AN_ESCAPE = 'hidd\\x65n'
+const VALUE = 'value'
 
 houseRuleTester.run(
   'no-controlled-field-without-change-handler',
@@ -98,6 +101,22 @@ houseRuleTester.run(
       buildInvalidCase(
         'reports an input whose type is a template reading text, an editable type',
         inputWithValueTypedBy(templateAttribute('type', 'text')),
+        {
+          filename: 'no-controlled-field-without-change-handler.tsx',
+          errors: [{ messageId: 'frozen', line: 2, data: { element: 'input' } }],
+        },
+      ),
+      buildInvalidCase(
+        'reports an input whose value is quoted text and that has no change handler',
+        inputWithValueWrittenAs(quotedAttribute(VALUE, 'Hello')),
+        {
+          filename: 'no-controlled-field-without-change-handler.tsx',
+          errors: [{ messageId: 'frozen', line: 2, data: { element: 'input' } }],
+        },
+      ),
+      buildInvalidCase(
+        'reports an input with a bare value attribute and no change handler',
+        inputWithValueWrittenAs(VALUE),
         {
           filename: 'no-controlled-field-without-change-handler.tsx',
           errors: [{ messageId: 'frozen', line: 2, data: { element: 'input' } }],

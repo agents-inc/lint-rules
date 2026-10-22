@@ -13,6 +13,9 @@ import {
   createdInPlainHelper,
   createdInUseMemo,
   createObjectUrlInJsxAttribute,
+  imageUrlMadeInCallbackHandedTo,
+  imageUrlMadeInCallbackProp,
+  imageUrlMadeInRenderBy,
   mockedInTestFile,
 } from '../__tests__/cases/no-create-object-url-in-render.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
@@ -44,11 +47,71 @@ houseRuleTester.run('no-create-object-url-in-render', housePlugin.rules['no-crea
       createdInAsyncHelperInsideComponent,
     ),
     buildValidCase('stays silent on a URL cached by an external store', createdInExternalStore),
+    buildValidCase(
+      'stays silent on URL.revokeObjectURL in a render body, which creates no URL',
+      imageUrlMadeInRenderBy('URL.revokeObjectURL'),
+    ),
+    buildValidCase(
+      'stays silent on a createObjectURL method of an object other than URL in a render body',
+      imageUrlMadeInRenderBy('thumbnails.createObjectURL'),
+    ),
+    buildValidCase(
+      'stays silent on URL[createObjectURL](…) in a render body, whose computed key it cannot read',
+      imageUrlMadeInRenderBy('URL[createObjectURL]'),
+    ),
+    buildValidCase(
+      "stays silent on a URL created in a JSX callback handed to a promise's then",
+      imageUrlMadeInCallbackHandedTo('loaded.then'),
+    ),
+    buildValidCase(
+      'stays silent on a URL created in a JSX callback handed to setTimeout',
+      imageUrlMadeInCallbackHandedTo('setTimeout'),
+    ),
+    buildValidCase(
+      'stays silent on a URL created in a JSX callback handed to a hook',
+      imageUrlMadeInCallbackHandedTo('useMemo'),
+    ),
+    buildValidCase(
+      'stays silent on a URL created in a JSX callback passed as an on* event prop',
+      imageUrlMadeInCallbackProp('onRender'),
+    ),
   ],
   invalid: [
     buildInvalidCase('reports URL.createObjectURL inline in a JSX attribute', createObjectUrlInJsxAttribute, {
       filename: 'no-create-object-url-in-render.tsx',
       errors: [{ messageId: 'inRender', line: 2 }],
     }),
+    buildInvalidCase(
+      'reports URL.createObjectURL called in a render body',
+      imageUrlMadeInRenderBy('URL.createObjectURL'),
+      {
+        filename: 'no-create-object-url-in-render.tsx',
+        errors: [{ messageId: 'inRender', line: 2 }],
+      },
+    ),
+    buildInvalidCase(
+      'reports URL.createObjectURL reached through window. in a render body',
+      imageUrlMadeInRenderBy('window.URL.createObjectURL'),
+      {
+        filename: 'no-create-object-url-in-render.tsx',
+        errors: [{ messageId: 'inRender', line: 2 }],
+      },
+    ),
+    buildInvalidCase(
+      'reports a URL created in a JSX callback handed to hooks[useEffect](…), whose computed callee is not read as a hook',
+      imageUrlMadeInCallbackHandedTo('hooks[useEffect]'),
+      {
+        filename: 'no-create-object-url-in-render.tsx',
+        errors: [{ messageId: 'inRender', line: 2 }],
+      },
+    ),
+    buildInvalidCase(
+      'reports a URL created in a JSX callback passed as a render prop, which is not an on* event prop',
+      imageUrlMadeInCallbackProp('render'),
+      {
+        filename: 'no-create-object-url-in-render.tsx',
+        errors: [{ messageId: 'inRender', line: 2 }],
+      },
+    ),
   ],
 })

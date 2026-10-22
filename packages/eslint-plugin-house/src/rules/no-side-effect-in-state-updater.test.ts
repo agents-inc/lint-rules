@@ -10,12 +10,14 @@ import {
   localSetMutatedInFilter,
   nonReactSetApis,
   objectStateRebuiltBySpread,
+  privateFieldNamedCurrentWrittenInUpdater,
   pureClassSetStateUpdater,
   pureComputationOnPrevAndProps,
   pureSetHelperAndBuilderApi,
   pureSetHelpersAssignedAndMapped,
   setterCalledInsideUpdater,
   setterStoredInHandler,
+  stateUpdaterRunning,
   storageWriteThrough,
   storageWriteThroughWindow,
 } from '../__tests__/cases/no-side-effect-in-state-updater.ts'
@@ -57,6 +59,18 @@ houseRuleTester.run('no-side-effect-in-state-updater', housePlugin.rules['no-sid
       'stays silent on an effect inside a callback handed to a call that is not an array iteration',
       effectInCallbackHandedToNonIteratingCall,
     ),
+    buildValidCase(
+      'stays silent on a method of a known effectful global called through a computed key, which it cannot read',
+      stateUpdaterRunning("axios[method]('/x')"),
+    ),
+    buildValidCase(
+      'stays silent on a mutator called through a computed index, which it cannot follow',
+      stateUpdaterRunning('list[0].push(1)'),
+    ),
+    buildValidCase(
+      'stays silent on a mutator called through a computed key, which it cannot follow',
+      stateUpdaterRunning('list[key].push(1)'),
+    ),
   ],
   invalid: [
     buildInvalidCase('reports a URL revoke, a storage write and a ref write inside a state updater', effectsInsideUpdater, {
@@ -75,6 +89,38 @@ houseRuleTester.run('no-side-effect-in-state-updater', housePlugin.rules['no-sid
       filename: 'no-side-effect-in-state-updater.tsx',
       errors: [{ messageId: 'effect', line: 9, data: { name: 'window.localStorage.setItem' } }],
     }),
+    buildInvalidCase(
+      'reports a write to a property of an outer object as an outer mutation',
+      stateUpdaterRunning('settings.value = prev'),
+      {
+        filename: 'no-side-effect-in-state-updater.tsx',
+        errors: [{ messageId: 'outerMutation', line: 2, data: { name: 'settings.value' } }],
+      },
+    ),
+    buildInvalidCase(
+      'reports a write to an outer computed [current] as an outer mutation, not a ref write',
+      stateUpdaterRunning('ref[current] = prev'),
+      {
+        filename: 'no-side-effect-in-state-updater.tsx',
+        errors: [{ messageId: 'outerMutation', line: 2, data: { name: 'ref[current]' } }],
+      },
+    ),
+    buildInvalidCase(
+      'reports a write to a property under current as an outer mutation, not a ref write',
+      stateUpdaterRunning('cache.current.items = prev'),
+      {
+        filename: 'no-side-effect-in-state-updater.tsx',
+        errors: [{ messageId: 'outerMutation', line: 2, data: { name: 'cache.current.items' } }],
+      },
+    ),
+    buildInvalidCase(
+      "reports a write to another instance's private #current as an outer mutation, not a ref write",
+      privateFieldNamedCurrentWrittenInUpdater,
+      {
+        filename: 'no-side-effect-in-state-updater.tsx',
+        errors: [{ messageId: 'outerMutation', line: 6, data: { name: 'other.#current' } }],
+      },
+    ),
     ...GLOBAL_ALIASES_BESIDE_WINDOW.map((globalAlias) =>
       buildInvalidCase<StateUpdaterMessageIds, []>(
         `reports a storage write reached through ${globalAlias}. inside a state updater`,

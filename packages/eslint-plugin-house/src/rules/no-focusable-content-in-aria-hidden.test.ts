@@ -1,7 +1,11 @@
 import {
   ariaHiddenAroundButton,
   ariaHiddenBesideSpreads,
+  ariaHiddenButton,
   ariaHiddenControlsOutOfTabOrder,
+  ariaHiddenMemberTagInTabOrder,
+  buttonInFragmentInsideAriaHidden,
+  buttonInSpanInsideAriaHidden,
   buttonInsideWrapperWith,
   buttonWithTabIndexInsideAriaHidden,
   checkboxBesideAriaHiddenTrack,
@@ -152,6 +156,30 @@ houseRuleTester.run('no-focusable-content-in-aria-hidden', housePlugin.rules['no
     buildInvalidCase(
       'reports a button written tabIndex={null} inside aria-hidden, which renders no tabindex and stays focusable',
       buttonWithTabIndexInsideAriaHidden(expressionAttribute(TAB_INDEX, 'null')),
+      {
+        filename: 'no-focusable-content-in-aria-hidden.tsx',
+        errors: [{ messageId: 'focusable', line: 3, data: { descendant: 'button' } }],
+      },
+    ),
+    buildInvalidCase('reports an aria-hidden button that is itself focusable, naming its tag', ariaHiddenButton, {
+      filename: 'no-focusable-content-in-aria-hidden.tsx',
+      errors: [{ messageId: 'self', line: 2, data: { tag: 'button' } }],
+    }),
+    buildInvalidCase(
+      'reports an aria-hidden member tag in the tab order as itself focusable, calling it an element',
+      ariaHiddenMemberTagInTabOrder,
+      {
+        filename: 'no-focusable-content-in-aria-hidden.tsx',
+        errors: [{ messageId: 'self', line: 2, data: { tag: 'element' } }],
+      },
+    ),
+    buildInvalidCase('reports a button inside a fragment inside aria-hidden', buttonInFragmentInsideAriaHidden, {
+      filename: 'no-focusable-content-in-aria-hidden.tsx',
+      errors: [{ messageId: 'focusable', line: 3, data: { descendant: 'button' } }],
+    }),
+    buildInvalidCase(
+      'reports a button inside a span, neither focusable nor inert, inside aria-hidden',
+      buttonInSpanInsideAriaHidden,
       {
         filename: 'no-focusable-content-in-aria-hidden.tsx',
         errors: [{ messageId: 'focusable', line: 3, data: { descendant: 'button' } }],

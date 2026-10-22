@@ -307,3 +307,25 @@ export function Queue({ registry, job }: { readonly registry: Registry; readonly
   return <button onClick={enqueue}>{jobs.length}</button>
 }
 `
+
+/** A state updater running `statement` on line 2, then returning the state it was given. */
+export function stateUpdaterRunning(statement: string): string {
+  return `setItems((prev) => {
+  ${statement}
+  return prev
+})
+`
+}
+
+// `#current` is a private field of the class, not a ref's `current`.
+export const privateFieldNamedCurrentWrittenInUpdater = `class Counter {
+  #current = 0
+
+  sync(other) {
+    setCount((count) => {
+      other.#current = count
+      return count
+    })
+  }
+}
+`

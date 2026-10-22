@@ -1,5 +1,6 @@
 import { type Catalog, pluginPrefixOf, type RuleRoute } from '@workspace/rule-data'
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
+import { ruleNameOf } from '@workspace/rule-data/rule-id-parts'
 import { typescriptEslintExtensions } from '@workspace/rule-data/test-support/typescript-eslint-extensions'
 import { builtinRules } from 'eslint/use-at-your-own-risk'
 
@@ -45,7 +46,7 @@ export function typescriptEslintTwinsOf(id: string): string[] {
 export function sameModuleNamesOf(id: string): string[] {
   const prefix = pluginPrefixOf(id)
   const rules = rulesUnder(prefix)
-  const ruleModule = rules.get(prefix === null ? id : id.slice(`${prefix}/`.length))
+  const ruleModule = rules.get(ruleNameOf(id))
   if (ruleModule === undefined) return []
   return [...rules]
     .filter(([, other]) => other === ruleModule)

@@ -1,4 +1,4 @@
-import { buildAlwaysOnShippedRule, buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
+import { buildAlwaysOnShippedRule, buildShippedRule, buildShippedRuleDecidedBySuppressions } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import { describe, expect, it } from 'vitest'
 import type { Catalog, RuleRoute, RulesetDefinition, ShippedRule } from '@workspace/rule-data'
 import { blockNamed } from '../__tests__/eslint-config-reads.ts'
@@ -16,7 +16,15 @@ import { buildFileOverride, buildLintRules } from '../__tests__/factories/lint-r
 import { buildProjectFacts } from '../__tests__/factories/project-facts-factories.ts'
 import { buildEslintConfig } from './build-eslint-config.ts'
 import { buildOxlintConfig } from './build-oxlint-config.ts'
-import { type FileOverrideLayer, resolveRuleLayers, resolveRuleLayersBesideOxlint, type RuleSetting } from './resolve-rule-layers.ts'
+import {
+  type FileOverrideLayer,
+  layersKeepingRules,
+  resolveRuleLayers,
+  resolveRuleLayersBesideOxlint,
+  ruleIdsOnIn,
+  type RuleSetting,
+  suppressionRulesOf,
+} from './resolve-rule-layers.ts'
 
 const catalog = buildCatalog({
   rulesets: [
@@ -756,3 +764,27 @@ describe.each([
 function holderSetting(options: readonly unknown[], severity: RuleSetting['severity'] = 'error'): RuleSetting {
   return { severity, options, files: null, ignores: null }
 }
+
+describe('layersKeepingRules, given an entry that gives allowSuppressions', () => {
+  const BLANKET_DISABLE_RULE = 'unicorn/no-abusive-eslint-disable'
+  const routedToBothEngines = buildCatalog({
+    rulesets: [],
+    rules: [
+      buildEslintRoute('demo/strict', { typed: false, shipped: buildSuppressionModeShippedRule() }),
+      buildOxlintRoute(BLANKET_DISABLE_RULE, {
+        oxlintName: BLANKET_DISABLE_RULE,
+        oxlintPlugin: 'unicorn',
+        shipped: buildShippedRuleDecidedBySuppressions({ banned: 'off', allowed: { options: [] } }),
+      }),
+    ],
+  })
+  const lintRules = buildLintRules({}, { allowSuppressions: true, fileOverrides: [buildFileOverride(['strict/**'], { allowSuppressions: false })] })
+  const kept = layersKeepingRules(resolveRuleLayers(lintRules, routedToBothEngines), ({ id }) => id === 'demo/strict')
+
+  it("keeps in the entry's suppression rules only the rules it is told to, so ruleIdsOnIn names no other", () => {
+    expect({
+      entrySuppressionRules: kept.fileOverrides.map((layer) => Object.keys(suppressionRulesOf(layer))),
+      ruleIdsOn: ruleIdsOnIn(kept),
+    }).toStrictEqual({ entrySuppressionRules: [['demo/strict']], ruleIdsOn: ['demo/strict'] })
+  })
+})

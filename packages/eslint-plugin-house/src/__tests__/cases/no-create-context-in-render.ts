@@ -158,3 +158,38 @@ export function useThemeContext() {
   return useContext(ThemeContext)
 }
 `
+
+export const namespacedCreateContextInComponent = `import React from 'react'
+
+export function ThemeProvider({ children }) {
+  const ThemeContext = React.createContext('light')
+  return <ThemeContext.Provider value="dark">{children}</ThemeContext.Provider>
+}
+`
+
+// The member form is React's whatever the bare name `createContext` is bound to.
+export const namespacedCreateContextBesideNodeVmImport = `import React from 'react'
+import { createContext } from 'node:vm'
+
+export const sandbox = createContext({ console })
+
+export function ThemeProvider({ children }) {
+  const ThemeContext = React.createContext('light')
+  return <ThemeContext.Provider value="dark">{children}</ThemeContext.Provider>
+}
+`
+
+// The key is a name whose value the rule cannot see.
+export const computedCreateContextKeyInComponent = `import React from 'react'
+
+export function ThemeProvider({ children }) {
+  const ThemeContext = React[createContext]('light')
+  return <ThemeContext.Provider value="dark">{children}</ThemeContext.Provider>
+}
+`
+
+export const contextFromAPropertyNamedReact = `export function ThemeProvider({ children, scope }) {
+  const ThemeContext = scope.React.createContext('light')
+  return <ThemeContext.Provider value="dark">{children}</ThemeContext.Provider>
+}
+`

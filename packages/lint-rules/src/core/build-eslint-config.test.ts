@@ -1,6 +1,6 @@
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
 import type { RuleRoute } from '@workspace/rule-data'
-import { buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
+import { buildShippedRule, buildShippedRuleDecidedBySuppressions } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import type { ESLint, Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
@@ -1244,6 +1244,26 @@ describe('buildEslintConfig', () => {
       })
     })
 
+    // A written limit (plan.md, Open, #60): where no layer states the core rule, nothing is taken over.
+    it('runs the extension on JS and TS files alike, and the core rule nowhere, where the top level states the extension alone and no layer states the core rule', async () => {
+      const lintRules = buildLintRules({}, { rules: { [MAX_PARAMS_TWIN]: ['error', { max: 3 }] } })
+
+      expect(await entriesIn(ourBlocks(lintRules), [TS_FILE, JS_FILE], ['max-params', MAX_PARAMS_TWIN])).toStrictEqual({
+        [TS_FILE]: { 'max-params': NOT_RUN, [MAX_PARAMS_TWIN]: [ERROR, { max: 3 }] },
+        [JS_FILE]: { 'max-params': NOT_RUN, [MAX_PARAMS_TWIN]: [ERROR, { max: 3 }] },
+      })
+    })
+
+    it("runs the extension on an entry's JS and TS files alike, and the core rule nowhere, where the entry states the extension alone and no layer states the core rule", async () => {
+      const lintRules = buildLintRules({}, { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [MAX_PARAMS_TWIN]: ['warn', { max: 2 }] } })] })
+
+      expect(await entriesIn(ourBlocks(lintRules), [LEGACY_TS_FILE, LEGACY_JS_FILE, TS_FILE], ['max-params', MAX_PARAMS_TWIN])).toStrictEqual({
+        [LEGACY_TS_FILE]: { 'max-params': NOT_RUN, [MAX_PARAMS_TWIN]: [WARN, { max: 2 }] },
+        [LEGACY_JS_FILE]: { 'max-params': NOT_RUN, [MAX_PARAMS_TWIN]: [WARN, { max: 2 }] },
+        [TS_FILE]: { 'max-params': NOT_RUN, [MAX_PARAMS_TWIN]: NOT_RUN },
+      })
+    })
+
     it("runs the extension on TS files and the core rule on JS files in an entry's files, each with the entry's setting of the extension, and the top level's elsewhere", async () => {
       const lintRules = buildLintRules(
         { quality: ['complexity'] },
@@ -1471,5 +1491,32 @@ describe('a rule allowSuppressions decides, given a setting for test files while
     expect(() => buildEslintConfig(buildLintRules({}), routedToOxlint, strictAlone, buildProjectFacts())).toThrowError(
       'no-debugger: given a setting for test files while suppressions are banned',
     )
+  })
+})
+
+// As the real catalog routes the rules allowSuppressions decides: the ban to ESLint, unicorn/no-abusive-eslint-disable to oxlint.
+describe('an entry giving allowSuppressions, where oxlint runs one of the rules it decides', () => {
+  const BLANKET_DISABLE_RULE = 'unicorn/no-abusive-eslint-disable'
+  const routedToBothEngines = buildCatalog({
+    rulesets: [],
+    rules: [
+      buildEslintRoute('demo/strict', { typed: false, shipped: buildSuppressionModeShippedRule() }),
+      buildOxlintRoute(BLANKET_DISABLE_RULE, {
+        oxlintName: BLANKET_DISABLE_RULE,
+        oxlintPlugin: 'unicorn',
+        shipped: buildShippedRuleDecidedBySuppressions({ banned: 'off', allowed: { options: [] } }),
+      }),
+    ],
+  })
+  const strictAlone = buildPluginRegistry({ demo: ['strict'] })
+
+  it.each([
+    { mode: 'banning them under a top level allowing them', topLevel: true, entry: false, rules: { 'demo/strict': ['error'] } },
+    { mode: 'allowing them under a top level banning them', topLevel: false, entry: true, rules: { 'demo/strict': 'off' } },
+  ])("states in the entry's block the one ESLint runs and not the one oxlint runs, $mode", ({ topLevel, entry, rules }) => {
+    const lintRules = buildLintRules({}, { allowSuppressions: topLevel, fileOverrides: [buildFileOverride(['strict/**'], { allowSuppressions: entry })] })
+    const config = buildEslintConfig(lintRules, routedToBothEngines, strictAlone, buildProjectFacts())
+
+    expect(blockNamed(config, 'agents-inc/file-overrides/0').rules).toStrictEqual(rules)
   })
 })

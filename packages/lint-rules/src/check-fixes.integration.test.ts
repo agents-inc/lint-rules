@@ -133,6 +133,7 @@ describe('check fixing what agents changed', () => {
         'src/eslint-guard.ts': moduleText(...IDS_AS_A_SET),
         'src/caught-partly.ts': moduleText(...ATTEMPT),
         'src/shifted.ts': moduleText(NAMES, DEBUGGER_STATEMENT),
+        'src/restored-by-oxlint.ts': moduleText(exportedConstant('count'), 'export const point = { count: count }'),
       },
     })
     project.write('src/both-fixable.ts', moduleText(exportedLet('count'), 'export const point = { count: count }'))
@@ -142,7 +143,8 @@ describe('check fixing what agents changed', () => {
     project.write('src/caught-partly.ts', moduleText(...ATTEMPT_CATCHING))
     project.write('src/caught-new.ts', moduleText(...ATTEMPT_CATCHING))
     project.write('src/shifted.ts', moduleText(NAMES, ...IDS_AS_AN_ARRAY, DEBUGGER_STATEMENT))
-    const changedFiles = ['src/both-fixable.ts', 'src/eslint-partly.ts', 'src/oxlint-guard.ts', 'src/eslint-guard.ts', 'src/caught-partly.ts', 'src/caught-new.ts', 'src/shifted.ts']
+    project.write('src/restored-by-oxlint.ts', moduleText(exportedConstant('count'), 'export let point = { count: count }'))
+    const changedFiles = ['src/both-fixable.ts', 'src/eslint-partly.ts', 'src/oxlint-guard.ts', 'src/eslint-guard.ts', 'src/caught-partly.ts', 'src/caught-new.ts', 'src/shifted.ts', 'src/restored-by-oxlint.ts']
     const before = textsOf(project.dir, changedFiles)
     const result = runCheck(project.dir)
     return { result, before, after: textsOf(project.dir, changedFiles) }
@@ -213,6 +215,16 @@ describe('check fixing what agents changed', () => {
       findings: findingsInFile(result.stdout, 'src/shifted.ts'),
       autofixed: autofixedFilesIn(result.stdout).includes('src/shifted.ts'),
     }).toStrictEqual({ text: moduleText(NAMES, IDS_FIXED, DEBUGGER_STATEMENT), findings: [], autofixed: true })
+  })
+
+  it("reads the changed lines again after oxlint's fix: a line oxlint turned back into its committed text is one ESLint leaves unfixed", () => {
+    const { result, after } = run()
+
+    expect({
+      text: after['src/restored-by-oxlint.ts'],
+      findings: findingsInFile(result.stdout, 'src/restored-by-oxlint.ts'),
+      autofixed: autofixedFilesIn(result.stdout).includes('src/restored-by-oxlint.ts'),
+    }).toStrictEqual({ text: moduleText(exportedConstant('count'), 'export const point = { count: count }'), findings: [], autofixed: true })
   })
 })
 

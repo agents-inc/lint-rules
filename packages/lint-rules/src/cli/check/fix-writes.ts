@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs'
-import { hasErrorCode } from '../caught-errors.ts'
+import { hasErrorCode } from '../../core/caught-errors.ts'
 
 export type InPlaceFixer = (paths: readonly string[], signal: AbortSignal) => Promise<void>
 

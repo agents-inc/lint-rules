@@ -44,6 +44,36 @@ describe('overrideFilesOf', () => {
       term: buildFilesTerm(['*.config.ts', '*.spec.ts']),
       written: [{ files: ['./*.config.ts'], excludeFiles: ['!**/*.spec.ts'] }],
     },
+    {
+      how: 'a path beside a glob of its extension as the path alone',
+      term: buildFilesTerm(['src/a.ts', '**/*.ts']),
+      written: [{ files: ['src/a.ts'] }],
+    },
+    {
+      how: 'a path beside a glob of another extension as no override',
+      term: buildFilesTerm(['src/a.ts', '**/*.js']),
+      written: [],
+    },
+    {
+      how: "a path ending in an extension's letters with no dot before them, beside a glob of that extension, as no override",
+      term: buildFilesTerm(['src/gets', '**/*.ts']),
+      written: [],
+    },
+    {
+      how: 'a ./-led path in a folder, beside a glob of every file in that folder, as the path alone',
+      term: buildFilesTerm(['./src/a.ts', 'src/**']),
+      written: [{ files: ['./src/a.ts'] }],
+    },
+    {
+      how: 'a path outside a folder, beside a glob of every file in that folder, as no override',
+      term: buildFilesTerm(['lib/a.ts', 'src/**']),
+      written: [],
+    },
+    {
+      how: 'a glob of every file in a folder, then a glob in that folder, as the glob in it alone',
+      term: buildFilesTerm(['src/**', 'src/gen/*.ts']),
+      written: [{ files: ['src/gen/*.ts'] }],
+    },
   ])('writes $how', ({ term, written }) => {
     expect(overrideFilesOf([term])).toStrictEqual(written)
   })

@@ -1,4 +1,5 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
+import { readOnce } from '../core/read-once.ts'
 
 // How oxlint 1.87 reads a rule key and a `plugins` name (rules.rs, plugins.rs), modelled apart from
 // merge-oxlint-config.ts so the differential oracle does not share the merge's reading.
@@ -81,11 +82,11 @@ export function oxlintPluginListedAs(name: string): string {
 }
 
 function oxlintRulesBySpelling(catalog: Catalog): ReadonlyMap<string, OxlintRule> {
-  const known = rulesBySpellingOfEachCatalog.get(catalog)
-  if (known !== undefined) return known
-  const bySpelling = new Map(catalog.oxlintRules.flatMap((rule) => spellingsOf(rule, catalog).map((spelling): [string, OxlintRule] => [spelling, rule])))
-  rulesBySpellingOfEachCatalog.set(catalog, bySpelling)
-  return bySpelling
+  return readOnce(rulesBySpellingOfEachCatalog, catalog, oxlintRulesBySpellingIn)
+}
+
+function oxlintRulesBySpellingIn(catalog: Catalog): ReadonlyMap<string, OxlintRule> {
+  return new Map(catalog.oxlintRules.flatMap((rule) => spellingsOf(rule, catalog).map((spelling): [string, OxlintRule] => [spelling, rule])))
 }
 
 function spellingsOf({ id }: OxlintRule, catalog: Catalog): readonly string[] {

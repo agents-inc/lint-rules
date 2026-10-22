@@ -1,5 +1,6 @@
 import { catalog, pluginPrefixOf, type RuleRoute } from '@workspace/rule-data'
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
+import { ruleNameOf } from '@workspace/rule-data/rule-id-parts'
 import type { ESLint } from 'eslint'
 import { builtinRules } from 'eslint/use-at-your-own-risk'
 
@@ -16,7 +17,7 @@ export function hasEslintVersion(id: string): boolean {
   if (prefix === null) return builtinRules.has(id)
   const plugin = eslintPlugins[prefix]
   if (plugin === undefined || plugin.rules === undefined) return false
-  return Object.hasOwn(plugin.rules, id.slice(`${prefix}/`.length))
+  return Object.hasOwn(plugin.rules, ruleNameOf(id))
 }
 
 /** Every shipped rule oxlint runs that ESLint also has: without oxlint, the ESLint part takes it over unless it is skipped. */

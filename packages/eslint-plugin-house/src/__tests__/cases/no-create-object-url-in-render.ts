@@ -177,3 +177,29 @@ export function CachedImage({ blob, cacheKey }: { readonly blob: Blob; readonly 
   return <img alt="" src={url} />
 }
 `
+
+/** A component whose render body makes its image's URL with `call(blob)`, on line 2. */
+export function imageUrlMadeInRenderBy(call: string): string {
+  return `export function Preview({ blob }: { readonly blob: Blob }) {
+  const url = ${call}(blob)
+  return <img alt="" src={url} />
+}
+`
+}
+
+/** A component handing `call` a callback that renders an image with a fresh blob URL, on line 2. */
+export function imageUrlMadeInCallbackHandedTo(call: string): string {
+  return `export function Preview({ blob }: { readonly blob: Blob }) {
+  ${call}(() => <img alt="" src={URL.createObjectURL(blob)} />)
+  return <div />
+}
+`
+}
+
+/** A component passing a prop named `prop` a callback that renders an image with a fresh blob URL, on line 2. */
+export function imageUrlMadeInCallbackProp(prop: string): string {
+  return `export function Gallery({ blob }: { readonly blob: Blob }) {
+  return <Lightbox ${prop}={() => <img alt="" src={URL.createObjectURL(blob)} />} />
+}
+`
+}

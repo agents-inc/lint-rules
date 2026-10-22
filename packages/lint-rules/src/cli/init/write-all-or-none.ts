@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
-import { messageOf } from '../caught-errors.ts'
+import { messageOf } from '../../core/caught-errors.ts'
 
 export type FileWrite = { readonly path: string; readonly text: string }
 

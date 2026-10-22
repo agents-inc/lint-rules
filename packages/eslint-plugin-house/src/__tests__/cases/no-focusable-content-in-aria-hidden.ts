@@ -242,3 +242,35 @@ export function buttonWithTabIndexInsideAriaHidden(tabIndexAttribute: string): s
 }
 `
 }
+
+export const ariaHiddenButton = `export function CloseButton() {
+  return <button aria-hidden>Close</button>
+}
+`
+
+export const ariaHiddenMemberTagInTabOrder = `export function Actions() {
+  return <Menu.Item aria-hidden tabIndex={0} />
+}
+`
+
+export const buttonInFragmentInsideAriaHidden = `export function Toolbar() {
+  return (
+    <div aria-hidden="true">
+      <>
+        <button type="button">Undo</button>
+      </>
+    </div>
+  )
+}
+`
+
+export const buttonInSpanInsideAriaHidden = `export function Toolbar() {
+  return (
+    <div aria-hidden="true">
+      <span>
+        <button type="button">Undo</button>
+      </span>
+    </div>
+  )
+}
+`

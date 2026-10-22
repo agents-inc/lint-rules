@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filesOfExtensions, literalGlobOf, normalizeGlob, pathNamedBy } from './globs.ts'
+import { filesOfExtensions, isUnder, literalGlobOf, normalizeGlob, pathNamedBy } from './globs.ts'
 
 describe('normalizeGlob', () => {
   it('lets a slash-free glob match at any depth', () => {
@@ -47,5 +47,11 @@ describe('filesOfExtensions', () => {
 
   it('refuses no extension', () => {
     expect(() => filesOfExtensions([])).toThrow(new Error('a glob of files by their extensions names at least one'))
+  })
+})
+
+describe('isUnder', () => {
+  it('holds for a path in the folder, and not for one in a folder whose name only starts with it', () => {
+    expect({ inTheFolder: isUnder('a/x', 'a'), inALongerNamedFolder: isUnder('ab/x', 'a') }).toStrictEqual({ inTheFolder: true, inALongerNamedFolder: false })
   })
 })

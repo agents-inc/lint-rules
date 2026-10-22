@@ -154,3 +154,11 @@ export function inputWithValueTypedBy(typeAttribute: string): string {
 }
 `
 }
+
+/** An input with no change handler, its value written as `valueAttribute`, on line 2. */
+export function inputWithValueWrittenAs(valueAttribute: string): string {
+  return `export function Greeting() {
+  return <input ${valueAttribute} />
+}
+`
+}

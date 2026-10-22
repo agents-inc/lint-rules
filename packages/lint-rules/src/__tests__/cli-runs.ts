@@ -6,6 +6,7 @@ import { delimiter, join } from 'node:path'
 import { text } from 'node:stream/consumers'
 import { fileURLToPath } from 'node:url'
 import { satisfies } from 'semver'
+import { hasErrorCode } from '../core/caught-errors.ts'
 import { escapeForPattern, type FolderWatch } from './folder-watch.ts'
 import { createGitProject, type GitProject, testEnv } from './git-projects.ts'
 import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
@@ -228,7 +229,7 @@ function endIfStillRunning(pid: number): boolean {
     process.kill(pid, 'SIGKILL')
     return true
   } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === NO_SUCH_PROCESS) return false
+    if (hasErrorCode(error, NO_SUCH_PROCESS)) return false
     throw error
   }
 }

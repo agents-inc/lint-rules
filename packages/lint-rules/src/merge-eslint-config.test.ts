@@ -2064,7 +2064,7 @@ describe('a team block giving types whose basePath lies outside the project', ()
   const EVERY_TS_FILE = ['**/*.ts']
   // An absolute basePath here lies in the test file's temp dir, whose name changes every run, so the
   // title names each basePath by `basePathNamed`: Stryker picks a mutant's tests by the titles of an earlier run.
-  const blocks: readonly { readonly basePath: string; readonly basePathNamed: string; readonly files: readonly string[]; readonly ignores?: readonly string[] }[] = [
+  const blocks: readonly { readonly basePath: string; readonly basePathNamed: string; readonly files: readonly (string | readonly string[])[]; readonly ignores?: readonly string[] }[] = [
     { basePath: '..', basePathNamed: '..', files: EVERY_TS_FILE },
     { basePath: '../elsewhere', basePathNamed: '../elsewhere', files: EVERY_TS_FILE },
     { basePath: dirname(PROJECT_WITH_OXLINT), basePathNamed: "the project's parent", files: EVERY_TS_FILE },
@@ -2073,6 +2073,8 @@ describe('a team block giving types whose basePath lies outside the project', ()
     { basePath: '..', basePathNamed: '..', files: ['*/src/**'] },
     { basePath: '..', basePathNamed: '..', files: ['sibling/**'] },
     { basePath: '..', basePathNamed: '..', files: EVERY_TS_FILE, ignores: ['**/legacy/**', '!**/legacy/keep/**'] },
+    { basePath: '..', basePathNamed: '..', files: [['**/*.ts', `${PROJECT_FOLDER}/src/**`]] },
+    { basePath: '..', basePathNamed: '..', files: [['**/*.ts', 'src/**']] },
   ]
 
   // ESLint lints a file only where a block's files match it by a glob not ending in `/**`: our base
@@ -2099,7 +2101,7 @@ describe('a team block giving types whose basePath lies outside the project', ()
   }
 
   it.each(blocks)('runs our typed rule where ESLint gives types from it: basePath $basePathNamed, files $files, ignores $ignores', async ({ basePath, files, ignores = [] }) => {
-    const teamConfig = [buildTeamTypedEslintBlock('team-typed', 'projectService', { basePath, files: [...files], ignores: [...ignores] })]
+    const teamConfig = [buildTeamTypedEslintBlock('team-typed', 'projectService', { basePath, files: files.map((entry) => (typeof entry === 'string' ? entry : [...entry])), ignores: [...ignores] })]
 
     expect(await ourTypedRuleIn(mergedEditorEslintConfig(PROJECT_WITH_OXLINT, TYPED_RULE_ON, teamConfig))).toStrictEqual(await typedByTheTeamAlone(teamConfig))
   })

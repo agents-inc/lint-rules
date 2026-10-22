@@ -1,4 +1,4 @@
-import { messageOf } from '../caught-errors.ts'
+import { messageOf } from '../../core/caught-errors.ts'
 import type { NotCheckedEntry } from './report.ts'
 import { GONE_WHILE_CHECK_RAN, OXLINT_RULES } from './texts.ts'
 

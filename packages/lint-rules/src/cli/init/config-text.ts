@@ -8,7 +8,7 @@ type ListedRulesets = { readonly listed: readonly string[]; readonly optIn: read
 type FlatList = Exclude<RulesetList, 'libs'>
 
 // The `**/` form matches at any depth in both engines. Each is listed so a team can see and remove it.
-const IGNORES = [
+const IGNORES: readonly string[] = [
   '**/build/**',
   '**/coverage/**',
   '**/dist/**',

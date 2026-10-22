@@ -1,3 +1,5 @@
+import { namedGroupOf } from '../core/named-groups.ts'
+
 // npm installs a dependency whose peer range leaves out the version installed beside it all the
 // same, printing a block that opens with this line and names the package on the next (measured, npm
 // 10, eslint-plugin-react 7.37.5 beside ESLint 10).
@@ -11,7 +13,7 @@ export function packagesNpmOverridesAPeerFor(installOutput: string): string[] {
 }
 
 function packageResolvedOn(line: string | undefined): string {
-  const packageName = line?.match(PACKAGE_RESOLVED_LINE)?.groups?.['packageName']
-  if (packageName === undefined) throw new Error(`npm opened a peer override without naming the package resolved: ${String(line)}`)
-  return packageName
+  const resolved = line === undefined ? null : PACKAGE_RESOLVED_LINE.exec(line)
+  if (resolved === null) throw new Error(`npm opened a peer override without naming the package resolved: ${String(line)}`)
+  return namedGroupOf(resolved, 'packageName')
 }
