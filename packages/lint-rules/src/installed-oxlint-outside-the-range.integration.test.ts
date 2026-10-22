@@ -8,8 +8,8 @@ import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { THIS_PACKAGE } from './__tests__/temp-projects.ts'
 
-// An installed oxlint outside our peer range is checked against its own schema, not refused for its
-// version: an oxlint reporting 2.0.0, with this repo's schema, and with it less no-debugger, a rule the
+// An installed oxlint outside the range the merge's refusals advise is checked against its own schema,
+// not refused for its version: an oxlint reporting 2.0.0, with this repo's schema, and with it less no-debugger, a rule the
 // merge writes.
 
 allowEveryTestForParallelLoad()

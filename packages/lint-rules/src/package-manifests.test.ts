@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import inventory from '@workspace/rule-data/generated/inventory.json' with { type: 'json' }
 import { beforeAll, describe, expect, it } from 'vitest'
 import {
   dependenciesNotListedBy,
@@ -129,6 +130,27 @@ describe('what npm runs before it publishes @agents-inc/lint-rules', () => {
   })
 })
 
+// check runs these whatever the project installs, so the rules it routes are the engines' the catalog was generated from.
+const CATALOG_ENGINES = { eslint: inventory.versions.eslint, oxlint: inventory.versions.oxlint }
+
+function listedUnder(manifest: Manifest, field: 'dependencies' | 'peerDependencies'): Readonly<Record<string, string>> {
+  const listed = manifest[field]
+  if (listed === undefined) throw new Error(`${manifest.name}'s package.json lists no ${field}`)
+  return listed
+}
+
+describe('the ESLint and oxlint @agents-inc/lint-rules runs', () => {
+  it('are its own dependencies, pinned to the versions the rule catalog was generated from', () => {
+    const dependencies = listedUnder(SHIPPED, 'dependencies')
+
+    expect({ eslint: dependencies['eslint'], oxlint: dependencies['oxlint'] }).toStrictEqual(CATALOG_ENGINES)
+  })
+
+  it('are no peer dependency of it: TypeScript is its only one', () => {
+    expect(Object.keys(listedUnder(SHIPPED, 'peerDependencies'))).toStrictEqual(['typescript'])
+  })
+})
+
 describe.each(INLINED.map((manifest) => ({ manifest, name: manifest.name })))(
   'the packages @agents-inc/lint-rules lists, beside $name, which its build inlines',
   ({ manifest }) => {
@@ -159,7 +181,7 @@ function lockedWorkspaceAt(dir: string): LockedWorkspace {
 }
 
 // bun 1.2.6's frozen install accepts a lock that misdescribes a workspace's manifest, exits 0 and
-// leaves the lock as it is (measured: the oxlint peer range raised in package.json alone), so
+// leaves the lock as it is (measured: a version range raised in package.json alone), so
 // nothing else notices a stale line.
 describe("the repo's bun.lock", () => {
   it('records each workspace of the repo, and no other', () => {

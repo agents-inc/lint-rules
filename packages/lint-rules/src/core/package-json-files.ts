@@ -3,11 +3,14 @@ import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { foundOr } from '@workspace/rule-data/collections'
+import { hasErrorCode } from './caught-errors.ts'
 import { isRecord } from './is-record.ts'
 import { directoriesUpFrom } from './paths-from-a-folder.ts'
 
 export const PACKAGE_JSON = 'package.json'
 export const THIS_PACKAGE = '@agents-inc/lint-rules'
+// require's code; an import's is ERR_MODULE_NOT_FOUND.
+const MODULE_NOT_FOUND = 'MODULE_NOT_FOUND'
 
 /** The fields this package reads, unchecked. */
 export type PackageJsonFile = {
@@ -15,7 +18,6 @@ export type PackageJsonFile = {
   readonly version: unknown
   readonly dependencies: unknown
   readonly devDependencies: unknown
-  readonly peerDependencies: unknown
 }
 
 export function nearestPackageJsonPath(dir: string): string | undefined {
@@ -39,19 +41,11 @@ export function readPackageJsonFile(path: string): PackageJsonFile {
     version: parsed['version'],
     dependencies: parsed['dependencies'],
     devDependencies: parsed['devDependencies'],
-    peerDependencies: parsed['peerDependencies'],
   }
 }
 
 export function listsPackage(field: unknown, packageName: string): boolean {
   return isRecord(field) && Object.hasOwn(field, packageName)
-}
-
-/** Throws, naming the file, when it gives none. */
-export function rangeListedIn(file: PackageJsonFile, field: unknown, packageName: string): string {
-  const range = isRecord(field) ? field[packageName] : undefined
-  if (typeof range !== 'string') throw new TypeError(`${file.path}: lists no version range for ${packageName}`)
-  return range
 }
 
 /** Throws, naming the file, when it gives none. */
@@ -65,13 +59,9 @@ export function resolvedFrom(dir: string, request: string): string | null {
   try {
     return createRequire(resolve(dir, PACKAGE_JSON)).resolve(request)
   } catch (error) {
-    if (isModuleNotFound(error)) return null
+    if (hasErrorCode(error, MODULE_NOT_FOUND)) return null
     throw error
   }
-}
-
-function isModuleNotFound(error: unknown): boolean {
-  return error instanceof Error && 'code' in error && error.code === 'MODULE_NOT_FOUND'
 }
 
 function parsedJsonIn(path: string): unknown {

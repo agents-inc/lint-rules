@@ -9,9 +9,8 @@ import {
   installedOxlintSchemaTextLacking,
   type NamesLeftOut,
   OXLINT_SCHEMA_FILE,
+  oxlintFloorTheMergeAdvises,
   oxlintSchemaTextWithout,
-  oxlintPeerFloor,
-  oxlintPeerRange,
   packageJsonText,
 } from './__tests__/factories/package-json-factories.ts'
 import { buildTeamOxlintConfig } from './__tests__/factories/team-config-factories.ts'
@@ -32,6 +31,8 @@ const NOT_JSON = '{ "definitions": '
 // The oxlint differentials pass against 1.86.0 as against 1.87. Outside the range: 1.85.x; 2.x, at a
 // minor above the floor's too; and a prerelease, which npm's caret range never holds.
 const OXLINT_FLOOR = '1.86.0'
+// Written out, so the refusals' text is pinned whatever the merge's own constant holds.
+const RANGE_THE_REFUSALS_ADVISE = `^${OXLINT_FLOOR}`
 const OXLINT_VERSION_BELOW_THE_RANGE = '1.85.9'
 const OXLINT_VERSION_OF_THE_NEXT_MAJOR = '2.0.0'
 const OXLINT_VERSION_OF_THE_NEXT_MAJOR_ABOVE_THE_FLOORS_MINOR = '2.99.0'
@@ -69,13 +70,13 @@ function schemaPathIn(projectDir: string): string {
 
 function lackingNamesError(projectDir: string, version: string, sortedNames: readonly string[]): Error {
   return new Error(
-    `oxlint.config.mts: the oxlint installed for ${projectDir} is ${version}, which has no rule or plugin named ${sortedNames.join(', ')}; ${THIS_PACKAGE} writes these names, so oxlint would refuse the merged config: install another oxlint within ${oxlintPeerRange()}`,
+    `oxlint.config.mts: the oxlint installed for ${projectDir} is ${version}, which has no rule or plugin named ${sortedNames.join(', ')}; ${THIS_PACKAGE} writes these names, so oxlint would refuse the merged config: install another oxlint within ${RANGE_THE_REFUSALS_ADVISE}`,
   )
 }
 
 function unreadableSchemaError(projectDir: string, version: string): Error {
   return new Error(
-    `oxlint.config.mts: the oxlint installed for ${projectDir} (${version}) has no rule list ${THIS_PACKAGE} can read at ${schemaPathIn(projectDir)}, so it cannot check that oxlint knows every name the merge writes: install another oxlint within ${oxlintPeerRange()}`,
+    `oxlint.config.mts: the oxlint installed for ${projectDir} (${version}) has no rule list ${THIS_PACKAGE} can read at ${schemaPathIn(projectDir)}, so it cannot check that oxlint knows every name the merge writes: install another oxlint within ${RANGE_THE_REFUSALS_ADVISE}`,
   )
 }
 
@@ -91,9 +92,13 @@ describe("mergeOxlintConfig, given a project's installed oxlint", () => {
     expect(mergedInto(projectWithInstalledOxlint(version))).not.toThrow()
   })
 
+  // Read in the test, not in a table: a range with no floor fails this test, where a table would fail the file's loading.
+  it("accepts the floor of the range the merge's refusals advise, whose schema holds every name the merge writes", () => {
+    expect(mergedInto(projectWithInstalledOxlint(oxlintFloorTheMergeAdvises()))).not.toThrow()
+  })
+
   it.each([
-    { which: 'the floor of the range', version: oxlintPeerFloor() },
-    { which: 'the floor the peer range sets', version: OXLINT_FLOOR },
+    { which: 'the floor the advised range sets', version: OXLINT_FLOOR },
     { which: 'a later patch inside the range', version: OXLINT_VERSION_A_LATER_PATCH },
     { which: 'a later minor inside the range', version: OXLINT_VERSION_INSIDE_THE_RANGE },
     { which: 'a later minor of the same major', version: OXLINT_VERSION_AT_THE_TOP_OF_THE_MAJOR },

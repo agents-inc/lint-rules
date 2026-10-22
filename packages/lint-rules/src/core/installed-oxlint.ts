@@ -3,20 +3,13 @@ import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
-import { oxlintNameOf } from '@workspace/rule-data/rule-id-parts'
+import { oxlintNameOf, ruleNameOf } from '@workspace/rule-data/rule-id-parts'
 import { configErrorIn } from './config-error.ts'
 import { isRecord } from './is-record.ts'
-import {
-  ourPackageJsonFile,
-  PACKAGE_JSON,
-  rangeListedIn,
-  readPackageJsonFile,
-  THIS_PACKAGE,
-  versionOf,
-} from './package-json-files.ts'
+import { PACKAGE_JSON, readPackageJsonFile, THIS_PACKAGE, versionOf } from './package-json-files.ts'
 import { readOnce } from './read-once.ts'
 
-type InstalledOxlint = { readonly tsconfigRootDir: string; readonly manifestPath: string; readonly version: string; readonly range: string }
+type InstalledOxlint = { readonly tsconfigRootDir: string; readonly manifestPath: string; readonly version: string }
 
 type SchemaNames = { readonly ruleNames: ReadonlySet<string>; readonly pluginNames: ReadonlySet<string>; readonly configKeys: ReadonlySet<string> }
 
@@ -28,12 +21,14 @@ const OXLINT = 'oxlint'
 const OXLINT_MANIFEST = `${OXLINT}/${PACKAGE_JSON}`
 // Every oxlint release ships it beside its package.json, in `files` but not in `exports`.
 const OXLINT_SCHEMA = 'configuration_schema.json'
-const RULE_MAP_KEYS = ['definitions', 'DummyRuleMap', 'properties']
-const PLUGIN_LIST_KEYS = ['definitions', 'LintPluginOptionsSchema', 'enum']
-const CONFIG_KEY_MAP_KEYS = ['properties']
-const RULE_NAME_SEPARATOR = '/'
-const NOT_FOUND = -1
+const RULE_MAP_KEYS: readonly string[] = ['definitions', 'DummyRuleMap', 'properties']
+const PLUGIN_LIST_KEYS: readonly string[] = ['definitions', 'LintPluginOptionsSchema', 'enum']
+const CONFIG_KEY_MAP_KEYS: readonly string[] = ['properties']
 const NAMES_SEPARATOR = ', '
+
+// Advised in the refusals only: the merge accepts any oxlint whose schema holds every name it writes. The floor is
+// the oldest oxlint both oxlint merge differential suites pass on.
+export const OXLINT_RANGE_THE_MERGE_ADVISES = '^1.86.0'
 
 // Read at most once per process.
 const schemaReads = new Map<string, SchemaRead>()
@@ -59,7 +54,7 @@ export function keysAnOxlintConfigHolds(): ReadonlySet<string> {
 
 function installedOxlint(tsconfigRootDir: string): InstalledOxlint {
   const manifestPath = installedOxlintManifest(tsconfigRootDir)
-  return { tsconfigRootDir, manifestPath, version: versionOf(readPackageJsonFile(manifestPath)), range: ourOxlintPeerRange() }
+  return { tsconfigRootDir, manifestPath, version: versionOf(readPackageJsonFile(manifestPath)) }
 }
 
 function installedOxlintManifest(tsconfigRootDir: string): string {
@@ -74,23 +69,18 @@ function installedOxlintManifest(tsconfigRootDir: string): string {
   }
 }
 
-function ourOxlintPeerRange(): string {
-  const manifest = ourPackageJsonFile()
-  return rangeListedIn(manifest, manifest.peerDependencies, OXLINT)
-}
-
-function unreadableSchema({ tsconfigRootDir, version, range }: InstalledOxlint, schemaPath: string, cause: Error): Error {
+function unreadableSchema({ tsconfigRootDir, version }: InstalledOxlint, schemaPath: string, cause: Error): Error {
   return configErrorIn(
     consumerConfigFiles.oxlintConfig,
-    `the oxlint installed for ${tsconfigRootDir} (${version}) has no rule list ${THIS_PACKAGE} can read at ${schemaPath}, so it cannot check that oxlint knows every name the merge writes: install another oxlint within ${range}`,
+    `the oxlint installed for ${tsconfigRootDir} (${version}) has no rule list ${THIS_PACKAGE} can read at ${schemaPath}, so it cannot check that oxlint knows every name the merge writes: install another oxlint within ${OXLINT_RANGE_THE_MERGE_ADVISES}`,
     { cause },
   )
 }
 
-function lackingNames({ tsconfigRootDir, version, range }: InstalledOxlint, names: readonly string[]): Error {
+function lackingNames({ tsconfigRootDir, version }: InstalledOxlint, names: readonly string[]): Error {
   return configErrorIn(
     consumerConfigFiles.oxlintConfig,
-    `the oxlint installed for ${tsconfigRootDir} is ${version}, which has no rule or plugin named ${names.toSorted().join(NAMES_SEPARATOR)}; ${THIS_PACKAGE} writes these names, so oxlint would refuse the merged config: install another oxlint within ${range}`,
+    `the oxlint installed for ${tsconfigRootDir} is ${version}, which has no rule or plugin named ${names.toSorted().join(NAMES_SEPARATOR)}; ${THIS_PACKAGE} writes these names, so oxlint would refuse the merged config: install another oxlint within ${OXLINT_RANGE_THE_MERGE_ADVISES}`,
   )
 }
 
@@ -106,9 +96,7 @@ function oxlintPluginsOf(catalog: Catalog): string[] {
 
 /** The schema spells a rule under its plugin's listed name: the catalog's `jsx_a11y/alt-text` is the schema's `jsx-a11y/alt-text`. */
 function schemaSpellingOf({ oxlintName, oxlintPlugin }: OxlintRule): string {
-  const slash = oxlintName.indexOf(RULE_NAME_SEPARATOR)
-  const ruleName = slash === NOT_FOUND ? oxlintName : oxlintName.slice(slash + RULE_NAME_SEPARATOR.length)
-  return oxlintNameOf({ scope: oxlintPlugin, ruleName })
+  return oxlintNameOf({ scope: oxlintPlugin, ruleName: ruleNameOf(oxlintName) })
 }
 
 function schemaReadAt(schemaPath: string): SchemaRead {

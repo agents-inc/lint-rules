@@ -3,14 +3,12 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildInstalledPackageExportingItsEntryAlone, buildPackageJsonFile, PACKAGE_JSON_FILE_PATH } from '../__tests__/factories/package-json-factories.ts'
 import { setUpTempProjects } from '../__tests__/temp-projects.ts'
-import { rangeListedIn, readPackageJsonFile, resolvedFrom, versionOf } from './package-json-files.ts'
+import { readPackageJsonFile, resolvedFrom, versionOf } from './package-json-files.ts'
 
 const PACKAGE = 'installed'
 const NOT_INSTALLED = 'not-installed'
 const PATH_NOT_EXPORTED = `${PACKAGE}/package.json`
 const ENTRY = `node_modules/${PACKAGE}/index.js`
-const LISTED_PACKAGE = 'oxlint'
-const LISTED_RANGE = '^1.86.0'
 const VERSION = '1.2.3'
 const NOT_JSON = '{\n'
 
@@ -33,22 +31,6 @@ describe('resolvedFrom', () => {
 })
 
 // An error that follows a type check is a TypeError, its message unchanged.
-describe('rangeListedIn', () => {
-  it('gives the range the field lists for the package', () => {
-    expect(rangeListedIn(buildPackageJsonFile(), { [LISTED_PACKAGE]: LISTED_RANGE }, LISTED_PACKAGE)).toBe(LISTED_RANGE)
-  })
-
-  it.each([
-    { field: 'lists no range for it', given: {} },
-    { field: 'lists a range that is no string', given: { [LISTED_PACKAGE]: 1 } },
-    { field: 'is no object', given: undefined },
-  ])('throws a TypeError naming the file where the field $field', ({ given }) => {
-    expect(() => rangeListedIn(buildPackageJsonFile(), given, LISTED_PACKAGE)).toThrowError(
-      new TypeError(`${PACKAGE_JSON_FILE_PATH}: lists no version range for ${LISTED_PACKAGE}`),
-    )
-  })
-})
-
 describe('versionOf', () => {
   it('gives the version the file gives', () => {
     expect(versionOf(buildPackageJsonFile({ version: VERSION }))).toBe(VERSION)

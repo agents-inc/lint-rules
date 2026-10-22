@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { OXLINT_RANGE_THE_MERGE_ADVISES } from '../../core/installed-oxlint.ts'
 import type { PackageJsonFile } from '../../core/package-json-files.ts'
 import { INSTALLED_OXLINT, type TempProjects } from '../temp-projects.ts'
 
@@ -14,7 +15,7 @@ export type PackageJson = {
   readonly devDependencies?: Readonly<Record<string, string>>
 }
 
-type LintRulesManifest = { readonly version: string; readonly peerDependencies: Readonly<Record<string, string>> }
+type LintRulesManifest = { readonly version: string }
 
 /**
 * The parts the merge's name check reads: rule keys under `DummyRuleMap.properties`, plugin names in
@@ -40,17 +41,10 @@ const ESLINT = 'eslint'
 export const INSTALLED_ESLINT_MANIFEST = 'node_modules/eslint/package.json'
 export const PACKAGE_JSON_FILE_PATH = '/project/package.json'
 
-export function oxlintPeerRange(): string {
-  const range = lintRulesManifest().peerDependencies[OXLINT]
-  if (range === undefined) throw new Error('package.json lists no oxlint peer dependency')
-  return range
-}
-
 /** The version after the caret. */
-export function oxlintPeerFloor(): string {
-  const range = oxlintPeerRange()
-  if (!range.startsWith(CARET)) throw new Error(`the oxlint peer range ${range} is not a caret range`)
-  return range.slice(CARET.length)
+export function oxlintFloorTheMergeAdvises(): string {
+  if (!OXLINT_RANGE_THE_MERGE_ADVISES.startsWith(CARET)) throw new Error(`the oxlint range ${OXLINT_RANGE_THE_MERGE_ADVISES} is not a caret range`)
+  return OXLINT_RANGE_THE_MERGE_ADVISES.slice(CARET.length)
 }
 
 export function lintRulesPackageVersion(): string {
@@ -67,7 +61,7 @@ export function buildPackageJson(fields: Pick<PackageJson, DependencyField> = {}
 }
 
 export function buildPackageJsonListingOxlint(field: DependencyField = 'devDependencies'): PackageJson {
-  const oxlint = { [OXLINT]: oxlintPeerRange() }
+  const oxlint = { [OXLINT]: OXLINT_RANGE_THE_MERGE_ADVISES }
   return field === 'dependencies' ? buildPackageJson({ dependencies: oxlint }) : buildPackageJson({ devDependencies: oxlint })
 }
 
@@ -178,5 +172,5 @@ export function buildInstalledReactFiles(version: string): Readonly<Record<strin
 
 /** As readPackageJsonFile gives a manifest: each field it reads unset unless given. */
 export function buildPackageJsonFile(fields: Partial<PackageJsonFile> = {}): PackageJsonFile {
-  return { path: PACKAGE_JSON_FILE_PATH, version: undefined, dependencies: undefined, devDependencies: undefined, peerDependencies: undefined, ...fields }
+  return { path: PACKAGE_JSON_FILE_PATH, version: undefined, dependencies: undefined, devDependencies: undefined, ...fields }
 }
