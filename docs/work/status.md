@@ -2,18 +2,13 @@
 
 Orchestrator's own tracker. Terse.
 
-## Now
-- Owner-answers build (precedence model, editor merges): fix round 2 DONE 2026-10-13 (my uncached gate: build 0, typecheck 3/3, house 269, rule-data 211, lint-rules 2113 + 39 expected fail = known gaps pinned). Not committed (git writes are the owner's). Everything else waits on the owner: the questions page (open cards #57–#65 and the rest, plus "My calls") and the candidates page (279 rules, 100 new from the r2 sweep). 2026-10-14 owner: "go over everything again and make sure that it works as expected": real run RUNNING (see Queue).
-- Not started, answered, waiting for the rest of the owner's answers before building: `check`/`init` (no flags; #30), import-x TS resolver (#33), bare `// eslint-disable` (#22). Need the owner: candidate rules (page in Queue), the ruleset duplicates (#13, #35).
-- Waiting on owner: the open cards on the questions page. Answered and built 2026-10-15 (house and data lanes): class-helper ship (#23).
-
 ## Gated on the owner's go-ahead
 - Run the package against the `~/dev/cli` monorepo, once slice 1 is done and working. Do NOT start without an explicit go.
 
 ## Slices
 1. Scaffold + `rule-data` + generator + `eslint-plugin-house` port + factories. Spec: `docs/work/spec-slice-1.md`.
-2. Per-rule, per-engine fixture proof. 3. Runner, 4. `init`: wait for the owner to name the CLI surface.
-- Ruleset critique iteration 2: §4 ambiguous, §5 conflicts (`ruleset-critique-r1.md`).
+2. Per-rule, per-engine fixture proof. 3. Runner, 4. `init`.
+- Ruleset critique iteration 2: §4 ambiguous (`ruleset-critique-r1.md`).
 
 ## Queue (background work)
 - 2026-10-11 build `wf_93f10b59-0bd` DONE and verified by me (--force): build ok, typecheck 3/3, tests house 269, rule-data 154, lint-rules 694, 0 skipped; the KNOWN GAP is now a passing test.
@@ -221,15 +216,22 @@ Max 2 agents. Resume a stopped run from its saved results, never with resumeFrom
 |---|---|---|---|---|
 | 1 | lint | a6: ban gap written truthfully everywhere, 2 of the 4 suppression rules pinned by tests (`wf_9af60c07-5bd`) | DONE (review APPROVE; checked: no stale sentence left) | — |
 | 2 | cli | r2: e2e at 0.170.2 PASSED; round-2 answers built (`wf_37a9ba13-a9c`; results scratch-backup/cli-answers-2/results/) | DONE (review APPROVE; Stryker 67/67 killed; 25 CLI e2e files pass; server e2e hang = wrangler cache, carded) | — |
-| 3 | cli | r3: isCategoryPath/isCategory removed, loadtime script --output (`wf_b7feaf74-9ec`) | DONE (review: code ready; both mutants killed; my CLAUDE.md line fix applied) | owner runs 2 e2e files (eject-default-source-skill-absent, project-run-adding-nothing-global-only-registers) |
+| 3 | cli | r3: isCategoryPath/isCategory removed, loadtime script --output (`wf_b7feaf74-9ec`) | DONE (review: code ready; both mutants killed; my CLAUDE.md line fix applied; its 2 e2e files ran in the 2026-10-20 CLI e2e baseline, row 5) | — |
 | 6 | lint | a7: the 2 merge-call checks a type fully covers are types now (`wf_d9acccf0-6b6`) | DONE (review APPROVE; gate green: house 364, rule-data 415, lint-rules 3867 + 61 expected fail; Stryker 5 killed, 1 CompileError) | — |
 | 4 | both | commit the uncommitted work | owner asks | — |
-| 5 | cli | owner runs e2e files the builds list (round 2's 25 CLI files already passed) | owner | — |
+| 5 | cli | owner runs e2e files the builds list (round 2's 25 CLI files already passed) | DONE: the 2026-10-20 CLI e2e baseline ran them (227 files, 1138 passed + 6 expected fail; smoke 52; server e2e 15; ~/dev/cli `todo/plans/REPO-44-progress.md`) | — |
 | 7 | cli | r4: the 5 cli-r4 changes (`wf_088fdf7e-65f`) | DONE (review APPROVE; Stryker nothing open; 8 CLI e2e files pass, known gaps run once; server e2e passes with a stale cache) | — |
-| 9 | cli | r6: tests for the refuted reasons, glob() sorted, stale-dist tolerance (`wf_e585a26c-f19`, no-secrets rule in its brief) | running | review ready, each refuted mutant Killed, gate green |
-| 10 | lint | a9: Testing Library allowance like Vitest's; the 2 merge-grid cases restored (`wf_4b01c9b2-1f6`, small-run.js) | running | review ready, gate green, Stryker clean |
+| 9 | cli | r6 (`wf_0a7d3dac-1ce`): glob() sorted, 3 s clock tolerance, refuted-reason tests (40/42 Killed by Stryker, 2 api-mocks killed by hand) | DONE with 2 leftovers: INDEX.md row 897 contradicts its finding (another writer edits INDEX.md: owner's), marketplace-generator ordering spec can no longer fail (needs a prefix-pair case); finding's 3 owner rulings | — |
+| 10 | lint | a9 (committed in 0b24ebb..2863f18; `wf_d084e7e2-053` from review; Stryker ranges from the dev transcript) | DONE 2026-10-21 (review APPROVE: breaks B4, B24, B25, B26 now caught; Stryker on every line the dev transcript shows, 7 survivors each measured as changing no file's ESLint config; gate green in the repo; results scratch-backup/a9/results.md) | — |
 | 11 | cli | r5: agent vars out of the server dev env; Stryker can't mutate under `as` → doc + finding (`wf_b5a0ea37-f08`) | DONE (review APPROVE; server e2e 7/7 x3 incl. stale cache, no GitHub request). INCIDENT: a probe dumped env to scratch and an agent cat'ed it: LINEAR_API_KEY, NGROK_AUTHTOKEN, NEON_API_KEY in transcript wf_b5a0ea37-f08/agent-ae9c731a297f2d710.jsonl (line 195), CLAUDE_CODE_MESSAGING_TOKEN in wf_088fdf7e-65f/agent-af34d63dec0288daa.jsonl (line 517); files deleted; rotation + transcript cleanup = owner | owner: rotate keys? clean transcripts? |
 | 8 | lint | a8: knip gate `bun run unused-exports`, run before every typecheck; existing unused exports cleared (`wf_69e4e843-5ba`) | DONE (review APPROVE; check exit 0 on the tree, re-run by me; fails naming a scratch export, measured) | 3 cards (q1-q3) + 6 owed a4 cards published |
+| 12 | lint | candidate rules: the owner's verdicts (statuses in `packages/rule-data/data/rule-candidates.json`; the candidates page is on the previous account) | owner | — |
+| 13 | lint | owner session cli-e0 (2026-10-20): ESLint and oxlint as our dependencies, `check` in the packed-install test, `no-section-banner` separator, test-setup defects, a9 review follow-ups (`gate-equivalence.test.ts`) | DONE: builds, docs, Stryker, verify, expressive-ts rounds 1-3 (findings in learnings.md); uncommitted | — |
+| 14 | lint | Q (items 46, 52): an exhaustive switch over a union: no default (the consistent-return report plan.md Open accepts, q-dogfood-keep-three), `default: throw` as plan.md records (drops TS2366), or `default: { const unhandled: never = x; return unhandled }` (passes ESLint and tsc)? And make `build-eslint-config.ts`'s `TypeInformation` checks (`filesWithoutTypeInformation`, `keptToTypedFiles`, `typedBlocks`) switches (`typedBlocks` would exceed sonarjs/max-lines-per-function)? Sites and measurements: learnings.md, "how an exhaustive switch over a union is written" | owner | — |
+| 15 | lint | Q (items 48, 54b): should `hook-file-naming` count `export enum` and `export namespace` as value exports? `declaredValueNames`' default case reads both as types, so a file holding `useThing` beside `export enum Status` is told to rename; beside `export class` or `export const` it is not | owner | — |
+| 16 | lint | Q (item 50): make `RuleRoute` (`catalog.ts`) a union on `engine` (oxlint routes always carry `oxlintName`/`oxlintPlugin`, ESLint routes null; `isOxlintRoute` loses its throw)? Changes `catalog.test.ts`'s refusal test and the routes both packages build by hand (search: learnings.md, `RuleRoute` bullet) | owner | — |
+| 17 | lint | Q (items 24, 33): should the test helper `oxlintCodeOfRule` (`__tests__/oxlint-codes.ts`) cut the name with rule-data's `ruleNameOf`, as production's copy (`cli/check/oxlint-output.ts`) does, or keep its hand cut as an independent check, like `cutWhereOxlintCuts`? Same output on every oxlint rule (session scratchpad `x1r2-fix/oxlint-code-equivalence.mts`); `oxlint-output.test.ts` checks production against it, so changing it needs the owner (CLAUDE.md, Tests) | owner | — |
+| 18 | lint | Q (item 11): pin, against the real catalog, that no agent ESLint block before `agents-inc/oxlint-rules-off` states a rule oxlint runs? A new invariant: architecture.md step 4 lets earlier blocks state them. Probe: session scratchpad `x1-fix/probe/oxlint-routed-before-off-switch.ts` (none today; it finds the leak a break of `suppressionsChanged` makes, which `build-eslint-config.test.ts` and `resolve-rule-layers.test.ts` pin already) | owner | — |
 
 - 2026-10-19 RESUMED (owner: 2 agents max in total): lint `wf_53c3487b-837` (task `ww8evdgud`, lint-answers-4-continue.js) ∥ CLI `wf_d0f5803b-859` (task `wza12lkog`, cli-answers-continue-2.js, now one agent at a time: the re-check runs after the lanes land).
 - 2026-10-19 open-questions page (both repos): https://claude.ai/artifact/KvYrvExLadu2goSKShwfsr (source scratch-backup/open-questions-1/items.json: the 25 unanswered CLI spec cards; lint-rules has none open). Answers there supersede the CLI page's (1Qk7…) unanswered cli-r2 cards.
@@ -249,3 +251,6 @@ Max 2 agents. Resume a stopped run from its saved results, never with resumeFrom
 - 2026-10-20 owner: act on the answers (follow-up asked: eject skills stays all-marketplace). RUNNING lint `wf_9af60c07-5bd` (task `wfkiwx2mu`, a6): the accepted ban gap written truthfully everywhere + merge-call checks → types only if the spec shows it is about as simple as a5 (else builds the prose only and reports why). QUEUED after CLI r2 `wf_37a9ba13-a9c`: `Workflow({scriptPath: "<session>/workflows/scripts/cli-answers-r3.js"})` (isCategoryPath + isCategory removal, loadtime script output path). Max 2 agents.
 - 2026-10-20 owner answered (backup open-questions-1/answers-2026-10-20c/): lint-a4-editor-team-valid-expect note "users' config rules override ours" read as Keep (that is how it works). small-run.js = one reusable one-agent-at-a-time script; resume a stopped one from its journal results, as before.
 - 2026-10-20 owner: no new agents; wrap up for the subscription switch. Both runs (lint a9 `wf_4b01c9b2-1f6`, CLI r6 `wf_e585a26c-f19`) are at dev; watchers `bi3jgpylb`/`bmy151jha` stop each workflow when its dev ends; then results saved to files and the resume written in the open-tasks table.
+
+- 2026-10-20 after the owner's hard stop and re-login: lint-rules committed by me at the owner's request, 8 commits 0b24ebb..5d05ea0 (no co-author, no tests run, not pushed). RUNNING from saved reports (small-run-from.js): lint a9 `wf_11f89869-673` (review → Stryker), CLI r6 `wf_0a7d3dac-1ce` (dev continues from its notes → review → Stryker). Open-tasks rows 9 and 10 are these.
+- 2026-10-20 another session (cli-e0) says the owner gave it the remaining work in both repos. Replied with my state; I start nothing new in either repo. Only a9 `wf_d084e7e2-053` still runs (Stryker step), lint-rules only.
