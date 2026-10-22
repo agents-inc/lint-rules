@@ -5,9 +5,8 @@ import {
   type SuppressionModeSettingField,
   type TestFileOptions,
   type WhenSuppressions,
-  inEachSuppressionMode,
   parseSuppressionModeSetting,
-  testFileSettingOf,
+  whenSuppressionsParsedBy,
 } from '../turned-on-by.ts'
 import type { CanonicalRule, CanonicalSuppressionModeSetting } from './build-routing.ts'
 
@@ -35,7 +34,7 @@ function whenSuppressionsOf(
   field: WhenSuppressionsField | undefined,
 ): Pick<CanonicalRule, 'whenSuppressions'> {
   if (field === undefined) return {}
-  return { whenSuppressions: { ...inEachSuppressionMode(field, (setting) => parseCanonicalSetting(id, setting)), ...testFileSettingOf(field) } }
+  return { whenSuppressions: whenSuppressionsParsedBy(field, (setting) => parseCanonicalSetting(id, setting)) }
 }
 
 function parseCanonicalSetting(id: string, setting: SuppressionModeSettingField): CanonicalSuppressionModeSetting {

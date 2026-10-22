@@ -51,14 +51,7 @@ export function parseTurnedOnBy(id: string, { ruleset, alwaysOn, whenSuppression
   if (waysGiven.length !== 1) {
     throw new Error(`${id} needs exactly one of a ruleset, alwaysOn: true and whenSuppressions`)
   }
-  if (whenSuppressions !== undefined) {
-    return {
-      whenSuppressions: {
-        ...inEachSuppressionMode(whenSuppressions, (setting) => parseSuppressionModeSetting(id, setting)),
-        ...testFileSettingOf(whenSuppressions),
-      },
-    }
-  }
+  if (whenSuppressions !== undefined) return { whenSuppressions: parseWhenSuppressions(id, whenSuppressions) }
   if (ruleset !== undefined) return { ruleset }
   return { alwaysOn: true }
 }
@@ -77,7 +70,19 @@ export function inEachSuppressionMode<Given, Made>(
   return { banned: settingOf(settings.banned), allowed: settingOf(settings.allowed) }
 }
 
+/** Each mode's setting parsed by `parseSetting`, and the test-file setting as given, where the rule has one. */
+export function whenSuppressionsParsedBy<Given, Parsed, InTestFiles>(
+  whenSuppressions: BySuppressionMode<Given> & { readonly bannedInTestFiles?: InTestFiles | undefined },
+  parseSetting: (setting: Given) => Parsed,
+): WhenSuppressions<Parsed, InTestFiles> {
+  return { ...inEachSuppressionMode(whenSuppressions, parseSetting), ...testFileSettingOf(whenSuppressions) }
+}
+
 /** The test-file setting, where the rule has one: none is no key, as exactOptionalPropertyTypes asks. */
-export function testFileSettingOf<InTestFiles>({ bannedInTestFiles }: { readonly bannedInTestFiles?: InTestFiles | undefined }): { readonly bannedInTestFiles?: InTestFiles } {
+function testFileSettingOf<InTestFiles>({ bannedInTestFiles }: { readonly bannedInTestFiles?: InTestFiles | undefined }): { readonly bannedInTestFiles?: InTestFiles } {
   return bannedInTestFiles === undefined ? {} : { bannedInTestFiles }
+}
+
+function parseWhenSuppressions(id: string, whenSuppressions: SettingFieldBySuppressionMode): SettingBySuppressionMode {
+  return whenSuppressionsParsedBy(whenSuppressions, (setting) => parseSuppressionModeSetting(id, setting))
 }

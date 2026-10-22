@@ -44,11 +44,18 @@ type OxlintRuleByCanonicalId = { id: string; implementation: OxlintImplementatio
 export function buildInventory({ versions, oxlintRules, eslintRules }: InstalledEngines): Inventory {
   const oxlintById = oxlintImplementationsById(oxlintRules)
   const eslintById = eslintImplementationsById(eslintRules)
-  const ids = [...new Set([...oxlintById.keys(), ...eslintById.keys()])].toSorted(compareCodeUnits)
+  const ids = idsEitherEngineHas(oxlintById, eslintById)
   return {
     versions,
     rules: ids.map((id) => ({ id, oxlint: oxlintById.get(id) ?? null, eslint: eslintById.get(id) ?? null })),
   }
+}
+
+function idsEitherEngineHas(
+  oxlintById: ReadonlyMap<string, OxlintImplementation>,
+  eslintById: ReadonlyMap<string, EslintImplementation>,
+): readonly string[] {
+  return [...new Set([...oxlintById.keys(), ...eslintById.keys()])].toSorted(compareCodeUnits)
 }
 
 function oxlintImplementationsById(

@@ -74,8 +74,7 @@ export function eslintAliasCandidatesOf(oxlintName: string): readonly string[] {
   const { ruleName } = partsOfOxlintName(oxlintName)
   const byScope = scopeOf(oxlintName).aliasPrefixes.map((prefix) => `${prefix}/${ruleName}`)
   const byExtension = extendingScopesOf(oxlintName).map((scope) => eslintIdIn(scope, ruleName))
-  const byRule = extraEslintAliasesByOxlintName.get(oxlintName)
-  return byRule === undefined ? [...byScope, ...byExtension] : [...byScope, ...byExtension, ...byRule]
+  return [...byScope, ...byExtension, ...extraEslintAliasesOf(oxlintName)]
 }
 
 /**
@@ -87,13 +86,21 @@ export function eslintAliasCandidatesOf(oxlintName: string): readonly string[] {
  */
 export function oxlintSpellingsOf(oxlintName: string): readonly string[] {
   const { ruleName } = partsOfOxlintName(oxlintName)
-  const prefixes = [scopeOf(oxlintName), ...extendingScopesOf(oxlintName)].flatMap(
-    ({ configPrefixes }) => configPrefixes,
-  )
-  const prefixed = prefixes
-    .flatMap((prefix) => [prefix, packageFormOf(prefix)])
-    .map((prefix) => `${prefix}/${ruleName}`)
+  const prefixed = configPrefixesWithPackageFormsOf(oxlintName).map((prefix) => `${prefix}/${ruleName}`)
   return [...new Set([oxlintName, ...prefixed])].toSorted(compareCodeUnits)
+}
+
+/** Each config prefix of the scopes the rule is spelled under, each followed by its package form. */
+function configPrefixesWithPackageFormsOf(oxlintName: string): readonly string[] {
+  return [scopeOf(oxlintName), ...extendingScopesOf(oxlintName)]
+    .flatMap(({ configPrefixes }) => configPrefixes)
+    .flatMap((prefix) => [prefix, packageFormOf(prefix)])
+}
+
+/** The aliases data/oxlint-scopes.json gives this one rule: none where it gives none. */
+function extraEslintAliasesOf(oxlintName: string): readonly string[] {
+  const aliases = extraEslintAliasesByOxlintName.get(oxlintName)
+  return aliases === undefined ? [] : aliases
 }
 
 /**

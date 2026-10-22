@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { lookUpsWrittenOutIn } from './__tests__/look-ups-written-out.ts'
-import { foundOr } from './collections.ts'
+import { compareCodeUnits, foundOr } from './collections.ts'
 
 const SOURCE_DIR = fileURLToPath(new URL('.', import.meta.url))
 const LENGTHS_BY_WORD: ReadonlyMap<string, number> = new Map([['three', 3]])
@@ -29,6 +29,16 @@ describe('foundOr', () => {
 
   it('throws an Error with the message given where the look-up found nothing', () => {
     expect(() => foundOr(LENGTHS_BY_WORD.get('four'), MISS_MESSAGE)).toThrowError(new Error(MISS_MESSAGE))
+  })
+})
+
+describe('compareCodeUnits', () => {
+  it('sorts by code unit, every upper-case letter before every lower-case one, unlike localeCompare', () => {
+    expect(['b', 'a', 'B'].toSorted(compareCodeUnits)).toStrictEqual(['B', 'a', 'b'])
+  })
+
+  it('answers 0 for equal strings, neither before the other', () => {
+    expect(compareCodeUnits('react', 'react')).toBe(0)
   })
 })
 

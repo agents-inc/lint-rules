@@ -27,11 +27,20 @@ function changedLineRangesOf(file: string): string[] {
   return changedLineRanges(file, gitOutputLines('diff', '-U0', '--no-color', '--no-ext-diff', LAST_COMMIT, '--', file))
 }
 
+// Tracked files changed since the last commit, staged or not.
+function changedFilesNotDeleted(): string[] {
+  return gitOutputLines('diff', '--name-only', '--diff-filter=d', LAST_COMMIT)
+}
+
+function untrackedFilesGitDoesNotIgnore(): string[] {
+  return gitOutputLines('ls-files', '--others', '--exclude-standard')
+}
+
 function mutateArgument(patterns: readonly string[]): string {
-  const changedLines = gitOutputLines('diff', '--name-only', '--diff-filter=d', LAST_COMMIT)
+  const changedLines = changedFilesNotDeleted()
     .filter((file) => isMutated(file, patterns))
     .flatMap(changedLineRangesOf)
-  const untrackedFiles = gitOutputLines('ls-files', '--others', '--exclude-standard').filter((file) => isMutated(file, patterns))
+  const untrackedFiles = untrackedFilesGitDoesNotIgnore().filter((file) => isMutated(file, patterns))
   return [...changedLines, ...untrackedFiles].join(',')
 }
 
@@ -68,11 +77,13 @@ function mutateAndCheckTheReport(configFile: string, toMutate: string, strykerAr
   const reportModifiedBefore = reportModifiedAt()
   const strykerExit = runStryker(configFile, toMutate, strykerArguments)
   if (strykerExit !== STRYKER_SUCCEEDED || strykerArguments.includes(DRY_RUN_ONLY)) return strykerExit
-  return failOnMutantsSurvivedWithoutATest(mutantsSurvivedWithoutATest(parseMutationReport(reportWrittenSince(reportModifiedBefore))))
+  const report = parseMutationReport(reportWrittenSince(reportModifiedBefore))
+  return failOnMutantsSurvivedWithoutATest(mutantsSurvivedWithoutATest(report))
 }
 
 async function mutateTheChangedLinesOf(configFile: string, strykerArguments: readonly string[]): Promise<number> {
-  const toMutate = mutateArgument(await mutatePatternsOf(resolve(REPO_ROOT, configFile)))
+  const patterns = await mutatePatternsOf(resolve(REPO_ROOT, configFile))
+  const toMutate = mutateArgument(patterns)
   if (toMutate === '') {
     console.log(`No changed lines in the files ${configFile} mutates.`)
     return STRYKER_SUCCEEDED

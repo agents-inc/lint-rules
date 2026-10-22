@@ -52,12 +52,12 @@ type RuleBinding = { readonly id: string; readonly rule: RuleWithMeta }
 const OXLINT_PACKAGE = 'oxlint'
 const OXLINT_BIN = 'oxlint'
 const ESLINT_PACKAGE = 'eslint'
-const OXLINT_LIST_RULES_ARGS = ['--rules', '--format=json']
+const OXLINT_LIST_RULES_ARGS: readonly string[] = ['--rules', '--format=json']
 /**
  * Named on the command line, so oxlint loads no config it would find from the folder it runs in up: `--rules`
  * loads one, and exits 1 where it cannot load (this repo's own imports lint-rules' dist, which a build rewrites).
  */
-const OXLINT_CONFIG_SETTING_NOTHING = ['-c', fileURLToPath(new URL('./oxlint-config-setting-nothing.json', import.meta.url))]
+const OXLINT_CONFIG_SETTING_NOTHING: readonly string[] = ['-c', fileURLToPath(new URL('./oxlint-config-setting-nothing.json', import.meta.url))]
 
 const execFileAsync = promisify(execFile)
 
@@ -90,8 +90,14 @@ function packageNameOf(prefix: string): string {
 }
 
 async function readOxlintRules(): Promise<readonly InstalledOxlintRule[]> {
-  const { stdout } = await execFileAsync(process.execPath, [await oxlintCliPath(), ...OXLINT_LIST_RULES_ARGS, ...OXLINT_CONFIG_SETTING_NOTHING])
-  return parseOxlintRuleListings(stdout).map(installedOxlintRuleOf)
+  const ruleList = await ruleListOxlintPrints()
+  return parseOxlintRuleListings(ruleList).map(installedOxlintRuleOf)
+}
+
+async function ruleListOxlintPrints(): Promise<string> {
+  const cliPath = await oxlintCliPath()
+  const { stdout } = await execFileAsync(process.execPath, [cliPath, ...OXLINT_LIST_RULES_ARGS, ...OXLINT_CONFIG_SETTING_NOTHING])
+  return stdout
 }
 
 /** oxlint's package exports no path to its CLI, so the CLI is found through the manifest's `bin`. */

@@ -89,6 +89,8 @@ export type CanonicalRule = {
 
 type RoutingSources = { inventory: Inventory; canonicalRules: readonly CanonicalRule[] }
 
+type RuleIdWithOxlintName = { readonly id: string; readonly oxlintName: string }
+
 /** The engine and shipped settings of every `RuleId`, sorted by ID. */
 export function buildRouting(sources: RoutingSources): readonly RoutingEntry[] {
   const ruleIds = ruleIdsOf(sources)
@@ -115,13 +117,16 @@ function hasCurrentImplementation({ oxlint, eslint }: InventoryRule): boolean {
 }
 
 function assertOneRuleIdPerOxlintName(rules: readonly InventoryRule[], ruleIds: ReadonlySet<string>): void {
-  const ruleIdsOxlintHas = rules.flatMap(({ id, oxlint }) =>
-    oxlint === null || !ruleIds.has(id) ? [] : [{ id, oxlintName: oxlint.oxlintName }],
-  )
+  const ruleIdsOxlintHas = rules.filter(({ id }) => ruleIds.has(id)).flatMap(idWithOxlintNameOf)
   const clashes = sharedKeys(ruleIdsOxlintHas, ({ oxlintName }) => oxlintName)
   if (clashes.length === 0) return
   const described = clashes.map(([oxlintName, group]) => `${group.map(({ id }) => id).join(' and ')} (${oxlintName})`)
   throw new Error(`Rule IDs share one oxlint name: ${described.join('; ')}`)
+}
+
+/** The rule's ID beside oxlint's name for it: none where oxlint has no version of it. */
+function idWithOxlintNameOf({ id, oxlint }: InventoryRule): readonly RuleIdWithOxlintName[] {
+  return oxlint === null ? [] : [{ id, oxlintName: oxlint.oxlintName }]
 }
 
 function installedRuleOf(id: string, installedById: ReadonlyMap<string, InventoryRule>): InventoryRule {
@@ -144,9 +149,14 @@ function shippedRuleOf(canonical: CanonicalRule): RoutedShippedRule {
     files: files ?? null,
     ignores: ignores ?? null,
     ...relatedRuleIdsOf(canonical),
-    ...(canonical.readsRuntimeGlobals === true ? { readsRuntimeGlobals: true } : {}),
+    ...runtimeGlobalsMarkOf(canonical),
     ...allowancesLeftToOf(canonical),
   }
+}
+
+/** `readsRuntimeGlobals: true` where the canonical list says so: the field left out otherwise. */
+function runtimeGlobalsMarkOf({ readsRuntimeGlobals }: CanonicalRule): Pick<RoutedShippedRule, 'readsRuntimeGlobals'> {
+  return readsRuntimeGlobals === true ? { readsRuntimeGlobals: true } : {}
 }
 
 /** Each allowance the canonical list records, without its reason: the field left out where it records none. */
