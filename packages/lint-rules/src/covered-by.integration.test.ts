@@ -2,7 +2,7 @@ import { catalog, routeOf } from '@workspace/rule-data'
 import { ESLint, type Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
 import type { OxlintConfig } from 'oxlint'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { describeFinding, eslintFindingsIn, oxlintFindingsIn, runOxlintCli, writeOxlintConfigFile } from './__tests__/engine-clis.ts'
 import { buildLintRules, buildTwoSetLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { lintRulesPackageVersion } from './__tests__/factories/package-json-factories.ts'
@@ -181,7 +181,12 @@ type CoverRunsSetUp = {
 
 /** Made before the suite, so an it.fails beside them fails only on its assertion. Registers hooks: call it in a describe block. */
 function setUpCoverRuns(setUp: CoverRunsSetUp): () => CoverRun[] {
-  return setUpRunsBeforeTheSuite(() => Promise.all(setUp.builds.map((build) => coverRunIn(build, setUp))))
+  const runs = setUpRunsBeforeTheSuite(() => Promise.all(setUp.builds.map((build) => coverRunIn(build, setUp))))
+  // A run that failed throws here, before the tests.
+  beforeAll(() => {
+    runs()
+  })
+  return runs
 }
 
 async function coverRunIn({ build, configsFor }: Build, { rulesets, file, names }: CoverRunsSetUp): Promise<CoverRun> {
@@ -207,7 +212,6 @@ describe('no-cond-assign, covered by sonarjs/no-nested-assignment, on an assignm
   })
 
   // KNOWN GAP: where complexity is listed nothing reports either; the owner's card my-cond-assign-loops decides.
-  // A run that failed before the suite throws in the test beside this one, which no it.fails hides.
   it.fails.each(CONDITION_ASSIGNMENT_BUILDS)('draws a report on each where complexity is listed, in $build', ({ build, coveredsName }) => {
     expect(runMadeFor(runs(), build).withTheCover).toStrictEqual(loopConditionFindingsOf(coveredsName))
   })

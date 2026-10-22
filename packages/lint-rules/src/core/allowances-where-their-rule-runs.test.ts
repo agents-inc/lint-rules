@@ -45,6 +45,8 @@ const WITHOUT_TESTING_LIBRARY: Partial<RulesetsInput> = { quality: [CORRECTNESS.
 const DROPPING_TESTING_LIBRARY: Partial<RulesetsInput> = { libs: { testing: [] } }
 const ADDING_TESTING_LIBRARY: Partial<RulesetsInput> = { libs: { testing: [TESTING_LIBRARY.name] } }
 const OPTIONS_A_TEAM_WRITES = { [SAFE_CALLS]: [EVENT_ENTRY] }
+// Drops the holder's ruleset alone: the Testing Library rules stay on.
+const DROPPING_THE_HOLDERS_RULESET: Partial<RulesetsInput> = { quality: [] }
 
 /** Another key of the same options object, kept as shipped. */
 function holderOptionsAllowing(entries: readonly unknown[]): readonly unknown[] {
@@ -67,7 +69,39 @@ const CATALOG: Catalog = buildCatalog({
     buildEslintRoute(EVENTS_RULE, { typed: false, shipped: buildShippedRule(TESTING_LIBRARY.name, { files: TEST_AND_STORY_FILES, ignores: STORY_FILES }) }),
   ],
 })
-const PLUGIN_REGISTRY = buildPluginRegistry({ '@typescript-eslint': ['no-floating-promises'], 'testing-library': ['await-async-queries', 'await-async-events'] })
+const PLUGIN_REGISTRY = buildPluginRegistry({ '@typescript-eslint': ['no-floating-promises'], 'testing-library': ['await-async-queries', 'await-async-events', 'await-async-utils'] })
+
+const UTILS_RULE = 'testing-library/await-async-utils'
+const UTIL_ENTRY = { from: 'package', package: '@testing-library/dom', name: ['waitFor'] }
+const EVERY_ENTRY_OF_FILES_THAT_DIFFER = [UNMARKED_ENTRY, QUERY_ENTRY, EVENT_ENTRY, UTIL_ENTRY]
+const HOLDER_FILES = ['src/**']
+const HOLDER_IGNORES = ['src/generated/**']
+const TEST_AND_SPEC_FILES = ['**/*.test.ts', '**/*.spec.ts']
+const SPEC_FILE = 'src/button.spec.ts'
+const GENERATED_TEST_FILE = 'src/generated/button.test.ts'
+const SCRIPT_TEST_FILE = 'scripts/button.test.ts'
+// No block sets the holder there, so it does not run.
+const HOLDER_NOT_SET = undefined
+
+// The holder runs on files of its own, and the three rules on files that differ: the queries rule in test and
+// story files, the events rule in test and spec files, the utils rule in every file but story files.
+const CATALOG_OF_DIFFERENT_FILES: Catalog = buildCatalog({
+  rulesets: [CORRECTNESS, TESTING_LIBRARY],
+  rules: [
+    buildEslintRoute(HOLDER, {
+      typed: true,
+      shipped: buildShippedRule(CORRECTNESS.name, {
+        options: holderOptionsAllowing(EVERY_ENTRY_OF_FILES_THAT_DIFFER),
+        files: HOLDER_FILES,
+        ignores: HOLDER_IGNORES,
+        allowancesLeftTo: [leftTo(QUERY_ENTRY, QUERIES_RULE), leftTo(EVENT_ENTRY, EVENTS_RULE), leftTo(UTIL_ENTRY, UTILS_RULE)],
+      }),
+    }),
+    buildEslintRoute(QUERIES_RULE, { typed: false, shipped: buildShippedRule(TESTING_LIBRARY.name, { files: TEST_AND_STORY_FILES }) }),
+    buildEslintRoute(EVENTS_RULE, { typed: false, shipped: buildShippedRule(TESTING_LIBRARY.name, { files: TEST_AND_SPEC_FILES }) }),
+    buildEslintRoute(UTILS_RULE, { typed: false, shipped: buildShippedRule(TESTING_LIBRARY.name, { ignores: STORY_FILES }) }),
+  ],
+})
 
 /** An entry for legacy/**: an empty `rulesets` keeps the top-level lists there. */
 type LegacyEntry = { readonly rulesets: Partial<RulesetsInput>; readonly rules: RuleSettingsInput }
@@ -75,32 +109,32 @@ type LegacyEntry = { readonly rulesets: Partial<RulesetsInput>; readonly rules: 
 /** What a config lists and states: at the top level, and in an entry for legacy/**, where it gives one. */
 type Listed = { readonly rulesets: Partial<RulesetsInput>; readonly rules?: RuleSettingsInput; readonly legacyEntry?: LegacyEntry }
 
-/** A build as a test names it, and the ESLint config it gives for what is listed. */
-type Build = { readonly build: string; readonly eslintConfigFor: (listed: Listed) => Linter.Config[] }
+/** A build as a test names it, and the ESLint config it gives for what is listed, under the catalog given. */
+type Build = { readonly build: string; readonly eslintConfigFor: (listed: Listed, catalog: Readonly<Catalog>) => Linter.Config[] }
 
-function agentBuildConfig({ rulesets, rules = {}, legacyEntry }: Listed): Linter.Config[] {
+function agentBuildConfig({ rulesets, rules = {}, legacyEntry }: Listed, catalog: Readonly<Catalog>): Linter.Config[] {
   const fileOverrides = legacyEntry === undefined ? [] : [buildFileOverride([LEGACY_FILES], legacyEntry)]
-  return buildEslintConfig(buildLintRules(rulesets, { rules, fileOverrides }), CATALOG, PLUGIN_REGISTRY, buildProjectFacts())
+  return buildEslintConfig(buildLintRules(rulesets, { rules, fileOverrides }), catalog, PLUGIN_REGISTRY, buildProjectFacts())
 }
 
-function editorMergeConfig({ rulesets, rules = {}, legacyEntry }: Listed, usesOxlint: boolean): Linter.Config[] {
+function editorMergeConfig({ rulesets, rules = {}, legacyEntry }: Listed, catalog: Readonly<Catalog>, usesOxlint: boolean): Linter.Config[] {
   const fileOverrides = legacyEntry === undefined ? [] : [buildTwoSetFileOverride([LEGACY_FILES], { editorRulesets: legacyEntry.rulesets, rules: legacyEntry.rules })]
-  const { eslint } = editorPartsOf(buildTwoSetLintRules({ editorRulesets: rulesets }, { rules, fileOverrides }), CATALOG, usesOxlint)
-  return mergeEslintPart([], eslint, CATALOG, PLUGIN_REGISTRY, lintRulesPackageVersion(), NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG)
+  const { eslint } = editorPartsOf(buildTwoSetLintRules({ editorRulesets: rulesets }, { rules, fileOverrides }), catalog, usesOxlint)
+  return mergeEslintPart([], eslint, catalog, PLUGIN_REGISTRY, lintRulesPackageVersion(), NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG)
 }
 
 const BUILDS: readonly Build[] = [
   { build: 'the agent build', eslintConfigFor: agentBuildConfig },
   {
     build: 'the ESLint merge, in a project listing oxlint',
-    eslintConfigFor(listed) {
-      return editorMergeConfig(listed, true)
+    eslintConfigFor(listed, catalog) {
+      return editorMergeConfig(listed, catalog, true)
     },
   },
   {
     build: 'the ESLint merge, in a project listing no oxlint',
-    eslintConfigFor(listed) {
-      return editorMergeConfig(listed, false)
+    eslintConfigFor(listed, catalog) {
+      return editorMergeConfig(listed, catalog, false)
     },
   },
 ]
@@ -119,12 +153,21 @@ function holderEntry(entries: readonly unknown[], severity: number = ERROR): rea
 }
 
 describe.each(BUILDS)('an options entry whose calls a rule run on some files reports, in $build', ({ eslintConfigFor }) => {
-  const { ruleEntryFor } = setUpEslintConfigOracle()
+  const { ruleEntryFor, ruleSeverityFor } = setUpEslintConfigOracle()
 
-  /** The holder's entry in each file given, by file. */
-  async function holderEntriesIn(listed: Listed, files: readonly string[]): Promise<Readonly<Record<string, unknown>>> {
-    const config = eslintConfigFor(listed)
+  /** The holder's entry in each file given, by file, under the catalog given. */
+  async function holderEntriesUnder(catalog: Readonly<Catalog>, listed: Listed, files: readonly string[]): Promise<Readonly<Record<string, unknown>>> {
+    const config = eslintConfigFor(listed, catalog)
     return Object.fromEntries(await Promise.all(files.map(async (file) => [file, await ruleEntryFor(config, file, HOLDER)] as const)))
+  }
+
+  async function holderEntriesIn(listed: Listed, files: readonly string[]): Promise<Readonly<Record<string, unknown>>> {
+    return holderEntriesUnder(CATALOG, listed, files)
+  }
+
+  async function holderSeveritiesIn(listed: Listed, files: readonly string[]): Promise<Readonly<Record<string, unknown>>> {
+    const config = eslintConfigFor(listed, CATALOG)
+    return Object.fromEntries(await Promise.all(files.map(async (file) => [file, await ruleSeverityFor(config, file, HOLDER)] as const)))
   }
 
   describe('at the top level', () => {
@@ -195,11 +238,60 @@ describe.each(BUILDS)('an options entry whose calls a rule run on some files rep
       })
     })
 
+    it("leaves the holder off in each of the entry's files, test files included, where its own rules turn it off and its lists drop the holder's ruleset", async () => {
+      const turningTheHolderOff: LegacyEntry = { rulesets: DROPPING_THE_HOLDERS_RULESET, rules: { [HOLDER]: 'off' } }
+
+      expect(await holderSeveritiesIn({ rulesets: WITH_TESTING_LIBRARY, legacyEntry: turningTheHolderOff }, [LEGACY_TEST_FILE, LEGACY_HELPER_FILE, TEST_FILE])).toStrictEqual({
+        [LEGACY_TEST_FILE]: 'off',
+        [LEGACY_HELPER_FILE]: 'off',
+        [TEST_FILE]: 'error',
+      })
+    })
+
     it("gives a severity alone in an entry's own rules the options in force in each of its files", async () => {
       expect(await holderEntriesIn({ rulesets: WITH_TESTING_LIBRARY, legacyEntry: legacyEntryStating({ [HOLDER]: 'warn' }) }, [LEGACY_TEST_FILE, LEGACY_HELPER_FILE])).toStrictEqual({
         [LEGACY_TEST_FILE]: holderEntry(EVERY_ENTRY, WARN),
         [LEGACY_HELPER_FILE]: holderEntry(OUTSIDE_TEST_FILES, WARN),
       })
     })
+  })
+
+  describe('where the holder and the rules its entries are left to each run on files of their own', () => {
+    it('keeps each entry only in the files its rule runs on, where the rules run on file lists that differ or on every file but their ignores', async () => {
+      expect(await holderEntriesUnder(CATALOG_OF_DIFFERENT_FILES, { rulesets: WITH_TESTING_LIBRARY }, [TEST_FILE, STORY_FILE, SPEC_FILE, HELPER_FILE])).toStrictEqual({
+        [TEST_FILE]: holderEntry(EVERY_ENTRY_OF_FILES_THAT_DIFFER),
+        [STORY_FILE]: holderEntry([UNMARKED_ENTRY, QUERY_ENTRY]),
+        [SPEC_FILE]: holderEntry([UNMARKED_ENTRY, EVENT_ENTRY, UTIL_ENTRY]),
+        [HELPER_FILE]: holderEntry([UNMARKED_ENTRY, UTIL_ENTRY]),
+      })
+    })
+
+    it("never runs the holder outside its own files or in its own ignores, where those rules run and keep its entries", async () => {
+      expect(await holderEntriesUnder(CATALOG_OF_DIFFERENT_FILES, { rulesets: WITH_TESTING_LIBRARY }, [TEST_FILE, SCRIPT_TEST_FILE, GENERATED_TEST_FILE])).toStrictEqual({
+        [TEST_FILE]: holderEntry(EVERY_ENTRY_OF_FILES_THAT_DIFFER),
+        [SCRIPT_TEST_FILE]: HOLDER_NOT_SET,
+        [GENERATED_TEST_FILE]: HOLDER_NOT_SET,
+      })
+    })
+  })
+})
+
+function namesOfTheBlocksNamingTheHolder(listed: Listed): Array<string | undefined> {
+  return agentBuildConfig(listed, CATALOG)
+    .map(({ name }) => name)
+    .filter((name) => name?.endsWith(`/${HOLDER}`))
+}
+
+describe('the blocks giving the holder the entries kept in the files of the rules they are left to', () => {
+  // One for each set of the two rules' files: each alone, then both.
+  const INDEX_OF_EACH_SET = [0, 1, 2]
+  const OPTIONS_IN_FILES_OF_THE_TOP_LEVEL = INDEX_OF_EACH_SET.map((index) => `agents-inc/options-in-files/${String(index)}/${HOLDER}`)
+  const OPTIONS_IN_FILES_OF_THE_ENTRY = INDEX_OF_EACH_SET.map((index) => `agents-inc/file-overrides/0/options-in-files/${String(index)}/${HOLDER}`)
+
+  it("are named under the entry's name, as the top level's are under its own, as ESLint's config inspector shows them", () => {
+    expect({
+      topLevel: namesOfTheBlocksNamingTheHolder({ rulesets: WITH_TESTING_LIBRARY }),
+      entry: namesOfTheBlocksNamingTheHolder({ rulesets: WITHOUT_TESTING_LIBRARY, legacyEntry: legacyEntryListing(ADDING_TESTING_LIBRARY) }),
+    }).toStrictEqual({ topLevel: OPTIONS_IN_FILES_OF_THE_TOP_LEVEL, entry: OPTIONS_IN_FILES_OF_THE_ENTRY })
   })
 })

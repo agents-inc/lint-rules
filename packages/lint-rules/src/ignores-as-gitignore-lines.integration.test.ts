@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { type BothEnginesRuns, setUpBothEnginesRuns } from './__tests__/both-engines-runs.ts'
 import {
   EVERY_FILE_IN_A_LEGACY_FOLDER,
@@ -99,6 +99,10 @@ describe(`our ignores ${JSON.stringify(NEGATED_UNDER_A_LEFT_OUT_FOLDER.ignores)}
   const { files, ignores, leftOut } = NEGATED_UNDER_A_LEFT_OUT_FOLDER
   const runs = setUpRunsIgnoring(files, ignores)
   const lintedByAGitignoreReading = files.filter((file) => !leftOut.includes(file))
+  // A run that failed throws here, before the tests, so only the assertion can fail inside it.fails.
+  beforeAll(() => {
+    runs()
+  })
 
   // A written limit: ESLint keeps lib/a.js out with its folder, and oxlint takes it back, in every build.
   it('report in the files each engine reads them to leave in: oxlint takes lib/a.js back, ESLint does not', () => {

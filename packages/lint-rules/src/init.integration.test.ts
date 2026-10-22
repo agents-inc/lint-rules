@@ -1,6 +1,6 @@
 import { chmodSync } from 'node:fs'
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { A_LITERAL_THROWN, AN_IMPORT_BELOW_CODE, AN_IMPORT_OF_OUR_PACKAGE, NAMED_IMPORTS_OUT_OF_ORDER, NAMED_IMPORTS_SORTED, UNITS } from './__tests__/cases/check-sources.ts'
 import { ESLINT_CONFIG_TEXT, OXLINT_CONFIG_TEXT } from './__tests__/cases/consumer-files-as-plan-md-shows.ts'
 import { PACKAGE_JSON_EDITS, PACKAGE_JSON_LISTING_US } from './__tests__/cases/init-package-json-edits.ts'
@@ -184,6 +184,10 @@ describe('check right after init, the config untracked', () => {
       return { kind, init, check: runCheck(project.dir) }
     }),
   )
+  // A run that failed throws here, before the tests, so only the assertion can fail inside it.fails.
+  beforeAll(() => {
+    runs()
+  })
 
   function checkAfterInit(kind: string): { readonly init: number | null; readonly check: number | null; readonly findings: readonly string[] } {
     const made = runMadeFor(runs(), kind)

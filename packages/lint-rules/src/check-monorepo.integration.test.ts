@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import {
   A_DEBUGGER_AND_A_LITERAL_THROWN,
   A_FLOATING_CALL_BESIDE_AN_AWAITED_ONE,
@@ -74,6 +74,10 @@ describe('check run in a package of a monorepo, after changes in it and in anoth
     project.write(`${API_PACKAGE}/src/aliased.ts`, moduleText(...aNameTheAliasedModuleLacks('@api')))
     project.write(`${API_PACKAGE}/${OUTSIDE_EVERY_TSCONFIG}`, moduleText(exportedConstant('seed'), DEBUGGER_STATEMENT))
     return { apiSeed: project.pathOf(`${API_PACKAGE}/${OUTSIDE_EVERY_TSCONFIG}`), result: runCheck(project.pathOf(WEB_PACKAGE)) }
+  })
+  // A run that failed throws here, before the tests, so only the assertion can fail inside it.fails.
+  beforeAll(() => {
+    runs()
   })
 
   it("lints a changed file in another package, its typed rule reading that package's own tsconfig, beside the awaited call it leaves alone, and the config folder's own file, printing paths from the config's folder", () => {
