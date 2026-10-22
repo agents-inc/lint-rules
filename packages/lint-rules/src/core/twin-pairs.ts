@@ -77,7 +77,12 @@ function coreRulesNamedBy(route: RuleRoute, catalog: Catalog): RuleRoute[] {
   if (extensionsOfACoreRuleRoutedToOxlint(route, catalog).length > 0) return [route]
   return twinsOf(route, catalog)
     .map((id) => routeOf(id, catalog))
-    .filter((core) => extensionsOfACoreRuleRoutedToOxlint(core, catalog).some(({ id }) => id === route.id))
+    .filter((core) => isAnExtensionOf(route, core, catalog))
+}
+
+/** False where the core rule is not routed to oxlint. */
+function isAnExtensionOf(route: RuleRoute, core: RuleRoute, catalog: Catalog): boolean {
+  return extensionsOfACoreRuleRoutedToOxlint(core, catalog).some(({ id }) => id === route.id)
 }
 
 /** Sub-agents always run oxlint, so the rules are resolved, and each twin pair decided, as beside oxlint. */
@@ -123,14 +128,17 @@ type PairDecided = DecidedByOneName | DecidedByBothNames
 type SettingsTaking = { readonly inForce: (ruleId: string) => boolean; readonly offs: 'stated' | 'left out' }
 
 function pairsDecidedIn(layer: LayerStatements, catalog: Catalog): PairDecided[] {
-  return twinPairsNamedIn(layer, catalog).flatMap((pair): PairDecided[] => {
-    const by = namesDeciding(whatTheDecidingPartStates(pair, layer))
-    if (by === null) return []
-    const decider = by === 'the core rule' ? pair.core : pair.extension
-    const setting = statedIn(layer, decider.id)
-    if (setting === null) throw new Error(`${decider.id}: the layer's deciding part states it, so it has a setting there`)
-    return [{ pair, by, setting }]
-  })
+  return twinPairsNamedIn(layer, catalog).flatMap((pair) => pairDecidedIn(layer, pair))
+}
+
+/** None where the deciding part states neither name. */
+function pairDecidedIn(layer: LayerStatements, pair: TwinPair): PairDecided[] {
+  const by = namesDeciding(whatTheDecidingPartStates(pair, layer))
+  if (by === null) return []
+  const decider = ruleWhoseSettingDecides(pair, by)
+  const setting = statedIn(layer, decider.id)
+  if (setting === null) throw new Error(`${decider.id}: the layer's deciding part states it, so it has a setting there`)
+  return [{ pair, by, setting }]
 }
 
 /** None where it states neither, as for a core rule's other extension in a layer naming one. */
@@ -140,14 +148,31 @@ function namesDeciding({ decidesTheExtension, decidesTheCore }: DecidingPart): P
   return decidesTheCore ? 'the core rule' : null
 }
 
+/** Where both names decide, the extension's: the layer's TS files take it. */
+function ruleWhoseSettingDecides({ core, extension }: TwinPair, by: PairDecided['by']): RuleRoute {
+  switch (by) {
+    case 'the core rule':
+      return core
+    case 'the extension':
+    case 'both names':
+      return extension
+  }
+}
+
 function rulesWithEachPairDecided(rules: RuleSettings, decided: readonly PairDecided[], taking: SettingsTaking): DecidedRules {
   const taken = decided.reduce<RulesTaken>((takenSoFar, decision) => rulesTaking(takenSoFar, decision, taking), { rules, tsFileRules: {} })
   return Object.keys(taken.tsFileRules).length === 0 ? { rules: taken.rules } : taken
 }
 
 function rulesTaking(taken: RulesTaken, decision: PairDecided, taking: SettingsTaking): RulesTaken {
-  if (decision.by === 'both names') return rulesTakingBothNames(taken, decision, taking.offs)
-  return { ...taken, rules: settingsTaking(taken.rules, decision, taking) }
+  switch (decision.by) {
+    case 'both names':
+      return rulesTakingBothNames(taken, decision, taking.offs)
+    case 'the extension':
+      return { ...taken, rules: coreTakingTheExtensionsSetting(taken.rules, decision, taking) }
+    case 'the core rule':
+      return { ...taken, rules: extensionTakingTheCoreRulesOff(taken.rules, decision, taking) }
+  }
 }
 
 /** The extension runs on the layer's TS files alone and is off in its other files, though oxlint may run no core rule there. */
@@ -169,12 +194,13 @@ function coreSettingOnTsFiles(core: RuleRoute, extensionSetting: RuleSetting): R
   return { ...extensionSetting, ...shippedScopeOf(core) }
 }
 
-function settingsTaking(settings: RuleSettings, { pair: { core, extension }, by, setting }: DecidedByOneName, { inForce, offs }: SettingsTaking): RuleSettings {
-  if (by === 'the extension') {
-    if (!inForce(core.id)) return settings
-    if (oxlintRefusesAnOptionOf(setting, core)) return withTsFilesLeftToEslint(settings, core, offs)
-    return withSetting(settings, core.id, { ...setting, ...shippedScopeOf(core) }, offs)
-  }
+function coreTakingTheExtensionsSetting(settings: RuleSettings, { pair: { core }, setting }: DecidedByOneName, { inForce, offs }: SettingsTaking): RuleSettings {
+  if (!inForce(core.id)) return settings
+  if (oxlintRefusesAnOptionOf(setting, core)) return withTsFilesLeftToEslint(settings, core, offs)
+  return withSetting(settings, core.id, { ...setting, ...shippedScopeOf(core) }, offs)
+}
+
+function extensionTakingTheCoreRulesOff(settings: RuleSettings, { pair: { extension }, setting }: DecidedByOneName, { inForce, offs }: SettingsTaking): RuleSettings {
   if (setting.severity !== 'off' || !inForce(extension.id)) return settings
   return withSetting(settings, extension.id, setting, offs)
 }
@@ -195,7 +221,11 @@ function withTsFilesIgnored(setting: RuleSetting): RuleSetting {
 function oxlintRefusesAnOptionOf({ options }: RuleSetting, core: RuleRoute): boolean {
   if (!isOxlintRoute(core)) throw new Error(`${core.id}: a core rule of a twin pair is routed to oxlint`)
   const refusedKeys = optionKeysOxlintRefuses(core.oxlintName)
-  return options.some((option) => isRecord(option) && Object.keys(option).some((key) => refusedKeys.includes(key)))
+  return options.some((option) => givesAnyKeyOf(option, refusedKeys))
+}
+
+function givesAnyKeyOf(option: unknown, keys: readonly string[]): boolean {
+  return isRecord(option) && Object.keys(option).some((key) => keys.includes(key))
 }
 
 /** At the top level, which holds only rules turned on, an off is left out. */

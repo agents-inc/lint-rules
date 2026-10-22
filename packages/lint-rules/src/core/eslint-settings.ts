@@ -13,8 +13,10 @@ export type SettingPath = { readonly key: string; readonly keyWithin: string | n
 /** Where a team block gives any setting this yields to, the plugin would read ours in its place, so a merge leaves ours out of that block's files. */
 export type SettingOfOurs = { readonly path: SettingPath; readonly value: unknown; readonly yieldsTo: readonly SettingPath[] }
 
+type ImmutabilityTypeOverride = { readonly type: RegExp; readonly to: string }
+
 // functional/prefer-immutable-types matches these as RegExps, so they must be written here, not as JSON strings.
-const IMMUTABILITY_TYPE_OVERRIDES = [
+const IMMUTABILITY_TYPE_OVERRIDES: readonly ImmutabilityTypeOverride[] = [
   { type: /^(React\.)?(ReactNode|ReactElement|ReactPortal|ReactFragment|JSX\.Element)$/u, to: 'Immutable' },
   { type: /^(React\.)?(CSSProperties|Properties(<.*>)?)$/u, to: 'Immutable' },
   { type: /^(HTML|SVG)\w*Element$/u, to: 'Immutable' },
@@ -31,24 +33,24 @@ const IMMUTABILITY_TYPE_OVERRIDES = [
 // eslint-plugin-n's default try-extensions hold no TS or JSX one (18.4.1), so a tsconfig path alias to a .ts
 // file resolves to nothing and n/no-unpublished-import reports it. Our extensions come first, as TypeScript
 // resolves `x` to x.ts before x.json; then the rest of the plugin's default.
-const N_DEFAULT_TRY_EXTENSIONS = ['.js', '.json', '.node', '.mjs', '.cjs']
+const N_DEFAULT_TRY_EXTENSIONS: readonly string[] = ['.js', '.json', '.node', '.mjs', '.cjs']
 const EXTENSION_DOT = '.'
 
 // eslint-plugin-n 18.4.1 reads each setting from settings.n, else settings.node, but typescriptExtensionMap
 // and tsconfigPath from whichever of the two is set at all, as one object.
 const ESLINT_PLUGIN_N_SETTINGS_KEY = 'n'
 const ESLINT_PLUGIN_N_LEGACY_SETTINGS_KEY = 'node'
-const N_SETTINGS_READ_AS_ONE_OBJECT = ['typescriptExtensionMap', 'tsconfigPath']
+const N_SETTINGS_READ_AS_ONE_OBJECT: readonly string[] = ['typescriptExtensionMap', 'tsconfigPath']
 
 // import-x 4.17.1 uses import-x/resolver-next wherever it holds anything, and only otherwise the older resolver keys.
 const IMPORT_X_RESOLVER_NEXT = 'import-x/resolver-next'
-const IMPORT_X_LEGACY_RESOLVERS = ['import-x/resolver-legacy', 'import-x/resolver', 'import-x/resolve']
+const IMPORT_X_LEGACY_RESOLVERS: readonly string[] = ['import-x/resolver-legacy', 'import-x/resolver', 'import-x/resolve']
 
 // import-x parses only JS for exports by default, so an import of a TS module drew no import-x/named report.
 // Built from a prefix: the literal would read, to names-no-rule.test.ts, as naming the rule import-x/extensions.
 const IMPORT_X_SETTINGS_PREFIX = 'import-x'
 const IMPORT_X_EXTENSIONS = `${IMPORT_X_SETTINGS_PREFIX}/extensions`
-const TS_AND_JS_EXTENSIONS_IMPORT_X_PARSES = ['.ts', '.tsx', '.cts', '.mts', '.js', '.jsx', '.cjs', '.mjs']
+const TS_AND_JS_EXTENSIONS_IMPORT_X_PARSES: readonly string[] = ['.ts', '.tsx', '.cts', '.mts', '.js', '.jsx', '.cjs', '.mjs']
 
 /** A setting of ours under a key not here yields to none. */
 const TEAM_SETTINGS_YIELDED_TO: ReadonlyMap<string, readonly SettingPath[]> = new Map([
@@ -72,9 +74,12 @@ function typeScriptResolverOf(tsconfigFiles: readonly string[]): ReturnType<type
 
 /** Each key of ours under settings.n yields to the team's settings.n of that key and to any settings.node the plugin reads as one object with it; where the team gives one, all of our settings.n leaves its files. */
 export function settingsOfOurs(settings: Settings): SettingOfOurs[] {
-  return Object.entries(settings).flatMap(([key, value]) =>
-    key === ESLINT_PLUGIN_N_SETTINGS_KEY ? eslintPluginNSettingsOfOurs(value) : [{ path: wholeSettingAt(key), value, yieldsTo: teamSettingsYieldedTo(key) }],
-  )
+  return Object.entries(settings).flatMap(([key, value]) => settingsOfOursUnder(key, value))
+}
+
+function settingsOfOursUnder(key: string, value: unknown): SettingOfOurs[] {
+  if (key === ESLINT_PLUGIN_N_SETTINGS_KEY) return eslintPluginNSettingsOfOurs(value)
+  return [{ path: wholeSettingAt(key), value, yieldsTo: teamSettingsYieldedTo(key) }]
 }
 
 export function settingsGiving(settings: readonly SettingOfOurs[]): Settings {
@@ -109,7 +114,12 @@ function valueGivenUnder(key: string, settings: readonly SettingOfOurs[]): unkno
   const underTheKey = settings.filter(({ path }) => path.key === key)
   const whole = underTheKey.find(({ path }) => path.keyWithin === null)
   if (whole !== undefined) return whole.value
-  return Object.fromEntries(underTheKey.flatMap(({ path: { keyWithin }, value }) => (keyWithin === null ? [] : [[keyWithin, value]])))
+  return Object.fromEntries(underTheKey.flatMap(entryWithinTheKey))
+}
+
+/** None for a whole setting. */
+function entryWithinTheKey({ path: { keyWithin }, value }: SettingOfOurs): [string, unknown][] {
+  return keyWithin === null ? [] : [[keyWithin, value]]
 }
 
 function wholeSettingAt(key: string): SettingPath {

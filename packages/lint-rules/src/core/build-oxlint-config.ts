@@ -53,7 +53,7 @@ const GLOBALS_OVERRIDES: readonly OxlintOverride[] = [
 ]
 
 // ESLint never lints node_modules; ignoring it here too means both engines see the same files.
-const BUILTIN_IGNORE_PATTERNS = ['**/node_modules/**']
+const BUILTIN_IGNORE_PATTERNS: readonly string[] = ['**/node_modules/**']
 
 const OXLINT_PLUGINS: readonly OxlintPlugin[] = [
   'eslint',
@@ -144,10 +144,13 @@ function fileOverrideOverrides(layer: FileOverrideLayer, catalog: Catalog): Oxli
 }
 
 function tsFileOverridesOf(layerFiles: FilesCondition, tsFileRules: RuleSettings, catalog: Catalog): OxlintOverride[] {
-  return oxlintSettingsOf(tsFileRules, catalog).flatMap(({ route, setting }) => {
-    const where = bothOf(layerFiles, filesInScopeOf([TS_FILES], ignoresOf(setting)))
-    return overrideFilesOf(where).map((overrideFiles): OxlintOverride => ({ ...overrideFiles, rules: { [route.oxlintName]: ruleEntryOf(setting) } }))
-  })
+  return oxlintSettingsOf(tsFileRules, catalog).flatMap((oxlintSetting) => overridesOnTheLayersTsFiles(layerFiles, oxlintSetting))
+}
+
+/** Within the rule's own ignores. */
+function overridesOnTheLayersTsFiles(layerFiles: FilesCondition, { route, setting }: OxlintSetting): OxlintOverride[] {
+  const where = bothOf(layerFiles, filesInScopeOf([TS_FILES], ignoresOf(setting)))
+  return overrideFilesOf(where).map((overrideFiles): OxlintOverride => ({ ...overrideFiles, rules: { [route.oxlintName]: ruleEntryOf(setting) } }))
 }
 
 /** An override has one `excludeFiles`, so each rule turned on with ignores gets its own override to stay off under them. */
@@ -199,15 +202,17 @@ function globalsReadOnly(names: readonly string[]): OxlintGlobals {
 }
 
 function oxlintSettingsOf(settings: RuleSettings, catalog: Catalog): OxlintSetting[] {
-  return Object.entries(settings).flatMap(([id, setting]): OxlintSetting[] => {
-    const route = routeOf(id, catalog)
-    if (!isOxlintRoute(route)) return []
-    // The catalog routes every rule shipped with files of its own to ESLint, so only an off is written here.
-    if (setting.severity !== 'off' && setting.files !== null) {
-      throw new Error(`${id}: turned on in files of its own, so the catalog must route it to ESLint`)
-    }
-    return [{ route, setting }]
-  })
+  return Object.entries(settings).flatMap(([id, setting]) => oxlintSettingOf(id, setting, catalog))
+}
+
+/** None for an ESLint-routed rule. The catalog routes every rule shipped with files of its own to ESLint, so only an off is written here. */
+function oxlintSettingOf(id: string, setting: RuleSetting, catalog: Catalog): OxlintSetting[] {
+  const route = routeOf(id, catalog)
+  if (!isOxlintRoute(route)) return []
+  if (setting.severity !== 'off' && setting.files !== null) {
+    throw new Error(`${id}: turned on in files of its own, so the catalog must route it to ESLint`)
+  }
+  return [{ route, setting }]
 }
 
 function oxlintRuleMap(settings: readonly OxlintSetting[]): DummyRuleMap {

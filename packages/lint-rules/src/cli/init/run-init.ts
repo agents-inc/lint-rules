@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { catalog } from '@workspace/rule-data'
+import { messageOf } from '../../core/caught-errors.ts'
 import { listsPackage, ourPackageJsonFile, PACKAGE_JSON, type PackageJsonFile, readPackageJsonFile, THIS_PACKAGE, versionOf } from '../../core/package-json-files.ts'
-import { messageOf } from '../caught-errors.ts'
 import { type WhereInitRuns, whereInitRuns } from '../check/git-changes.ts'
 import { EXIT_CLEAN, EXIT_FINDINGS } from '../exit-codes.ts'
 import { foldersUpTo } from '../folders.ts'
@@ -35,11 +35,21 @@ export function initIn(cwd: string, signal: AbortSignal): Outcome {
 /** Worked out before writing, so an unreadable package.json refuses the run with nothing written. */
 function printedOnceWritten(cwd: string, entry: EntryWritten): Outcome {
   const where = whereInitRuns(cwd)
-  const folders = where.kind === 'in a repo' ? foldersUpTo(cwd, where.topLevel) : [cwd]
+  const folders = foldersUpToTheGitTopLevel(cwd, where)
   return {
     stdout: textOfLines(initStdoutLines(entry, THIS_PACKAGE, INIT_CONFIG_FILE, packageManagerOf(folders))),
     stderr: textOfLines(notesOf(cwd, where, folders)),
     exitCode: EXIT_CLEAN,
+  }
+}
+
+function foldersUpToTheGitTopLevel(cwd: string, where: WhereInitRuns): string[] {
+  switch (where.kind) {
+    case 'in a repo':
+      return foldersUpTo(cwd, where.topLevel)
+    case 'outside a repo':
+    case 'git could not run':
+      return [cwd]
   }
 }
 

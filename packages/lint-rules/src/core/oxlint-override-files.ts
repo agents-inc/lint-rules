@@ -1,4 +1,4 @@
-import { foundOr } from '@workspace/rule-data/collections'
+import { foundOr, groupBy } from '@workspace/rule-data/collections'
 import type { OxlintOverride } from 'oxlint'
 import type { FilesCondition, FilesTerm } from './file-conditions.ts'
 import {
@@ -6,6 +6,7 @@ import {
   extensionsNamedBy,
   filesOfExtensions,
   isNegated,
+  isUnder,
   LEADING_DOT_SLASH,
   negationOf,
   pathNamedBy,
@@ -35,9 +36,8 @@ const NO_FILE: Joined = { kind: 'no file' }
 
 /** One override per list of globs its terms exclude. */
 export function overrideFilesOf(condition: FilesCondition): OverrideFiles[] {
-  const written = condition.flatMap(writtenTermOf)
-  const excludeKeys = [...new Set(written.map(({ excludeFiles }) => keyOf(excludeFiles)))]
-  return excludeKeys.map((key) => filesOfAlike(written.filter(({ excludeFiles }) => keyOf(excludeFiles) === key)))
+  const byExcludeFiles = groupBy(condition.flatMap(writtenTermOf), ({ excludeFiles }) => keyOf(excludeFiles))
+  return byExcludeFiles.values().toArray().map(filesOfAlike)
 }
 
 export function filesLess(files: readonly string[], excludeFiles: readonly string[]): OverrideFiles {
@@ -117,10 +117,14 @@ function pathJoinedWith(pathGlob: string, path: string, other: string): Joined {
   const otherPath = pathNamedBy(other)
   if (otherPath !== null) return keptWhere(otherPath === path, pathGlob)
   const extensions = extensionsNamedBy(other)
-  if (extensions !== null) return keptWhere(extensions.some((extension) => path.endsWith(`${EXTENSION_DOT}${extension}`)), pathGlob)
+  if (extensions !== null) return keptWhere(hasAnExtensionOf(path, extensions), pathGlob)
   const folder = literalFolderOf(other)
-  if (folder !== null) return keptWhere(path.startsWith(`${folder}${FOLDER_SEPARATOR}`), pathGlob)
+  if (folder !== null) return keptWhere(isUnder(path, folder), pathGlob)
   return NOT_ONE_GLOB
+}
+
+function hasAnExtensionOf(path: string, extensions: readonly string[]): boolean {
+  return extensions.some((extension) => path.endsWith(`${EXTENSION_DOT}${extension}`))
 }
 
 function keptWhere(matches: boolean, glob: string): Joined {
@@ -137,7 +141,7 @@ function joinedByExtensions(first: string, second: string): Joined {
 
 function isUnderTheFolderOf(glob: string, folderGlob: string): boolean {
   const folder = literalFolderOf(folderGlob)
-  return folder !== null && glob.startsWith(`${folder}${FOLDER_SEPARATOR}`)
+  return folder !== null && isUnder(glob, folder)
 }
 
 /** Null for any other glob. */

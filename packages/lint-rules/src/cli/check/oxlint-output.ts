@@ -1,6 +1,7 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
+import { ruleNameOf } from '@workspace/rule-data/rule-id-parts'
 import { isRecord } from '../../core/is-record.ts'
-import { NOT_FOUND } from '../not-found.ts'
+import { readOnce } from '../../core/read-once.ts'
 import { printedTextOf } from '../printed-lines.ts'
 import { OXLINT_PRINTED_NOTHING, oxlintFailed } from './texts.ts'
 
@@ -31,8 +32,6 @@ type RawOxlintReport = { readonly diagnostics: readonly RawOxlintDiagnostic[] }
 
 type ReportRead = { readonly report: RawOxlintReport } | { readonly unreadable: unknown }
 
-const PLUGIN_SEPARATOR = '/'
-
 const ruleIdsByCodeOf = new WeakMap<Catalog, ReadonlyMap<string, string>>()
 
 /** `eslint(no-debugger)` → its RuleId; a code the catalog does not record is printed as oxlint gives it. */
@@ -52,20 +51,15 @@ export function oxlintReportFrom({ stdout, stderr }: OxlintOutput): OxlintReport
 }
 
 function oxlintCodeOfRule({ oxlintName, oxlintPlugin }: OxlintRule): string {
-  return `${oxlintPlugin}(${ruleNameWithoutPlugin(oxlintName)})`
-}
-
-function ruleNameWithoutPlugin(oxlintName: string): string {
-  const separator = oxlintName.indexOf(PLUGIN_SEPARATOR)
-  return separator === NOT_FOUND ? oxlintName : oxlintName.slice(separator + PLUGIN_SEPARATOR.length)
+  return `${oxlintPlugin}(${ruleNameOf(oxlintName)})`
 }
 
 function ruleIdsByCode(catalog: Catalog): ReadonlyMap<string, string> {
-  const known = ruleIdsByCodeOf.get(catalog)
-  if (known !== undefined) return known
-  const made = new Map(catalog.oxlintRules.map((rule) => [oxlintCodeOfRule(rule), rule.id]))
-  ruleIdsByCodeOf.set(catalog, made)
-  return made
+  return readOnce(ruleIdsByCodeOf, catalog, ruleIdsByCodeIn)
+}
+
+function ruleIdsByCodeIn({ oxlintRules }: Catalog): ReadonlyMap<string, string> {
+  return new Map(oxlintRules.map((rule) => [oxlintCodeOfRule(rule), rule.id]))
 }
 
 function diagnosticOf({ code, message, severity, filename, labels = [] }: RawOxlintDiagnostic): OxlintDiagnostic {

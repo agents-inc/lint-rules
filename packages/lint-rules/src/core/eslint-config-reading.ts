@@ -1,6 +1,6 @@
 import type { Catalog } from '@workspace/rule-data'
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
-import { pluginPrefixOf } from '@workspace/rule-data/rule-id-parts'
+import { pluginPrefixOf, ruleNameOf } from '@workspace/rule-data/rule-id-parts'
 import type { ESLint, Linter } from 'eslint'
 import type { EslintPluginRegistry } from './build-eslint-config.ts'
 import { sortedUnique } from './build-oxlint-config.ts'
@@ -40,7 +40,7 @@ function isStated(keyAndEntry: KeyAndEntry): keyAndEntry is [string, Linter.Rule
 function underOurPrefixes(key: string, prefixesOfOurPlugins: readonly PrefixOfOurPlugin[]): string[] {
   const prefix = pluginPrefixOf(key)
   if (prefix === null) return []
-  const ruleName = key.slice(`${prefix}${PREFIX_SEPARATOR}`.length)
+  const ruleName = ruleNameOf(key)
   return prefixesOfOurPlugins.filter(({ teams }) => teams === prefix).map(({ ours }) => `${ours}${PREFIX_SEPARATOR}${ruleName}`)
 }
 

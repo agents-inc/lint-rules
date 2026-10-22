@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
 import {
+  bracedExpressionOf,
   findLastJsxAttribute,
   fixedTextOf,
   isJsxAttribute,
@@ -39,8 +40,8 @@ function exemptsTheField(attribute: TSESTree.JSXAttribute): boolean {
 
 // `value={undefined}` and `value={null}` are how a field opts back out of being controlled.
 function isUncontrolledValue(attribute: TSESTree.JSXAttribute): boolean {
-  if (attribute.value?.type !== AST_NODE_TYPES.JSXExpressionContainer) return false
-  const { expression } = attribute.value
+  const expression = bracedExpressionOf(attribute)
+  if (expression === null) return false
   return (
     (expression.type === AST_NODE_TYPES.Identifier && expression.name === 'undefined') ||
     (expression.type === AST_NODE_TYPES.Literal && expression.value === null)

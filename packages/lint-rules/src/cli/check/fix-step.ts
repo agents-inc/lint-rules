@@ -71,9 +71,14 @@ async function oxlintFixes(files: readonly CheckedFile[], before: Snapshots, { o
   kept.forEach((path) => rewritten.record(path))
   if (run.outcome === 'stopped' && signal.aborted) throw run.reason
   return {
-    files: files.map((file) => (kept.has(file.path) ? { ...file, changed: changedLinesNow(file.path) } : file)),
+    files: withChangedLinesReadAgain(files, kept, changedLinesNow),
     notChecked: run.outcome === 'stopped' ? [oxlintRulesFailed(run.reason)] : [],
   }
+}
+
+/** A kept fix moves the file's lines, so git reads its changed lines again. */
+function withChangedLinesReadAgain(files: readonly CheckedFile[], fixesKeptIn: ReadonlySet<string>, changedLinesNow: (path: string) => ChangedLines): CheckedFile[] {
+  return files.map((file) => (fixesKeptIn.has(file.path) ? { ...file, changed: changedLinesNow(file.path) } : file))
 }
 
 export function oxlintFixer({ config, fixRunConfig }: OxlintFixRun): InPlaceFixer {

@@ -1,9 +1,11 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
 import { callReceiving } from '../shared/call-arguments.ts'
+import { dottedPropertyNameOf } from '../shared/callee-name.ts'
 import { componentNameOf, type FunctionFrame, functionFrameVisitors } from '../shared/function-frames.ts'
 import type { FunctionNode } from '../shared/function-name.ts'
 import { isHookName } from '../shared/hook-name.ts'
+import { jsxAttributeName } from '../shared/jsx-attributes.ts'
 
 type PendingCall = { node: TSESTree.CallExpression; enclosingFunctions: readonly FunctionFrame[] }
 
@@ -23,28 +25,18 @@ const DEFERRED_CALLS: ReadonlySet<string> = new Set([
   'finally',
 ])
 
-// `URL.createObjectURL`, and its `window.URL` / `globalThis.URL` / `self.URL` spellings.
-function isCreateObjectUrl(callee: TSESTree.Expression): boolean {
-  if (callee.type !== AST_NODE_TYPES.MemberExpression || callee.computed) return false
-  if (callee.property.type !== AST_NODE_TYPES.Identifier || callee.property.name !== 'createObjectURL') return false
-  const { object } = callee
-  if (object.type === AST_NODE_TYPES.Identifier) return object.name === 'URL'
-  return (
-    object.type === AST_NODE_TYPES.MemberExpression &&
-    !object.computed &&
-    object.property.type === AST_NODE_TYPES.Identifier &&
-    object.property.name === 'URL'
-  )
+// Stricter than the shared calleeNameOf: a computed `hooks[name](…)` names nothing here.
+function staticCalleeNameOf(callee: TSESTree.Expression): string | null {
+  return callee.type === AST_NODE_TYPES.Identifier ? callee.name : dottedPropertyNameOf(callee)
 }
 
-// Stricter than the shared calleeNameOf: a computed `hooks[name](…)` names nothing here.
-function staticCalleeNameOf(call: TSESTree.CallExpression): string | null {
-  const { callee } = call
-  if (callee.type === AST_NODE_TYPES.Identifier) return callee.name
-  if (callee.type === AST_NODE_TYPES.MemberExpression && !callee.computed && callee.property.type === AST_NODE_TYPES.Identifier) {
-    return callee.property.name
-  }
-  return null
+// `URL.createObjectURL`, and its `window.URL` / `globalThis.URL` / `self.URL` spellings.
+function isCreateObjectUrl(callee: TSESTree.Expression): boolean {
+  return (
+    callee.type === AST_NODE_TYPES.MemberExpression &&
+    dottedPropertyNameOf(callee) === 'createObjectURL' &&
+    staticCalleeNameOf(callee.object) === 'URL'
+  )
 }
 
 function isEventHandler(fn: FunctionNode): boolean {
@@ -52,14 +44,14 @@ function isEventHandler(fn: FunctionNode): boolean {
   if (parent.type !== AST_NODE_TYPES.JSXExpressionContainer || parent.parent.type !== AST_NODE_TYPES.JSXAttribute) {
     return false
   }
-  const { name } = parent.parent
-  return name.type === AST_NODE_TYPES.JSXIdentifier && EVENT_PROP.test(name.name)
+  const name = jsxAttributeName(parent.parent)
+  return name !== null && EVENT_PROP.test(name)
 }
 
 function isDeferredCallArgument(fn: FunctionNode): boolean {
   const call = callReceiving(fn, fn.parent)
   if (call === null) return false
-  const name = staticCalleeNameOf(call)
+  const name = staticCalleeNameOf(call.callee)
   return name !== null && (isHookName(name) || DEFERRED_CALLS.has(name))
 }
 

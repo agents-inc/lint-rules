@@ -134,7 +134,7 @@ type CoverReading = { readonly inForce: readonly CoverRelation[]; readonly reads
 
 const RUNTIMES_LIST: RulesetList = 'runtimes'
 export const OFF_SETTING: RuleSetting = { severity: 'off', options: [], files: null, ignores: null }
-const UNSCOPED = { files: null, ignores: null } as const
+const UNSCOPED = { files: null, ignores: null } as const satisfies Scope
 const SUPPRESSION_MODE_BY_DEFAULT: SuppressionMode = 'banned'
 
 const COVERED_BY: CoverRelation = { named: 'covered by', coverOf: ({ coveredBy }) => coveredBy, bothRoutedTo: null }
@@ -196,16 +196,12 @@ export function tsFileRulesOf({ tsFileRules }: Pick<RuleLayers, 'tsFileRules'>):
   return tsFileRules === undefined ? {} : tsFileRules
 }
 
-function layersOfRulesOn(layers: RuleLayers): RuleLayers {
-  return layersWithEachRuleMap(layers, settingsOn)
-}
-
 export function ruleIdsStatedIn(layers: RuleLayers): string[] {
   return [...new Set(ruleSettingsOfEveryLayer(layers).flatMap((settings) => Object.keys(settings)))].toSorted()
 }
 
 export function ruleIdsOnIn(layers: RuleLayers): string[] {
-  return ruleIdsStatedIn(layersOfRulesOn(layers))
+  return ruleIdsStatedIn(layersWithEachRuleMap(layers, settingsOn))
 }
 
 export function runtimeGlobalReadersOnIn(layers: RuleLayers, catalog: Catalog): string[] {
@@ -332,11 +328,8 @@ function listOfRulesetRule(id: string, catalog: Catalog): RulesetList {
 
 function rulesOnUnder(rulesets: RulesetsInput, rules: RuleSettingsInput, covers: Covers, catalog: Catalog): RuleSettings {
   const shippedRules = shippedRulesOnUnder(listedRulesetNames(rulesets), catalog)
-  const settingsGiven = Object.entries(rules).map(([id, entry]): SettingEntry => [
-    id,
-    scopedSettingOf(id, entry, shippedRules, catalog),
-  ])
-  const rulesOn = withoutCoveredRules(settingsOn({ ...shippedRules, ...Object.fromEntries(settingsGiven) }), rules, covers)
+  const settingsGiven = settingsGivenBy(rules, shippedRules, catalog)
+  const rulesOn = withoutCoveredRules(settingsOn({ ...shippedRules, ...settingsGiven }), rules, covers)
   return withAllowancesWhereTheirRulesRun(rulesOn, (id) => isWrittenWithOptions(rules, id), rulesOn, catalog)
 }
 
@@ -537,12 +530,12 @@ function entryRulesOf(rules: RuleSettingsInput, entryRulesOn: RuleSettings, cata
   function hasOptionsSettled(id: string): boolean {
     return isWrittenWithOptions(rules, id) || Object.hasOwn(entryRulesOn, id)
   }
-  return withAllowancesWhereTheirRulesRun(entryRuleSettings(rules, entryRulesOn, catalog), hasOptionsSettled, entryRulesOn, catalog)
+  return withAllowancesWhereTheirRulesRun(settingsGivenBy(rules, entryRulesOn, catalog), hasOptionsSettled, entryRulesOn, catalog)
 }
 
-function entryRuleSettings(rules: RuleSettingsInput, entryRulesOn: RuleSettings, catalog: Catalog): RuleSettings {
+function settingsGivenBy(rules: RuleSettingsInput, inForce: RuleSettings, catalog: Catalog): RuleSettings {
   return Object.fromEntries(
-    Object.entries(rules).map(([id, entry]): SettingEntry => [id, scopedSettingOf(id, entry, entryRulesOn, catalog)]),
+    Object.entries(rules).map(([id, entry]): SettingEntry => [id, scopedSettingOf(id, entry, inForce, catalog)]),
   )
 }
 
@@ -578,7 +571,7 @@ function rulesetChanges(
 ): RuleSettings {
   const changed = ruleIdsSetDifferently(topLevelRulesOn, entryRulesOn)
   return Object.fromEntries(
-    [...changed, ...restatedRuleIds].map((id): SettingEntry => [id, settingUnder(entryRulesOn, id)]),
+    [...changed, ...restatedRuleIds].map((id): SettingEntry => [id, entryRulesOn[id] ?? OFF_SETTING]),
   )
 }
 
@@ -586,10 +579,6 @@ function rulesetChanges(
 function ruleIdsSetDifferently(topLevelRulesOn: RuleSettings, entryRulesOn: RuleSettings): string[] {
   const ruleIdsOnInEither = new Set([...Object.keys(topLevelRulesOn), ...Object.keys(entryRulesOn)])
   return [...ruleIdsOnInEither].filter((id) => !isDeepStrictEqual(topLevelRulesOn[id], entryRulesOn[id]))
-}
-
-function settingUnder(entryRulesOn: RuleSettings, id: string): RuleSetting {
-  return entryRulesOn[id] ?? OFF_SETTING
 }
 
 function envChanges(
@@ -609,9 +598,13 @@ function fileOverrideLayerChanged({ suppressions, ...layer }: FileOverrideLayer,
     ...layer,
     rulesetChanges: change(layer.rulesetChanges),
     rules: change(layer.rules),
-    ...(suppressions === undefined ? {} : { suppressions: { ...suppressions, rules: change(suppressions.rules) } }),
+    ...suppressionsChanged(suppressions, change),
     ...tsFileRulesChanged(layer, change),
   }
+}
+
+function suppressionsChanged(suppressions: SuppressionLayer | undefined, change: ChangesRuleMap): Pick<FileOverrideLayer, 'suppressions'> {
+  return suppressions === undefined ? {} : { suppressions: { ...suppressions, rules: change(suppressions.rules) } }
 }
 
 function tsFileRulesChanged({ tsFileRules }: Pick<RuleLayers, 'tsFileRules'>, change: ChangesRuleMap): Pick<RuleLayers, 'tsFileRules'> {

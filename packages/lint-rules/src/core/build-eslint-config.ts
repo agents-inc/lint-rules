@@ -1,6 +1,6 @@
 import { type Catalog, isOxlintRoute, type OxlintRoute, routeOf, type RuleRoute, type SuppressionMode } from '@workspace/rule-data'
 import { foundOr } from '@workspace/rule-data/collections'
-import { pluginPrefixOf } from '@workspace/rule-data/rule-id-parts'
+import { pluginPrefixOf, ruleNameOf } from '@workspace/rule-data/rule-id-parts'
 import { type ESLint, Linter, type Rule } from 'eslint'
 import globals from 'globals'
 import tseslint from 'typescript-eslint'
@@ -152,6 +152,9 @@ type InlineConfigGuard = Pick<Linter.Config, 'linterOptions'>
 
 type GlobalsChange = { readonly name: string; readonly files: FilesCondition; readonly globals: Linter.Globals }
 
+/** The config ESLint checks a rule entry's options in, and the ID its refusal names. */
+type OptionsProbe = { readonly probedId: string; readonly config: Linter.Config[] }
+
 /** A rule `allowSuppressions` decides, and the options it takes in test files while suppressions are banned. */
 type SettingInTestFiles = { readonly route: RuleRoute; readonly files: Globs; readonly options: readonly unknown[] }
 
@@ -174,7 +177,6 @@ const OPTIONS_PROBE_RULE = 'rule'
 const OPTIONS_PROBE_ID = `${OPTIONS_PROBE_PLUGIN}/${OPTIONS_PROBE_RULE}`
 const OPTIONS_PROBE_FILE = 'options-probe.js'
 const RULE_NAME_SEPARATOR = '/'
-const NOT_FOUND = -1
 
 const DO_NOTHING_RULE: Rule.RuleModule = { meta: { schema: false }, create: () => ({}) }
 
@@ -246,7 +248,7 @@ export function eslintBlocksBeforeTheOffSwitch(source: BlocksSource, catalog: Ca
       testRunnerGlobalsBlock(),
       ...blocksTakingOverOnTsFiles({ name: BASE_BLOCK, files: [JS_AND_TS_FILES], ignores: [] }, takeoversAfterThePlainBlock(topLevel), typeInformation),
       ...typedBlocks(typeInformation, settingsPlaced('typed', topLevel.settings), untypedStatementsAtTheTopLevel(splits, topLevel), runsTypedRule),
-      ...settingsPlaced('scoped', topLevel.settings).flatMap((scoped) => scopeBlocks(`${BLOCK}/scope`, [], scoped, topLevel, typeInformation)),
+      ...blocksOfScopedRules(`${BLOCK}/scope`, [], topLevel, typeInformation),
       ...blocksOnTsFilesAlone(`${BLOCK}/scope`, [], topLevelOnTsFiles, typeInformation),
       ...blocksOfOptionsInFiles(`${BLOCK}/${OPTIONS_IN_FILES}`, [], topLevel.settings, typeInformation),
       ...blocksInTestFilesWhileBanned(`${BLOCK}/${TEST_FILES}`, [], topLevelSuppressions, inTestFiles, typeInformation),
@@ -292,13 +294,8 @@ export function oxlintRuleNamesByPrefix(catalog: Catalog): ReadonlyMap<string, r
 function oxlintsNameUnderTheIdsPrefix({ id, oxlintName }: OxlintRoute): string[] {
   const prefix = pluginPrefixOf(id)
   if (prefix === null) return []
-  const underTheIdsPrefix = `${prefix}${RULE_NAME_SEPARATOR}${ruleNameOfOxlintName(oxlintName)}`
+  const underTheIdsPrefix = `${prefix}${RULE_NAME_SEPARATOR}${ruleNameOf(oxlintName)}`
   return underTheIdsPrefix === id ? [] : [underTheIdsPrefix]
-}
-
-function ruleNameOfOxlintName(oxlintName: string): string {
-  const separator = oxlintName.indexOf(RULE_NAME_SEPARATOR)
-  return separator === NOT_FOUND ? oxlintName : oxlintName.slice(separator + RULE_NAME_SEPARATOR.length)
 }
 
 export function ruleNamesByPrefix(ruleIds: readonly string[]): ReadonlyMap<string, readonly string[]> {
@@ -415,6 +412,10 @@ export function filesMatchedByBoth(ours: readonly FilesEntry[], theirs: readonly
   return ours.flatMap((ourEntry) => theirs.map((theirEntry) => [...globsOf(ourEntry), ...globsOf(theirEntry)]))
 }
 
+function blocksOfScopedRules(namePrefix: string, layerFiles: readonly Globs[], rules: LayerRules, typeInformation: TypeInformation): Linter.Config[] {
+  return settingsPlaced('scoped', rules.settings).flatMap((scoped) => scopeBlocks(namePrefix, layerFiles, scoped, rules, typeInformation))
+}
+
 function scopeBlocks(
   namePrefix: string,
   layerFiles: readonly Globs[],
@@ -459,7 +460,7 @@ function fileOverrideBlocks({ layer, rules, onTsFiles, untyped }: EntryBlocksSou
     ...entryBlockIfNotEmpty(entry, globalsChangeOf(layer.env, source.layers.env), inlineConfigGuardOf(layer), entryRuleMap(rules)),
     ...blocksTakingOverOnTsFiles(entry, takeoversAfterThePlainBlock(rules), source.typeInformation),
     ...entryTypedBlocksIfNotEmpty(`${entry.name}/typed`, layer.files, { rules: settingsPlaced('typed', settings), untyped }, source.typeInformation),
-    ...settingsPlaced('scoped', settings).flatMap((scoped) => scopeBlocks(`${entry.name}/scope`, [layer.files], scoped, rules, source.typeInformation)),
+    ...blocksOfScopedRules(`${entry.name}/scope`, [layer.files], rules, source.typeInformation),
     ...blocksOnTsFilesAlone(`${entry.name}/scope`, [layer.files], onTsFiles, source.typeInformation),
     ...blocksOfOptionsInFiles(`${entry.name}/${OPTIONS_IN_FILES}`, [layer.files], settings, source.typeInformation),
     ...blocksInTestFilesWhileBanned(`${entry.name}/${TEST_FILES}`, [layer.files], layer.suppressions, inTestFiles, source.typeInformation),
@@ -621,15 +622,17 @@ function settingIn({ settings }: LayerRules, route: RuleRoute): RuleSetting | nu
 
 /** Where no oxlint runs, a core rule and its typescript-eslint extension are one rule: the extension runs on TS files, the core rule elsewhere, never both in one file. */
 function layerRulesOf(layer: LayerStatements, below: LayerStatements | null, source: BlocksSource, catalog: Catalog): LayerRules {
-  const takeovers = twinPairsStatedIn(layer, source, catalog).flatMap((pair) => takeoverOf(pair, layer, below, source))
-  const takenOver = new Set(takeovers.map(({ extension }) => extension.id))
-  const settings = { ...settingsWithout(layer.settings, takenOver), ...coreRulesRestatedBy(takeovers) }
+  const twinPairs = source.twinsOnTsFiles ? twinPairsNamedIn(layer, catalog) : []
+  const takeovers = twinPairs.flatMap((pair) => takeoverOf(pair, layer, below, source))
+  const settings = settingsAfterTakeovers(layer.settings, takeovers)
   if (below !== null) return { settings: eslintSettingsOf(settings, catalog), takeovers }
   return { settings: eslintSettingsOf(settingsOn(settings), catalog), takeovers: takeovers.filter(runsEitherName) }
 }
 
-function twinPairsStatedIn(layer: LayerStatements, source: BlocksSource, catalog: Catalog): TwinPair[] {
-  return source.twinsOnTsFiles ? twinPairsNamedIn(layer, catalog) : []
+/** An extension taken over leaves the layer's settings for its blocks on TS files; its core rule takes the setting it has on the other files. */
+function settingsAfterTakeovers(settings: RuleSettings, takeovers: readonly Takeover[]): RuleSettings {
+  const takenOver = new Set(takeovers.map(({ extension }) => extension.id))
+  return { ...settingsWithout(settings, takenOver), ...coreRulesRestatedBy(takeovers) }
 }
 
 function coreRulesRestatedBy(takeovers: readonly Takeover[]): RuleSettings {
@@ -641,7 +644,9 @@ function takeoverOf({ core, extension }: TwinPair, layer: LayerStatements, below
   const coreHere = statedIn(layer, core.id)
   const extensionHere = statedIn(layer, extension.id)
   const coreBelow = below === null ? null : statedIn(below, core.id)
-  if (coreHere === null && (extensionHere === null || coreBelow === null)) return []
+  const statesEitherName = coreHere !== null || extensionHere !== null
+  const isCoreStatedHereOrBelow = coreHere !== null || coreBelow !== null
+  if (!statesEitherName || !isCoreStatedHereOrBelow) return []
   const { decidesTheExtension, decidesTheCore } = whatTheDecidingPartStates({ core, extension }, layer)
   const onTsFiles = decidesTheExtension ? extensionHere : coreHere
   if (onTsFiles === null) throw new Error(`${core.id}: the layer states it or ${extension.id}, so one decides the extension's setting`)
@@ -728,11 +733,9 @@ function runsATypedSetting(settings: readonly EslintSetting[]): boolean {
 
 /** ESLint refuses options a rule's schema rejects with a config error that ends the whole run (measured), so they are checked first against a do-nothing rule with the same meta. Any other failure is rethrown. */
 function acceptsEntry(ruleId: string, entry: Linter.RuleEntry, plugins: ReadonlyMap<string, ESLint.Plugin>): boolean {
-  const isCoreRule = pluginRuleOf(ruleId).length === 0
-  const probedId = isCoreRule ? ruleId : OPTIONS_PROBE_ID
-  const probe: Linter.Config[] = isCoreRule ? [{ rules: { [ruleId]: entry } }] : optionsProbeOf(registeredRuleModule(ruleId, plugins), entry)
+  const { probedId, config } = optionsProbeOf(ruleId, entry, plugins)
   try {
-    new Linter().verify('', probe, { filename: OPTIONS_PROBE_FILE })
+    new Linter().verify('', config, { filename: OPTIONS_PROBE_FILE })
     return true
   } catch (error) {
     if (refusesOptions(error, probedId)) return false
@@ -745,9 +748,11 @@ function refusesOptions(error: unknown, probedId: string): boolean {
   return error instanceof Error && error.message.startsWith(`Key "rules": Key "${probedId}":\n\tValue `)
 }
 
-function optionsProbeOf(ruleModule: Rule.RuleModule, entry: Linter.RuleEntry): Linter.Config[] {
-  const plugin: ESLint.Plugin = { rules: { [OPTIONS_PROBE_RULE]: runningNothingWithMetaOf(ruleModule) } }
-  return [{ plugins: { [OPTIONS_PROBE_PLUGIN]: plugin }, rules: { [OPTIONS_PROBE_ID]: entry } }]
+function optionsProbeOf(ruleId: string, entry: Linter.RuleEntry, plugins: ReadonlyMap<string, ESLint.Plugin>): OptionsProbe {
+  const isCoreRule = pluginRuleOf(ruleId).length === 0
+  if (isCoreRule) return { probedId: ruleId, config: [{ rules: { [ruleId]: entry } }] }
+  const plugin: ESLint.Plugin = { rules: { [OPTIONS_PROBE_RULE]: runningNothingWithMetaOf(registeredRuleModule(ruleId, plugins)) } }
+  return { probedId: OPTIONS_PROBE_ID, config: [{ plugins: { [OPTIONS_PROBE_PLUGIN]: plugin }, rules: { [OPTIONS_PROBE_ID]: entry } }] }
 }
 
 function runningNothingWithMetaOf({ meta }: Rule.RuleModule): Rule.RuleModule {
@@ -853,7 +858,7 @@ function pluginUnder(
     const withOurModules = withRulesOf(teamPlugin, ours, prefix, namesUnder(prefix, ruleNamesRun))
     return withCompatLayerWhereNeeded(prefix, withStubsFor(withOurModules, stubbed))
   }
-  return ours === undefined ? stubPlugin(stubbed) : withStubsFor(ours, stubbed)
+  return ours === undefined ? { rules: stubRulesNamed(stubbed) } : withStubsFor(ours, stubbed)
 }
 
 function withRulesOf(
@@ -894,15 +899,11 @@ function definesRule(plugin: ESLint.Plugin, ruleName: string): boolean {
   return plugin.rules !== undefined && Object.hasOwn(plugin.rules, ruleName)
 }
 
-function stubPlugin(ruleNames: readonly string[]): ESLint.Plugin {
-  return { rules: stubRulesNamed(ruleNames) }
-}
-
 function stubRulesNamed(ruleNames: readonly string[]): Record<string, Rule.RuleModule> {
   return Object.fromEntries(ruleNames.map((ruleName): [string, Rule.RuleModule] => [ruleName, DO_NOTHING_RULE]))
 }
 
 function pluginRuleOf(id: string): PluginRule[] {
   const prefix = pluginPrefixOf(id)
-  return prefix === null ? [] : [{ prefix, ruleName: id.slice(`${prefix}/`.length) }]
+  return prefix === null ? [] : [{ prefix, ruleName: ruleNameOf(id) }]
 }

@@ -16,11 +16,6 @@ function isNamingAttribute(attribute: TSESTree.JSXAttribute): boolean {
   return isJsxAttributeNamedIn(attribute, FIELD_NAME_ATTRIBUTES)
 }
 
-// `placeholder=""`, in any form, supplies no name at all: an unnamed field, which this message would misdescribe.
-function isEmptyText(attribute: TSESTree.JSXAttribute): boolean {
-  return fixedTextOf(attribute) === ''
-}
-
 // The tag as written: `<Form.Label>` ends in the segment that matters.
 function tagNameOf(name: TSESTree.JSXTagNameExpression): string | null {
   if (name.type === AST_NODE_TYPES.JSXMemberExpression) return name.property.name
@@ -57,7 +52,8 @@ export const noPlaceholderOnlyField = ESLintUtils.RuleCreator.withoutDocs<[], 'p
         const attributes = plainAttributesOf(node)
         if (attributes === null || attributes.some(isNamingAttribute)) return
         const placeholder = findLastJsxAttribute(attributes, 'placeholder')
-        if (placeholder === null || isEmptyText(placeholder)) return
+        // `placeholder=""`, in any form, supplies no name at all: an unnamed field, which this message would misdescribe.
+        if (placeholder === null || fixedTextOf(placeholder) === '') return
         if (context.sourceCode.getAncestors(node).some(isLabelElement)) return
         context.report({ node: placeholder, messageId: 'placeholderOnly', data: { tag } })
       },

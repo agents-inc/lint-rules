@@ -3,6 +3,7 @@ import { eitherOf, type FilesCondition, filesIgnoredBy } from './file-conditions
 import {
   everyFileUnderFoldersMatching,
   isNegated,
+  isUnder,
   keepingNegation,
   LEADING_DOT_SLASH,
   namesFoldersOnly,
@@ -39,7 +40,7 @@ const FOLDER_SEPARATOR = '/'
 const ANY_DEPTH = '**/'
 const EVERY_FOLDER_IN = '/**'
 const FILES_DIRECTLY_IN = '/*'
-const NO_TAKE_BACK: TakeBack[] = []
+const NO_TAKE_BACK: readonly TakeBack[] = []
 
 export function filesEslintLeavesOutOf(ignores: readonly string[]): FilesCondition {
   const values = ignores.map(asEslintNormalizesIt)
@@ -70,11 +71,17 @@ function filesUnderEachFolderValueEslintLeavesOut(values: readonly string[]): Fi
 function filesUnderFoldersEslintLeavesOut(value: string, later: readonly string[]): FilesCondition {
   const underTheFolders = everyFileUnderFoldersMatching(value)
   const takeBacks = takeBacksEslintMakesAfter(value, later)
+  return eitherOf(filesUnderLessTakenBack(underTheFolders, takeBacks), ...filesLeftOutAgain(underTheFolders, takeBacks))
+}
+
+function filesUnderLessTakenBack(underTheFolders: string, takeBacks: readonly TakeBack[]): FilesCondition {
+  return [{ all: [underTheFolders], none: takeBacks.map(({ taken }) => taken) }]
+}
+
+/** Unless another take-back has them back whole. */
+function filesLeftOutAgain(underTheFolders: string, takeBacks: readonly TakeBack[]): FilesCondition[] {
   const takenBackWhole = takeBacks.filter(({ leftOutAgain }) => leftOutAgain.length === 0).map(({ taken }) => taken)
-  return eitherOf(
-    [{ all: [underTheFolders], none: takeBacks.map(({ taken }) => taken) }],
-    ...takeBacks.flatMap(({ leftOutAgain }) => leftOutAgain.map((again): FilesCondition => [{ all: [underTheFolders, again], none: takenBackWhole }])),
-  )
+  return takeBacks.flatMap(({ leftOutAgain }) => leftOutAgain.map((again): FilesCondition => [{ all: [underTheFolders, again], none: takenBackWhole }]))
 }
 
 function takeBacksEslintMakesAfter(value: string, later: readonly string[]): TakeBack[] {
@@ -83,7 +90,7 @@ function takeBacksEslintMakesAfter(value: string, later: readonly string[]): Tak
 }
 
 /** ESLint walks a file's folders from the top and stops at the first one left out, so a negation takes a file back only where it matches that folder and every left-out folder below it. */
-function takeBacksEslintMakesFrom(leftOut: FolderReading, negated: string): TakeBack[] {
+function takeBacksEslintMakesFrom(leftOut: FolderReading, negated: string): readonly TakeBack[] {
   const takingBack = folderReadingOf(withoutTheLastSlash(negated))
   switch (leftOut.kind) {
     case 'one folder':
@@ -99,7 +106,7 @@ function takeBacksEslintMakesFrom(leftOut: FolderReading, negated: string): Take
 }
 
 /** A negation matching the folder alone takes back only the files directly in it, since the value leaves each folder below out again. One matching every folder of its name also takes back files under another folder, which ESLint leaves out (a known limit). */
-function takeBacksFromAFolderAndThoseInIt(path: string, takingBack: FolderReading, negated: string): TakeBack[] {
+function takeBacksFromAFolderAndThoseInIt(path: string, takingBack: FolderReading, negated: string): readonly TakeBack[] {
   switch (takingBack.kind) {
     case 'one folder':
       return takingBack.path === path ? theFilesDirectlyIn(negated) : NO_TAKE_BACK
@@ -113,7 +120,7 @@ function takeBacksFromAFolderAndThoseInIt(path: string, takingBack: FolderReadin
 }
 
 /** A value naming folders leaves out a file's highest folder of that name first. Two readings here take back more than ESLint does (a known limit). */
-function takeBacksFromFoldersNamed(leftOut: FoldersNamed, takingBack: FolderReading, negated: string): TakeBack[] {
+function takeBacksFromFoldersNamed(leftOut: FoldersNamed, takingBack: FolderReading, negated: string): readonly TakeBack[] {
   switch (takingBack.kind) {
     case 'one folder':
       if (!isTheHighestFolderNamed(takingBack.path, leftOut.name)) return NO_TAKE_BACK
@@ -200,11 +207,13 @@ function ignoreLineOf(value: string, index: number): IgnoreLine[] {
   const takesBack = isNegated(value)
   const pattern = takesBack ? withoutNegation(value) : value
   if (pattern.startsWith(LEADING_DOT_SLASH)) return []
-  const matchesFoldersOnly = namesFoldersOnly(pattern)
-  const body = withoutTheLastSlash(pattern)
-  const fromTheConfigFolder = body.startsWith(FOLDER_SEPARATOR) ? body.slice(FOLDER_SEPARATOR.length) : body
-  const holdsInAnyFolder = !body.includes(FOLDER_SEPARATOR)
-  return [{ index, takesBack, glob: holdsInAnyFolder ? `${ANY_DEPTH}${fromTheConfigFolder}` : fromTheConfigFolder, matchesFoldersOnly }]
+  return [{ index, takesBack, glob: globOfALineBody(withoutTheLastSlash(pattern)), matchesFoldersOnly: namesFoldersOnly(pattern) }]
+}
+
+/** A body with no slash holds in any folder; one with a slash is read from the config's folder, a leading slash dropped. */
+function globOfALineBody(body: string): string {
+  if (!body.includes(FOLDER_SEPARATOR)) return `${ANY_DEPTH}${body}`
+  return body.startsWith(FOLDER_SEPARATOR) ? body.slice(FOLDER_SEPARATOR.length) : body
 }
 
 function asIgnoresGlob({ takesBack, glob }: IgnoreLine): string {
@@ -248,10 +257,6 @@ function mayMatchTheFolder(negated: FolderReading, path: string): boolean {
 /** The path's own last part aside. */
 function isInAFolderNamed(path: string, name: string): boolean {
   return segmentsOf(path).slice(0, -1).includes(name)
-}
-
-function isUnder(path: string, folder: string): boolean {
-  return path.startsWith(`${folder}${FOLDER_SEPARATOR}`)
 }
 
 function lastSegmentOf(path: string): string {

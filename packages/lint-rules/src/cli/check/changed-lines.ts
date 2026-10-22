@@ -1,4 +1,4 @@
-import { foundOr } from '@workspace/rule-data/collections'
+import { namedGroupOf, namedGroupsOf } from '../../core/named-groups.ts'
 import { linesOf } from '../text-lines.ts'
 
 /** `wholeFile` where the file is new to git. */
@@ -29,11 +29,10 @@ export function isOnChangedLines(line: number, changed: ChangedLines): boolean {
 }
 
 export function addedSpanOf(line: string): AddedSpan | null {
-  const groups = HUNK_HEADER.exec(line)?.groups
-  if (groups === undefined) return null
-  const { start, count } = groups
-  const startLine = foundOr(start, `a hunk header with no start line: ${line}`)
-  return { start: Number(startLine), count: count === undefined ? ONE_LINE : Number(count) }
+  const header = HUNK_HEADER.exec(line)
+  if (header === null) return null
+  const { count } = namedGroupsOf(header)
+  return { start: Number(namedGroupOf(header, 'start')), count: count === undefined ? ONE_LINE : Number(count) }
 }
 
 function linesAddedByHunkHeader(line: string): number[] {

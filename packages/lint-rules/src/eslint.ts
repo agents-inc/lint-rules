@@ -25,8 +25,14 @@ export function mergeEslintConfig(theirs: TeamEslintConfig, eslint: EslintPart, 
   refuseUnsupportedInstalledEslint(part.tsconfigRootDir)
   const oxlintConfigPath = part.usesOxlint ? pathOfTheTeamsOxlintConfigGiven(teamOxlintConfig, OXLINT_IS_LISTED) : null
   if (isInReadingMode()) return handedOverToTheRead(theirs)
-  const setByTheTeamsOxlintConfig = part.usesOxlint ? ruleIdsTheTeamsOxlintConfigSets(readTheTeamsOxlintConfig(oxlintConfigPath, part.tsconfigRootDir), catalog) : []
+  const setByTheTeamsOxlintConfig = ruleIdsSetByTheTeamsOxlintConfig(part, oxlintConfigPath)
   return mergeEslintPart(theirs, part, catalog, eslintPluginRegistry, versionOf(ourPackageJsonFile()), setByTheTeamsOxlintConfig)
+}
+
+/** None where the project does not list oxlint. */
+function ruleIdsSetByTheTeamsOxlintConfig({ usesOxlint, tsconfigRootDir }: EslintPart, oxlintConfigPath: string | null): string[] {
+  if (!usesOxlint) return []
+  return ruleIdsTheTeamsOxlintConfigSets(readTheTeamsOxlintConfig(oxlintConfigPath, tsconfigRootDir), catalog)
 }
 
 /** While an oxlint merge reads this config: hand it the team's blocks and our plugins, unmerged. */

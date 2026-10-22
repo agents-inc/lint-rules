@@ -6,7 +6,7 @@ const NEGATION = '!'
 const ESCAPE = '\\'
 export const LEADING_DOT_SLASH = './'
 const FOLDER_SEPARATOR = '/'
-const ROOT_ANCHORS = [LEADING_DOT_SLASH, FOLDER_SEPARATOR]
+const ROOT_ANCHORS: readonly string[] = [LEADING_DOT_SLASH, FOLDER_SEPARATOR]
 const EVERY_FILE_UNDER = '**'
 // What minimatch reads as glob syntax, which a directory may be named with (Next.js's `[id]`, `(group)`).
 const GLOB_SYNTAX_CHARACTERS = String.raw`*?[\]{}()!+@#\\`
@@ -67,6 +67,11 @@ export function everyFileUnderFoldersMatching(glob: string): string {
   if (isNegated(glob)) return negationOf(everyFileUnderFoldersMatching(withoutNegation(glob)))
   if (glob.endsWith(`${FOLDER_SEPARATOR}${EVERY_FILE_UNDER}`)) return glob
   return glob.endsWith(FOLDER_SEPARATOR) ? `${glob}${EVERY_FILE_UNDER}` : `${glob}${FOLDER_SEPARATOR}${EVERY_FILE_UNDER}`
+}
+
+/** In the folder or any folder below it: `ab/x` is not under `a`. */
+export function isUnder(path: string, folder: string): boolean {
+  return path.startsWith(`${folder}${FOLDER_SEPARATOR}`)
 }
 
 export function namesFoldersOnly(glob: string): boolean {

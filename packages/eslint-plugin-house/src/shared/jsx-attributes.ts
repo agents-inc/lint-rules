@@ -1,5 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils'
 
+export type BracedExpression = TSESTree.JSXExpressionContainer['expression']
+
 export function isJsxAttribute(
   attribute: TSESTree.JSXAttribute | TSESTree.JSXSpreadAttribute,
 ): attribute is TSESTree.JSXAttribute {
@@ -59,6 +61,12 @@ export function fixedTextOf(attribute: TSESTree.JSXAttribute): string | null {
   if (value === null) return null
   if (value.type === AST_NODE_TYPES.Literal) return fixedStringOf(value)
   return value.type === AST_NODE_TYPES.JSXExpressionContainer ? fixedStringOf(value.expression) : null
+}
+
+/** What `x={…}` holds; null for a bare or quoted attribute. */
+export function bracedExpressionOf(attribute: TSESTree.JSXAttribute): BracedExpression | null {
+  const { value } = attribute
+  return value?.type === AST_NODE_TYPES.JSXExpressionContainer ? value.expression : null
 }
 
 /** A `type` fixed as `hidden` in any form `fixedTextOf` reads; a dynamic type is not read. */

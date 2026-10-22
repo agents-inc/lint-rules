@@ -7,6 +7,7 @@ import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import type { Linter } from 'eslint'
 import type { OxlintConfig } from 'oxlint'
 import type { EslintPluginRegistry } from './build-eslint-config.ts'
+import { hasErrorCode, messageOf } from './caught-errors.ts'
 import { configErrorIn, configProblemIn } from './config-error.ts'
 import { keysAnOxlintConfigHolds } from './installed-oxlint.ts'
 import { isRecord } from './is-record.ts'
@@ -136,12 +137,8 @@ function readOrRefuse<Config>(file: string, other: OtherConfig, read: () => Conf
 }
 
 function whyUnreadable(error: unknown): string {
-  if (isNodeErrorCoded(error, TOP_LEVEL_AWAIT_REFUSED)) return 'a config read while another loads cannot use top-level await'
-  return error instanceof Error ? error.message : String(error)
-}
-
-function isNodeErrorCoded(error: unknown, code: string): boolean {
-  return error instanceof Error && 'code' in error && error.code === code
+  if (hasErrorCode(error, TOP_LEVEL_AWAIT_REFUSED)) return 'a config read while another loads cannot use top-level await'
+  return messageOf(error)
 }
 
 function oxlintConfigIn(file: string, keysAConfigHolds: ReadonlySet<string>): OxlintConfig {
@@ -151,7 +148,7 @@ function oxlintConfigIn(file: string, keysAConfigHolds: ReadonlySet<string>): Ox
 
 function oxlintConfigLoadedFrom(file: string, keysAConfigHolds: ReadonlySet<string>): OxlintConfig {
   const { handedOver, defaultExport } = loadedInReadingMode(file)
-  const handedByOurMerge = handedOver.flatMap((each) => (each.engine === 'oxlint' ? [each.config] : []))
+  const handedByOurMerge = oxlintConfigsAmong(handedOver)
   if (handedByOurMerge.length > 0) return theOneConfigHandedOver(handedByOurMerge, TEAMS_ESLINT_CONFIG.merge)
   if (!isOxlintConfig(defaultExport)) throw new Error(`its default export is ${describeValue(defaultExport)}, not an oxlint config object`)
   refuseKeysNoConfigHolds([defaultExport], keysAConfigHolds, TEAMS_OXLINT_CONFIG)
@@ -160,10 +157,18 @@ function oxlintConfigLoadedFrom(file: string, keysAConfigHolds: ReadonlySet<stri
 
 function eslintConfigLoadedFrom(file: string): TeamEslintConfigRead {
   const { handedOver, defaultExport } = loadedInReadingMode(file)
-  const handedByOurMerge = handedOver.flatMap((each) => (each.engine === 'eslint' ? [each.config] : []))
+  const handedByOurMerge = eslintConfigsAmong(handedOver)
   if (handedByOurMerge.length > 0) return theOneConfigHandedOver(handedByOurMerge, TEAMS_OXLINT_CONFIG.merge)
   refuseKeysNoConfigHolds(objectsDefineConfigReadsIn(defaultExport), KEYS_AN_ESLINT_CONFIG_OBJECT_HOLDS, TEAMS_ESLINT_CONFIG)
   return { blocks: eslintBlocksOf(defaultExport), ourPlugins: {} }
+}
+
+function oxlintConfigsAmong(handedOver: readonly HandedOver[]): OxlintConfig[] {
+  return handedOver.flatMap((each) => (each.engine === 'oxlint' ? [each.config] : []))
+}
+
+function eslintConfigsAmong(handedOver: readonly HandedOver[]): TeamEslintConfigRead[] {
+  return handedOver.flatMap((each) => (each.engine === 'eslint' ? [each.config] : []))
 }
 
 /** defineConfig refuses what else they hold itself. */

@@ -85,6 +85,18 @@ function creditToTest(testId: string, covered: Coverage): void {
   addCoverage((perTest[testId] ??= {}), covered)
 }
 
+/** What the file's own hooks covered in the worker since `before`, moved out of its static coverage. */
+function staticCoverageTakenSince(before: Coverage): Coverage {
+  const { static: staticCoverage } = workerCoverage()
+  const coveredInProcessByHooks = coverageGainedSince(before, staticCoverage)
+  removeCoverage(staticCoverage, coveredInProcessByHooks)
+  return coveredInProcessByHooks
+}
+
+function withTheChildCoverageHook(nodeOptions: string | undefined): string {
+  return [nodeOptions, `--import=${CHILD_COVERAGE_HOOK}`].filter((option) => option !== undefined && option !== '').join(' ')
+}
+
 function creditChildCoverageToTests(): void {
   const childCoverageDir = mkdtempSync(join(tmpdir(), CHILD_COVERAGE_DIR_PREFIX))
   const filesCredited = new Set<string>()
@@ -93,9 +105,7 @@ function creditChildCoverageToTests(): void {
   let staticBeforeHooks: Coverage = {}
 
   process.env[CHILD_COVERAGE_DIR_ENV] = childCoverageDir
-  process.env.NODE_OPTIONS = [process.env.NODE_OPTIONS, `--import=${CHILD_COVERAGE_HOOK}`]
-    .filter((option) => option !== undefined && option !== '')
-    .join(' ')
+  process.env.NODE_OPTIONS = withTheChildCoverageHook(process.env.NODE_OPTIONS)
 
   function coverageOfChildrenSinceLastRead(): Coverage {
     const covered: Coverage = {}
@@ -131,10 +141,7 @@ function creditChildCoverageToTests(): void {
   afterAll(() => {
     addCoverage(coveredByHooks, coverageOfChildrenSinceLastRead())
     rmSync(childCoverageDir, { recursive: true, force: true })
-    const { static: staticCoverage } = workerCoverage()
-    const coveredInProcessByHooks = coverageGainedSince(staticBeforeHooks, staticCoverage)
-    removeCoverage(staticCoverage, coveredInProcessByHooks)
-    addCoverage(coveredByHooks, coveredInProcessByHooks)
+    addCoverage(coveredByHooks, staticCoverageTakenSince(staticBeforeHooks))
     testsRun.forEach((testId) => creditToTest(testId, coveredByHooks))
   })
 }

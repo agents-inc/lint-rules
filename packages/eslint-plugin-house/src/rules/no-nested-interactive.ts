@@ -5,6 +5,10 @@ import { unqualifiedTagOf } from '../shared/jsx-elements.ts'
 
 type BoundaryTag = 'a' | 'button' | 'form'
 
+type MessageId = 'handler' | 'reparented' | 'swallowed'
+
+type Finding = { node: TSESTree.Node; messageId: MessageId; data: { inner: string; outer: BoundaryTag } }
+
 // The same-tag pairs are the ones the HTML parser re-emits as siblings; form controls inside a
 // button stay put but cannot be operated.
 const FORBIDDEN_INSIDE: Readonly<Record<BoundaryTag, ReadonlySet<string>>> = {
@@ -34,7 +38,29 @@ function boundaryOf(tag: string, element: TSESTree.JSXElement): BoundaryTag | nu
   return tag === 'button' || tag === 'form' ? tag : null
 }
 
-export const noNestedInteractive = ESLintUtils.RuleCreator.withoutDocs<[], 'handler' | 'reparented' | 'swallowed'>({
+function forbiddenNestingOf(tag: string, element: TSESTree.JSXElement, boundaries: readonly BoundaryTag[]): Finding | null {
+  const outer = boundaries.findLast((boundary) => FORBIDDEN_INSIDE[boundary].has(tag))
+  if (outer === undefined) return null
+  return {
+    node: element.openingElement.name,
+    messageId: tag === outer ? 'reparented' : 'swallowed',
+    data: { inner: tag, outer },
+  }
+}
+
+function secondClickTargetOf(tag: string, element: TSESTree.JSXElement, boundaries: readonly BoundaryTag[]): Finding | null {
+  const swallower = boundaries.findLast((boundary) => CLICK_SWALLOWERS.has(boundary))
+  if (swallower === undefined) return null
+  const onClick = findJsxAttribute(element.openingElement, 'onClick')
+  return onClick === null ? null : { node: onClick, messageId: 'handler', data: { inner: tag, outer: swallower } }
+}
+
+function nestingFindingOf(tag: string, element: TSESTree.JSXElement, boundaries: readonly BoundaryTag[]): Finding | null {
+  if (isHiddenInput(tag, element)) return null
+  return forbiddenNestingOf(tag, element, boundaries) ?? secondClickTargetOf(tag, element, boundaries)
+}
+
+export const noNestedInteractive = ESLintUtils.RuleCreator.withoutDocs<[], MessageId>({
   meta: {
     type: 'problem',
     docs: { description: 'Disallow an interactive element nested inside another interactive element' },
@@ -53,29 +79,12 @@ export const noNestedInteractive = ESLintUtils.RuleCreator.withoutDocs<[], 'hand
     // Innermost last. Read lexically: JSX passed as a prop or through a portal counts as rendered in place.
     const boundaries: BoundaryTag[] = []
 
-    const reportNesting = (tag: string, element: TSESTree.JSXElement): void => {
-      const outer = boundaries.findLast((boundary) => FORBIDDEN_INSIDE[boundary].has(tag))
-      if (outer !== undefined) {
-        context.report({
-          node: element.openingElement.name,
-          messageId: tag === outer ? 'reparented' : 'swallowed',
-          data: { inner: tag, outer },
-        })
-        return
-      }
-      const swallower = boundaries.findLast((boundary) => CLICK_SWALLOWERS.has(boundary))
-      if (swallower === undefined) return
-      const onClick = findJsxAttribute(element.openingElement, 'onClick')
-      if (onClick !== null) {
-        context.report({ node: onClick, messageId: 'handler', data: { inner: tag, outer: swallower } })
-      }
-    }
-
     return {
       JSXElement(node) {
         const tag = intrinsicTagOf(node)
         if (tag === null) return
-        if (!isHiddenInput(tag, node)) reportNesting(tag, node)
+        const finding = nestingFindingOf(tag, node, boundaries)
+        if (finding !== null) context.report(finding)
         const boundary = boundaryOf(tag, node)
         if (boundary !== null) boundaries.push(boundary)
       },

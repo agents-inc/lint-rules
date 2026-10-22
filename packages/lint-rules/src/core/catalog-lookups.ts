@@ -1,7 +1,10 @@
 import { type Catalog, pluginPrefixOf, routeOf, type RuleRoute, type RulesetDefinition, type ShippedRule } from '@workspace/rule-data'
+import { groupBy } from '@workspace/rule-data/collections'
 import { readOnce } from './read-once.ts'
 
 export type SuppressionRoute = RuleRoute & { readonly shipped: Extract<ShippedRule, { whenSuppressions: unknown }> }
+
+type EslintNaming = { readonly name: string; readonly ruleId: string }
 
 const ruleIdsByEslintNameRead = new WeakMap<Catalog, ReadonlyMap<string, readonly string[]>>()
 
@@ -42,15 +45,13 @@ function ruleIdsByEslintNameIn(catalog: Catalog): ReadonlyMap<string, readonly s
 }
 
 function ruleIdsByEslintName(catalog: Catalog): ReadonlyMap<string, readonly string[]> {
-  const byName = new Map<string, string[]>()
-  for (const route of catalog.rules.values()) {
-    for (const name of everyEslintNameOf(route, catalog)) {
-      const naming = byName.get(name)
-      if (naming === undefined) byName.set(name, [route.id])
-      else naming.push(route.id)
-    }
-  }
-  return byName
+  const namings = catalog.rules.values().flatMap((route) => eslintNamingsOf(route, catalog)).toArray()
+  const byName = groupBy(namings, ({ name }) => name)
+  return new Map(byName.entries().map(([name, ofTheName]) => [name, ofTheName.map(({ ruleId }) => ruleId)]))
+}
+
+function eslintNamingsOf(route: RuleRoute, catalog: Catalog): EslintNaming[] {
+  return everyEslintNameOf(route, catalog).map((name) => ({ name, ruleId: route.id }))
 }
 
 function everyEslintNameOf(route: RuleRoute, catalog: Catalog): string[] {

@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
 import { calleeNameOf } from '../shared/callee-name.ts'
-import { jsxAttributeName } from '../shared/jsx-attributes.ts'
+import { bracedExpressionOf, jsxAttributeName } from '../shared/jsx-attributes.ts'
 import { defaultedOption, stringListOptionSchema } from '../shared/rule-options.ts'
 
 // The schema does not require the key: ESLint fills it from meta.defaultOptions when a config omits it.
@@ -86,10 +86,8 @@ export const requireClassHelper = ESLintUtils.RuleCreator.withoutDocs<Options, '
         const attribute = jsxAttributeName(node)
         if (attribute === null || !CLASS_ATTRIBUTES.has(attribute)) return
         // A bare attribute and a quoted string name their class outright.
-        const { value } = node
-        if (value === null || value.type !== AST_NODE_TYPES.JSXExpressionContainer) return
-        const { expression } = value
-        if (expression.type === AST_NODE_TYPES.JSXEmptyExpression) return
+        const expression = bracedExpressionOf(node)
+        if (expression === null || expression.type === AST_NODE_TYPES.JSXEmptyExpression) return
         const classValue = unwrappedClassValueOf(expression)
         if (isPlainClass(classValue) || isHelperCall(classValue, helperNames)) return
         context.report({

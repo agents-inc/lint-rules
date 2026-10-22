@@ -6,7 +6,8 @@ import { dirname, join } from 'node:path'
 import { text } from 'node:stream/consumers'
 import { type Catalog, isOxlintRoute, routeOf } from '@workspace/rule-data'
 import type { DummyRule, DummyRuleMap, OxlintConfig, OxlintOverride } from 'oxlint'
-import { hasErrorCode } from '../caught-errors.ts'
+import { hasErrorCode } from '../../core/caught-errors.ts'
+import { namedGroupOf } from '../../core/named-groups.ts'
 import { leftoverToRemove, removeLeftover } from './leftovers.ts'
 import { type NotChecked, oxlintRulesFailed } from './not-checked.ts'
 import { type OxlintReport, oxlintReportFrom } from './oxlint-output.ts'
@@ -28,7 +29,7 @@ const OXLINT_MANIFEST = 'oxlint/package.json'
 const OXLINT_BIN = join('bin', 'oxlint')
 // The process exists, but belongs to another user.
 const NOT_PERMITTED = 'EPERM'
-const EVERY_FILE = ['**/*']
+const EVERY_FILE: readonly string[] = ['**/*']
 const OFF = 'off'
 const WARN = 'warn'
 const REPORTED = 'error'
@@ -48,14 +49,11 @@ export function fixRunConfigOf(config: OxlintConfig, withheld: ReadonlyMap<strin
 }
 
 function withheldRulesOff(config: OxlintConfig, withheld: ReadonlyMap<string, string>, catalog: Catalog): OxlintConfig {
-  const withheldInOxlint = [...withheld.keys()]
-    .map((id) => routeOf(id, catalog))
-    .filter(isOxlintRoute)
-    .filter(({ engine }) => engine === 'oxlint')
+  const withheldInOxlint = [...withheld.keys()].map((id) => routeOf(id, catalog)).filter(isOxlintRoute)
   if (withheldInOxlint.length === 0) return config
   const off = Object.fromEntries(withheldInOxlint.map(({ oxlintName }): [string, DummyRule] => [oxlintName, OFF]))
   // The last override wins, so the rule is off in every file whatever turned it on.
-  return { ...config, overrides: [...(config.overrides ?? []), { files: EVERY_FILE, rules: off }] }
+  return { ...config, overrides: [...(config.overrides ?? []), { files: [...EVERY_FILE], rules: off }] }
 }
 
 /** At the top and in each override: where an override sets a rule to error, it is fixed in that override's files. */
@@ -127,9 +125,11 @@ function oxlintBin(): string {
 }
 
 function isLeftByAnEndedProcess(name: string): boolean {
-  const pid = TEMP_CONFIG_NAME.exec(name)?.groups?.['pid']
-  if (pid === undefined || Number(pid) === process.pid) return false
-  return !isRunning(Number(pid))
+  const tempConfig = TEMP_CONFIG_NAME.exec(name)
+  if (tempConfig === null) return false
+  const pid = Number(namedGroupOf(tempConfig, 'pid'))
+  if (pid === process.pid) return false
+  return !isRunning(pid)
 }
 
 function isRunning(pid: number): boolean {

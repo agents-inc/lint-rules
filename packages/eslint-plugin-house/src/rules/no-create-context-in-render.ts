@@ -1,7 +1,7 @@
 import { ASTUtils, AST_NODE_TYPES, ESLintUtils, TSESLint, type TSESTree } from '@typescript-eslint/utils'
 
 import { callReceiving } from '../shared/call-arguments.ts'
-import { calleeNameOf } from '../shared/callee-name.ts'
+import { calleeNameOf, dottedPropertyNameOf } from '../shared/callee-name.ts'
 import { componentNameOf, type FunctionFrame, functionFrameVisitors } from '../shared/function-frames.ts'
 import { type FunctionNode, functionNameOf } from '../shared/function-name.ts'
 import { isHookName } from '../shared/hook-name.ts'
@@ -28,11 +28,9 @@ function createContextForm(callee: TSESTree.Expression): 'bare' | 'namespaced' |
   if (callee.type === AST_NODE_TYPES.Identifier) return callee.name === CREATE_CONTEXT ? 'bare' : null
   const isNamespaced =
     callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
+    dottedPropertyNameOf(callee) === CREATE_CONTEXT &&
     callee.object.type === AST_NODE_TYPES.Identifier &&
-    callee.object.name === 'React' &&
-    callee.property.type === AST_NODE_TYPES.Identifier &&
-    callee.property.name === CREATE_CONTEXT
+    callee.object.name === 'React'
   return isNamespaced ? 'namespaced' : null
 }
 
@@ -76,9 +74,17 @@ export const noCreateContextInRender = ESLintUtils.RuleCreator.withoutDocs<[], '
     const stack: Frame[] = []
 
     const callsReactCreateContext = (call: TSESTree.CallExpression): boolean => {
-      const form = createContextForm(call.callee)
-      if (form === null) return false
-      return form === 'namespaced' || isReactCreateContextIn(sourceCode.getScope(call))
+      switch (createContextForm(call.callee)) {
+        case 'namespaced': {
+          return true
+        }
+        case 'bare': {
+          return isReactCreateContextIn(sourceCode.getScope(call))
+        }
+        case null: {
+          return false
+        }
+      }
     }
 
     const reportOrPassToEnclosing = (frame: Frame): void => {

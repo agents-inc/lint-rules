@@ -1,12 +1,18 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
 import { childNodesOf } from '../shared/child-nodes.ts'
-import { findJsxAttribute, fixedTextOf, hasHiddenType } from '../shared/jsx-attributes.ts'
+import {
+  type BracedExpression,
+  bracedExpressionOf,
+  findJsxAttribute,
+  fixedTextOf,
+  hasHiddenType,
+} from '../shared/jsx-attributes.ts'
 import { unqualifiedTagOf } from '../shared/jsx-elements.ts'
 
 type RenderedJsx = TSESTree.JSXElement | TSESTree.JSXFragment
 
-type BracedExpression = TSESTree.JSXExpressionContainer['expression']
+type Finding = { messageId: 'self'; data: { tag: string } } | { messageId: 'focusable'; data: { descendant: string } }
 
 // A tabIndex this rule cannot read is `unknown`, not absent: `tabIndex={active ? 0 : -1}` is deliberate.
 type TabIndex = number | 'absent' | 'unknown'
@@ -17,12 +23,6 @@ const FOCUSABLE_TAGS: ReadonlySet<string> = new Set(['button', 'select', 'textar
 const FOCUSABLE_WITH_HREF_TAGS: ReadonlySet<string> = new Set(['a', 'area'])
 // What a message calls an element whose tag is not a plain name, such as `<Menu.Item>`.
 const UNNAMED_TAG = 'element'
-
-// What `x={…}` holds; null for a bare or quoted attribute.
-function bracedExpressionOf(attribute: TSESTree.JSXAttribute): BracedExpression | null {
-  const { value } = attribute
-  return value?.type === AST_NODE_TYPES.JSXExpressionContainer ? value.expression : null
-}
 
 function isBracedTrue(attribute: TSESTree.JSXAttribute): boolean {
   const expression = bracedExpressionOf(attribute)
@@ -109,18 +109,29 @@ function coversItsSubtree(node: TSESTree.Node): boolean {
   return node.type === AST_NODE_TYPES.JSXElement && (isInert(node.openingElement) || isAriaHidden(node.openingElement))
 }
 
-// Descendants only: a focusable sibling of a decorative aria-hidden wrapper is correct code. Inert
-// is inherited, so an inert element prunes its subtree.
+// Inert is inherited, so an inert element prunes its subtree.
+function firstFocusableAtOrBelow(jsx: RenderedJsx): TSESTree.JSXOpeningElement | null {
+  if (jsx.type === AST_NODE_TYPES.JSXFragment) return firstFocusableDescendant(jsx)
+  if (isInert(jsx.openingElement)) return null
+  if (isFocusableElement(jsx.openingElement)) return jsx.openingElement
+  return firstFocusableDescendant(jsx)
+}
+
+// Descendants only: a focusable sibling of a decorative aria-hidden wrapper is correct code.
 function firstFocusableDescendant(element: RenderedJsx): TSESTree.JSXOpeningElement | null {
   for (const candidate of element.children.flatMap(renderedChildrenOf)) {
-    if (candidate.type === AST_NODE_TYPES.JSXElement) {
-      if (isInert(candidate.openingElement)) continue
-      if (isFocusableElement(candidate.openingElement)) return candidate.openingElement
-    }
-    const deeper = firstFocusableDescendant(candidate)
-    if (deeper !== null) return deeper
+    const focusable = firstFocusableAtOrBelow(candidate)
+    if (focusable !== null) return focusable
   }
   return null
+}
+
+function focusableFindingOf(element: TSESTree.JSXElement): Finding | null {
+  if (isFocusableElement(element.openingElement)) {
+    return { messageId: 'self', data: { tag: displayedTagOf(element.openingElement) } }
+  }
+  const descendant = firstFocusableDescendant(element)
+  return descendant === null ? null : { messageId: 'focusable', data: { descendant: displayedTagOf(descendant) } }
 }
 
 export const noFocusableContentInAriaHidden = ESLintUtils.RuleCreator.withoutDocs<[], 'focusable' | 'self'>({
@@ -138,19 +149,12 @@ export const noFocusableContentInAriaHidden = ESLintUtils.RuleCreator.withoutDoc
   create(context) {
     return {
       JSXElement(node) {
-        const opening = node.openingElement
-        const ariaHidden = ariaHiddenTrueOf(opening)
+        const ariaHidden = ariaHiddenTrueOf(node.openingElement)
         if (ariaHidden === null) return
         // `inert` is the fix: it takes the whole subtree out of the tab order.
-        if (isInert(opening) || context.sourceCode.getAncestors(node).some(coversItsSubtree)) return
-
-        if (isFocusableElement(opening)) {
-          context.report({ node: ariaHidden, messageId: 'self', data: { tag: displayedTagOf(opening) } })
-          return
-        }
-        const descendant = firstFocusableDescendant(node)
-        if (descendant === null) return
-        context.report({ node: ariaHidden, messageId: 'focusable', data: { descendant: displayedTagOf(descendant) } })
+        if (isInert(node.openingElement) || context.sourceCode.getAncestors(node).some(coversItsSubtree)) return
+        const finding = focusableFindingOf(node)
+        if (finding !== null) context.report({ node: ariaHidden, ...finding })
       },
     }
   },

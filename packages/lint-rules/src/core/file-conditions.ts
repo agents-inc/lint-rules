@@ -1,4 +1,4 @@
-import { foundOr } from '@workspace/rule-data/collections'
+import { compareCodeUnits, foundOr, groupBy } from '@workspace/rule-data/collections'
 import { extensionsNamedBy, isNegated, literalGlobOf, negationOf, pathNamedBy, withoutNegation } from './globs.ts'
 import { readOnce } from './read-once.ts'
 
@@ -91,7 +91,7 @@ export function keyOfCondition(condition: FilesCondition): string {
 /** One block per set of ignored globs. A term needing no glob matches every file the others do, so it is the only one left. */
 export function filesAndIgnoresOf(condition: FilesCondition): FilesAndIgnores[] {
   return termsGroupedByIgnores(condition).map((terms) => ({
-    files: terms.some(({ all }) => all.length === 0) ? null : terms.map(({ all }) => all),
+    files: terms.some(needsNoGlob) ? null : terms.map(({ all }) => all),
     ignores: ignoresShared(terms),
   }))
 }
@@ -136,13 +136,12 @@ function termMissing(glob: string): FilesTerm {
   return isNegated(glob) ? { all: [withoutNegation(glob)], none: [] } : { all: [], none: [glob] }
 }
 
-function termsGroupedByIgnores(condition: FilesCondition): FilesTerm[][] {
-  const ignoresKeys = [...new Set(condition.map(ignoresKeyOf))]
-  return ignoresKeys.map((key) => condition.filter((term) => ignoresKeyOf(term) === key))
+function termsGroupedByIgnores(condition: FilesCondition): (readonly FilesTerm[])[] {
+  return groupBy(condition, ({ none }) => JSON.stringify(none)).values().toArray()
 }
 
-function ignoresKeyOf({ none }: FilesTerm): string {
-  return JSON.stringify(none)
+function needsNoGlob({ all }: FilesTerm): boolean {
+  return all.length === 0
 }
 
 function keyOfTerm(term: FilesTerm): string {
@@ -182,12 +181,15 @@ function termAtPath(path: string, all: readonly string[], none: readonly string[
   const literal = literalGlobOf(path)
   return {
     all: [literal, ...all.filter((glob) => pathNamedBy(glob) === NO_PATH)],
-    none: none.flatMap((glob) => {
-      const excluded = pathNamedBy(glob)
-      if (excluded === NO_PATH) return [glob]
-      return excluded === path ? [literal] : []
-    }),
+    none: none.flatMap((glob) => exclusionAtPath(glob, path, literal)),
   }
+}
+
+/** One naming another path excludes no file at this one. */
+function exclusionAtPath(glob: string, path: string, literal: string): string[] {
+  const excluded = pathNamedBy(glob)
+  if (excluded === NO_PATH) return [glob]
+  return excluded === path ? [literal] : []
 }
 
 function pathsNamedBy(glob: string): string[] {
@@ -196,10 +198,12 @@ function pathsNamedBy(glob: string): string[] {
 }
 
 function pathOfTerm(term: FilesTerm): string | typeof NO_PATH {
-  return readOnce(pathsOfTerms, term, ({ all }) => {
-    const [path] = all.flatMap(pathsNamedBy)
-    return path === undefined ? NO_PATH : path
-  })
+  return readOnce(pathsOfTerms, term, firstPathNamedIn)
+}
+
+function firstPathNamedIn({ all }: FilesTerm): string | typeof NO_PATH {
+  const [path] = all.flatMap(pathsNamedBy)
+  return path === undefined ? NO_PATH : path
 }
 
 function globsHeldBy(term: FilesTerm): GlobsHeld {
@@ -211,14 +215,7 @@ function keyOfNormalizedTerm(term: FilesTerm): string {
 }
 
 function termsByPathOf(condition: FilesCondition): TermsByPath {
-  const byPath = new Map<string | typeof NO_PATH, FilesTerm[]>()
-  condition.forEach((term) => {
-    const path = pathOfTerm(term)
-    const naming = byPath.get(path)
-    if (naming === undefined) byPath.set(path, [term])
-    else naming.push(term)
-  })
-  return byPath
+  return Map.groupBy(condition, pathOfTerm)
 }
 
 function termsNaming(path: string | typeof NO_PATH, byPath: TermsByPath): readonly FilesTerm[] {
@@ -232,8 +229,7 @@ function uniqueTerms(terms: readonly FilesTerm[]): FilesTerm[] {
 }
 
 function inOrderOfKeys([key]: readonly [string, FilesTerm], [otherKey]: readonly [string, FilesTerm]): number {
-  if (key === otherKey) return 0
-  return key < otherKey ? -1 : 1
+  return compareCodeUnits(key, otherKey)
 }
 
 /** Its lists are searched, not walked. */
@@ -250,7 +246,8 @@ function asksOnlyExtensionsItRefuses({ all, none }: FilesTerm): boolean {
   return asked.some((extensions) => extensions.every((extension) => refused.has(extension)))
 }
 
-function extensionsListedBy(glob: string): string[][] {
+/** None where the glob names files by no extension. */
+export function extensionsListedBy(glob: string): string[][] {
   const extensions = extensionsNamedBy(glob)
   return extensions === null ? [] : [extensions]
 }

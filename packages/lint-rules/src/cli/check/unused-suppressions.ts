@@ -1,6 +1,7 @@
 import type { Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { isRecord } from '../../core/is-record.ts'
+import { namedGroupOf } from '../../core/named-groups.ts'
 import type { OxlintDiagnostic, OxlintSpan } from './oxlint-output.ts'
 
 type UnusedSuppression = { readonly line: number; readonly ruleName: string }
@@ -149,9 +150,9 @@ function formOfAnUnusedSuppression({ code, message }: OxlintDiagnostic): Suppres
 }
 
 function namesEslintCallsUnusedIn(message: string): string[] {
-  const names = ESLINT_UNUSED.exec(message)?.groups?.['names']
-  if (names === undefined) return []
-  return [...names.matchAll(QUOTED_NAME)].flatMap(({ groups }) => (groups?.['name'] === undefined ? [] : [groups['name']]))
+  const unused = ESLINT_UNUSED.exec(message)
+  if (unused === null) return []
+  return [...namedGroupOf(unused, 'names').matchAll(QUOTED_NAME)].map((quoted) => namedGroupOf(quoted, 'name'))
 }
 
 /** As typescript-eslint reads them, so comment-like text in a string is none. Null where it cannot parse what the engines did. */
@@ -199,9 +200,12 @@ function spansAWholeComment({ text }: Spanned): boolean {
 }
 
 function disableCommentOpenAt(comments: readonly Comment[], enable: Comment, ruleName: string): Comment | null {
-  return comments
-    .filter(({ text, end }) => end <= enable.start && REGION_COMMENT.test(text) && namesIn(text).includes(ruleName))
-    .reduce<Comment | null>(disableCommentOpenAfter, null)
+  return comments.filter((comment) => switchesTheRuleBefore(enable, ruleName, comment)).reduce<Comment | null>(disableCommentOpenAfter, null)
+}
+
+/** A region's disable or enable comment, naming the rule, that ends before `enable`. */
+function switchesTheRuleBefore(enable: Comment, ruleName: string, { text, end }: Comment): boolean {
+  return end <= enable.start && REGION_COMMENT.test(text) && namesIn(text).includes(ruleName)
 }
 
 function disableCommentOpenAfter(openBefore: Comment | null, comment: Comment): Comment | null {
@@ -227,9 +231,9 @@ function lineAt(text: string, index: number): number {
 function namesIn(spanned: string): string[] {
   if (!COMMENT_START.test(spanned)) return [spanned]
   const directive = spanned.startsWith(LINE_COMMENT_START) ? LINE_DIRECTIVE : BLOCK_DIRECTIVE
-  const names = directive.exec(spanned)?.groups?.['names']
-  if (names === undefined) return []
-  return names
+  const matched = directive.exec(spanned)
+  if (matched === null) return []
+  return namedGroupOf(matched, 'names')
     .replace(JUSTIFICATION, '')
     .split(NAME_SEPARATORS)
     .filter((name) => name !== '')

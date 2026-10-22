@@ -19,13 +19,14 @@ type Reads = {
 }
 
 // In each directory the project service tries a tsconfig.json first, then a jsconfig.json.
-const CONFIG_FILE_NAMES = ['tsconfig.json', 'jsconfig.json']
+const CONFIG_FILE_NAMES: readonly string[] = ['tsconfig.json', 'jsconfig.json']
 const TS_FILE = /\.(?:ts|mts|cts|tsx)$/u
 // ESLint lints nothing under these.
 const DIRECTORIES_NEVER_WALKED: ReadonlySet<string> = new Set(['node_modules', '.git'])
 // A directory the walk cannot list: no permission (measured EACCES on a real project), or gone.
 const UNREADABLE_DIRECTORY_CODES: ReadonlySet<string> = new Set(['EACCES', 'EPERM', 'ENOENT', 'ENOTDIR'])
 const GLOB_SEPARATOR = '/'
+const AT_THE_ROOT = ''
 // From this TypeScript the project service tries every ancestor config, not only the nearest.
 const EVERY_ANCESTOR_CONFIG_SINCE: ReleaseLine = { major: 5, minor: 7 }
 const RELEASE_LINE = /^(?<major>\d+)\.(?<minor>\d+)$/u
@@ -42,7 +43,7 @@ export function tsFilesOutsideEveryTsconfig(tsconfigRootDir: string): readonly s
 export function tsconfigWalkOf(tsconfigRootDir: string): TsconfigWalk {
   const root = resolve(tsconfigRootDir)
   const reads = newReads()
-  const files = filesUnder(root, '')
+  const files = filesUnder(root, AT_THE_ROOT)
   return {
     tsFilesOutsideEveryTsconfig: files.filter(isTsFile).filter((file) => !isTakenInByAConfig(resolve(root, file), root, reads)),
     tsconfigFiles: files.filter(isConfigFile).map((file) => resolve(root, file)),
@@ -60,9 +61,12 @@ function newReads(): Reads {
 }
 
 function isTakenInByAConfig(file: string, root: string, reads: Reads): boolean {
-  return configFilesTriedFor(file, root, reads).some((tried) =>
-    configFilesLoadedFrom(tried, reads).some((loaded) => readOf(loaded, reads).ownFiles.has(file)),
-  )
+  return configFilesTriedFor(file, root, reads).some((tried) => loadsAConfigListing(tried, file, reads))
+}
+
+/** The config itself, or one its references load. */
+function loadsAConfigListing(configFile: string, file: string, reads: Reads): boolean {
+  return configFilesLoadedFrom(configFile, reads).some((loaded) => readOf(loaded, reads).ownFiles.has(file))
 }
 
 /** Nearest first; before TypeScript 5.7, the nearest alone. */
@@ -89,10 +93,12 @@ function configFilesLoadedFrom(configFile: string, reads: Reads): string[] {
 }
 
 function readOf(configFile: string, reads: Reads): ConfigFileRead {
-  return readOnce(reads.configFiles, configFile, () => {
-    const parsed = ts.getParsedCommandLineOfConfigFile(configFile, undefined, CONFIG_HOST, reads.extendedConfigs)
-    return parsed === undefined ? { ownFiles: new Set(), loadedReferences: [] } : configFileReadFrom(parsed)
-  })
+  return readOnce(reads.configFiles, configFile, () => configFileReadAt(configFile, reads))
+}
+
+function configFileReadAt(configFile: string, reads: Reads): ConfigFileRead {
+  const parsed = ts.getParsedCommandLineOfConfigFile(configFile, undefined, CONFIG_HOST, reads.extendedConfigs)
+  return parsed === undefined ? { ownFiles: new Set(), loadedReferences: [] } : configFileReadFrom(parsed)
 }
 
 /** With `disableReferencedProjectLoad`, the service loads none of its references. */
@@ -117,11 +123,13 @@ function releaseLineOf(versionMajorMinor: string): ReleaseLine {
 }
 
 function filesUnder(root: string, fromRoot: string): string[] {
-  return entriesOf(join(root, fromRoot)).flatMap((entry) => {
-    const path = fromRoot === '' ? entry.name : `${fromRoot}${GLOB_SEPARATOR}${entry.name}`
-    if (entry.isDirectory()) return DIRECTORIES_NEVER_WALKED.has(entry.name) ? [] : filesUnder(root, path)
-    return entry.isFile() ? [path] : []
-  })
+  return entriesOf(join(root, fromRoot)).flatMap((entry) => filesOfTheEntry(root, fromRoot, entry))
+}
+
+function filesOfTheEntry(root: string, fromRoot: string, entry: Dirent): string[] {
+  const path = fromRoot === AT_THE_ROOT ? entry.name : `${fromRoot}${GLOB_SEPARATOR}${entry.name}`
+  if (entry.isDirectory()) return DIRECTORIES_NEVER_WALKED.has(entry.name) ? [] : filesUnder(root, path)
+  return entry.isFile() ? [path] : []
 }
 
 function isTsFile(path: string): boolean {

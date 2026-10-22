@@ -1,3 +1,5 @@
+import type { TSESLint } from '@typescript-eslint/utils'
+
 import { dialogHasAccessibleName } from './rules/dialog-has-accessible-name.ts'
 import { hookFileNaming } from './rules/hook-file-naming.ts'
 import { maxHooksPerComponent } from './rules/max-hooks-per-component.ts'
@@ -16,7 +18,7 @@ import { noUnstableListKeys } from './rules/no-unstable-list-keys.ts'
 import { preferLineComments } from './rules/prefer-line-comments.ts'
 import { requireClassHelper } from './rules/require-class-helper.ts'
 
-/** Typed with typescript-eslint's rule types, which `ESLint.Plugin` does not fit; ESLint checks the shape at load. */
+/** Typed with typescript-eslint's rule types, which `ESLint.Plugin` does not fit. */
 export const housePlugin = {
   meta: { name: 'house', namespace: 'house' },
   rules: {
@@ -38,4 +40,4 @@ export const housePlugin = {
     'prefer-line-comments': preferLineComments,
     'require-class-helper': requireClassHelper,
   },
-}
+} satisfies TSESLint.FlatConfig.Plugin

@@ -1,4 +1,5 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
+import { foundOr, groupBy } from '@workspace/rule-data/collections'
 import type { DummyRuleMap, OxlintConfig, OxlintEnv, OxlintGlobals, OxlintOverride } from 'oxlint'
 import { type OxlintPlugin, sortedUnique } from './build-oxlint-config.ts'
 import { runtimeEnvsOf } from './catalog-lookups.ts'
@@ -86,21 +87,22 @@ export function mergeOxlintPart(theirs: OxlintConfig, part: OxlintPart, catalog:
   const setByTheTeam = rulesTheTeamSets([...ruleIdsTheTeamsOxlintConfigSets(theirs, catalog), ...setByTheTeamsEslintConfig], catalog)
   const ours = ourOnStatements(ourLayersLeavingOut(setByTheTeam, part.layers), catalog, envAndGlobalsGivenBy(theirs))
   const plugins = everyPluginListed(team, ours, bySpelling)
-  const asTheTeamsConfigAloneRuns = [
-    ...offWhereTheRootRunsThem(oxlintNamesOnlyTheMergedRootRuns(team, plugins, catalog)),
-    ...categorySwitchesOf(team, catalog),
-  ]
+  const asTheTeamsConfigAloneRuns = asTheTeamsConfigAloneRunsBeside(plugins, team, catalog)
   const copiesOfOurEslintRulesOff = offWhereTheRootRunsThem(copiesOxlintsDefaultRunsBesideOurEslintPart(theirs, part, setByTheTeam, catalog))
   const { overrides = [], settings, extends: extended = [], ...untouched } = theirs
-  const extendedObjects = extended.filter(isAnObject).map((config) => withIgnoredStatementsDropped(config, team, bySpelling))
+  const extendedObjects = extendedObjectsWithIgnoredStatementsDropped(extended, team, bySpelling)
   const firstInLine = placedFirstInLine([...asTheTeamsConfigAloneRuns, ...copiesOfOurEslintRulesOff, ...ours], extendedObjects)
   return {
     ...untouched,
     plugins,
     ...firstInLine.extendsKey,
-    overrides: [...firstInLine.overrides, ...overrides.map((override) => overrideWithIgnoredStatementsDropped(override, team, bySpelling))],
+    overrides: [...firstInLine.overrides, ...overridesWithIgnoredStatementsDropped(overrides, team, bySpelling)],
     settings: withOurReactVersionUnlessTheTeamGivesOne(settings),
   }
+}
+
+function asTheTeamsConfigAloneRunsBeside(mergedRootPlugins: readonly OxlintPlugin[], team: TeamResolution, catalog: Catalog): OxlintOverride[] {
+  return [...offWhereTheRootRunsThem(oxlintNamesOnlyTheMergedRootRuns(team, mergedRootPlugins, catalog)), ...categorySwitchesOf(team, catalog)]
 }
 
 /** oxlint refuses a JS or TS config that extends a config by path ("extends[0] must be a config object"), so the merge refuses it first, naming the entry. */
@@ -143,15 +145,17 @@ function whereOurRuntimeEnvsAreRead(layers: RuleLayers, ourPart: OurOxlintPart, 
 }
 
 function turningOnOnly(override: OxlintOverride, laterOfOurs: readonly OxlintOverride[], beside: OursBesideTheTeams): OxlintOverride[] {
-  const statements = rulesTurnedOnIn(override).map(
-    ([oxlintName, entry]): OnStatement => ({ oxlintName, entry, where: whereTheOverrideLeavesItOn(override, laterOfOurs, oxlintName, beside.leftOut) }),
-  )
+  const statements = onStatementsOf(override, laterOfOurs, beside.leftOut)
   const { runtimeEnv, others } = runtimeEnvApart(envAndGlobalsLessTheTeams(override, beside.teamsRoot), beside.runtimeEnvs)
   const where = whereTheOverrideApplies(override, beside.leftOut)
   return [
     ...withEnvAndGlobalsWhereTheyHold(statementsByWhere(statements), where, others),
     ...runtimeEnvWhere(bothOf(where, beside.whereRuntimeEnvsAreRead), runtimeEnv),
   ]
+}
+
+function onStatementsOf(override: OxlintOverride, laterOfOurs: readonly OxlintOverride[], leftOut: FilesCondition): OnStatement[] {
+  return rulesTurnedOnIn(override).map(([oxlintName, entry]) => ({ oxlintName, entry, where: whereTheOverrideLeavesItOn(override, laterOfOurs, oxlintName, leftOut) }))
 }
 
 function runtimeEnvApart({ env = {}, ...globals }: EnvAndGlobals, runtimeEnvs: ReadonlySet<string>): RuntimeEnvApart {
@@ -166,7 +170,7 @@ function runtimeEnvWhere(where: FilesCondition, runtimeEnv: OxlintEnv): OxlintOv
 }
 
 function statementsByWhere(statements: readonly OnStatement[]): OnStatementsWhere[] {
-  return groupsOfAlike(statements, holdInTheSameFiles).map(({ first, members }) => ({ where: first.where, statements: members }))
+  return groupsOfAlike(statements, ({ where }) => keyOfCondition(where)).map(({ first, members }) => ({ where: first.where, statements: members }))
 }
 
 function withEnvAndGlobalsWhereTheyHold(byWhere: readonly OnStatementsWhere[], envAndGlobalsWhere: FilesCondition, envAndGlobals: EnvAndGlobals): OxlintOverride[] {
@@ -201,10 +205,6 @@ function withoutKeysSetIn<Value>(ours: Readonly<Record<string, Value>>, teams: R
 
 function isEmpty(record: Readonly<Record<string, unknown>>): boolean {
   return Object.keys(record).length === 0
-}
-
-function holdInTheSameFiles(first: OnStatement, second: OnStatement): boolean {
-  return keyOfCondition(first.where) === keyOfCondition(second.where)
 }
 
 /** A config imported from .oxlintrc.json is untyped: settings that are no object where oxlint takes one stay as written, for oxlint to read as it would alone. */
@@ -286,7 +286,7 @@ function offWhereTheyExclude(
 
 function listingsByExcludeFiles(listings: readonly Listing[]): ListingsExcludingOneList[] {
   const excluding = listings.filter(({ where }) => excludeFilesOf(where).length > 0)
-  return groupsOfAlike(excluding, excludeTheSameFiles).map(({ first, members }) => ({
+  return groupsOfAlike(excluding, ({ where }) => orderInsensitiveKeyOf(excludeFilesOf(where))).map(({ first, members }) => ({
     excludeFiles: excludeFilesOf(first.where),
     excluding: members,
   }))
@@ -307,29 +307,23 @@ function entryWhereItsCategoryIsOn(rule: OxlintRule, categories: CategorySeverit
 }
 
 function listingsBySet(listings: readonly Listing[]): ListingsOfOneSet[] {
-  return groupsOfAlike(listings, listTheSamePlugins).map(({ first, members }) => ({ plugins: first.plugins, listings: members }))
+  return groupsOfAlike(listings, ({ plugins }) => orderInsensitiveKeyOf([...plugins])).map(({ first, members }) => ({ plugins: first.plugins, listings: members }))
 }
 
 /** Groups keep the order of their first items, and items keep their order within a group. */
-function groupsOfAlike<Item>(items: readonly Item[], areAlike: (first: Item, second: Item) => boolean): GroupOfAlike<Item>[] {
-  const firstOfEachGroup = items.filter((item, index) => items.findIndex((other) => areAlike(other, item)) === index)
-  return firstOfEachGroup.map((first) => ({ first, members: items.filter((item) => areAlike(item, first)) }))
+function groupsOfAlike<Item>(items: readonly Item[], keyOf: (item: Item) => string): GroupOfAlike<Item>[] {
+  return groupBy(items, keyOf).values().toArray().map(asGroupOfAlike)
 }
 
-function listTheSamePlugins(first: Listing, second: Listing): boolean {
-  return isTheSameSet(first.plugins, second.plugins)
-}
-
-function excludeTheSameFiles(first: Listing, second: Listing): boolean {
-  return globsKey(excludeFilesOf(first.where)) === globsKey(excludeFilesOf(second.where))
+function asGroupOfAlike<Item>(members: readonly Item[]): GroupOfAlike<Item> {
+  return { first: foundOr(members.at(0), 'a group holds at least one item'), members }
 }
 
 function isTheSameSet(first: ReadonlySet<string>, second: ReadonlySet<string>): boolean {
   return first.size === second.size && [...first].every((member) => second.has(member))
 }
 
-/** Order-insensitive. */
-function globsKey(values: readonly string[]): string {
+function orderInsensitiveKeyOf(values: readonly string[]): string {
   return JSON.stringify(sortedUnique([...values]))
 }
 
@@ -338,11 +332,25 @@ function withIgnoredStatementsDropped(config: OxlintConfig, team: TeamResolution
   const { overrides, extends: extended } = config
   return {
     ...config,
-    ...(overrides === undefined ? {} : { overrides: overrides.map((override) => overrideWithIgnoredStatementsDropped(override, team, bySpelling)) }),
-    ...(extended === undefined
-      ? {}
-      : { extends: extended.filter(isAnObject).map((extendedConfig) => withIgnoredStatementsDropped(extendedConfig, team, bySpelling)) }),
+    ...(overrides === undefined ? {} : { overrides: overridesWithIgnoredStatementsDropped(overrides, team, bySpelling) }),
+    ...(extended === undefined ? {} : { extends: extendedObjectsWithIgnoredStatementsDropped(extended, team, bySpelling) }),
   }
+}
+
+function extendedObjectsWithIgnoredStatementsDropped(
+  extended: NonNullable<OxlintConfig['extends']>,
+  team: TeamResolution,
+  bySpelling: OxlintRulesBySpelling,
+): OxlintConfig[] {
+  return extended.filter(isAnObject).map((config) => withIgnoredStatementsDropped(config, team, bySpelling))
+}
+
+function overridesWithIgnoredStatementsDropped(
+  overrides: readonly OxlintOverride[],
+  team: TeamResolution,
+  bySpelling: OxlintRulesBySpelling,
+): OxlintOverride[] {
+  return overrides.map((override) => overrideWithIgnoredStatementsDropped(override, team, bySpelling))
 }
 
 function overrideWithIgnoredStatementsDropped(override: OxlintOverride, team: TeamResolution, bySpelling: OxlintRulesBySpelling): OxlintOverride {

@@ -55,9 +55,14 @@ function layoutOf(text: string, top: ObjectInText): Layout {
   const eol = text.includes(CRLF) ? CRLF : LF
   const first = top.members.at(0)
   if (first === undefined) return { indent: DEFAULT_INDENT, eol }
-  const lineStart = text.lastIndexOf(LF, first.keyStart) + 1
-  const indent = lineStart > top.open ? text.slice(lineStart, first.keyStart) : ''
+  const indent = indentOfKey(text, first, top)
   return { indent: indent === '' ? DEFAULT_INDENT : indent, eol }
+}
+
+/** Empty where the key starts its line, or shares it with its object's opening brace. */
+function indentOfKey(text: string, { keyStart }: Member, { open }: ObjectInText): string {
+  const lineStart = text.lastIndexOf(LF, keyStart) + 1
+  return lineStart > open ? text.slice(lineStart, keyStart) : ''
 }
 
 /** `"<key>": <value>`, the value given as JSON text. */

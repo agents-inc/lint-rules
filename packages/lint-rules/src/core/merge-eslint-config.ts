@@ -24,7 +24,7 @@ import {
 import { currentExtensionsOf } from './catalog-lookups.ts'
 import type { EslintPart } from './editor-parts.ts'
 import { firstGiven, pluginsRegisteredBy, ruleIdsTheTeamsEslintConfigSets, rulesStatedIn } from './eslint-config-reading.ts'
-import { asFilesEntry, eslintDefaultIgnoresHoldUnder } from './eslint-file-types.ts'
+import { asFilesEntry, combinationsOf, eslintDefaultIgnoresHoldUnder } from './eslint-file-types.ts'
 import { eachWithin, groupedByWhere, type Where, type Within, whereOf } from './eslint-off-blocks.ts'
 import { buildEslintSettings, givesTheSetting, type SettingOfOurs, type SettingPath, settingsGiving, settingsOfOurs } from './eslint-settings.ts'
 import { bothOf, eitherOf, type FilesAndIgnores, type FilesCondition, type FilesEntry, filesInScopeOf, globsOf, matchesEveryFile, notOf } from './file-conditions.ts'
@@ -35,6 +35,7 @@ import { liesOutside } from './lies-outside.ts'
 import { type ProjectFacts, projectFactsOf } from './project-facts.ts'
 import { type RuleLayers, ruleIdsOnIn, runtimeGlobalReadersOnIn } from './resolve-rule-layers.ts'
 import { ourLayersLeavingOut, rulesTheTeamSets } from './rules-the-team-sets.ts'
+import { slashSeparated } from './slash-separated.ts'
 import { type OurEslintPart, ourEslintPartOf, whereOurEslintPartRuns } from './where-our-parts-run.ts'
 
 /** Whatever ESLint's `defineConfig` takes. */
@@ -61,6 +62,7 @@ const TYPE_INFORMATION_OPTIONS = ['project', 'projectService'] as const
 // Joined to a plugin's own version as semver build metadata, so its cache key carries ours too.
 const OUR_BUILD_TAG = 'agents-inc-lint-rules'
 const GLOB_SEPARATOR = '/'
+const AT_THE_ROOT = ''
 const EVERY_FILE_UNDER = '/**'
 const CONFINED = 'confined'
 const SETTINGS = 'settings'
@@ -88,8 +90,9 @@ export function mergeEslintPart(
   const settings = ourSettingsBeside(blocks.base, teamBlocks, part.tsconfigRootDir)
   const whereOurBlocksMayRun = whereOurBlocksMayRunBeside(teamBlocks, part)
   const runtimeGlobals = runtimeGlobalsBlocksWithin(part.layers, bothOf(whereOurRuntimeGlobalsAreRead(part.layers, catalog), whereOurBlocksMayRun))
+  const ourBlocks = blocksInOrder({ ...blocks, base: settings.base }, runtimeGlobals)
   return [
-    ...blocksInOrder({ ...blocks, base: settings.base }, runtimeGlobals).flatMap((block) => confinedBeside(block, whereOurBlocksMayRun)),
+    ...ourBlocks.flatMap((block) => confinedBeside(block, whereOurBlocksMayRun)),
     ...settings.keptToTheirFiles,
     ...teamBlocks.map((block) => teamBlockBeside(block, plugins)),
     ...extensionsOffWhereOxlintRunsTheirCore(part.oxlintLayers, part.layers, catalog),
@@ -112,7 +115,8 @@ function filesOurBlocksAreKeptOutOf({ leftOut, leftOutByOurIgnores }: OurEslintP
 /** ESLint reads the team's global ignores after its default ones; a function among them only leaves files out, so it adds no glob. */
 function eslintDefaultIgnoresHoldBeside(teamBlocks: readonly Linter.Config[], tsconfigRootDir: string): boolean {
   const globalIgnores = teamBlocks.filter(isGlobalIgnores).map(withGlobsOnly)
-  return eslintDefaultIgnoresHoldUnder(globalIgnores.flatMap((block) => teamFilesFromTheRoot(block, tsconfigRootDir).flatMap(({ ignores }) => ignores)))
+  const ignoresFromTheRoot = globalIgnores.flatMap((block) => teamFilesFromTheRoot(block, tsconfigRootDir)).flatMap(({ ignores }) => ignores)
+  return eslintDefaultIgnoresHoldUnder(ignoresFromTheRoot)
 }
 
 /** A block holding only a name or basePath counts too, and gives no glob. */
@@ -166,25 +170,30 @@ function scopeWithin(block: Linter.Config, { files, ignores }: FilesAndIgnores, 
 
 /** ESLint merges `settings` key by key, and plugins read newer keys first (settings.n before settings.node, import-x/resolver-next before import-x/resolver), so a setting of ours could hide the team's. Each is ours only where no team block gives a setting it yields to. */
 function ourSettingsBeside(base: Linter.Config, teamBlocks: readonly Linter.Config[], tsconfigRootDir: string): SettingsBesideTheTeam {
-  const placed = settingsOfOurs(ourSettingsIn(base)).map(
-    (setting): SettingWhere => ({ ...setting, where: notOf(whereTheTeamGivesAnyOf(setting.yieldsTo, teamBlocks, tsconfigRootDir)) }),
-  )
+  const placed = settingsOfOurs(ourSettingsIn(base)).map((setting) => placedBeside(setting, teamBlocks, tsconfigRootDir))
   const oursEverywhere = placed.filter(({ where }) => matchesEveryFile(where))
   if (oursEverywhere.length === placed.length) return { base, keptToTheirFiles: [] }
-  const byWhere = groupedByWhere(placed.filter(({ where }) => !matchesEveryFile(where))).map(
-    (sharing): SettingsWhere => ({ where: whereOf(sharing), settings: settingsGiving(sharing) }),
-  )
   return {
     base: { ...base, settings: settingsGiving(oursEverywhere) },
-    keptToTheirFiles: eachWithin(byWhere).map(({ within, settings }, index) => ({
-      ...scopeWithin(base, within, `${nameOf(base)}/${SETTINGS}/${String(index)}`),
-      settings,
-    })),
+    keptToTheirFiles: settingsBlocksBeside(base, placed.filter(({ where }) => !matchesEveryFile(where))),
   }
 }
 
 function ourSettingsIn(base: Linter.Config): NonNullable<Linter.Config['settings']> {
   return foundOr(base.settings, `${nameOf(base)}: our base block gives our settings`)
+}
+
+function placedBeside(setting: SettingOfOurs, teamBlocks: readonly Linter.Config[], tsconfigRootDir: string): SettingWhere {
+  return { ...setting, where: notOf(whereTheTeamGivesAnyOf(setting.yieldsTo, teamBlocks, tsconfigRootDir)) }
+}
+
+/** Settings kept to the same files share a block. */
+function settingsBlocksBeside(base: Linter.Config, keptToSomeFiles: readonly SettingWhere[]): Linter.Config[] {
+  const byWhere = groupedByWhere(keptToSomeFiles).map((sharing): SettingsWhere => ({ where: whereOf(sharing), settings: settingsGiving(sharing) }))
+  return eachWithin(byWhere).map(({ within, settings }, index) => ({
+    ...scopeWithin(base, within, `${nameOf(base)}/${SETTINGS}/${String(index)}`),
+    settings,
+  }))
 }
 
 function whereTheTeamGivesAnyOf(paths: readonly SettingPath[], teamBlocks: readonly Linter.Config[], tsconfigRootDir: string): FilesCondition {
@@ -239,10 +248,13 @@ function pluginNeedsOf(part: EslintPart, catalog: Catalog): PluginNeeds {
 /** Without oxlint, typescript-eslint's extension of each core rule ESLint takes over runs on TS files in its place, on our module whatever object the team registers. */
 function extensionsTakingOverOnTsFiles(ruleIdsRun: readonly string[], { usesOxlint }: EslintPart, catalog: Catalog): string[] {
   if (usesOxlint) return []
-  return ruleIdsRun.flatMap((ruleId) => {
-    const route = routeOf(ruleId, catalog)
-    return isOxlintRoute(route) ? currentExtensionsOf(route, catalog) : []
-  })
+  return ruleIdsRun.flatMap((ruleId) => extensionsOfAnOxlintRoutedRule(ruleId, catalog))
+}
+
+/** None for an ESLint-routed rule. */
+function extensionsOfAnOxlintRoutedRule(ruleId: string, catalog: Catalog): string[] {
+  const route = routeOf(ruleId, catalog)
+  return isOxlintRoute(route) ? currentExtensionsOf(route, catalog) : []
 }
 
 function ourBlocksSource(
@@ -345,7 +357,7 @@ function teamFilesFromTheRoot({ basePath, files, ignores = [] }: Linter.Config, 
   if (basePath === undefined) return [asWritten]
   const basePathFromTheRoot = pathFromTheRoot(basePath, tsconfigRootDir)
   if (basePathFromTheRoot === null) return teamFilesReadFromAbove(asWritten, rootFromTheBasePath(basePath, tsconfigRootDir))
-  return basePathFromTheRoot === '' ? [asWritten] : [teamFilesUnder(literalGlobOf(basePathFromTheRoot), asWritten)]
+  return [basePathFromTheRoot === AT_THE_ROOT ? asWritten : teamFilesUnder(literalGlobOf(basePathFromTheRoot), asWritten)]
 }
 
 /** The folders from the basePath down to the root; null where the basePath is not above it. */
@@ -365,17 +377,13 @@ function teamFilesReadFromAbove({ files, ignores }: TeamFiles, folders: readonly
 /** One entry for each choice of a reading of each glob. */
 function entriesReadFromTheRoot(globs: readonly string[], folders: readonly string[]): FilesEntry[] {
   const readingsOfEachGlob = globs.map((glob) => globsReadFromTheRoot(glob, folders))
-  return cartesianProductOf(readingsOfEachGlob).map(asFilesEntry)
-}
-
-function cartesianProductOf<Member>(lists: readonly (readonly Member[])[]): Member[][] {
-  return lists.reduce<Member[][]>((sofar, list) => sofar.flatMap((combination) => list.map((member) => [...combination, member])), [[]])
+  return combinationsOf(readingsOfEachGlob).map(asFilesEntry)
 }
 
 /** ESLint resolves a relative basePath against the config file's directory, the same one our globs are read from; an absolute one is read against tsconfigRootDir. Null where it lies outside. */
 function pathFromTheRoot(basePath: string, tsconfigRootDir: string): string | null {
   const fromTheRoot = relative(tsconfigRootDir, resolve(tsconfigRootDir, basePath))
-  return liesOutside(fromTheRoot) ? null : fromTheRoot.split(sep).join(GLOB_SEPARATOR)
+  return liesOutside(fromTheRoot) ? null : slashSeparated(fromTheRoot)
 }
 
 /** Each entry ANDs every file under the basePath: a negated glob alone would match outside it. */

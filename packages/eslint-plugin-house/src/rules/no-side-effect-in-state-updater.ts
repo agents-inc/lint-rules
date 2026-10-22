@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
 import { callReceiving } from '../shared/call-arguments.ts'
-import { methodNameOf } from '../shared/callee-name.ts'
+import { dottedPropertyNameOf, methodNameOf } from '../shared/callee-name.ts'
 import { childNodesOf } from '../shared/child-nodes.ts'
 import { isFunctionNode } from '../shared/function-name.ts'
 
@@ -168,11 +168,11 @@ function rootNameOf(node: TSESTree.Node): string | null {
 
 function dottedPathOf(node: TSESTree.Node): DottedPath | null {
   if (node.type === AST_NODE_TYPES.Identifier) return [node.name]
-  if (node.type !== AST_NODE_TYPES.MemberExpression || node.computed || node.property.type !== AST_NODE_TYPES.Identifier) {
-    return null
-  }
+  if (node.type !== AST_NODE_TYPES.MemberExpression) return null
+  const property = dottedPropertyNameOf(node)
+  if (property === null) return null
   const objectPath = dottedPathOf(node.object)
-  return objectPath === null ? null : [...objectPath, node.property.name]
+  return objectPath === null ? null : [...objectPath, property]
 }
 
 // The dotted path without a leading `window.`, or null when a hop is computed.
@@ -217,15 +217,11 @@ function isDiscarded(link: Link | null): boolean {
   return link.node.type === AST_NODE_TYPES.ExpressionStatement
 }
 
-function isRefValue(member: TSESTree.MemberExpression): boolean {
-  return !member.computed && member.property.type === AST_NODE_TYPES.Identifier && member.property.name === REF_VALUE
-}
-
 function writeFinding(target: TSESTree.Node, local: ReadonlySet<string>): Finding | null {
   if (target.type !== AST_NODE_TYPES.MemberExpression) return null
   const root = rootNameOf(target)
   if (root === null || local.has(root)) return null
-  return { node: target, messageId: isRefValue(target) ? 'refWrite' : 'outerMutation' }
+  return { node: target, messageId: dottedPropertyNameOf(target) === REF_VALUE ? 'refWrite' : 'outerMutation' }
 }
 
 function callFinding(call: TSESTree.CallExpression, link: Link, local: ReadonlySet<string>): Finding | null {

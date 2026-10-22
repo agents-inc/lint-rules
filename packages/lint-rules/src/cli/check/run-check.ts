@@ -1,4 +1,4 @@
-import { extname, join, relative, resolve, sep } from 'node:path'
+import { extname, join, relative, resolve } from 'node:path'
 import { catalog } from '@workspace/rule-data'
 import { foundOr } from '@workspace/rule-data/collections'
 import type { Linter } from 'eslint'
@@ -7,6 +7,7 @@ import { agentSettingsOf } from '../../agent-settings.ts'
 import { configsReadFromTheGitTopLevel, type EngineConfigs, type EngineConfigsToRun } from '../../core/configs-read-from-the-git-top-level.ts'
 import type { EslintPart } from '../../core/editor-parts.ts'
 import { JS_AND_TS_EXTENSIONS } from '../../core/eslint-file-types.ts'
+import { slashSeparated } from '../../core/slash-separated.ts'
 import { EXIT_CLEAN } from '../exit-codes.ts'
 import type { Outcome, StdoutIfStopped } from '../outcome.ts'
 import { textOfLines } from '../printed-lines.ts'
@@ -15,13 +16,13 @@ import { componentFileBlocksOf, isAComponentExtension } from './component-files.
 import { eslintPartExportedBy, type FoundConfig, nearestConfig, refuseAnotherCopy } from './config-lookup.ts'
 import { type EslintEngine, eslintEngineBuiltOnFirstUse, eslintEngineByFolder, eslintEngineFor } from './eslint-run.ts'
 import { type FileReports, findingsIn } from './findings.ts'
-import { applyFixes, type CheckedFile, type FixStepResult, oxlintFixer, type RewrittenFiles } from './fix-step.ts'
+import { applyFixes, type CheckedFile, type FixStepEngines, type FixStepResult, oxlintFixer, type RewrittenFiles } from './fix-step.ts'
 import { type Snapshots, snapshotsOf, textOfFileAt } from './fix-writes.ts'
 import { type ChangedFile, changedFilesIn, changedLinesOf, type GitRepo, gitRepoAt, gitTopLevelOf } from './git-changes.ts'
 import { removeLeftovers } from './leftovers.ts'
 import { firstNotCheckedOf, goneWhileCheckRan, type NotChecked, notCheckedEntriesOf } from './not-checked.ts'
 import type { OxlintDiagnostic, OxlintReport } from './oxlint-output.ts'
-import { fixRunConfigOf, lintRunConfigOf, oxlintLintRun, tempOxlintConfigIn } from './oxlint-run.ts'
+import { fixRunConfigOf, lintRunConfigOf, oxlintLintRun, type TempOxlintConfig, tempOxlintConfigIn } from './oxlint-run.ts'
 import { autofixedStdout, type CheckFinding, type CheckReport, checkReport } from './report.ts'
 import { NOTHING_TO_CHECK, notInGit } from './texts.ts'
 import { WITHHELD_FIXES } from './withheld-fixes.ts'
@@ -47,7 +48,6 @@ type ReportsOnAFile = { readonly reports: FileReports } | { readonly notChecked:
 type AutofixedFiles = RewrittenFiles & { readonly named: () => string[] }
 
 const EXTENSION_DOT = '.'
-const GLOB_SEPARATOR = '/'
 
 /**
  * Fixes, then lints, the changed JS, TS and component lines of the whole git repo with the nearest
@@ -79,10 +79,7 @@ async function checkChanges(
 
   const built = agentBuildOf(eslintPart)
   const configs = configsReadFromTheGitTopLevel(built, folderFromTheGitTopLevel(repo, config))
-  const eslint = eslintEngineByFolder(config.folder, {
-    inTheConfigFolder: eslintEngineBuiltOnFirstUse(() => eslintEngineFor(config.folder, built.eslint, WITHHELD_FIXES)),
-    elsewhere: eslintEngineBuiltOnFirstUse(() => eslintEngineFor(repo.topLevel, configs.eslint, WITHHELD_FIXES)),
-  })
+  const eslint = eslintEngineOf(repo, config, built, configs)
   // A file is read once git names it: one gone later is the fix step's, and the report's, to list.
   const beforeFixes = snapshotsOf(pathsOf(changed))
   const notIgnored = await filesNotIgnored(filesOnDiskWhenRead(changed, beforeFixes), eslint.isIgnored)
@@ -95,11 +92,9 @@ async function checkChanges(
 }
 
 async function fixedThenReported(run: CheckRun, beforeFixes: Snapshots, autofixed: AutofixedFiles): Promise<CheckReport> {
-  const { repo, configs, eslint, files, signal } = run
+  const { repo, configs, files, signal } = run
   const oxlintConfig = tempOxlintConfigIn(repo.topLevel)
-  const fixRunConfig = fixRunConfigOf(configs.oxlint, WITHHELD_FIXES, catalog)
-  const changedLinesNow = (path: string): ChangedLines => changedLinesReadAgain(run, path)
-  const fixes = await applyFixes(files, beforeFixes, { oxlint: oxlintFixer({ config: oxlintConfig, fixRunConfig }), eslint, changedLinesNow }, { signal, rewritten: autofixed })
+  const fixes = await applyFixes(files, beforeFixes, fixEnginesOf(run, oxlintConfig), { signal, rewritten: autofixed })
   const oxlintLint = await oxlintLintRun(oxlintConfig, lintRunConfigOf(configs.oxlint), pathsOf(files), signal)
   const reported = await Promise.all(files.map((file) => reportsOn(file, { fixes, oxlintReport: oxlintLint.report }, run)))
   return checkReport({
@@ -110,21 +105,28 @@ async function fixedThenReported(run: CheckRun, beforeFixes: Snapshots, autofixe
   })
 }
 
-/** Changed lines are read again where the fixes changed the file's text. A file ESLint did not lint has none of its messages. */
+/** A file ESLint did not lint has none of its messages. */
 async function reportsOn(scoped: ScopedFile, { fixes, oxlintReport }: LintResults, run: CheckRun): Promise<ReportsOnAFile> {
-  const { path, file, changed } = scoped
+  const { path, file } = scoped
   const text = textOfFileAt(path)
   if (text === null) return { notChecked: goneWhileCheckRan(path) }
+  const changed = changedLinesAfterTheFixes(scoped, fixes, run)
+  const suppressionsAllowed = await run.eslint.allowsSuppressionsIn(path)
   return {
     reports: {
       file,
       text,
-      changed: fixes.textChangedIn.includes(path) ? changedLinesReadAgain(run, path) : changed,
-      suppressionsAllowed: await run.eslint.allowsSuppressionsIn(path),
+      changed,
+      suppressionsAllowed,
       eslintMessages: eslintMessagesOn(fixes, scoped),
       oxlintDiagnostics: oxlintDiagnosticsOn(oxlintReport, run.repo.topLevel, path),
     },
   }
+}
+
+/** Read again where the fixes changed the file's text. */
+function changedLinesAfterTheFixes({ path, changed }: ScopedFile, { textChangedIn }: FixStepResult, run: CheckRun): ChangedLines {
+  return textChangedIn.includes(path) ? changedLinesReadAgain(run, path) : changed
 }
 
 function findingsOfTheFilesRead(reported: readonly ReportsOnAFile[]): CheckFinding[] {
@@ -133,6 +135,15 @@ function findingsOfTheFilesRead(reported: readonly ReportsOnAFile[]): CheckFindi
 
 function filesGoneByTheReport(reported: readonly ReportsOnAFile[]): NotChecked[] {
   return reported.flatMap((said) => ('notChecked' in said ? [said.notChecked] : []))
+}
+
+function fixEnginesOf(run: CheckRun, oxlintConfig: TempOxlintConfig): FixStepEngines {
+  const fixRunConfig = fixRunConfigOf(run.configs.oxlint, WITHHELD_FIXES, catalog)
+  return {
+    oxlint: oxlintFixer({ config: oxlintConfig, fixRunConfig }),
+    eslint: run.eslint,
+    changedLinesNow: (path) => changedLinesReadAgain(run, path),
+  }
 }
 
 function changedLinesReadAgain({ repo, files }: CheckRun, path: string): ChangedLines {
@@ -159,13 +170,16 @@ function agentBuildOf(eslintPart: EslintPart): EngineConfigs {
   return { ...built, eslint: [...componentFileBlocksOf(agentSettings), ...built.eslint] }
 }
 
+function eslintEngineOf(repo: GitRepo, config: FoundConfig, built: EngineConfigs, configs: EngineConfigsToRun): EslintEngine {
+  return eslintEngineByFolder(config.folder, {
+    inTheConfigFolder: eslintEngineBuiltOnFirstUse(() => eslintEngineFor(config.folder, built.eslint, WITHHELD_FIXES)),
+    elsewhere: eslintEngineBuiltOnFirstUse(() => eslintEngineFor(repo.topLevel, configs.eslint, WITHHELD_FIXES)),
+  })
+}
+
 /** Empty where the config sits at the git top level. */
 function folderFromTheGitTopLevel({ topLevel }: GitRepo, { folder }: FoundConfig): string {
   return slashSeparated(relative(topLevel, folder))
-}
-
-function slashSeparated(path: string): string {
-  return path.split(sep).join(GLOB_SEPARATOR)
 }
 
 function filesOnDiskWhenRead(files: readonly FileInFolder[], read: Snapshots): FileInFolder[] {

@@ -95,11 +95,14 @@ function eslintPartWithoutOxlint(tsconfigRootDir: string, layers: RuleLayers, ca
 
 /** A stand-in takes its rule's severity, files and ignores, but not its options, which are the oxc rule's. Where the map states the stand-in itself, that setting stands. */
 function withStandIns(settings: RuleSettings, standIns: ReadonlyMap<string, string>): RuleSettings {
-  const standInSettings = Object.entries(settings).flatMap(([id, setting]): [string, RuleSetting][] => {
-    const standIn = standIns.get(id)
-    return standIn === undefined || Object.hasOwn(settings, standIn) ? [] : [[standIn, { ...setting, options: [] }]]
-  })
+  const standInSettings = Object.entries(settings).flatMap(([id, setting]) => standInSettingFor(id, setting, settings, standIns))
   return { ...settings, ...Object.fromEntries(standInSettings) }
+}
+
+/** None where the rule has no stand-in, or the map states the stand-in itself. */
+function standInSettingFor(id: string, setting: RuleSetting, settings: RuleSettings, standIns: ReadonlyMap<string, string>): [string, RuleSetting][] {
+  const standIn = standIns.get(id)
+  return standIn === undefined || Object.hasOwn(settings, standIn) ? [] : [[standIn, { ...setting, options: [] }]]
 }
 
 /** Throws on bad data: a stand-in must be a rule ESLint runs untyped, that we do not ship, standing in for one rule only, or it would report twice, run nowhere, or take one setting for two rules. */

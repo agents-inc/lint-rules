@@ -46,9 +46,10 @@ export function filesMatchingAll(globLists: readonly (readonly string[])[]): Fil
   return combinationsOf(globLists).map(keptToJsAndTs).map(asFilesEntry)
 }
 
-function combinationsOf(globLists: readonly (readonly string[])[]): string[][] {
-  return globLists.reduce<string[][]>(
-    (combinations, globs) => combinations.flatMap((combination) => globs.map((glob) => [...combination, glob])),
+/** Each choice of one member from every list. */
+export function combinationsOf<Member>(lists: readonly (readonly Member[])[]): Member[][] {
+  return lists.reduce<Member[][]>(
+    (combinations, list) => combinations.flatMap((combination) => list.map((member) => [...combination, member])),
     [[]],
   )
 }

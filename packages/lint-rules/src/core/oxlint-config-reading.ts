@@ -1,5 +1,6 @@
 import { type Catalog, type OxlintCategory, type OxlintRule, routeOf, ruleIdsOxlintRunsTypeAware } from '@workspace/rule-data'
 import { foundOr } from '@workspace/rule-data/collections'
+import { pluginPrefixOf, ruleNameOf } from '@workspace/rule-data/rule-id-parts'
 import type { AllowWarnDeny, DummyRuleMap, ExternalPluginEntry, OxlintConfig, OxlintOverride, RuleCategories } from 'oxlint'
 import { type OxlintPlugin, oxlintPluginNamed, sortedUnique, toOxlintPlugin } from './build-oxlint-config.ts'
 import { ruleIdsNamedInEslint } from './catalog-lookups.ts'
@@ -67,10 +68,6 @@ const PLUGIN_PACKAGE_NAME = /^(?<scope>@[^/]+)\/(?:eslint|oxlint)-plugin(?:-(?<s
 // In a rule key oxlint also reads these prefixes as nextjs (unalias_plugin_name, rules.rs).
 const NEXTJS_RULE_PREFIXES: ReadonlySet<string> = new Set(['@next', '@next/next'])
 const NEXTJS: OxlintPlugin = 'nextjs'
-
-// oxlint cuts a key starting so at its last slash, as the scope holds one, and any other at its first.
-const SCOPED_KEY_START = '@'
-const NO_SLASH = -1
 
 // A JS plugin named by a path takes its prefix from the plugin it loads, which no reading of the config gives.
 const PATH_STARTS: readonly string[] = ['.', '/']
@@ -176,11 +173,16 @@ function prefixOfJsPlugin(entry: ExternalPluginEntry): string[] {
 export function teamResolutionOf(theirs: OxlintConfig, bySpelling: OxlintRulesBySpelling): TeamResolution {
   const configs = configsInOxlintOrder(theirs)
   return {
-    rootPlugins: new Set(listedOrDefault(resolvedPluginsOf(theirs)).filter((plugin) => plugin !== ALWAYS_RUN)),
+    rootPlugins: rootPluginsOf(theirs),
     categories: { ...DEFAULT_CATEGORIES, ...resolvedCategoriesOf(theirs) },
     listings: overridesIn(configs).flatMap(listingOf),
     rulesStatedAtARoot: configs.flatMap((config) => rulesStatedAtTheRootOf(config, bySpelling)),
   }
+}
+
+/** oxlint's defaults where no config lists any. */
+function rootPluginsOf(theirs: OxlintConfig): ReadonlySet<OxlintPlugin> {
+  return new Set(listedOrDefault(resolvedPluginsOf(theirs)).filter((plugin) => plugin !== ALWAYS_RUN))
 }
 
 function rulesStatedAtTheRootOf({ rules = {} }: OxlintConfig, bySpelling: OxlintRulesBySpelling): OxlintRule[] {
@@ -300,14 +302,10 @@ export function oxlintRuleKeyed(key: string, bySpelling: OxlintRulesBySpelling):
   return plugin === undefined ? undefined : bySpelling.get(spellingUnder(plugin, prefixed.ruleName))
 }
 
+/** oxlint cuts a key where ESLint cuts a rule ID: one starting `@` at its last slash, as the scope holds one, any other at its first. */
 function prefixedRuleKeyOf(key: string): PrefixedRuleKey | null {
-  const slash = slashEndingThePrefixOf(key)
-  if (slash === NO_SLASH) return null
-  return { prefix: key.slice(0, slash), ruleName: key.slice(slash + SCOPE_SEPARATOR.length) }
-}
-
-function slashEndingThePrefixOf(key: string): number {
-  return key.startsWith(SCOPED_KEY_START) ? key.lastIndexOf(SCOPE_SEPARATOR) : key.indexOf(SCOPE_SEPARATOR)
+  const prefix = pluginPrefixOf(key)
+  return prefix === null ? null : { prefix, ruleName: ruleNameOf(key) }
 }
 
 function firstOxlintRuleNamed(ruleName: string, bySpelling: OxlintRulesBySpelling): OxlintRule | undefined {

@@ -1,16 +1,21 @@
-import { messageOf } from './caught-errors.ts'
+import { messageOf } from '../core/caught-errors.ts'
 import { removeLeftovers } from './check/leftovers.ts'
 import { checkIn } from './check/run-check.ts'
 import { type Command, couldNotRunLine, interruptedLine } from './command-lines.ts'
 import { EXIT_COULD_NOT_RUN, EXIT_INTERRUPTED, EXIT_TERMINATED } from './exit-codes.ts'
 import { initIn } from './init/run-init.ts'
-import { type Outcome, stdoutIfStopped } from './outcome.ts'
+import { type Outcome, type StdoutIfStopped, stdoutIfStopped } from './outcome.ts'
 import { textOfLines } from './printed-lines.ts'
 
 type Interruption = { readonly signal: AbortSignal; readonly exitCode: () => number }
 
-const EXIT_CODE_OF_SIGNAL = { SIGINT: EXIT_INTERRUPTED, SIGTERM: EXIT_TERMINATED } as const
-const SIGNALS = ['SIGINT', 'SIGTERM'] as const
+type CommandRun = { readonly cwd: string; readonly signal: AbortSignal; readonly ifStopped: StdoutIfStopped }
+
+const SIGNALS = ['SIGINT', 'SIGTERM'] as const satisfies readonly NodeJS.Signals[]
+
+type HandledSignal = (typeof SIGNALS)[number]
+
+const EXIT_CODE_OF_SIGNAL = { SIGINT: EXIT_INTERRUPTED, SIGTERM: EXIT_TERMINATED } as const satisfies Record<HandledSignal, number>
 
 const EXPERIMENTAL_WARNING = 'ExperimentalWarning'
 const TYPE_STRIPPING = /^Type Stripping /u
@@ -32,12 +37,21 @@ async function outcomeOf(command: Command, { signal, exitCode }: Interruption): 
   const cwd = process.cwd()
   const ifStopped = stdoutIfStopped()
   try {
-    const outcome = command === 'check' ? await checkIn(cwd, signal, ifStopped) : initIn(cwd, signal)
+    const outcome = await outcomeOfRunning(command, { cwd, signal, ifStopped })
     if (!signal.aborted) return outcome
   } catch (error) {
     if (!signal.aborted) return couldNotRunOutcome(command, error, ifStopped.current())
   }
   return interruptedOutcome(command, exitCode(), ifStopped.current())
+}
+
+async function outcomeOfRunning(command: Command, { cwd, signal, ifStopped }: CommandRun): Promise<Outcome> {
+  switch (command) {
+    case 'check':
+      return checkIn(cwd, signal, ifStopped)
+    case 'init':
+      return initIn(cwd, signal)
+  }
 }
 
 function interruptedOutcome(command: Command, exitCode: number, stdout: string): Outcome {
@@ -50,7 +64,7 @@ function couldNotRunOutcome(command: Command, error: unknown, stdout: string): O
 
 function interruptionOnSignals(): Interruption {
   const controller = new AbortController()
-  let firstSignal: (typeof SIGNALS)[number] | null = null
+  let firstSignal: HandledSignal | null = null
   SIGNALS.forEach((name) =>
     process.on(name, () => {
       if (firstSignal !== null) {
