@@ -2,8 +2,12 @@ import { fileURLToPath } from 'node:url'
 import { oxlintCliOutputIn } from '@workspace/rule-data/test-support/oxlint-cli'
 import { ESLint } from 'eslint'
 import { describe, expect, it } from 'vitest'
+import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 
 // This repo lints itself through the config files at its root, as a team's are written; run `bun run build` first.
+
+allowEveryTestForParallelLoad()
+
 const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
 const A_SOURCE_FILE = 'packages/lint-rules/src/index.ts'
 // In a fixture folder holding no config of its own.
