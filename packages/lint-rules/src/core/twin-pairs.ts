@@ -156,6 +156,10 @@ function ruleWhoseSettingDecides({ core, extension }: TwinPair, by: PairDecided[
     case 'the extension':
     case 'both names':
       return extension
+    default: {
+      const unhandled: never = by
+      return unhandled
+    }
   }
 }
 
@@ -172,6 +176,10 @@ function rulesTaking(taken: RulesTaken, decision: PairDecided, taking: SettingsT
       return { ...taken, rules: coreTakingTheExtensionsSetting(taken.rules, decision, taking) }
     case 'the core rule':
       return { ...taken, rules: extensionTakingTheCoreRulesOff(taken.rules, decision, taking) }
+    default: {
+      const unhandled: never = decision
+      return unhandled
+    }
   }
 }
 

@@ -102,6 +102,10 @@ function takeBacksEslintMakesFrom(leftOut: FolderReading, negated: string): read
       return takeBacksFromFoldersNamed(leftOut, takingBack, negated)
     case 'unread':
       return everyFileUnder(negated)
+    default: {
+      const unhandled: never = leftOut
+      return unhandled
+    }
   }
 }
 
@@ -116,6 +120,10 @@ function takeBacksFromAFolderAndThoseInIt(path: string, takingBack: FolderReadin
     case 'every folder named, and every folder in one':
     case 'unread':
       return mayMatchTheFolder(takingBack, path) ? everyFileUnder(negated) : NO_TAKE_BACK
+    default: {
+      const unhandled: never = takingBack
+      return unhandled
+    }
   }
 }
 
@@ -134,6 +142,10 @@ function takeBacksFromFoldersNamed(leftOut: FoldersNamed, takingBack: FolderRead
       return takingBack.name === leftOut.name ? everyFileUnder(negated) : anyFolderNamedAboveOneNamed(takingBack.name, leftOut.name)
     case 'unread':
       return everyFileUnder(negated)
+    default: {
+      const unhandled: never = takingBack
+      return unhandled
+    }
   }
 }
 
@@ -179,6 +191,10 @@ function oxlintMayTakeBackFrom(line: IgnoreLine, leftOut: FolderReading, negated
     case 'every folder named, and every folder in one':
     case 'unread':
       return true
+    default: {
+      const unhandled: never = leftOut
+      return unhandled
+    }
   }
 }
 
@@ -251,6 +267,10 @@ function mayMatchTheFolder(negated: FolderReading, path: string): boolean {
       return segmentsOf(path).includes(negated.name)
     case 'unread':
       return true
+    default: {
+      const unhandled: never = negated
+      return unhandled
+    }
   }
 }
 

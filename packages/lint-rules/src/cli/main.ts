@@ -51,6 +51,10 @@ async function outcomeOfRunning(command: Command, { cwd, signal, ifStopped }: Co
       return checkIn(cwd, signal, ifStopped)
     case 'init':
       return initIn(cwd, signal)
+    default: {
+      const unhandled: never = command
+      return unhandled
+    }
   }
 }
 

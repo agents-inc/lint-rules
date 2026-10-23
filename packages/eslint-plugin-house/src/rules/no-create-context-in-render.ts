@@ -74,7 +74,8 @@ export const noCreateContextInRender = ESLintUtils.RuleCreator.withoutDocs<[], '
     const stack: Frame[] = []
 
     const callsReactCreateContext = (call: TSESTree.CallExpression): boolean => {
-      switch (createContextForm(call.callee)) {
+      const form = createContextForm(call.callee)
+      switch (form) {
         case 'namespaced': {
           return true
         }
@@ -83,6 +84,10 @@ export const noCreateContextInRender = ESLintUtils.RuleCreator.withoutDocs<[], '
         }
         case null: {
           return false
+        }
+        default: {
+          const unhandled: never = form
+          return unhandled
         }
       }
     }

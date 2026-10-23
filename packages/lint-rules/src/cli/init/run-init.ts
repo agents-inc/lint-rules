@@ -50,6 +50,10 @@ function foldersUpToTheGitTopLevel(cwd: string, where: WhereInitRuns): string[] 
     case 'outside a repo':
     case 'git could not run':
       return [cwd]
+    default: {
+      const unhandled: never = where
+      return unhandled
+    }
   }
 }
 
@@ -94,6 +98,10 @@ function gitNotesOf(cwd: string, where: WhereInitRuns): string[] {
       return [outsideGitNote(cwd)]
     case 'git could not run':
       return [GIT_COULD_NOT_RUN_NOTE]
+    default: {
+      const unhandled: never = where
+      return unhandled
+    }
   }
 }
 
