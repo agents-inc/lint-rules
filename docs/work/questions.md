@@ -97,6 +97,4 @@ Each: question → my default if unanswered → what it blocks.
 
 ## Defaults applied, not confirmed by the owner
 - Every call I made myself (decisions.md, "mine" or "orchestrator") and every default below is a card on the questions page, groups "My calls: …" (version 13), for the owner to check (owner 2026-10-12). New calls get a card the same turn.
-- spec-owner-answers.md (2026-10-11): non-rule keys (parser, settings, linterOptions, oxlint env/options) follow block order, the team's win where set (D-b, O8); an ignored statement doesn't count as the team setting a rule (O5); no functions in ESLint `files`/`ignores` (O7); one plugin object per shared prefix, our module for rules we run (O9); `react-hooks/rule-suppression` skipped in the ESLint fallback (O11); refusal texts as written (O14).
-- The draft `rulesets.json` folds into the canonical list and is deleted.
-- Renamed rules use the current ESLint name (`unicorn/no-for-each`, `unicorn/dom-node-dataset`); `unicorn/no-hex-escape` keeps its ID (unicorn 77 splits it in two).
+- (Answered (decisions.md), each as built: O8, O9 and the renamed rules on 2026-10-14, O11 and O14 on 2026-10-22. O5 and O7 on 2026-10-22, each reversing the default: a line oxlint skips counts as the team setting the rule; our typed blocks ask, as ESLint lints a file, whether a tsconfig takes it in. The draft `rulesets.json` needed no answer: it never shipped.)

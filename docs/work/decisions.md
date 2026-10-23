@@ -49,9 +49,8 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   `npm-run-all2`. Interim until the runner exists.
 - Overlapping fileOverrides: an entry re-states only the lists it gives (runtimes, libs, quality, languages);
   a list it leaves out keeps whatever earlier entries set for those files, as the engines layer blocks natively.
-- The consumer config files (`agents-inc.lint.mts`, `oxlint.config.mts`) are left out of the typed block: they
-  get every untyped rule and no project service, so no tsconfig shape can make them a fatal parse error
-  (`allowDefaultProject` broke tsconfigs that include them). Their names have one source, exported by rule-data.
+- The consumer config files (`agents-inc.lint.mts`, `oxlint.config.mts`): their names have one source, exported by
+  rule-data.
 
 ## Superseded (old → new → why)
 - `settings.react.version: 'detect'` everywhere → only where React resolves → in a project without React, `detect` printed eslint-plugin-react's warning on every run (spec-core.md C13).
@@ -59,6 +58,8 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   → a rules-only entry must not undo an earlier entry's runtimes (implementer's reading, owner-reviewable).
 - Consumer files `.ts` + `allowDefaultProject` → `.mts` + left out of the typed block → owner chose `.mts`;
   `allowDefaultProject` is a fatal parse error when the tsconfig also includes the file.
+- Consumer config files left out of the typed block → our typed rules where a tsconfig takes them in → owner
+  2026-10-14, typed-config-files (architecture.md step 8; plan.md Corrections).
 - Owner 2026-10-10: `house/hook-file-naming` is configurable: `{ filenameCase: 'camelCase' | 'kebab-case' }`, default `kebab-case`.
 - Owner 2026-10-10: the agents-inc completion gate (Stop hook running `typecheck`) is removed from `.claude/agents/*.md`.
   It is emitted by `~/dev/cli/packages/compile/src/agent-source.ts` (`completionGateHooks`), so a recompile restores it.
@@ -434,3 +435,34 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   from its `cwd` (import-x's `devDependencies` globs) from there, which changed what the files in the config's folder
   drew; the spec keeps their output as it was (lane B's call, fix round 2).
 - 2026-10-19 owner: an invalid config is refused by TypeScript's types, not by a runtime check of ours ("if they use mjs it's on them"), as far as the types can express it. First cases: `files: []` and a `files` entry starting with `/`. Follow-up: the runtime checks on the config that a type can replace.
+- Owner 2026-10-22 (https://claude.ai/artifact/BT8ZY5tazeBkXzgG6ZE8zp; status.md Open tasks rows 14-17, built by lanes L1 and L2):
+  - A switch covering every case of a union gets a `never` default, `default: { const unhandled: never = x; return unhandled }`:
+    no default draws `consistent-return`, and `default: throw` drops TS2366. plan.md's q-dogfood-keep-three line follows.
+    `build-eslint-config.ts`'s three `TypeInformation` checks become such switches.
+  - `house/hook-file-naming` counts `export enum` and `export namespace` as values, as it does `export class`.
+  - `RuleRoute` (`catalog.ts`) is a union on `engine`, so `isOxlintRoute` loses its run-time throw.
+  - The test helper `oxlintCodeOfRule` cuts the name with `ruleNameOf`, as production does (the card recommended the hand cut).
+  - questions.md defaults: O11 and O14 approved. O8, O9 and the renamed rules were answered 2026-10-14 (my-db "Team's win
+    where set", my-mm-shared-prefix "It counts as theirs", my-renamed-ids "Current names") but stayed listed. O5 and O7 stay
+    open, on https://claude.ai/artifact/Hy6Axo9JeeCj5qw3XikBKk.
+- Orchestrator 2026-10-22, no owner answer, nothing built: status.md row 18 closed, since ESLint's last block
+  (`agents-inc/oxlint-rules-off`) switches off every rule oxlint runs, so an earlier block naming one changes no file's
+  result, and the one known leak is pinned by two tests. The draft `rulesets.json` card needed no answer: it was folded into
+  `rules.json` and deleted in slice 1, and never shipped.
+- Owner 2026-10-22 (https://claude.ai/artifact/Hy6Axo9JeeCj5qw3XikBKk, cards LD-O5b and LD-O7b; built by lane LO57), both
+  reversing the default questions.md listed:
+  - O5: "if a rule is skipper in the user's eslint or oxlint config then it overrules our config rule". A line of the team's
+    oxlint config that oxlint skips, its plugin listed neither at the root nor in that override, counts as the team setting
+    the rule, at any severity (the card's "Counts, whatever it says"): both our parts drop it, and the line stays skipped,
+    so nothing reports the rule until the team lists the plugin.
+  - O7: "Is this needed? why not just compare files against the include to see if it should be linted? if this is solved
+    using a function do that". Where the type information is ours, each typed block's `files` ANDs a function that asks,
+    as ESLint lints the file, whether a tsconfig takes it in, in place of the list of literal paths made as the config
+    loaded; a TS file made after it loaded needs no restart.
+- Owner 2026-10-23, "Allow the cast there" (workboard card q-lint-o7-cast): the one assertion in
+  `filesEntryAlsoMatching` (`core/eslint-file-types.ts`), there because ESLint's types hold only globs in `files`, stays.
+  A `fileOverrides` entry in this repo's `agents-inc.lint.mts` turns `@typescript-eslint/no-unsafe-type-assertion` off
+  in that file alone; it stays on everywhere else. oxlint runs no copy of it (ESLint-routed; oxlint's is type-aware).
+- Owner 2026-10-23, "Leave both as they are" (workboard card q-leaked-keys; status.md Open tasks row 11): the four keys
+  in two agent transcripts of 2026-10-20 are not rotated and the transcripts are not cleaned, so the values stay valid
+  and stay in those files.
