@@ -59,12 +59,20 @@ function isComponentName(name: string): boolean {
   return COMPONENT_NAME.test(name)
 }
 
+// `namespace Status.Codes {}` binds `Status`, and a module named by a string binds nothing.
+function namesBoundBy(name: Readonly<TSESTree.EntityName | TSESTree.StringLiteral>): string[] {
+  if (name.type === AST_NODE_TYPES.TSQualifiedName) return namesBoundBy(name.left)
+  return name.type === AST_NODE_TYPES.Identifier ? [name.name] : []
+}
+
 function declaredValueNames(declaration: TSESTree.NamedExportDeclarations | null): string[] {
   if (declaration === null) return []
   switch (declaration.type) {
     case AST_NODE_TYPES.FunctionDeclaration:
-    case AST_NODE_TYPES.ClassDeclaration: {
-      return declaration.id === null ? [] : [declaration.id.name]
+    case AST_NODE_TYPES.ClassDeclaration:
+    case AST_NODE_TYPES.TSEnumDeclaration:
+    case AST_NODE_TYPES.TSModuleDeclaration: {
+      return declaration.id === null ? [] : namesBoundBy(declaration.id)
     }
     case AST_NODE_TYPES.VariableDeclaration: {
       return declaration.declarations.flatMap((declarator) =>

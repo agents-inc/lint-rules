@@ -6,6 +6,14 @@ import {
   defaultExportedHookModule,
   floatingPanelHookModule,
   hookBarrel,
+  hookBesideClassModule,
+  hookBesideDottedNamespaceModule,
+  hookBesideDottedNamespaceUnderALowercaseNameModule,
+  hookBesideEnumModule,
+  hookBesideInterfaceModule,
+  hookBesideNamespaceModule,
+  hookBesideScreamingCaseEnumModule,
+  hookBesideStringNamedModule,
   hookOnlyModule,
   twoHookModule,
 } from '../__tests__/cases/hook-file-naming.ts'
@@ -64,6 +72,24 @@ houseRuleTester.run('hook-file-naming', housePlugin.rules['hook-file-naming'], {
       'stays silent on a hooks-only module named for its hook in camelCase, when filenameCase is camelCase',
       floatingPanelHookModule,
       { filename: 'useFloatingPanel.ts', options: CAMEL_CASE },
+    ),
+    buildValidCase('stays silent on a module exporting a hook beside a class named like a component', hookBesideClassModule, {
+      filename: 'status.ts',
+    }),
+    buildValidCase(
+      'stays silent on a module exporting a hook beside an enum named like a component, as beside a class',
+      hookBesideEnumModule,
+      { filename: 'status.ts' },
+    ),
+    buildValidCase(
+      'stays silent on a module exporting a hook beside a namespace named like a component, as beside a class',
+      hookBesideNamespaceModule,
+      { filename: 'status.ts' },
+    ),
+    buildValidCase(
+      'stays silent on a module exporting a hook beside a dotted namespace, counted under its first name',
+      hookBesideDottedNamespaceModule,
+      { filename: 'status.ts' },
     ),
   ],
   invalid: [
@@ -199,6 +225,46 @@ houseRuleTester.run('hook-file-naming', housePlugin.rules['hook-file-naming'], {
             line: 1,
             data: { hooks: 'useFloatingPanel', actual: 'use-floating-panel.ts', expected: 'useFloatingPanel.ts' },
           },
+        ],
+      },
+    ),
+    buildInvalidCase(
+      'reports a module exporting a hook beside an enum not named like a component, as beside such a const',
+      hookBesideScreamingCaseEnumModule,
+      {
+        filename: 'status.ts',
+        errors: [
+          { messageId: 'rename', line: 1, data: { hooks: 'useThing', actual: 'status.ts', expected: 'use-thing.ts' } },
+        ],
+      },
+    ),
+    buildInvalidCase(
+      'reports a module exporting a hook beside a dotted namespace whose first name is not named like a component, though a later one is',
+      hookBesideDottedNamespaceUnderALowercaseNameModule,
+      {
+        filename: 'status.ts',
+        errors: [
+          { messageId: 'rename', line: 1, data: { hooks: 'useThing', actual: 'status.ts', expected: 'use-thing.ts' } },
+        ],
+      },
+    ),
+    buildInvalidCase(
+      'reports a module exporting a hook beside a module named by a string, which binds no name',
+      hookBesideStringNamedModule,
+      {
+        filename: 'status.ts',
+        errors: [
+          { messageId: 'rename', line: 1, data: { hooks: 'useThing', actual: 'status.ts', expected: 'use-thing.ts' } },
+        ],
+      },
+    ),
+    buildInvalidCase(
+      'reports a module exporting a hook beside an interface named like a component, since a type names nothing at runtime',
+      hookBesideInterfaceModule,
+      {
+        filename: 'status.ts',
+        errors: [
+          { messageId: 'rename', line: 1, data: { hooks: 'useThing', actual: 'status.ts', expected: 'use-thing.ts' } },
         ],
       },
     ),
