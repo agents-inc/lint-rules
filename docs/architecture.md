@@ -303,16 +303,22 @@ entry points: defineLintRules (index.ts), mergeOxlintConfig (oxlint.ts), mergeEs
    A typed rule on a TS file without type information is a fatal parse error that switches off
    every rule in the file, so every block of ours that can run a typed rule ignores
    (`filesWithoutTypeInformation`) the consumer's config files at any depth where the team gives
-   type information, and where it is ours, each TS file no tsconfig takes in, as a literal path,
-   the consumer's files at `tsconfigRootDir` included. No default project is named for them:
+   type information. Where it is ours, each such block ANDs a function with the globs of its
+   `files` (`keptToFilesATsconfigTakesIn`), which ESLint calls as it lints a file, so the block
+   skips each TS file no tsconfig takes in, the consumer's files at `tsconfigRootDir` included, and
+   a TS file made after the config loaded is read as the disk then holds it (owner 2026-10-22).
+   ESLint documents only globs there, and its types hold no more (one assertion,
+   `filesEntryAlsoMatching`); `eslint-function-in-files.test.ts` fails where a later ESLint stops
+   calling the function. No default project is named for those files:
    typescript-eslint sets it up once per process from the first config parsed, which failed a
    later project of a monorepo linted from its root whose tsconfig took those files in, or left
    them out, otherwise than the first project's did. One of them that no tsconfig lists, but that
    another one a tsconfig takes in imports by its relative path (`oxlint.config.mts` imports
    `./agents-inc.lint.mts`), is in the project service's program already, so it counts as taken in
-   (`consumerFilesFoundThroughAnImporter`, `project-facts.ts`). `tsFilesOutsideEveryTsconfig`
-   (`ts-files-outside-every-tsconfig.ts`) finds those TS files by the project service's own search,
-   with the TypeScript typescript-eslint resolves.
+   (`isConsumerFileFoundThroughAnImporter`, `project-facts.ts`). `tsconfigWalkOf`
+   (`ts-files-outside-every-tsconfig.ts`) answers by the project service's own search, with the
+   TypeScript typescript-eslint resolves, reading each tsconfig once; a file the walk did not find
+   is asked of the tsconfigs read afresh.
 
 ## Reading the team's configs
 
@@ -330,8 +336,9 @@ or `null`; `other-engine-config.ts`).
   `react`, which holds @eslint-react where we register eslint-plugin-react, a key sets the rule of
   each.
 - **oxlint config** (`ruleIdsTheTeamsOxlintConfigSets`, `oxlint-config-reading.ts`), as oxlint 1.87
-  resolves it, configs it extends included: a rule key at any severity where oxlint counts the
-  statement (the `eslint` scope, or a plugin listed at the root or in that override); each rule of
+  resolves it, configs it extends included: a rule key at any severity, at a root or in an
+  override, a statement oxlint skips as its plugin is listed neither there nor at the root
+  included (owner 2026-10-22); each rule of
   a plugin listed anywhere that a category the config writes on runs, nursery included, and a
   type-aware one only with `options.typeAware: true`; and a key under a JS plugin's prefix that is
   an ESLint name of ours. oxlint's own `correctness: warn`, where no config writes `correctness`,
