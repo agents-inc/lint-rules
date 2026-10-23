@@ -7,6 +7,18 @@ Each release has detailed notes in its own file under [`changelogs/`](./changelo
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-10-23
+
+**A rule the team's oxlint config states is the team's even in a line oxlint skips, and our typed blocks ask per file whether a tsconfig takes it in**
+
+- O5 (LD-O5b): a line of the team's oxlint config makes the rule the team's even where oxlint skips it, so both our parts drop it.
+- O7 (LD-O7b, q-lint-o7-cast): our typed blocks ask, as ESLint lints each file, whether a tsconfig takes it in, so a TS file made after the config loaded needs no restart.
+- status.md rows 14, 16 and 17: exhaustive switches end in a `never` default, `RuleRoute` is a union on `engine`, and `oxlintCodeOfRule` cuts names with `ruleNameOf`.
+- Tests: the CLI's folder walk, package-manager pick, config lookup, command parsing and changed lines have unit tests, and two Stryker gaps on the O5 and O7 lines are closed.
+- status.md row 15: `house/hook-file-naming` counts `export enum` and `export namespace` as values, as it does `export class`.
+
+See [changelogs/0.2.0.md](./changelogs/0.2.0.md) for full details.
+
 ## [0.1.1] - 2026-10-22
 
 **The specs catch what Stryker's mutants on the rounds' changed lines showed they missed; no behaviour change**
