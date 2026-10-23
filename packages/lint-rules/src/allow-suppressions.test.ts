@@ -123,7 +123,7 @@ async function suppressionSettingsFor(configs: BuiltConfigs, file: string): Prom
 /** The ban's entry from the routed engine, ESLint's numeric severity read by name so both compare alike. */
 function tsCommentBanIn({ oxlint }: BuiltConfigs, calculated: Linter.Config, file: string): unknown {
   const { engine, oxlintName } = routeOfTheTsCommentBan()
-  if (oxlint !== null && engine === 'oxlint' && oxlintName !== null) return oxlintConfigForFile(oxlint, file).rules[oxlintName]
+  if (oxlint !== null && engine === 'oxlint') return oxlintConfigForFile(oxlint, file).rules[oxlintName]
   const entry = calculatedEntryOf(calculated, TS_COMMENT_BAN)
   if (!Array.isArray(entry)) throw new Error(`ESLint calculates ${TS_COMMENT_BAN} as [severity, ...options], not ${JSON.stringify(entry)}`)
   const [, ...options] = entry
@@ -136,7 +136,7 @@ function routeOfTheTsCommentBan(): RuleRoute {
 
 function routedSeverityIn({ oxlint }: BuiltConfigs, calculated: Linter.Config, file: string, ruleId: string): Linter.StringSeverity {
   const { engine, oxlintName } = routeOf(ruleId)
-  if (oxlint === null || engine !== 'oxlint' || oxlintName === null) return calculatedSeverityOf(calculated, ruleId)
+  if (oxlint === null || engine !== 'oxlint') return calculatedSeverityOf(calculated, ruleId)
   const severity = oxlintSeverityFor(oxlint, file, oxlintName)
   return severity === undefined ? 'off' : severity
 }

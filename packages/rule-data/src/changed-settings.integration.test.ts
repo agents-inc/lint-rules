@@ -47,8 +47,8 @@ function enginesThatMayRun(route: RuleRoute): readonly Engine[] {
 }
 
 function oxlintNamesOf(route: RuleRoute): { readonly oxlintName: string; readonly oxlintPlugin: string } {
+  if (route.engine !== 'oxlint') throw new Error(`${route.id} is not routed to oxlint`)
   const { oxlintName, oxlintPlugin } = route
-  if (oxlintName === null || oxlintPlugin === null) throw new Error(`${route.id} is not routed to oxlint`)
   return { oxlintName, oxlintPlugin }
 }
 

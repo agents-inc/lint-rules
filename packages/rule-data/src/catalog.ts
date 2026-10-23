@@ -69,11 +69,15 @@ export type ShippedRule = TurnedOnBy &
     readonly allowancesLeftTo: readonly AllowanceLeftTo[]
   }
 
-export type RuleRoute = {
+/** A route oxlint runs carries the oxlint name and plugin it needs; one ESLint runs carries neither. */
+export type RuleRoute = OxlintRoute | EslintRoute
+
+export type OxlintRoute = RouteFields & { engine: 'oxlint'; oxlintName: string; oxlintPlugin: string }
+
+export type EslintRoute = RouteFields & { engine: 'eslint'; oxlintName: null; oxlintPlugin: null }
+
+type RouteFields = {
   id: string
-  engine: Engine
-  oxlintName: string | null
-  oxlintPlugin: string | null
   typed: boolean
   eslintAliases: readonly string[]
   /**
@@ -131,12 +135,19 @@ export type OxlintRule = {
   readonly category: OxlintCategory
 }
 
-export type OxlintRoute = RuleRoute & { readonly oxlintName: string; readonly oxlintPlugin: string }
-
 /** An installed ESLint rule that extends a core rule under another name. */
 type CoreRuleExtension = { readonly id: string; readonly coreRule: string }
 
-type GeneratedRoute = (typeof routing)[number]
+/**
+ * A route as the generated routing writes it, its engine and oxlint naming not yet read together.
+ * Declared rather than inferred, as `GeneratedShippedRule` is.
+ */
+type GeneratedRoute = Readonly<Omit<RouteFields, 'shipped'>> & {
+  readonly engine: string
+  readonly oxlintName: string | null
+  readonly oxlintPlugin: string | null
+  readonly shipped: GeneratedShippedRule | null
+}
 
 type InventoryRule = (typeof inventory.rules)[number]
 
@@ -174,13 +185,8 @@ export function routeOf(id: string, { rules }: Pick<Catalog, 'rules'>): RuleRout
   return foundOr(rules.get(id), `unknown rule ID "${id}"`)
 }
 
-/** Narrows an oxlint-routed rule to one that carries the oxlint name and plugin it needs. */
 export function isOxlintRoute(route: RuleRoute): route is OxlintRoute {
-  if (route.engine !== 'oxlint') return false
-  if (route.oxlintName === null || route.oxlintPlugin === null) {
-    throw new Error(`${route.id}: routed to oxlint without an oxlint name and plugin`)
-  }
-  return true
+  return route.engine === 'oxlint'
 }
 
 /** What the rule ships with; a rule we do not ship throws. */
@@ -209,8 +215,29 @@ function extensionsByCoreRule(extensions: readonly CoreRuleExtension[]): Readonl
   return new Map([...grouped].map(([coreRule, extending]) => [coreRule, extending.map(({ id }) => id)]))
 }
 
-function parseRuleRoute(route: GeneratedRoute): RuleRoute {
-  return { ...route, engine: parseEngine(route.engine), shipped: parseShippedRule(route.id, route.shipped) }
+export function parseRuleRoute(route: GeneratedRoute): RuleRoute {
+  const parsed = { ...route, shipped: parseShippedRule(route.id, route.shipped) }
+  const engine = parseEngine(route.engine)
+  switch (engine) {
+    case 'oxlint':
+      return { ...parsed, engine, ...oxlintNamingOf(route) }
+    case 'eslint':
+      return { ...parsed, engine, ...eslintNamingOf(route) }
+    default: {
+      const unhandled: never = engine
+      return unhandled
+    }
+  }
+}
+
+function oxlintNamingOf({ id, oxlintName, oxlintPlugin }: GeneratedRoute): Pick<OxlintRoute, 'oxlintName' | 'oxlintPlugin'> {
+  if (oxlintName === null || oxlintPlugin === null) throw new Error(`${id}: routed to oxlint without an oxlint name and plugin`)
+  return { oxlintName, oxlintPlugin }
+}
+
+function eslintNamingOf({ id, oxlintName, oxlintPlugin }: GeneratedRoute): Pick<EslintRoute, 'oxlintName' | 'oxlintPlugin'> {
+  if (oxlintName !== null || oxlintPlugin !== null) throw new Error(`${id}: routed to ESLint with an oxlint name or plugin`)
+  return { oxlintName, oxlintPlugin }
 }
 
 /** Routing writes a relation, a mark or an allowance left to another rule only where the canonical list records one; absent, it is none. */

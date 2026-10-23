@@ -98,7 +98,7 @@ export function buildCatalog({
 }
 
 function oxlintRuleOf({ id, oxlintName, oxlintPlugin }: RuleRoute): OxlintRule[] {
-  return oxlintName === null || oxlintPlugin === null ? [] : [{ id, oxlintName, oxlintPlugin, category: OXLINT_CATEGORY }]
+  return oxlintName === null ? [] : [{ id, oxlintName, oxlintPlugin, category: OXLINT_CATEGORY }]
 }
 
 /** An ESLint plugin whose rules report nothing and accept any options. Each rule is its own object. */

@@ -1,4 +1,4 @@
-import type { OxlintCategory, RuleRoute } from '../../catalog.ts'
+import type { EslintRoute, OxlintCategory, OxlintRoute, RuleRoute } from '../../catalog.ts'
 import type {
   EslintImplementation,
   Inventory,
@@ -94,7 +94,7 @@ export function buildOxlintRoute(
     oxlintName: string
     oxlintPlugin: string
   },
-): RuleRoute {
+): OxlintRoute {
   return { id, engine: 'oxlint', typed: false, ...fields }
 }
 
@@ -105,7 +105,7 @@ export function buildOxlintRoute(
 export function buildEslintRoute(
   id: string,
   fields: Pick<RuleRoute, 'oxlintSpellings' | 'shipped' | 'typed'>,
-): RuleRoute {
+): EslintRoute {
   return { id, engine: 'eslint', oxlintName: null, oxlintPlugin: null, eslintAliases: [], ...fields }
 }
 

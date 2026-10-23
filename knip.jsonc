@@ -27,6 +27,8 @@
       // includeEntryExports stays off: the entries tsdown builds are the published API, which consumers import.
     },
     "packages/rule-data": {
+      // Type tests: tsc checks them, vitest never runs them.
+      "entry": ["src/**/*.test-d.ts"],
       // Private and inlined by the build, so only this repo imports its entries.
       "includeEntryExports": true,
       // stryker.rule-data.config.mjs hands vitest the mutation config.

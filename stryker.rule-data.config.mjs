@@ -13,6 +13,7 @@ export default {
   mutate: [
     'packages/rule-data/src/**/*.ts',
     '!packages/rule-data/src/**/*.test.ts',
+    '!packages/rule-data/src/**/*.test-d.ts',
     '!packages/rule-data/src/**/*.d.ts',
     '!packages/rule-data/src/__tests__/**',
     '!packages/rule-data/src/generated/**',

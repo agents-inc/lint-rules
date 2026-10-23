@@ -6,12 +6,12 @@ import { ROUND_2_DROPS, RULES_NEEDING_NEWER_NODE } from './__tests__/cases/round
 import { ALLOWANCES_LEFT_TO } from './__tests__/cases/rule-relations.ts'
 import { isOptInRuleset, isSortingRuleset } from './__tests__/cases/sorting-rulesets.ts'
 import { TEST_FILE_GLOBS } from './__tests__/cases/test-file-globs.ts'
-import { buildEslintRoute, buildOxlintRoute } from './__tests__/factories/inventory-factories.ts'
+import { buildEslintRoute, buildEslintRoutingEntry, buildOxlintRoute, buildOxlintRoutingEntry } from './__tests__/factories/inventory-factories.ts'
 import { buildShippedRule } from './__tests__/factories/shipped-rule-factories.ts'
 import { negatedShippedGlobsIn } from './__tests__/negated-globs.ts'
 import { coreRulesExtendedMoreThanOnce, twinsSharedByShippedRules } from './__tests__/twin-offenders.ts'
 import { typescriptEslintExtensions } from './__tests__/typescript-eslint-extensions.ts'
-import { type RuleRoute, catalog, isOxlintRoute, routeOf, shippedRuleOf } from './catalog.ts'
+import { catalog, isOxlintRoute, parseRuleRoute, routeOf, shippedRuleOf } from './catalog.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
 import { ruleNameOf } from './rule-id-parts.ts'
 
@@ -470,12 +470,33 @@ describe('the route lookups', () => {
       expect([isOxlintRoute(OXLINT_ROUTE), isOxlintRoute(UNSHIPPED_ESLINT_ROUTE)]).toStrictEqual([true, false])
     })
 
-    it('throws for a route oxlint runs without an oxlint name, or without an oxlint plugin, naming the rule', () => {
-      const withoutName: RuleRoute = { ...OXLINT_ROUTE, oxlintName: null }
-      const withoutPlugin: RuleRoute = { ...OXLINT_ROUTE, oxlintPlugin: null }
+  })
 
-      expect(() => isOxlintRoute(withoutName)).toThrow('plugin/oxlint-rule: routed to oxlint without an oxlint name and plugin')
-      expect(() => isOxlintRoute(withoutPlugin)).toThrow('plugin/oxlint-rule: routed to oxlint without an oxlint name and plugin')
+  describe('parseRuleRoute', () => {
+    const OXLINT_ROUTING_ENTRY = buildOxlintRoutingEntry('plugin/oxlint-rule', {
+      oxlintName: 'plugin/oxlint-rule',
+      oxlintPlugin: 'plugin',
+      eslintAliases: [],
+      oxlintSpellings: [],
+      shipped: null,
+    })
+    const ESLINT_ROUTING_ENTRY = buildEslintRoutingEntry('plugin/eslint-rule', { typed: false, oxlintSpellings: [], shipped: null })
+
+    it('reads a generated route oxlint runs with its oxlint name and plugin, and one ESLint runs with neither', () => {
+      expect([parseRuleRoute(OXLINT_ROUTING_ENTRY), parseRuleRoute(ESLINT_ROUTING_ENTRY)]).toStrictEqual([
+        { ...OXLINT_ROUTE, shipped: null },
+        UNSHIPPED_ESLINT_ROUTE,
+      ])
+    })
+
+    it('throws for a generated route oxlint runs without an oxlint name, or without an oxlint plugin, naming the rule', () => {
+      expect(() => parseRuleRoute({ ...OXLINT_ROUTING_ENTRY, oxlintName: null })).toThrow('plugin/oxlint-rule: routed to oxlint without an oxlint name and plugin')
+      expect(() => parseRuleRoute({ ...OXLINT_ROUTING_ENTRY, oxlintPlugin: null })).toThrow('plugin/oxlint-rule: routed to oxlint without an oxlint name and plugin')
+    })
+
+    it('throws for a generated route ESLint runs with an oxlint name, or with an oxlint plugin, naming the rule', () => {
+      expect(() => parseRuleRoute({ ...ESLINT_ROUTING_ENTRY, oxlintName: 'plugin/eslint-rule' })).toThrow('plugin/eslint-rule: routed to ESLint with an oxlint name or plugin')
+      expect(() => parseRuleRoute({ ...ESLINT_ROUTING_ENTRY, oxlintPlugin: 'plugin' })).toThrow('plugin/eslint-rule: routed to ESLint with an oxlint name or plugin')
     })
   })
 

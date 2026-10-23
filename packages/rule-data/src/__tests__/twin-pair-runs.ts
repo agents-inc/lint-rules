@@ -34,7 +34,7 @@ const TS_FILES = '**/*.ts'
 export function twinPairsRoutedToOxlint({ rules, coreRuleExtensions }: Catalog): TwinPairRoutedToOxlint[] {
   return [...rules.values()].flatMap(({ id, engine, oxlintName, oxlintPlugin, eslintAliases }) => {
     const extensions = coreRuleExtensions.get(id)
-    if (engine !== 'oxlint' || oxlintName === null || oxlintPlugin === null || extensions === undefined) return []
+    if (engine !== 'oxlint' || extensions === undefined) return []
     return extensions.filter((extension) => !eslintAliases.includes(extension)).map((extension) => ({ coreRule: id, extension, oxlintName, oxlintPlugin }))
   })
 }
