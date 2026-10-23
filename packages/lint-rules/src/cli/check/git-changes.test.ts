@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { exportedConstant, GITIGNORE_FILE, gitignoreText, moduleText } from '../../__tests__/factories/check-factories.ts'
 import { createGitProject } from '../../__tests__/git-projects.ts'
 import { setUpTempProjects } from '../../__tests__/temp-projects.ts'
-import { changedFilesIn, gitRepoAt, gitTopLevelOf, whereInitRuns } from './git-changes.ts'
+import { type ChangedLines, partlyChanged, WHOLE_FILE_CHANGED } from './changed-lines.ts'
+import { changedFilesIn, changedLinesOf, gitRepoAt, gitTopLevelOf, whereInitRuns } from './git-changes.ts'
 
 // spawnSync answers the one git subcommand a test names as such a git would, and runs every other.
 
@@ -45,6 +46,8 @@ const GIT_INDEX = '.git/index'
 // A whole second, so the times git records and compares are the same at any precision.
 const ONE_SECOND = new Date('2020-01-01T00:00:00Z')
 const A_DAY_LATER = new Date('2020-01-02T00:00:00Z')
+// The line below a one-line committed module.
+const THE_LINE_ADDED = 2
 const GENERATED_FOLDER = 'src/generated/'
 const TRACKED_THEN_IGNORED = `${GENERATED_FOLDER}tracked.ts`
 const NEW_AND_IGNORED = `${GENERATED_FOLDER}new.ts`
@@ -170,7 +173,55 @@ describe('the files git counts as changed', () => {
 
     expect(changedFilesIn(gitRepoAt(project.dir))).toStrictEqual([{ path: EDITED, oldPath: null, isNew: false }])
   })
+
+  it('are every file git does not ignore, each new, where the repo has no commit yet, beside one a .gitignore line leaves out', () => {
+    const project = createGitProject(tempProjects, {
+      repo: 'no commits',
+      files: { [GITIGNORE_FILE]: gitignoreText(GENERATED_FOLDER), [ADDED]: moduleText(exportedConstant('added')), [NEW_AND_IGNORED]: moduleText(exportedConstant('new')) },
+      linkedPackages: [],
+    })
+
+    expect(changedFilesIn(gitRepoAt(project.dir))).toStrictEqual([
+      { path: GITIGNORE_FILE, oldPath: null, isNew: true },
+      { path: ADDED, oldPath: null, isNew: true },
+    ])
+  })
 })
+
+describe('the lines git counts as changed in each changed file', () => {
+  it('are those added since the commit, in a file edited since', () => {
+    const project = createGitProject(tempProjects, { repo: 'committed', files: { [EDITED]: moduleText(exportedConstant('older')) }, linkedPackages: [] })
+    project.append(EDITED, moduleText(exportedConstant('added')))
+
+    expect(changedLinesOfEachFile(project.dir)).toStrictEqual([partlyChanged([THE_LINE_ADDED])])
+  })
+
+  it('are those added beyond the move, in a file git mv moved and then edited', () => {
+    const project = createGitProject(tempProjects, { repo: 'committed', files: { [MOVED_FROM]: moduleText(exportedConstant('moved')) }, linkedPackages: [] })
+    project.git('mv', MOVED_FROM, MOVED_TO)
+    project.append(MOVED_TO, moduleText(exportedConstant('added')))
+
+    expect(changedLinesOfEachFile(project.dir)).toStrictEqual([partlyChanged([THE_LINE_ADDED])])
+  })
+
+  it('are the whole file, in a file new since the commit', () => {
+    const project = createGitProject(tempProjects, { repo: 'committed', files: {}, linkedPackages: [] })
+    project.write(ADDED, moduleText(exportedConstant('added')))
+
+    expect(changedLinesOfEachFile(project.dir)).toStrictEqual([WHOLE_FILE_CHANGED])
+  })
+
+  it('are the whole file, in each file of a repo with no commit yet', () => {
+    const project = createGitProject(tempProjects, { repo: 'no commits', files: { [EDITED]: moduleText(exportedConstant('edited')) }, linkedPackages: [] })
+
+    expect(changedLinesOfEachFile(project.dir)).toStrictEqual([WHOLE_FILE_CHANGED])
+  })
+})
+
+function changedLinesOfEachFile(topLevel: string): ChangedLines[] {
+  const repo = gitRepoAt(topLevel)
+  return changedFilesIn(repo).map((file) => changedLinesOf(repo, file))
+}
 
 function writtenInOneSecond(path: string): void {
   utimesSync(path, ONE_SECOND, ONE_SECOND)
