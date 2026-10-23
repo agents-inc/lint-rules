@@ -1,6 +1,8 @@
 import { type Dirent, readdirSync } from 'node:fs'
-import { basename, dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import ts from 'typescript'
+import type { FileTest } from './eslint-file-types.ts'
+import { liesOutside } from './lies-outside.ts'
 import { namedGroupOf } from './named-groups.ts'
 import { directoriesUpFrom } from './paths-from-a-folder.ts'
 import { readOnce } from './read-once.ts'
@@ -9,8 +11,12 @@ type ReleaseLine = { readonly major: number; readonly minor: number }
 
 type ConfigFileRead = { readonly ownFiles: ReadonlySet<string>; readonly loadedReferences: readonly string[] }
 
-/** TS files relative to tsconfigRootDir; config files absolute. */
-type TsconfigWalk = { readonly tsFilesOutsideEveryTsconfig: readonly string[]; readonly tsconfigFiles: readonly string[] }
+export type TsconfigWalk = {
+  /** Absolute paths, outside node_modules and .git. */
+  readonly tsconfigFiles: readonly string[]
+  /** By absolute path: a config the project service tries for the file, or one it references, lists it. Mirrors the project service's search: from the file's directory up to tsconfigRootDir, a tsconfig.json then a jsconfig.json in each. */
+  readonly isListed: FileTest
+}
 
 type Reads = {
   readonly configFiles: Map<string, ConfigFileRead>
@@ -34,26 +40,35 @@ const RELEASE_LINE = /^(?<major>\d+)\.(?<minor>\d+)$/u
 // A config file TypeScript cannot read lists no file, as the project service then finds no project in it.
 const CONFIG_HOST: ts.ParseConfigFileHost = { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => undefined }
 
-/** A typed rule on these is a fatal parse error. Mirrors the project service's search: from the file's directory up to tsconfigRootDir, a tsconfig.json then a jsconfig.json in each, a config or one it references listing the file. */
-export function tsFilesOutsideEveryTsconfig(tsconfigRootDir: string): readonly string[] {
-  return tsconfigWalkOf(tsconfigRootDir).tsFilesOutsideEveryTsconfig
-}
-
-/** Also returns every tsconfig.json and jsconfig.json, which the import-x resolver reads. */
 export function tsconfigWalkOf(tsconfigRootDir: string): TsconfigWalk {
   const root = resolve(tsconfigRootDir)
-  const reads = newReads()
-  const files = filesUnder(root, AT_THE_ROOT)
-  return {
-    tsFilesOutsideEveryTsconfig: files.filter(isTsFile).filter((file) => !isTakenInByAConfig(resolve(root, file), root, reads)),
-    tsconfigFiles: files.filter(isConfigFile).map((file) => resolve(root, file)),
-  }
+  const files = filesUnder(root, AT_THE_ROOT).map((file) => resolve(root, file))
+  return { tsconfigFiles: files.filter(isConfigFile), isListed: listingTestOf(root, new Set(files)) }
 }
 
-export function filesTakenInByAConfig(tsconfigRootDir: string, files: readonly string[]): string[] {
-  const root = resolve(tsconfigRootDir)
-  const reads = newReads()
-  return files.filter((file) => isTakenInByAConfig(resolve(root, file), root, reads))
+/** The configs are read once, when first asked of; a file the walk did not find is asked of them read afresh, as that read may predate it. */
+function listingTestOf(root: string, foundByTheWalk: ReadonlySet<string>): FileTest {
+  const firstReads = newReads()
+  function isListedAsFirstRead(file: string): boolean {
+    return isTakenInByAConfig(file, root, firstReads)
+  }
+  function isListedAsTheDiskNowHolds(file: string): boolean {
+    return isTakenInByAConfig(file, root, newReads())
+  }
+  function isMadeSinceTheWalk(file: string): boolean {
+    return !foundByTheWalk.has(file)
+  }
+  return (file) => isListedAsFirstRead(file) || (isMadeSinceTheWalk(file) && isListedAsTheDiskNowHolds(file))
+}
+
+/** A typed rule on a TS file the walk reaches, and no tsconfig lists, is a fatal parse error. */
+export function isTsFileTheWalkReaches(file: string, tsconfigRootDir: string): boolean {
+  const fromTheRoot = relative(resolve(tsconfigRootDir), file)
+  return isTsFile(file) && !liesOutside(fromTheRoot) && !liesUnderAFolderNeverWalked(fromTheRoot)
+}
+
+function liesUnderAFolderNeverWalked(fromTheRoot: string): boolean {
+  return fromTheRoot.split(sep).some((part) => DIRECTORIES_NEVER_WALKED.has(part))
 }
 
 function newReads(): Reads {

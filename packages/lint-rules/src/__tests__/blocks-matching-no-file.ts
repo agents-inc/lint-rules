@@ -34,9 +34,11 @@ export function oxlintOverridesMatchingNoFile(config: OxlintConfig): string[] {
   ]
 }
 
-/** ESLint reads one glob of `files` as itself, and a list of them as all of them ANDed. */
+/** ESLint reads one glob of `files` as itself, and a list of them as all of them ANDed. A function there, as our typed blocks' tsconfig test, shows no contradiction, so only the globs are read. */
 function globsOfEntry(entry: string | readonly string[]): readonly string[] {
-  return typeof entry === 'string' ? [entry] : entry
+  // Parse boundary: ESLint's types give globs alone, and a block may AND a function with them.
+  const matchers: readonly unknown[] = typeof entry === 'string' ? [entry] : entry
+  return matchers.filter((matcher) => typeof matcher === 'string')
 }
 
 /**

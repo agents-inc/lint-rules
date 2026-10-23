@@ -73,7 +73,14 @@ function eslintBlockRead(block: Linter.Config, reads: GlobReads): Linter.Config 
 
 /** A nested list is globs a file must all match. */
 function filesEntryRead(entry: FilesEntry, read: GlobRead): FilesEntry {
-  return typeof entry === 'string' ? read(entry) : entry.map(read)
+  return typeof entry === 'string' ? read(entry) : entry.map((matcher) => matcherRead(matcher, read))
+}
+
+/** Our typed blocks AND a tsconfig test with their globs, which ESLint asks by absolute path, so it is passed on unread. */
+function matcherRead(matcher: string, read: GlobRead): string {
+  // Parse boundary: ESLint's types give globs alone.
+  const given: unknown = matcher
+  return typeof given === 'string' ? read(given) : matcher
 }
 
 function oxlintConfigRead(config: OxlintConfig, reads: GlobReads): OxlintConfig {

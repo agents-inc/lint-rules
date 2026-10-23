@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { filesEntryAlsoMatching } from '../core/eslint-file-types.ts'
 import { eslintBlocksMatchingNoFile, oxlintOverridesMatchingNoFile } from './blocks-matching-no-file.ts'
 import { buildWrittenEslintBlock, buildWrittenOxlintConfig, buildWrittenOxlintOverride } from './factories/written-block-factories.ts'
+
+function matchesEveryFile(): boolean {
+  return true
+}
 
 describe('eslintBlocksMatchingNoFile', () => {
   it.each([
@@ -27,6 +32,14 @@ describe('eslintBlocksMatchingNoFile', () => {
 
   it('names no block without files, which applies to every file it does not ignore', () => {
     expect(eslintBlocksMatchingNoFile([{ name: 'ours', ignores: ['**/*.ts'] }])).toStrictEqual([])
+  })
+
+  // Our typed blocks AND a tsconfig test with their globs.
+  it('reads the globs beside a function in an entry: names the block where they contradict, and not where one glob stands alone', () => {
+    const contradicting = [filesEntryAlsoMatching(['**/*.ts', '!**/*.ts'], matchesEveryFile)]
+    const blocks = [buildWrittenEslintBlock('contradicting', contradicting), buildWrittenEslintBlock('matching', [filesEntryAlsoMatching('**/*.ts', matchesEveryFile)])]
+
+    expect(eslintBlocksMatchingNoFile(blocks)).toStrictEqual([`contradicting: ${JSON.stringify({ files: contradicting, ignores: [] })}`])
   })
 })
 

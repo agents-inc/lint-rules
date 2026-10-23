@@ -2,13 +2,16 @@ import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import ts from 'typescript'
-import { filesTakenInByAConfig, tsconfigWalkOf } from './ts-files-outside-every-tsconfig.ts'
+import type { FileTest } from './eslint-file-types.ts'
+import { readOnce } from './read-once.ts'
+import { isTsFileTheWalkReaches, tsconfigWalkOf } from './ts-files-outside-every-tsconfig.ts'
 
-// Read once per build so the ESLint builders stay pure.
+// The walk runs once per build, so the ESLint builders stay pure. Whether a file lies outside every tsconfig is
+// asked as ESLint lints it, so a file made after the config loaded is read as the disk then holds it.
 
 export type ProjectFacts = {
-  /** Relative to tsconfigRootDir: none of our typed rules runs there. */
-  readonly tsFilesOutsideEveryTsconfig: readonly string[]
+  /** By absolute path, each file answered as first asked: none of our typed rules runs there. */
+  readonly isOutsideEveryTsconfig: FileTest
   /** Absolute paths, outside node_modules and .git. */
   readonly tsconfigFiles: readonly string[]
 }
@@ -21,22 +24,24 @@ const JAVASCRIPT_FILE = /\.[cm]?jsx?$/u
 const CONSUMER_FILES_AT_THE_ROOT: readonly string[] = Object.values(consumerConfigFiles)
 
 export function projectFactsOf(tsconfigRootDir: string): ProjectFacts {
-  const walk = tsconfigWalkOf(tsconfigRootDir)
-  const foundThroughAnImport = new Set(consumerFilesFoundThroughAnImporter(tsconfigRootDir, walk.tsFilesOutsideEveryTsconfig))
-  return {
-    tsFilesOutsideEveryTsconfig: walk.tsFilesOutsideEveryTsconfig.filter((file) => !foundThroughAnImport.has(file)),
-    tsconfigFiles: walk.tsconfigFiles,
+  const root = resolve(tsconfigRootDir)
+  const { tsconfigFiles, isListed } = tsconfigWalkOf(root)
+  const answers = new Map<string, boolean>()
+  function isOutside(file: string): boolean {
+    return isTsFileTheWalkReaches(file, root) && !isListed(file) && !isConsumerFileFoundThroughAnImporter(file, root, isListed)
   }
+  function isOutsideEveryTsconfig(file: string): boolean {
+    return readOnce(answers, file, isOutside)
+  }
+  return { isOutsideEveryTsconfig, tsconfigFiles }
 }
 
-/** Consumer files no tsconfig lists but that a tsconfig'd file imports (oxlint.config.mts imports agents-inc.lint.mts): the project service types them through the importer. Only imports naming the file's own path are read (a known limit). */
-function consumerFilesFoundThroughAnImporter(tsconfigRootDir: string, tsFilesOutside: readonly string[]): string[] {
-  const outsideAtTheRoot = CONSUMER_FILES_AT_THE_ROOT.filter((file) => tsFilesOutside.includes(file))
-  const present = CONSUMER_FILES_AT_THE_ROOT.filter((file) => existsSync(join(tsconfigRootDir, file)))
-  const possibleImporters = present.filter((file) => !outsideAtTheRoot.includes(file))
-  const importers = filesTakenInByAConfig(tsconfigRootDir, possibleImporters)
-  const imported = new Set(importers.flatMap((importer) => relativeImportsOf(join(tsconfigRootDir, importer))))
-  return outsideAtTheRoot.filter((file) => imported.has(resolve(tsconfigRootDir, file)))
+/** A consumer file at tsconfigRootDir no tsconfig lists, which another there that a tsconfig lists imports (oxlint.config.mts imports agents-inc.lint.mts): the project service types it through the importer. Only imports naming the file's own path are read (a known limit). */
+function isConsumerFileFoundThroughAnImporter(file: string, root: string, isListed: FileTest): boolean {
+  const consumerFiles = CONSUMER_FILES_AT_THE_ROOT.map((name) => join(root, name))
+  if (!consumerFiles.includes(file)) return false
+  const importers = consumerFiles.filter((importer) => existsSync(importer) && isListed(importer))
+  return importers.some((importer) => relativeImportsOf(importer).includes(file))
 }
 
 function relativeImportsOf(file: string): string[] {

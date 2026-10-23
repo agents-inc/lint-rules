@@ -103,7 +103,13 @@ const config = defineLintRules({
 
   rules: {},
 
-  fileOverrides: [],
+  fileOverrides: [
+    {
+      // ESLint calls a function in `files`, but its types hold only globs there: filesEntryAlsoMatching casts to them.
+      files: ['packages/lint-rules/src/core/eslint-file-types.ts'],
+      rules: { '@typescript-eslint/no-unsafe-type-assertion': 'off' },
+    },
+  ],
 })
 
 export const { eslint, oxlint } = config.editorRulesets

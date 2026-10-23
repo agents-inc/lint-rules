@@ -1,5 +1,5 @@
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
-import type { FilesEntry } from './file-conditions.ts'
+import { type FilesEntry, globsOf } from './file-conditions.ts'
 import { isNegated, normalizeGlob } from './globs.ts'
 import { eslintTakesFilesBackFrom } from './ignores-read-by-each-engine.ts'
 import type { RuleLayers } from './resolve-rule-layers.ts'
@@ -36,18 +36,18 @@ export function ignoresEslintAppliesToOurEditorPart(layers: RuleLayers): string[
 }
 
 /** Whether no global ignore given takes back a file ESLint's default ignores leave out. */
-export function eslintDefaultIgnoresHoldUnder(globalIgnores: readonly string[]): boolean {
-  return !ESLINT_DEFAULT_IGNORES.some((value) => eslintTakesFilesBackFrom(value, globalIgnores))
+export function takesNothingBackFromEslintDefaultIgnores(globalIgnores: readonly string[]): boolean {
+  return ESLINT_DEFAULT_IGNORES.every((value) => !eslintTakesFilesBackFrom(value, globalIgnores))
 }
 
 // ESLint ANDs the globs inside a nested array: `[[a, b], [c]]` matches (a AND c) OR (b AND c). Each is kept to JS
 // and TS files, as ESLint lints every file a block's glob matches: `**/*.test.*` alone would hand it `x.test.json`.
-export function filesMatchingAll(globLists: readonly (readonly string[])[]): FilesEntry[] {
+export function filesMatchingAll(globLists: ReadonlyArray<readonly string[]>): FilesEntry[] {
   return combinationsOf(globLists).map(keptToJsAndTs).map(asFilesEntry)
 }
 
 /** Each choice of one member from every list. */
-export function combinationsOf<Member>(lists: readonly (readonly Member[])[]): Member[][] {
+export function combinationsOf<Member>(lists: ReadonlyArray<readonly Member[]>): Member[][] {
   return lists.reduce<Member[][]>(
     (combinations, list) => combinations.flatMap((combination) => list.map((member) => [...combination, member])),
     [[]],
@@ -75,4 +75,14 @@ function extensionsAfterLastDot(glob: string): string[] {
 export function asFilesEntry(combination: readonly string[]): FilesEntry {
   const [onlyGlob, ...rest] = combination
   return onlyGlob !== undefined && rest.length === 0 ? onlyGlob : [...combination]
+}
+
+/** ESLint calls one with a file's absolute path. */
+export type FileTest = (filePath: string) => boolean
+
+/** The entry's globs and the test, ANDed. ESLint documents only globs in `files`, but matches with @eslint/config-array, which also calls a function there (eslint-function-in-files.test.ts fails where it stops). */
+export function filesEntryAlsoMatching(entry: Readonly<FilesEntry>, isMatched: FileTest): FilesEntry {
+  const matchers: ReadonlyArray<FileTest | string> = [...globsOf(entry), isMatched]
+  // ESLint's types give `files` globs alone (@eslint/core's ConfigObject), narrower than the matcher it runs.
+  return matchers as string[]
 }

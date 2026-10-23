@@ -14,6 +14,7 @@ import {
 import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
 import { buildConsumerLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
+import { buildTsconfig } from './__tests__/factories/tsconfig-factories.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
@@ -26,10 +27,14 @@ const tempProjects = setUpTempProjects()
 const { ruleSeverityInProjectFor } = setUpEslintConfigOracle()
 
 const SOURCE_FILE = 'src/a.ts'
+const SOURCE = 'export const total = 1\n'
 
 const projectDir = tempProjects.create({
   files: {
     'package.json': packageJsonText(buildPackageJsonListingOxlint()),
+    // A typed rule of ours runs only where a tsconfig takes the file in.
+    'tsconfig.json': JSON.stringify(buildTsconfig({ include: ['src'] })),
+    [SOURCE_FILE]: SOURCE,
     ...filesOf([
       ...CONFIGS_LISTING_THE_SONARJS_JS_PLUGIN,
       ...CONFIGS_LISTING_NO_SONARJS_JS_PLUGIN,

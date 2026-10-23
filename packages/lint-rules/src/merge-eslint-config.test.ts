@@ -2437,6 +2437,18 @@ describe('a typed rule of ours, beside a team that gives type information', () =
     })
   })
 
+  // The team's tsconfig may leave them out, and a typed rule where it does is a fatal parse error.
+  it("runs in no config file a consumer writes for us, at any depth, though the team's block gives types to every TS file", async () => {
+    const teamConfig = [buildTeamTypedEslintBlock('team-typed', 'projectService', { files: ['**/*.{ts,mts}'] })]
+    const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, TYPED_RULE_ON, teamConfig)
+
+    expect(await severitiesOf(config, FLOATING_PROMISES, ['src/a.ts', 'agents-inc.lint.mts', 'apps/web/oxlint.config.mts'])).toStrictEqual({
+      'src/a.ts': 'error',
+      'agents-inc.lint.mts': 'off',
+      'apps/web/oxlint.config.mts': 'off',
+    })
+  })
+
   it('runs within each of two team blocks giving types, and outside both in none', async () => {
     const teamConfig = [
       buildTeamTypedEslintBlock('team-typed-src', 'projectService', { files: ['src/**/*.ts'] }),

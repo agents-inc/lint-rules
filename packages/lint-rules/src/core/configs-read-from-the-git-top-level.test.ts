@@ -78,27 +78,24 @@ describe('the configs check runs from the git top level, a glob at a time', () =
 
 describe('the configs check builds for a project, read from the git top level', () => {
   const tempProjects = setUpTempProjects()
-  // A TS file no tsconfig takes in, which the ESLint build names by its path.
-  const OUTSIDE_EVERY_TSCONFIG = 'scripts/seed.ts'
-  const AT_THE_ROOT_OUTSIDE_EVERY_TSCONFIG = 'vite.config.ts'
   const IGNORES = ['src/generated/**', '!src/generated/keep.ts', './x/**', '**/dist/**']
   const OVERRIDE_FILES: [string, ...string[]] = ['src/**']
-  const TIED_AS_BUILT = ['src/generated/**', '!src/generated/keep.ts', './x/**', '/x/**', 'src/**', OUTSIDE_EVERY_TSCONFIG, AT_THE_ROOT_OUTSIDE_EVERY_TSCONFIG]
+  const TIED_AS_BUILT = ['src/generated/**', '!src/generated/keep.ts', './x/**', '/x/**', 'src/**']
   const TIED_AS_READ = [
     'packages/web/src/generated/**',
     '!packages/web/src/generated/keep.ts',
     'packages/web/x/**',
     'packages/web/src/**',
-    `packages/web/${OUTSIDE_EVERY_TSCONFIG}`,
-    `packages/web/${AT_THE_ROOT_OUTSIDE_EVERY_TSCONFIG}`,
   ]
   const ANY_FOLDER = '**/'
   const READ_FROM_THE_CONFIG_FOLDER = `${CONFIG_FOLDER}/`
   const NEGATION = '!'
+  // globsHeldBy's name for our typed blocks' tsconfig test, which ESLint asks by absolute path, so it needs no reading.
+  const THE_TSCONFIG_TEST = '<function>'
 
   function builtFor(): ReturnType<typeof buildAgentConfigs> {
     const projectDir = tempProjects.create({
-      files: { 'tsconfig.json': JSON.stringify(buildTsconfig({ include: ['src'] })), 'src/a.ts': 'export const a = 1\n', [OUTSIDE_EVERY_TSCONFIG]: 'export const seed = 1\n', [AT_THE_ROOT_OUTSIDE_EVERY_TSCONFIG]: 'export const config = 1\n' },
+      files: { 'tsconfig.json': JSON.stringify(buildTsconfig({ include: ['src'] })), 'src/a.ts': 'export const a = 1\n' },
     })
     const lintRules = buildConsumerLintRules(
       projectDir,
@@ -121,7 +118,7 @@ describe('the configs check builds for a project, read from the git top level', 
 
     expect({
       unreadAsBuilt: TIED_AS_BUILT.filter((glob) => !asBuilt.includes(glob)),
-      readNeitherWay: read.filter((glob) => !isReadAtAnyDepthOrFromTheConfigFolder(glob)),
+      readNeitherWay: read.filter((glob) => glob !== THE_TSCONFIG_TEST && !isReadAtAnyDepthOrFromTheConfigFolder(glob)),
       missing: TIED_AS_READ.filter((glob) => !read.includes(glob)),
     }).toStrictEqual({ unreadAsBuilt: [], readNeitherWay: [], missing: [] })
   })

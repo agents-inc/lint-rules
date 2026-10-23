@@ -24,7 +24,7 @@ import {
 import { currentExtensionsOf } from './catalog-lookups.ts'
 import type { EslintPart } from './editor-parts.ts'
 import { firstGiven, pluginsRegisteredBy, ruleIdsTheTeamsEslintConfigSets, rulesStatedIn } from './eslint-config-reading.ts'
-import { asFilesEntry, combinationsOf, eslintDefaultIgnoresHoldUnder } from './eslint-file-types.ts'
+import { asFilesEntry, combinationsOf, takesNothingBackFromEslintDefaultIgnores } from './eslint-file-types.ts'
 import { eachWithin, groupedByWhere, type Where, type Within, whereOf } from './eslint-off-blocks.ts'
 import { buildEslintSettings, givesTheSetting, type SettingOfOurs, type SettingPath, settingsGiving, settingsOfOurs } from './eslint-settings.ts'
 import { bothOf, eitherOf, type FilesAndIgnores, type FilesCondition, type FilesEntry, filesInScopeOf, globsOf, matchesEveryFile, notOf } from './file-conditions.ts'
@@ -116,7 +116,7 @@ function filesOurBlocksAreKeptOutOf({ leftOut, leftOutByOurIgnores }: OurEslintP
 function eslintDefaultIgnoresHoldBeside(teamBlocks: readonly Linter.Config[], tsconfigRootDir: string): boolean {
   const globalIgnores = teamBlocks.filter(isGlobalIgnores).map(withGlobsOnly)
   const ignoresFromTheRoot = globalIgnores.flatMap((block) => teamFilesFromTheRoot(block, tsconfigRootDir)).flatMap(({ ignores }) => ignores)
-  return eslintDefaultIgnoresHoldUnder(ignoresFromTheRoot)
+  return takesNothingBackFromEslintDefaultIgnores(ignoresFromTheRoot)
 }
 
 /** A block holding only a name or basePath counts too, and gives no glob. */
@@ -298,8 +298,8 @@ function withOurVersion(prefix: string, plugin: ESLint.Plugin, ourVersion: strin
 }
 
 /** typescript-eslint builds one project service per process, so beside the team's type information ours would be fatal (measured). Our typed rules then run only where the team's blocks give types, as its disableTypeChecked would. */
-function typeInformationFor({ tsconfigRootDir }: EslintPart, teamBlocks: readonly Linter.Config[], { tsFilesOutsideEveryTsconfig }: ProjectFacts): TypeInformation {
-  if (!teamBlocks.some(givesTypeInformation)) return { from: 'ours', tsconfigRootDir, tsFilesOutsideEveryTsconfig }
+function typeInformationFor({ tsconfigRootDir }: EslintPart, teamBlocks: readonly Linter.Config[], { isOutsideEveryTsconfig }: ProjectFacts): TypeInformation {
+  if (!teamBlocks.some(givesTypeInformation)) return { from: 'ours', tsconfigRootDir, isOutsideEveryTsconfig }
   return {
     from: 'the team',
     blocks: teamBlocks.flatMap((block, index) => typeInformationBlocksOf(block, teamBlocks.slice(0, index), tsconfigRootDir)),

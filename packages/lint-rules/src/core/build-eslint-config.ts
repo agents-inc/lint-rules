@@ -6,12 +6,22 @@ import globals from 'globals'
 import tseslint from 'typescript-eslint'
 import { isEslintRoute, isSuppressionRoute, type SuppressionRoute, twinsOf } from './catalog-lookups.ts'
 import { withCompatLayerWhereNeeded } from './eslint-compat.ts'
-import { asFilesEntry, CONSUMER_CONFIG_FILES, eslintGlobalIgnoresOf, filesMatchingAll, JS_AND_TS_FILES, matchesOnlyJsAndTs, TS_FILES } from './eslint-file-types.ts'
+import {
+  asFilesEntry,
+  CONSUMER_CONFIG_FILES,
+  eslintGlobalIgnoresOf,
+  type FileTest,
+  filesEntryAlsoMatching,
+  filesMatchingAll,
+  JS_AND_TS_FILES,
+  matchesOnlyJsAndTs,
+  TS_FILES,
+} from './eslint-file-types.ts'
 import { type NamesOffWhere, offBlocksOf, rulesOff, twinsOffName } from './eslint-off-blocks.ts'
 import { buildEslintSettings } from './eslint-settings.ts'
 import { bothOf, EVERY_FILE, eitherOf, type FilesCondition, type FilesEntry, filesAndIgnoresOf, filesInScopeOf, globsOf, NO_FILE } from './file-conditions.ts'
 import { SVELTE_RUNES, TEST_RUNNER_GLOBALS } from './framework-globals.ts'
-import { literalGlobOf, normalizeGlob } from './globs.ts'
+import { normalizeGlob } from './globs.ts'
 import type { LintRulesInput } from './lint-rules-input.ts'
 import type { ProjectFacts } from './project-facts.ts'
 import {
@@ -60,8 +70,8 @@ export type TypeInformation =
   | {
       readonly from: 'ours'
       readonly tsconfigRootDir: string
-      /** TS files our project service finds no tsconfig for, relative to tsconfigRootDir. */
-      readonly tsFilesOutsideEveryTsconfig: readonly string[]
+      /** By absolute path, asked as ESLint lints the file: a TS file our project service finds no tsconfig for. */
+      readonly isOutsideEveryTsconfig: FileTest
     }
   | { readonly from: 'the team'; readonly blocks: readonly TeamTypeInformationBlock[] }
 
@@ -202,7 +212,7 @@ export function buildEslintConfig(
     }),
     linterOptions: agentLinterOptionsOf(layers.suppressionMode),
     settings: buildEslintSettings(projectFacts),
-    typeInformation: { from: 'ours', tsconfigRootDir: lintRules.tsconfigRootDir, tsFilesOutsideEveryTsconfig: projectFacts.tsFilesOutsideEveryTsconfig },
+    typeInformation: { from: 'ours', tsconfigRootDir: lintRules.tsconfigRootDir, isOutsideEveryTsconfig: projectFacts.isOutsideEveryTsconfig },
     // Sub-agents always run oxlint, which runs every core rule ESLint would otherwise take over.
     twinsOnTsFiles: false,
     offSwitch: { name: OXLINT_RULES_OFF, ruleIds: oxlintRoutedRuleIdsAndAliases(catalog) },
@@ -352,8 +362,6 @@ function testRunnerGlobalsBlock(): Linter.Config {
   return { name: TEST_RUNNER_GLOBALS_BLOCK, files: [...TEST_RUNNER_GLOBALS.files], languageOptions: { globals: globalsOf(TEST_RUNNER_GLOBALS.envs) } }
 }
 
-// typescript-eslint builds one project service per process (measured, typescript-estree 8.71): beside the team's
-// type information ours would be fatal, and a default project would break later packages in a monorepo.
 function typedBlocks(
   typeInformation: TypeInformation,
   rules: readonly EslintSetting[],
@@ -367,16 +375,40 @@ function typedBlocks(
     ignores: [...filesWithoutTypeInformation(typeInformation)],
     rules: eslintRuleMap(rules),
   }
-  const typed = typedBlockOf(block, untyped)
-  if (typeInformation.from === 'the team') return keptToTypedFiles(typed, typeInformation)
-  const { tsconfigRootDir } = typeInformation
-  return [{ ...typed.block, languageOptions: { parserOptions: { projectService: true, tsconfigRootDir } } }]
+  return typedBlocksGiven(typeInformation, typedBlockOf(block, untyped))
 }
 
-/** A typed rule on a file without type information is a fatal parse error, so those files are left out. With team type information, the consumer's config files are left out at any depth. */
+// typescript-eslint builds one project service per process (measured, typescript-estree 8.71): beside the team's
+// type information ours would be fatal, and a default project would break later packages in a monorepo.
+function typedBlocksGiven(typeInformation: TypeInformation, typed: TypedBlock): Linter.Config[] {
+  switch (typeInformation.from) {
+    case 'the team':
+      return keptToTypedFiles(typed, typeInformation)
+    case 'ours':
+      return [withOurProjectService(keptToFilesATsconfigTakesIn(typed.block, typeInformation.isOutsideEveryTsconfig), typeInformation.tsconfigRootDir)]
+    default: {
+      const unhandled: never = typeInformation
+      return unhandled
+    }
+  }
+}
+
+function withOurProjectService(block: Readonly<ScopedBlock>, tsconfigRootDir: string): Linter.Config {
+  return { ...block, languageOptions: { parserOptions: { projectService: true, tsconfigRootDir } } }
+}
+
+/** A typed rule on a file without type information is a fatal parse error, so those files are left out. With team type information, the consumer's config files are left out at any depth; with ours, the files of each typed block keep them out (keptToFilesATsconfigTakesIn). */
 function filesWithoutTypeInformation(typeInformation: TypeInformation): Globs {
-  if (typeInformation.from === 'the team') return CONSUMER_CONFIG_FILES
-  return typeInformation.tsFilesOutsideEveryTsconfig.map(literalGlobOf)
+  switch (typeInformation.from) {
+    case 'the team':
+      return CONSUMER_CONFIG_FILES
+    case 'ours':
+      return []
+    default: {
+      const unhandled: never = typeInformation
+      return unhandled
+    }
+  }
 }
 
 function typedBlockOf(block: ScopedBlock, untyped: readonly UntypedStatement[]): TypedBlock {
@@ -392,8 +424,22 @@ function untypedEntries(untyped: readonly UntypedStatement[], where: 'withTypes'
 
 /** With team type information, one copy per team block that switches it, in the team's order, so the last to apply decides: in a file without types a typed rule ends the whole ESLint run (measured). */
 function keptToTypedFiles(typed: TypedBlock, typeInformation: TypeInformation): Linter.Config[] {
-  if (typeInformation.from === 'ours') return [typed.block]
-  return typeInformation.blocks.map((teamBlock) => copyWithin(typed, teamBlock))
+  switch (typeInformation.from) {
+    case 'ours':
+      return [keptToFilesATsconfigTakesIn(typed.block, typeInformation.isOutsideEveryTsconfig)]
+    case 'the team':
+      return typeInformation.blocks.map((teamBlock) => copyWithin(typed, teamBlock))
+    default: {
+      const unhandled: never = typeInformation
+      return unhandled
+    }
+  }
+}
+
+/** ESLint asks, as it lints each file, whether a tsconfig takes it in, so a TS file made after the config loaded is read as the disk then holds it. */
+function keptToFilesATsconfigTakesIn(block: Readonly<ScopedBlock>, isOutsideEveryTsconfig: FileTest): ScopedBlock {
+  const isTakenInByATsconfig: FileTest = (file) => !isOutsideEveryTsconfig(file)
+  return { ...block, files: block.files.map((entry) => filesEntryAlsoMatching(entry, isTakenInByATsconfig)) }
 }
 
 function copyWithin({ block, rulesWithoutTypes }: TypedBlock, teamBlock: TeamTypeInformationBlock): Linter.Config {

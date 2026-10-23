@@ -19,7 +19,7 @@ import {
 } from '../__tests__/factories/catalog-factories.ts'
 import { buildFileOverride, buildLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { setUpEslintConfigOracle } from '../__tests__/eslint-config-oracle.ts'
-import { buildProjectFacts } from '../__tests__/factories/project-facts-factories.ts'
+import { buildProjectFacts, outsideEveryTsconfigAmong } from '../__tests__/factories/project-facts-factories.ts'
 import { buildEslintConfig, eslintBlocksBeforeTheOffSwitch, type TypeInformation } from './build-eslint-config.ts'
 import type { RuleSettingsInput } from './lint-rules-input.ts'
 import { buildEslintSettings } from './eslint-settings.ts'
@@ -491,7 +491,7 @@ describe('buildEslintConfig', () => {
       )
 
       it('names no default project where no tsconfig takes in the two at tsconfigRootDir', () => {
-        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ tsFilesOutsideEveryTsconfig: CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG }))
+        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ isOutsideEveryTsconfig: outsideEveryTsconfigAmong(CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG) }))
 
         expect(blockNamed(config, 'agents-inc/typed').languageOptions).toStrictEqual({
           parserOptions: { projectService: true, tsconfigRootDir: TSCONFIG_ROOT_DIR },
@@ -501,7 +501,7 @@ describe('buildEslintConfig', () => {
       it.each(waysATypedRuleIsTurnedOn)(
         'gives each one no tsconfig takes in, the two at tsconfigRootDir included, neither the project service nor the typed rule, as any other TS file outside every tsconfig, when $how',
         async ({ lintRules, ruleId }) => {
-          const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ tsFilesOutsideEveryTsconfig: CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG }))
+          const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ isOutsideEveryTsconfig: outsideEveryTsconfigAmong(CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG) }))
           const typedLinting = await Promise.all(
             CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG.map(async (file) => ({
               file,
@@ -516,7 +516,7 @@ describe('buildEslintConfig', () => {
 
       // Only a default project could give them one, which broke one ESLint run over several projects.
       it.each(waysATypedRuleIsTurnedOn)('gives the two at tsconfigRootDir no typed rule where no tsconfig takes them in, when $how', async ({ lintRules, ruleId }) => {
-        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ tsFilesOutsideEveryTsconfig: CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG }))
+        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ isOutsideEveryTsconfig: outsideEveryTsconfigAmong(CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG) }))
         const severities = await Promise.all(ROOT_CONSUMER_CONFIG_FILES.map(async (file) => ({ file, severity: (await ruleSeverityFor(config, file, ruleId)) ?? 'off' })))
 
         expect(severities).toStrictEqual(ROOT_CONSUMER_CONFIG_FILES.map((file) => ({ file, severity: 'off' })))
@@ -535,7 +535,7 @@ describe('buildEslintConfig', () => {
       it.each(waysATypedRuleIsTurnedOn)(
         'and gives each TS file outside every tsconfig neither when $how, while a file its path read as a glob would match gets both',
         async ({ lintRules, ruleId, severity, severityInATsFile }) => {
-          const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ tsFilesOutsideEveryTsconfig: TS_FILES_OUTSIDE_EVERY_TSCONFIG }))
+          const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ isOutsideEveryTsconfig: outsideEveryTsconfigAmong(TS_FILES_OUTSIDE_EVERY_TSCONFIG) }))
           const typedLinting = await Promise.all(
             [...TS_FILES_OUTSIDE_EVERY_TSCONFIG, FILE_THE_PATH_READ_AS_A_GLOB_MATCHES, ORDINARY_MTS_FILE].map(async (file) => ({
               file,
@@ -553,7 +553,7 @@ describe('buildEslintConfig', () => {
       )
 
       it('and still runs the untyped rules on each TS file outside every tsconfig', async () => {
-        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ tsFilesOutsideEveryTsconfig: TS_FILES_OUTSIDE_EVERY_TSCONFIG }))
+        const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts({ isOutsideEveryTsconfig: outsideEveryTsconfigAmong(TS_FILES_OUTSIDE_EVERY_TSCONFIG) }))
         const severities = await Promise.all(
           TS_FILES_OUTSIDE_EVERY_TSCONFIG.map(async (file) => ({ file, severity: await ruleSeverityFor(config, file, 'demo/strict') })),
         )
@@ -1065,7 +1065,7 @@ describe('buildEslintConfig', () => {
     const ourTypeInformation: TypeInformation = {
       from: 'ours',
       tsconfigRootDir: TSCONFIG_ROOT_DIR,
-      tsFilesOutsideEveryTsconfig: [STRAY_TS_FILE],
+      isOutsideEveryTsconfig: outsideEveryTsconfigAmong([STRAY_TS_FILE]),
     }
     const teamTypeInformation: TypeInformation = {
       from: 'the team',

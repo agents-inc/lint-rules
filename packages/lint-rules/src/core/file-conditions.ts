@@ -79,7 +79,7 @@ export function matchesEveryFile(condition: FilesCondition): boolean {
   return condition.some(({ all, none }) => all.length === 0 && none.length === 0)
 }
 
-export function globsOf(entry: FilesEntry): string[] {
+export function globsOf(entry: Readonly<FilesEntry>): string[] {
   return typeof entry === 'string' ? [entry] : [...entry]
 }
 

@@ -7,6 +7,8 @@ import type { defineLintRules } from '../index.ts'
 
 export type DefinedLintRules = ReturnType<typeof defineLintRules>
 
+const A_FILE_TEST = '(a file test)'
+
 type EslintBlockSettings = { readonly [key in 'name' | 'files' | 'ignores' | 'rules' | 'linterOptions']: Linter.Config[key] }
 
 /** What the agent build sets: never equal across two builds whole, as each makes its plugin objects anew. */
@@ -17,10 +19,24 @@ export function agentConfigsOf({ editorRulesets }: DefinedLintRules): AgentConfi
   return buildAgentConfigs(agentSettingsOf(editorRulesets.eslint))
 }
 
-/** The oxlint config and each ESLint block's name, files, ignores, rules and linterOptions: the keys left out hold objects each build makes anew. */
+/** The oxlint config and each ESLint block's name, files, ignores, rules and linterOptions: the keys left out hold objects each build makes anew, as does the tsconfig test in the files of a typed block, which is named instead. */
 export function agentBuildSettingsOf(defined: DefinedLintRules): AgentBuildSettings {
   const { oxlint, eslint } = agentConfigsOf(defined)
-  return { oxlint, eslint: eslint.map(({ name, files, ignores, rules, linterOptions }) => ({ name, files, ignores, rules, linterOptions })) }
+  return {
+    oxlint,
+    eslint: eslint.map(({ name, files, ignores, rules, linterOptions }) => ({ name, files: withEachFileTestNamed(files), ignores, rules, linterOptions })),
+  }
+}
+
+function withEachFileTestNamed(files: Readonly<Linter.Config['files']>): Linter.Config['files'] {
+  if (files === undefined) return undefined
+  return files.map((entry) => (typeof entry === 'string' ? entry : entry.map(namedWhereAFileTest)))
+}
+
+function namedWhereAFileTest(matcher: string): string {
+  // Parse boundary: ESLint's types give globs alone, and our typed blocks AND a function with them.
+  const given: unknown = matcher
+  return typeof given === 'function' ? A_FILE_TEST : matcher
 }
 
 /** Throws where there is none, as for a project whose package.json lists no oxlint. */

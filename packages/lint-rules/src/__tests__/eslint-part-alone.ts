@@ -23,7 +23,7 @@ export function eslintPartAlone(part: EslintPart, catalog: Catalog, registry: Es
       typeInformation: {
         from: 'ours',
         tsconfigRootDir: part.tsconfigRootDir,
-        tsFilesOutsideEveryTsconfig: projectFacts.tsFilesOutsideEveryTsconfig,
+        isOutsideEveryTsconfig: projectFacts.isOutsideEveryTsconfig,
       },
       twinsOnTsFiles: !part.usesOxlint,
     },

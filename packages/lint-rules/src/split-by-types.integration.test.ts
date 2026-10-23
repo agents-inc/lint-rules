@@ -12,7 +12,7 @@ import { buildEslintConfig } from './core/build-eslint-config.ts'
 import { editorPartsOf } from './core/editor-parts.ts'
 import type { LintRulesInput, TwoSetLintRulesInput } from './core/lint-rules-input.ts'
 import { mergeEslintPart } from './core/merge-eslint-config.ts'
-import { tsFilesOutsideEveryTsconfig } from './core/ts-files-outside-every-tsconfig.ts'
+import { projectFactsOf } from './core/project-facts.ts'
 import { eslintPluginRegistry } from './eslint-plugin-registry.ts'
 
 // Where an untyped rule and its typed partner are both on, the untyped one is off wherever our typed
@@ -123,7 +123,7 @@ const LINE_OF: Readonly<Record<string, number>> = {
 }
 
 function agentBuildOf(lintRules: LintRulesInput): Linter.Config[] {
-  return buildEslintConfig(lintRules, catalog, eslintPluginRegistry, buildProjectFacts({ tsFilesOutsideEveryTsconfig: tsFilesOutsideEveryTsconfig(PROJECT_DIR) }))
+  return buildEslintConfig(lintRules, catalog, eslintPluginRegistry, buildProjectFacts({ isOutsideEveryTsconfig: projectFactsOf(PROJECT_DIR).isOutsideEveryTsconfig }))
 }
 
 function rootedAtTheProject(lintRules: LintRulesInput): LintRulesInput {
