@@ -88,7 +88,8 @@ const OUR_RULES = {
 } as const satisfies OurRules
 
 // A rule of a plugin oxlint does not run by default: the merge lists react for it.
-const OUR_REACT_RULE = { 'react/jsx-key': 'error' } as const satisfies OurRules
+const OUR_REACT_RULE_ID = 'react/jsx-key'
+const OUR_REACT_RULE = { [OUR_REACT_RULE_ID]: 'error' } as const satisfies OurRules
 const OUR_REACT_FINDING = 'src/f.tsx:1 react(jsx-key)'
 const REACT_CATEGORY_FINDING = 'src/f.tsx:1 react(jsx-no-duplicate-props)'
 const REACT_FINDINGS = [OUR_REACT_FINDING, REACT_CATEGORY_FINDING]
@@ -115,6 +116,7 @@ const REACT_RULE = 'react/jsx-no-duplicate-props'
 const NO_UNDEF = 'eslint(no-undef)'
 const NO_DEBUGGER = 'eslint(no-debugger)'
 const EQEQEQ = 'eslint(eqeqeq)'
+const NO_DEBUGGER_FINDING = `src/a.ts:1 ${NO_DEBUGGER}`
 const NO_WARNING_COMMENTS = 'eslint(no-warning-comments)'
 const ARRAY_TYPE = 'typescript(array-type)'
 const MAX_LINES = 'eslint(max-lines)'
@@ -395,6 +397,19 @@ describe('a plugin the merge lists for a rule of ours, which the team config doe
       teamAlone: [],
       merged: [OUR_REACT_FINDING],
     })
+  })
+
+  // The team's line makes the rule the team's though oxlint skips it (owner 2026-10-22): ours is dropped, and the
+  // line stays skipped, as the case above pins, until the team lists react.
+  it.each(['off', 'error'] as const)("runs no rule of ours the team's config states %s where oxlint skips the statement, and ours of every other", (severity) => {
+    const signals = [OUR_REACT_FINDING, NO_DEBUGGER_FINDING]
+    const team = buildTeamOxlintConfig({ categories: { correctness: 'off' }, rules: { [OUR_REACT_RULE_ID]: severity } })
+    const { teamAlone, merged } = findingsWithTheTeamAloneAndMerged(
+      { file: `react-our-rule-stated-${severity}.oxlint.config.mts`, config: team },
+      { ...OUR_REACT_RULE, 'no-debugger': 'error' },
+    )
+
+    expect({ teamAlone: among(teamAlone, signals), merged: among(merged, signals) }).toStrictEqual({ teamAlone: [], merged: [NO_DEBUGGER_FINDING] })
   })
 })
 

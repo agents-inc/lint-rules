@@ -121,6 +121,13 @@ export const TEAMS_OXLINT_ARRAY_TYPE: OxlintConfig = {
   rules: { 'typescript/array-type': ['error', { default: 'generic' }] },
 }
 
+/** typescript is listed nowhere, so oxlint skips the line (measured, oxlint 1.87). */
+export const TEAMS_OXLINT_ARRAY_TYPE_IN_A_LINE_IT_SKIPS: OxlintConfig = {
+  plugins: ['unicorn'],
+  categories: { correctness: 'off' },
+  rules: { 'typescript/array-type': 'error' },
+}
+
 export function teamsOxlintStyleCategoryListing(plugins: NonNullable<OxlintConfig['plugins']>): OxlintConfig {
   return { plugins, categories: { correctness: 'off', style: 'warn' } }
 }

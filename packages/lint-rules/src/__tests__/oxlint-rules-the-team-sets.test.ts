@@ -1,5 +1,5 @@
 import { catalog } from '@workspace/rule-data'
-import type { OxlintConfig } from 'oxlint'
+import type { OxlintConfig, OxlintOverride } from 'oxlint'
 import { describe, expect, it } from 'vitest'
 import { buildTeamOxlintrcExtending } from './factories/shape-factories.ts'
 import { buildTeamOxlintConfig } from './factories/team-config-factories.ts'
@@ -10,7 +10,6 @@ import { ruleIdsTheTeamsOxlintConfigSets } from './oxlint-rules-the-team-sets.ts
 
 const JSX_KEY = 'react/jsx-key'
 const NO_DEBUGGER = 'no-debugger'
-const CONSISTENT_TYPE_IMPORTS = '@typescript-eslint/consistent-type-imports'
 const ARRAY_TYPE = '@typescript-eslint/array-type'
 const PREFER_INCLUDES = 'unicorn/prefer-includes'
 const FLOATING_PROMISES = '@typescript-eslint/no-floating-promises'
@@ -32,35 +31,32 @@ describe('ruleIdsTheTeamsOxlintConfigSets, given statements at a root', () => {
     expect(ruleIdsTheTeamsOxlintConfigSets(team, catalog)).toStrictEqual([JSX_KEY])
   })
 
-  it('sets no rule the root states of a plugin the root does not list, which oxlint ignores, and a core rule, which always runs', () => {
-    const team = buildTeamOxlintConfig({ plugins: ['oxc'], categories: { correctness: 'off' }, rules: { 'react/jsx-key': 'warn', 'no-debugger': 'off' } })
+  // The team's line counts though oxlint skips it (owner 2026-10-22, O5).
+  it('sets a rule the root states of a plugin the root does not list, which oxlint skips, at any severity, and a core rule, which always runs', () => {
+    const team = buildTeamOxlintConfig({ plugins: ['oxc'], categories: { correctness: 'off' }, rules: { 'react/jsx-key': 'off', 'no-debugger': 'off' } })
 
-    expect(ruleIdsTheTeamsOxlintConfigSets(team, catalog)).toStrictEqual([NO_DEBUGGER])
+    expect(ruleIdsTheTeamsOxlintConfigSets(team, catalog)).toStrictEqual([NO_DEBUGGER, JSX_KEY])
   })
 
+  // A statement sets its rule whatever plugins are listed, so a category is what shows the plugins read.
   it.each([
     {
       how: 'leaves plugins out everywhere',
-      team: buildTeamOxlintConfig({ categories: { correctness: 'off' }, rules: { 'typescript/consistent-type-imports': 'warn' } }),
-      ruleIds: [CONSISTENT_TYPE_IMPORTS],
+      team: buildTeamOxlintConfig({ categories: { correctness: 'off', style: 'warn' } }),
+      ruleIds: [ARRAY_TYPE],
     },
     {
       how: 'lists [oxc] and extends a config leaving plugins out, which adds the defaults',
-      team: buildTeamOxlintConfig({ plugins: ['oxc'], categories: { correctness: 'off' }, extends: [{}], rules: { 'typescript/consistent-type-imports': 'warn' } }),
-      ruleIds: [CONSISTENT_TYPE_IMPORTS],
+      team: buildTeamOxlintConfig({ plugins: ['oxc'], categories: { correctness: 'off', style: 'warn' }, extends: [{}] }),
+      ruleIds: [ARRAY_TYPE],
     },
     {
       how: 'lists [oxc] and extends a config listing []',
-      team: buildTeamOxlintConfig({
-        plugins: ['oxc'],
-        categories: { correctness: 'off' },
-        extends: [{ plugins: [] }],
-        rules: { 'typescript/consistent-type-imports': 'warn' },
-      }),
+      team: buildTeamOxlintConfig({ plugins: ['oxc'], categories: { correctness: 'off', style: 'warn' }, extends: [{ plugins: [] }] }),
       ruleIds: [],
     },
   ])("reads oxlint's default plugins where the root $how", ({ team, ruleIds }) => {
-    expect(ruleIdsTheTeamsOxlintConfigSets(team, catalog)).toStrictEqual(ruleIds)
+    expect(setAmong(team, [ARRAY_TYPE])).toStrictEqual(ruleIds)
   })
 
   it('sets a rule the root of a config it extends states, of a plugin the merged root lists', () => {
@@ -91,17 +87,19 @@ describe('ruleIdsTheTeamsOxlintConfigSets, given statements in overrides', () =>
     expect(ruleIdsTheTeamsOxlintConfigSets(team, catalog)).toStrictEqual([JSX_KEY])
   })
 
-  it('sets no rule an override states of a plugin only another override lists, which oxlint ignores', () => {
-    const team = buildTeamOxlintConfig({
-      plugins: [],
-      categories: { correctness: 'off' },
+  it.each<{ readonly where: string; readonly overrides: OxlintOverride[] }>([
+    {
+      where: 'only another override lists',
       overrides: [
         { files: ['**/*.tsx'], plugins: ['react'] },
         { files: ['**/*.tsx'], rules: { 'react/jsx-key': 'warn' } },
       ],
-    })
+    },
+    { where: 'no root nor override lists', overrides: [{ files: ['**/*.tsx'], rules: { 'react/jsx-key': 'off' } }] },
+  ])('sets a rule an override states of a plugin $where, which oxlint skips', ({ overrides }) => {
+    const team = buildTeamOxlintConfig({ plugins: [], categories: { correctness: 'off' }, overrides })
 
-    expect(ruleIdsTheTeamsOxlintConfigSets(team, catalog)).toStrictEqual([])
+    expect(ruleIdsTheTeamsOxlintConfigSets(team, catalog)).toStrictEqual([JSX_KEY])
   })
 
   it('sets a rule an override of a config it extends states', () => {
@@ -190,13 +188,15 @@ describe('ruleIdsTheTeamsOxlintConfigSets, given a JS plugin', () => {
 })
 
 describe('ruleIdsTheTeamsOxlintConfigSets, given a config extended by path', () => {
-  const team = buildTeamOxlintrcExtending([PATH_BASE], { plugins: ['oxc'], categories: { correctness: 'off' }, rules: { 'typescript/consistent-type-imports': 'warn' } })
+  const team = buildTeamOxlintrcExtending([PATH_BASE], { plugins: ['oxc'], categories: { correctness: 'off', style: 'warn' } })
 
   it.each([
-    { base: 'leaves plugins out, which adds the defaults', config: buildTeamOxlintConfig(), ruleIds: [CONSISTENT_TYPE_IMPORTS] },
+    { base: 'leaves plugins out, which adds the defaults', config: buildTeamOxlintConfig(), ruleIds: [ARRAY_TYPE] },
     { base: 'lists []', config: buildTeamOxlintConfig({ plugins: [] }), ruleIds: [] },
   ])('reads the plugins of the config at the path, where it $base', ({ config, ruleIds }) => {
-    expect(ruleIdsTheTeamsOxlintConfigSets(team, catalog, new Map([[PATH_BASE, config]]))).toStrictEqual(ruleIds)
+    const set = ruleIdsTheTeamsOxlintConfigSets(team, catalog, new Map([[PATH_BASE, config]]))
+
+    expect(set.filter((id) => id === ARRAY_TYPE)).toStrictEqual(ruleIds)
   })
 
   it('refuses a path it was not given the config of', () => {

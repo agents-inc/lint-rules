@@ -9,7 +9,7 @@ import type { OverrideFiles } from './oxlint-override-files.ts'
 
 // How oxlint 1.87 resolves a config (crates/oxc_linter/src/config), checked by merge-oxlint-config.differential.integration.test.ts:
 // - An extended config merges in: `plugins` lists unite, and one left out adds oxlint's default plugins.
-// - A root or override statement counts only for a plugin listed at the root or in that override.
+// - A root or override statement applies only for a plugin listed at the root or in that override; oxlint skips the rest.
 // - A rule key is `prefix/name`, or a bare name meaning the first rule so named; an unknown prefix is a JS plugin's.
 
 /** An object in a TS config, a path in a JSON one. */
@@ -94,39 +94,34 @@ const OXLINT_PLUGINS_IN_RULE_ORDER: readonly OxlintPlugin[] = [
 
 const OFF_SEVERITIES: ReadonlySet<unknown> = new Set(['off', 'allow', 0])
 
-/** Every rule the team's oxlint config sets, sorted: by a statement oxlint counts, by a category it writes on (nursery included, measured 1.87), or by a key under a JS plugin it names. oxlint's own default `correctness: warn` sets none. */
+/** Every rule the team's oxlint config sets, sorted: by a statement anywhere, by a category it writes on (nursery included, measured 1.87), or by a key under a JS plugin it names. oxlint's own default `correctness: warn` sets none. */
 export function ruleIdsTheTeamsOxlintConfigSets(theirs: OxlintConfig, catalog: Catalog): string[] {
   const bySpelling = oxlintRulesBySpelling(catalog)
   const team = teamResolutionOf(theirs, bySpelling)
   const configs = configsInOxlintOrder(theirs)
   const setByStatementsOrCategories = [
-    ...rulesItsStatementsSet(configs, team, bySpelling),
+    ...rulesItsStatementsSet(configs, bySpelling),
     ...rulesItsCategoriesRun(resolvedCategoriesOf(theirs), team, runsTypeAwareRules(theirs), catalog),
   ]
   return sortedUnique([...setByStatementsOrCategories.map(({ id }) => id), ...ruleIdsKeyedUnderItsJsPlugins(configs, catalog)])
 }
 
-/** At a root, of a plugin listed there; in an override, of one listed there or in it. */
-function rulesItsStatementsSet(configs: readonly OxlintConfig[], team: TeamResolution, bySpelling: OxlintRulesBySpelling): OxlintRule[] {
-  const countedAtTheRoot = pluginsCountedAtTheRoot(team)
-  return configs.flatMap((config) => [
-    ...rulesCountedWhere(countedAtTheRoot, rulesOf(config), bySpelling),
-    ...overridesOf(config).flatMap((override) => rulesCountedWhere(pluginsCountedIn(override, team), rulesOf(override), bySpelling)),
-  ])
+/** At any severity, at a root or in an override, including a statement oxlint skips as its plugin is listed neither there nor at the root (owner 2026-10-22). */
+function rulesItsStatementsSet(configs: readonly OxlintConfig[], bySpelling: OxlintRulesBySpelling): OxlintRule[] {
+  return [...configs, ...overridesIn(configs)].flatMap((statingRules) => rulesKeyedIn(rulesOf(statingRules), bySpelling))
 }
 
-function rulesCountedWhere(pluginsRunning: ReadonlySet<OxlintPlugin>, rules: DummyRuleMap, bySpelling: OxlintRulesBySpelling): OxlintRule[] {
-  return Object.keys(rules)
-    .flatMap((key) => oxlintRulesKeyed(key, bySpelling))
-    .filter((rule) => pluginsRunning.has(pluginOf(rule)))
+function rulesKeyedIn(rules: Readonly<DummyRuleMap>, bySpelling: OxlintRulesBySpelling): OxlintRule[] {
+  return Object.keys(rules).flatMap((key) => oxlintRulesKeyed(key, bySpelling))
 }
 
-function pluginsCountedAtTheRoot({ rootPlugins }: TeamResolution): ReadonlySet<OxlintPlugin> {
+function pluginsAppliedAtTheRoot({ rootPlugins }: TeamResolution): ReadonlySet<OxlintPlugin> {
   return new Set([ALWAYS_RUN, ...rootPlugins])
 }
 
-export function pluginsCountedIn(override: OxlintOverride, team: TeamResolution): ReadonlySet<OxlintPlugin> {
-  return new Set([...pluginsCountedAtTheRoot(team), ...pluginsListedBy(override)])
+/** The plugins whose statements oxlint applies in the override. */
+export function pluginsAppliedIn(override: Readonly<OxlintOverride>, team: TeamResolution): ReadonlySet<OxlintPlugin> {
+  return new Set([...pluginsAppliedAtTheRoot(team), ...pluginsListedBy(override)])
 }
 
 /** A type-aware rule counts only where the config's options turn those on. */
@@ -185,8 +180,8 @@ function rootPluginsOf(theirs: OxlintConfig): ReadonlySet<OxlintPlugin> {
   return new Set(listedOrDefault(resolvedPluginsOf(theirs)).filter((plugin) => plugin !== ALWAYS_RUN))
 }
 
-function rulesStatedAtTheRootOf({ rules = {} }: OxlintConfig, bySpelling: OxlintRulesBySpelling): OxlintRule[] {
-  return Object.keys(rules).flatMap((key) => oxlintRulesKeyed(key, bySpelling))
+function rulesStatedAtTheRootOf(config: Readonly<OxlintConfig>, bySpelling: OxlintRulesBySpelling): OxlintRule[] {
+  return rulesKeyedIn(rulesOf(config), bySpelling)
 }
 
 /** Merged with each config it extends, last first (Oxlintrc::merge). Undefined where none lists any. */

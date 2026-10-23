@@ -23,7 +23,7 @@ import {
   type OxlintRulesBySpelling,
   oxlintRuleSpelled,
   pluginOf,
-  pluginsCountedIn,
+  pluginsAppliedIn,
   type RuleEntry,
   ruleIdsTheTeamsOxlintConfigSets,
   type TeamResolution,
@@ -327,7 +327,7 @@ function orderInsensitiveKeyOf(values: readonly string[]): string {
   return JSON.stringify(sortedUnique([...values]))
 }
 
-/** Drops override statements oxlint ignores for the team (a rule whose plugin neither root nor override lists), since listing every plugin at the root would make them count. */
+/** Drops override statements oxlint skips for the team (a rule whose plugin neither root nor override lists), since listing every plugin at the root would make them run. */
 function withIgnoredStatementsDropped(config: OxlintConfig, team: TeamResolution, bySpelling: OxlintRulesBySpelling): OxlintConfig {
   const { overrides, extends: extended } = config
   return {
@@ -356,13 +356,13 @@ function overridesWithIgnoredStatementsDropped(
 function overrideWithIgnoredStatementsDropped(override: OxlintOverride, team: TeamResolution, bySpelling: OxlintRulesBySpelling): OxlintOverride {
   const { rules } = override
   if (rules === undefined) return override
-  const countedHere = pluginsCountedIn(override, team)
-  const counted = Object.entries(rules).filter(([key]) => isCountedWhere(countedHere, key, bySpelling))
-  return counted.length === Object.keys(rules).length ? override : { ...override, rules: Object.fromEntries(counted) }
+  const appliedHere = pluginsAppliedIn(override, team)
+  const applied = Object.entries(rules).filter(([key]) => isAppliedWhere(appliedHere, key, bySpelling))
+  return applied.length === Object.keys(rules).length ? override : { ...override, rules: Object.fromEntries(applied) }
 }
 
-/** A JS plugin's rule always counts, as no plugin listing touches it. */
-function isCountedWhere(pluginsRunning: ReadonlySet<OxlintPlugin>, key: string, bySpelling: OxlintRulesBySpelling): boolean {
+/** A JS plugin's rule always applies, as no plugin listing touches it. */
+function isAppliedWhere(pluginsRunning: ReadonlySet<OxlintPlugin>, key: string, bySpelling: OxlintRulesBySpelling): boolean {
   const rule = oxlintRuleKeyed(key, bySpelling)
   return rule === undefined || pluginsRunning.has(pluginOf(rule))
 }

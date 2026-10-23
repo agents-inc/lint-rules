@@ -351,8 +351,8 @@ describe('mergeOxlintConfig, given a team config leaving out plugins', () => {
   })
 })
 
-// The team's setting of a rule our part states, wherever oxlint counts it, makes the rule the team's in
-// every file; a statement oxlint ignores for the team changes nothing.
+// The team's statement of a rule our part states makes the rule the team's in every file, a line oxlint
+// skips for the team included (owner 2026-10-22).
 describe('mergeOxlintConfig, given a team config stating a rule our part runs', () => {
   const ours = { rules: { [JSX_KEY]: 'error' } } satisfies SharedFields
 
@@ -371,10 +371,23 @@ describe('mergeOxlintConfig, given a team config stating a rule our part runs', 
     expect(statementsOf(overridesInLine(config)).filter(([key]) => ruleIdKeyedBy(key) === JSX_KEY)).toStrictEqual([])
   })
 
-  it("runs ours of it where the team's root states it of a plugin the root does not list, which oxlint ignores", () => {
-    const config = mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, ours, buildTeamOxlintConfig({ plugins: ['oxc'], rules: { [JSX_KEY]: 'warn' } }))
+  // Its plugin is listed neither at the root nor in the override: nothing of ours runs it, and the team's line,
+  // dropped from an override, stays skipped.
+  it.each([
+    { where: 'at its root, of a plugin the root does not list', team: buildTeamOxlintConfig({ plugins: ['oxc'], rules: { [JSX_KEY]: 'warn' } }) },
+    {
+      where: 'in an override of its own',
+      team: buildTeamOxlintConfig({ plugins: [], overrides: [{ files: TEST_TSX_FILES, rules: { [JSX_KEY]: 'error' } }] }),
+    },
+    {
+      where: 'in an override of a config it extends',
+      team: buildTeamOxlintConfig({ plugins: [], extends: [{ plugins: [], overrides: [{ files: TEST_TSX_FILES, rules: { [JSX_KEY]: 'error' } }] }] }),
+    },
+  ])('turns it on in no merged override, where the team states it $where, a line oxlint skips', ({ team }) => {
+    const config = mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, ours, team)
+    const turningItOn = statementsOf(overridesInLine(config)).filter(([key, entry]) => ruleIdKeyedBy(key) === JSX_KEY && severityOfOxlintEntry(entry) !== 'off')
 
-    expect(oxlintConfigForFile(config, 'src/f.tsx').rules[JSX_KEY]).toStrictEqual(['error'])
+    expect(turningItOn).toStrictEqual([])
   })
 
   // Elsewhere, no entry of ours. Where the team lists react in the override alone, the merge lists it at
@@ -406,26 +419,6 @@ describe('mergeOxlintConfig, given a team config stating a rule our part runs', 
       inTheTeamsFiles: oxlintConfigForFile(config, 'src/f.test.tsx').rules[JSX_KEY],
       elsewhere: oxlintConfigForFile(config, 'src/f.tsx').rules[JSX_KEY],
     }).toStrictEqual({ inTheTeamsFiles: theTeams, elsewhere })
-  })
-
-  it('gives it our entry where an override of the team states it of a plugin neither the root nor the override lists, which oxlint ignores', () => {
-    const config = mergedEditorOxlintConfig(
-      PROJECT_WITH_OXLINT,
-      ours,
-      buildTeamOxlintConfig({ plugins: [], overrides: [{ files: TEST_TSX_FILES, rules: { [JSX_KEY]: 'off' } }] }),
-    )
-
-    expect(oxlintConfigForFile(config, 'src/f.test.tsx').rules[JSX_KEY]).toStrictEqual(['error'])
-  })
-
-  it('gives it our entry where an override of a config the team extends states it of a plugin no root nor the override lists, which oxlint ignores', () => {
-    const config = mergedEditorOxlintConfig(
-      PROJECT_WITH_OXLINT,
-      ours,
-      buildTeamOxlintConfig({ plugins: [], extends: [{ plugins: [], overrides: [{ files: TEST_TSX_FILES, rules: { [JSX_KEY]: 'off' } }] }] }),
-    )
-
-    expect(oxlintConfigForFile(config, 'src/f.test.tsx').rules[JSX_KEY]).toStrictEqual(['error'])
   })
 })
 

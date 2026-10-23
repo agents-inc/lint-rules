@@ -1,14 +1,14 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
 import inventory from '@workspace/rule-data/generated/inventory.json' with { type: 'json' }
-import type { OxlintConfig, OxlintOverride } from 'oxlint'
+import type { OxlintConfig } from 'oxlint'
 import { oxlintPluginListedAs, oxlintRuleKeyedBy } from './oxlint-rule-keys.ts'
 
 // When the team's oxlint config sets a rule: anywhere, in any files, at any severity. A model of oxlint 1.87's
 // config resolution, written apart from the merge (oxlintrc.rs, rules.rs, config_builder.rs, config_store.rs):
 // - A root merges with every config it extends: `plugins` lists unite, and one left out adds oxlint's defaults.
 //   Categories merge key by key, the extending config's winning; oxlint's own `correctness: warn` sets no rule.
-// - A root statement counts where its plugin is eslint or listed at the root; an override's where it is listed
-//   at the root or in that override.
+// - A statement sets its rule wherever it stands, at a root or in an override, at any severity, though oxlint skips
+//   one whose plugin is listed neither at the root nor in that override (owner 2026-10-22).
 // - A category on at the root runs its rules whose plugin is eslint or listed anywhere, nursery included
 //   (measured: `nursery: 'warn'` runs import/named), type-aware ones only with `options.typeAware`.
 // - A key under a JS plugin's prefix sets the rule of ours that key is an ESLint name of.
@@ -46,10 +46,7 @@ export function ruleIdsTheTeamsOxlintConfigSets(
   const configs = configsInOxlintsOrder(team, extendedByPath)
   const rootPlugins = new Set([ALWAYS_RUNS, ...resolvedRootPluginsOf(team, extendedByPath)])
   const overrides = configs.flatMap(({ overrides: ofTheConfig = [] }) => ofTheConfig)
-  const byStatement = [
-    ...configs.flatMap(({ rules = {} }) => rulesCountedWhere(rootPlugins, Object.keys(rules), catalog)),
-    ...overrides.flatMap((override) => rulesCountedIn(override, rootPlugins, catalog)),
-  ]
+  const byStatement = [...configs, ...overrides].flatMap(({ rules = {} }) => rulesKeyed(Object.keys(rules), catalog))
   const pluginsListedAnywhere = new Set([...rootPlugins, ...overrides.flatMap(({ plugins = [] }) => plugins.map(oxlintPluginListedAs))])
   const byCategory = rulesItsCategoriesRun(resolvedCategoriesOf(team, extendedByPath), pluginsListedAnywhere, typeAwareRulesRun(team), catalog)
   const byJsPlugin = ruleIdsKeyedUnderJsPlugins(configs, catalog)
@@ -106,16 +103,11 @@ function typeAwareRulesRun({ options }: OxlintConfig): boolean {
   return options !== undefined && options.typeAware === true
 }
 
-/** The rules an override's statements count for: of a plugin the root or the override itself lists. */
-function rulesCountedIn({ rules = {}, plugins = [] }: OxlintOverride, rootPlugins: ReadonlySet<string>, catalog: Catalog): OxlintRule[] {
-  return rulesCountedWhere(new Set([...rootPlugins, ...plugins.map(oxlintPluginListedAs)]), Object.keys(rules), catalog)
-}
-
-/** The rules keyed that are of a plugin running where the statements are: a JS plugin's key names none. */
-function rulesCountedWhere(pluginsRunning: ReadonlySet<string>, keys: readonly string[], catalog: Catalog): OxlintRule[] {
+/** The rules of oxlint's the keys name: a JS plugin's key names none. */
+function rulesKeyed(keys: readonly string[], catalog: Readonly<Catalog>): OxlintRule[] {
   return keys.flatMap((key) => {
     const rule = oxlintRuleKeyedBy(key, catalog)
-    return rule !== undefined && pluginsRunning.has(rule.oxlintPlugin) ? [rule] : []
+    return rule === undefined ? [] : [rule]
   })
 }
 

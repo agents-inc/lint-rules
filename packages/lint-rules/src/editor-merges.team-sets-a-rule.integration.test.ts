@@ -35,6 +35,7 @@ import {
   TEAMS_ESLINT_WARNING_COMMENTS,
   TEAMS_JSON_OXLINT_CONFIG,
   TEAMS_OXLINT_ARRAY_TYPE,
+  TEAMS_OXLINT_ARRAY_TYPE_IN_A_LINE_IT_SKIPS,
   TEAMS_OXLINT_DEBUGGER_OFF_IN_LEGACY,
   TEAMS_OXLINT_EXTENDING_AN_OBJECT_TURNING_NO_VAR_ON,
   TEAMS_OXLINT_LEAVING_EVERY_KEY_OUT,
@@ -140,6 +141,21 @@ describe("a rule the team's oxlint config alone sets, which ESLint runs for us: 
   it("is reported by oxlint alone, under the team's options; and no-var, which the team sets nowhere, once, by ESLint", () => {
     expect(findingsOf(runs(), [SOURCE_FILE], [ARRAY_TYPE, NO_VAR])).toStrictEqual({
       [SOURCE_FILE]: { '@typescript-eslint/array-type': ['src/a.ts:2 typescript(array-type)'], 'no-var': ['src/a.ts:3 no-var'] },
+    })
+  })
+})
+
+// The line makes the rule the team's though oxlint skips it (owner 2026-10-22), so both merges drop ours.
+describe("a rule the team's oxlint config states in a line oxlint skips, its plugin listed nowhere, which ESLint runs for us: array-type", () => {
+  const runs = setUpConsumerCliRuns(
+    projectListingOxlint(OURS_ARRAY_TYPE_AND_NO_VAR, { eslintBlockSources: [], oxlint: TEAMS_OXLINT_ARRAY_TYPE_IN_A_LINE_IT_SKIPS }, { [SOURCE_FILE]: ARRAY_TYPE_SOURCE }),
+    CONSUMER_CONFIG_FILES.oxlint,
+    [TYPESCRIPT_ESLINT],
+  )
+
+  it("is reported by nobody, as the team's configs alone report it; and no-var, which the team sets nowhere, once, by ESLint", () => {
+    expect(findingsOf(runs(), [SOURCE_FILE], [ARRAY_TYPE, NO_VAR])).toStrictEqual({
+      [SOURCE_FILE]: { '@typescript-eslint/array-type': [], 'no-var': ['src/a.ts:3 no-var'] },
     })
   })
 })
