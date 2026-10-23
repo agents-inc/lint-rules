@@ -1,7 +1,5 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
-
-const PLUGIN_SEPARATOR = '/'
-const NOT_FOUND = -1
+import { ruleNameOf } from '@workspace/rule-data/rule-id-parts'
 
 /** As the catalog records the oxlint we install: throws where it has none. */
 export function oxlintRuleWithId(ruleId: string, catalog: Catalog): OxlintRule {
@@ -16,6 +14,5 @@ export function oxlintCodeOf(ruleId: string, catalog: Catalog): string {
 }
 
 export function oxlintCodeOfRule({ oxlintName, oxlintPlugin }: OxlintRule): string {
-  const separator = oxlintName.indexOf(PLUGIN_SEPARATOR)
-  return `${oxlintPlugin}(${separator === NOT_FOUND ? oxlintName : oxlintName.slice(separator + 1)})`
+  return `${oxlintPlugin}(${ruleNameOf(oxlintName)})`
 }
