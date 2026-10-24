@@ -8,23 +8,31 @@ import {
   buildPluginWithoutRules,
   buildRulesPlugin,
 } from './__tests__/factories/eslint-plugin-factories.ts'
+import { type HeldPlugin, heldPluginsOutOfPlace } from './__tests__/held-plugins.ts'
 import { eslintPlugins } from './eslint-plugins.ts'
 import { eslintPluginPackageNames } from './generate/eslint-plugin-package-names.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
 
 const PACKAGE_NAME_BY_PREFIX = {
+  '@eslint-community/eslint-comments': '@eslint-community/eslint-plugin-eslint-comments',
   '@eslint-react': '@eslint-react/eslint-plugin',
+  '@tanstack/query': '@tanstack/eslint-plugin-query',
+  '@tanstack/router': '@tanstack/eslint-plugin-router',
   '@typescript-eslint': 'typescript-eslint',
   'check-file': 'eslint-plugin-check-file',
   'css-modules': 'eslint-plugin-css-modules',
+  e18e: '@e18e/eslint-plugin',
   functional: 'eslint-plugin-functional',
   house: '@workspace/eslint-plugin-house',
+  'hydration-proof': 'eslint-plugin-hydration-proof',
   'import-x': 'eslint-plugin-import-x',
+  'jest-dom': 'eslint-plugin-jest-dom',
   // The fork, which accepts ESLint 10, registered under the original's prefix.
   'jsx-a11y': 'eslint-plugin-jsx-a11y-x',
   n: 'eslint-plugin-n',
   'no-secrets': 'eslint-plugin-no-secrets',
   perfectionist: 'eslint-plugin-perfectionist',
+  playwright: 'eslint-plugin-playwright',
   promise: 'eslint-plugin-promise',
   react: 'eslint-plugin-react',
   'react-hook-form': 'eslint-plugin-react-hook-form',
@@ -32,12 +40,31 @@ const PACKAGE_NAME_BY_PREFIX = {
   'react-perf': 'eslint-plugin-react-perf',
   'react-you-might-not-need-an-effect': 'eslint-plugin-react-you-might-not-need-an-effect',
   regexp: 'eslint-plugin-regexp',
+  shadcn: '@shadcn/lint',
   sonarjs: 'eslint-plugin-sonarjs',
   storybook: 'eslint-plugin-storybook',
   'testing-library': 'eslint-plugin-testing-library',
   unicorn: 'eslint-plugin-unicorn',
   vitest: '@vitest/eslint-plugin',
+  zod: 'eslint-plugin-zod',
 }
+
+// Checked at load beside house, each the default export of its package.
+const CHECKED_BESIDE_HOUSE: ReadonlyArray<keyof typeof PACKAGE_NAME_BY_PREFIX> = [
+  '@tanstack/query',
+  '@tanstack/router',
+  'css-modules',
+  'jsx-a11y',
+  'promise',
+  'react-hook-form',
+  'react-hooks',
+  'react-perf',
+  'storybook',
+]
+
+const HELD_PLUGINS: readonly HeldPlugin[] = [
+  { heldBy: 'q-lint-dep-drizzle-advisory', prefix: 'drizzle-security', packageName: 'eslint-plugin-drizzle-security' },
+]
 
 const { dependencies: ruleDataDependencies }: { dependencies: Readonly<Record<string, string>> } = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
@@ -64,20 +91,28 @@ describe('eslintPlugins, the runtime registry', () => {
   })
 })
 
+async function registryLoadedWith(packageName: string, moduleExports: Readonly<Record<string, unknown>>): Promise<typeof import('./eslint-plugins.ts')> {
+  vi.resetModules()
+  vi.doMock(packageName, () => moduleExports)
+  return import('./eslint-plugins.ts')
+}
+
 // house is one of the plugins checked at load, and the one whose package name is private: an error
 // naming the package would put `@workspace/` into the published build.
 describe('the load-time check on a plugin whose types do not fit ESLint.Plugin', () => {
   const HOUSE_PACKAGE = '@workspace/eslint-plugin-house'
+  const checkedBesideHouse = CHECKED_BESIDE_HOUSE.map((prefix) => ({ prefix, packageName: PACKAGE_NAME_BY_PREFIX[prefix] }))
+  const mockedPackages = [HOUSE_PACKAGE, ...checkedBesideHouse.map(({ packageName }) => packageName)]
 
   afterEach(() => {
-    vi.doUnmock(HOUSE_PACKAGE)
+    for (const packageName of mockedPackages) {
+      vi.doUnmock(packageName)
+    }
     vi.resetModules()
   })
 
   async function registryLoadedWithHouseExporting(housePlugin: unknown): Promise<typeof import('./eslint-plugins.ts')> {
-    vi.resetModules()
-    vi.doMock(HOUSE_PACKAGE, () => ({ housePlugin }))
-    return import('./eslint-plugins.ts')
+    return registryLoadedWith(HOUSE_PACKAGE, { housePlugin })
   }
 
   it('registers a plugin of rules under its prefix, unchanged', async () => {
@@ -99,6 +134,12 @@ describe('the load-time check on a plugin whose types do not fit ESLint.Plugin',
       )
     },
   )
+
+  it.each(checkedBesideHouse)('refuses to load when $packageName exports no rules, naming the prefix $prefix', async ({ prefix, packageName }) => {
+    await expect(registryLoadedWith(packageName, { default: buildPluginWithoutRules() })).rejects.toThrow(
+      new Error(`the plugin registered as ${prefix} does not export an ESLint plugin with rules`),
+    )
+  })
 })
 
 describe('eslintPluginPackageNames, the npm package behind each prefix', () => {
@@ -119,5 +160,13 @@ describe('eslintPluginPackageNames, the npm package behind each prefix', () => {
     )
 
     expect(inventory.versions.eslintPlugins).toStrictEqual(installedVersionByPrefix)
+  })
+})
+
+describe("a plugin left out for now by the owner's answer to a question card", () => {
+  it('is installed nowhere rule-data installs a plugin, and names the question card whose answer left it out', () => {
+    const installs = { registry: eslintPlugins, packageNames: eslintPluginPackageNames, dependencies: ruleDataDependencies }
+
+    expect(heldPluginsOutOfPlace(HELD_PLUGINS, installs)).toStrictEqual([])
   })
 })

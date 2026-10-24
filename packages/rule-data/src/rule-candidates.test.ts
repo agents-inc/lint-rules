@@ -99,11 +99,11 @@ describe('the rules we do not ship, data/rule-candidates.json', () => {
 
   describe('pinned entries', () => {
     // Too early: a value a design needs stays custom until a token exists for it.
-    it('considers shadcn/no-arbitrary-values, whose plugin we do not install, so it is no RuleId', () => {
+    it('considers shadcn/no-arbitrary-values, a RuleId of the plugin we install, without shipping it', () => {
       expect({
         status: candidateFor('shadcn/no-arbitrary-values').status,
         isRuleId: catalog.rules.has('shadcn/no-arbitrary-values'),
-      }).toStrictEqual({ status: 'considering', isRuleId: false })
+      }).toStrictEqual({ status: 'considering', isRuleId: true })
     })
 
     // Shipped off until a category for the newest language features, enabled by Node version, exists.
