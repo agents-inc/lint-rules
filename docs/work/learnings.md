@@ -34,9 +34,14 @@ Facts found while working. Terse. Full reports (session scratch, may vanish):
 ## Monorepo (from ~/dev/cli)
 - Private `@workspace/*` packages export `./src/*.ts`, no build; published package bundles them (tsdown `dts: { eager: true }`; tsup breaks on TS 6).
 - Factories: `build<T>(overrides?: Partial<T>)`, overrides last; asserted-on fields have no default.
+- Correction (2026-10-24, fix-verify round): release.md said `bun install` after the version bump makes `bun.lock`
+  record it, and the release commit carried `bun.lock`. bun 1.2.6 leaves `bun.lock` unchanged after a bump alone
+  (it records `0.0.0` for `@agents-inc/lint-rules`), and none of the three release commits changed it; both
+  clauses were deleted.
 
 ## Slice 1 build
 - The agents' Stop hook (generated into `.claude/agents/*.md` by agents-inc) runs the root `typecheck` on every stop. Tests-first makes it red by design (tests import modules not yet written); testers hit it 8× each.
+  Correction (2026-10-24): agents-inc no longer generates it; `~/dev/cli` commit 208ed593 makes compile write only the hooks a sub-agent declares ([questions](questions.md) #9).
 - ESLint 10.12: `off` for an unknown rule/plugin is accepted; a second, different plugin object under one name throws `Cannot redefine plugin`; calculated config fills default options and keeps earlier options under a bare severity.
 - typescript-eslint 8.71.1 rule types do not fit ESLint 10's `ESLint.Plugin` without a cast (rule context still declares removed methods).
 - tsdown inlines `@typescript-eslint/utils` unless it is a dependency of lint-rules (house imports it at runtime).
@@ -141,7 +146,7 @@ Facts found while working. Terse. Full reports (session scratch, may vanish):
 
 ## Engines as our dependencies, banner fix, Stryker (2026-10-21, session cli-e0)
 - Stryker: a static mutant that makes a test file throw while it collects its cases is reported Survived, since a file that fails to load fails no test, and it ran fewer tests than the dry run rather than 0, so the round script's 0-test check misses it while other files run ([mutation testing](mutation-testing.md), Swallowed errors, says so). Measured: `OXLINT_RANGE_THE_MERGE_ADVISES = ''` Survived after 2157 of 2187 tests (again 2159 of 2189). The 30 missing were `merge-oxlint-config.installed-oxlint.test.ts`, whose `it.each` table called `oxlintFloorTheMergeAdvises()`, which throws on `''` (by hand: vitest exit 1, "the oxlint range  is not a caret range", no tests). Read a Survived below the dry run's count as a load failure. Fixed: the call sits in a test body, and the mutant is Killed.
-- Missing standard: nothing that can throw should run while a test file is collected (an `it.each` table, a `describe` body); compute it in the test or a hook. A throw there fails the file's loading: Stryker reports Survived, a plain run a file error naming no assertion. Nothing checks it. A scan of every `*.test.ts` for calls inside `.each(...)` tables (session scratch `stryker-lane/each-table-calls.mjs`) found one other throwing helper, `buildErrorOnItsRoutedEngine` (`suppression-ban.integration.test.ts`), which throws only on a rule missing from rule-data's catalog, so no lint-rules mutant reaches it. `describe` bodies were not scanned.
+- Missing standard: nothing that can throw should run while a test file is collected (an `it.each` table, a `describe` body); compute it in the test or a hook. A throw there fails the file's loading: Stryker reports Survived, a plain run a file error naming no assertion. A scan of every `*.test.ts` for calls inside `.each(...)` tables (session scratch `stryker-lane/each-table-calls.mjs`) found one other throwing helper, `buildErrorOnItsRoutedEngine` (`suppression-ban.integration.test.ts`), which throws only on a rule missing from rule-data's catalog, so no lint-rules mutant reaches it. `describe` bodies were not scanned.
 - Proposed check (`mutation-testing/mutants-survived-without-a-test.ts`): also fail on a Survived load-time mutant, where `ignoreStatic` is off, that ran fewer tests than the run's initial count. Static Survived mutants with `testsCompleted` below the top count in the static, rule-data and house incremental reports: 0 more.
 - A code comment citing a decision ID names nothing certain: `OXLINT_RANGE_THE_MERGE_ADVISES` cited "(owner, #32 Q7)" and "(D7)", and the docs hold at least four D7s (spec-data.md, decisions.md, spec-owner-answers.md, spec-next-batch.md). It now says what the constant is for and where its floor comes from. Possible standard: a comment states the reason, not a decision ID.
 - Beside a team's ESLint 9.34 (by-hand project): 24 of our 26 non-engine dependencies resolve `eslint` to the team's 9.34.0; only eslint-plugin-regexp and eslint-plugin-unicorn sit beside our 10.12.0. `check`'s findings on the planted change were still right. Cf. plan.md Open, the packaging item (#38).
@@ -175,7 +180,7 @@ Nothing catches a recurrence of a fixed anti-pattern below unless its bullet nam
 - Fixed, same logic twice: `parseWhenSuppressions` (`turned-on-by.ts`) and `whenSuppressionsOf` (`canonical-rules.ts`) both read each suppression mode's setting; now one `whenSuppressionsParsedBy`. `turnedOnByOf` (`build-routing.ts`) also calls `inEachSuppressionMode` but does other work, so it stays.
 - Fixed: `eslintAliasCandidatesOf` (`rule-id-parts.ts`) wrote the whole array in both branches of a ternary; a lookup returning none where the data gives none (`extraEslintAliasesOf`) replaces it. Search: `grep -rnE '\? \[\.\.\..*: \[\.\.\.' packages/rule-data/src scripts` (non-test): none left.
 - Fixed: a negated two-part condition inside an inline flatMap in `assertOneRuleIdPerOxlintName` (`build-routing.ts`) is `.filter(({ id }) => ruleIds.has(id)).flatMap(idWithOxlintNameOf)`, with a named `RuleIdWithOxlintName` (an inline `{…}[]` return type drew `@typescript-eslint/array-type`). Correction: round 2's report wrote it `.filter(RuleIds)`, a helper that does not exist.
-- Fixed, rule IDs and oxlint names split by hand where rule-data's `pluginPrefixOf`/`ruleNameOf` exist: `ruleNameOfOxlintName` and `pluginRuleOf` (`build-eslint-config.ts`), `schemaSpellingOf` (`installed-oxlint.ts`), `underOurPrefixes` (`eslint-config-reading.ts`), `prefixedRuleKeyOf` (`oxlint-config-reading.ts`), a copy of `ruleNameOf` in `cli/check/oxlint-output.ts`. Same result: no inventory oxlint name starts with `@` or holds two slashes. `hasEslintVersion` (`eslint-versions.ts`), `sameModuleNamesOf` (`other-eslint-names.ts`) and the test helper `oxlintCodeOfRule` (`oxlint-codes.ts`, owner 2026-10-22) call `ruleNameOf` now; on purpose, as independent checks, `cutWhereOxlintCuts` (`oxlint-rule-keys.ts`) and `prefixOfKey` (`oxlint-rules-the-team-sets.ts`). Missing standard: split only through `rule-id-parts.ts`; nothing catches a new hand split. A sibling search must match a separator held in a constant, which round 2's literal-`'/'` regex missed: `grep -rnE "(last)?[iI]ndexOf\((['\"]/['\"]|[A-Za-z_]*(SEPARATOR|Separator|separator)[A-Za-z_]*)\)|\.split\((['\"]/['\"]|[A-Za-z_]*(SEPARATOR|Separator)[A-Za-z_]*)\)" packages scripts --include='*.ts' --include='*.mts'`.
+- Fixed, rule IDs and oxlint names split by hand where rule-data's `pluginPrefixOf`/`ruleNameOf` exist: `ruleNameOfOxlintName` and `pluginRuleOf` (`build-eslint-config.ts`), `schemaSpellingOf` (`installed-oxlint.ts`), `underOurPrefixes` (`eslint-config-reading.ts`), `prefixedRuleKeyOf` (`oxlint-config-reading.ts`), a copy of `ruleNameOf` in `cli/check/oxlint-output.ts`. Same result: no inventory oxlint name starts with `@` or holds two slashes. `hasEslintVersion` (`eslint-versions.ts`), `sameModuleNamesOf` (`other-eslint-names.ts`) and the test helper `oxlintCodeOfRule` (`oxlint-codes.ts`, owner 2026-10-22) call `ruleNameOf` now; on purpose, as independent checks, `cutWhereOxlintCuts` (`oxlint-rule-keys.ts`) and `prefixOfKey` (`oxlint-rules-the-team-sets.ts`). Missing standard: split only through `rule-id-parts.ts`. A sibling search must match a separator held in a constant, which round 2's literal-`'/'` regex missed: `grep -rnE "(last)?[iI]ndexOf\((['\"]/['\"]|[A-Za-z_]*(SEPARATOR|Separator|separator)[A-Za-z_]*)\)|\.split\((['\"]/['\"]|[A-Za-z_]*(SEPARATOR|Separator)[A-Za-z_]*)\)" packages scripts --include='*.ts' --include='*.mts'`.
 - Fixed, single-use helpers whose name only restated or hid their one line, inlined: `stubPlugin`, `twinPairsStatedIn` (one word off `twinPairsNamedIn`), `layersOfRulesOn`, `settingUnder` (hid `?? OFF_SETTING`), `isEmptyText`, `isRefValue` (its comment moved to the call site); and single-use key functions whose body is one call (`whereKeyOf`, `excludeFilesKeyOf`, `pluginsKeyOf`, `ignoresKeyOf`). `ignoresKeyOf` shows how they arise: two callers at HEAD, one after the `groupBy` rewrite. Missing standard: when a refactor merges call sites, recheck each helper left with one caller.
 - Fixed: `takeoverOf`'s guard `coreHere === null && (extensionHere === null || coreBelow === null)` read only through De Morgan's law; it is two positive conditions, `statesEitherName` and `isCoreStatedHereOrBelow`, equal on all 8 rows of an exhaustive probe.
 - Fixed, group-by written by hand (a Set of keys then a filter per key: `groupedByWhere`, `termsGroupedByIgnores`, `overrideFilesOf`; an O(n²) `findIndex` over an equivalence: `groupsOfAlike`, now keyed; a forEach or for/for pushing into a Map: `termsByPathOf`, `ruleIdsByEslintName`): `groupBy` from `@workspace/rule-data/collections`, or native `Map.groupBy` for a `string | null` key (the shared tsconfig's lib has it, pinned by `packages/lint-rules/src/typescript-lib.test-d.ts`). Search: `grep -rn -e '\.map((key) => .*\.filter(' -e 'findIndex((other)' packages/*/src`; the one hit left, `resolve-rule-layers.ts`'s deep-equal dedupe, is no group-by. Only the repo's own `functional/immutable-data`, which no gate runs, flags a new one.
@@ -185,7 +190,7 @@ Nothing catches a recurrence of a fixed anti-pattern below unless its bullet nam
 - Fixed: `SIGNALS` and `EXIT_CODE_OF_SIGNAL` (`cli/main.ts`) must agree, yet `'SIGTREM'` in both compiled (@types/node's `process.on` takes any string); `as const satisfies readonly NodeJS.Signals[]` and `satisfies Record<HandledSignal, number>` give TS2820, TS2353 for a stray key, TS1360 for a missing code. Nothing requires a const object to be typed where it is written.
 - Fixed: `housePlugin` (`eslint-plugin-house/src/index.ts`) `satisfies TSESLint.FlatConfig.Plugin`. Correction: round 3 said nothing checked its shape; `houseRuleConfig` (`__tests__/house-linter.ts`) refused a value that is not a rule (TS2418), but not a misspelt key, which is now TS2353 at the definition.
 - Fixed, choices over a union of our own made with a ternary, `||` or if/else, so a new member ran as the else: `PairDecided['by']` in `twin-pairs.ts` (`rulesTaking`, the settings choice, `pairDecidedIn`'s decider), `outcomeOf` (`cli/main.ts`, now `outcomeOfRunning`), `printedOnceWritten`'s folders (`run-init.ts`, now `foldersUpToTheGitTopLevel`), `callsReactCreateContext` (house). Each is a switch with every case; hand breaks are caught by `twin-pairs.test.ts`, `twin-pairs.decisions.test.ts` and `init.integration.test.ts`. switch-exhaustiveness-check sees only switches, so nothing reports the ternary form.
-- Fixed (owner 2026-10-22), how an exhaustive switch over a union is written: `default: { const unhandled: never = x; return unhandled }` (TS2322 on a new variant). With no `default`, each drew `@typescript-eslint/consistent-return`, the false positive plan.md Open accepted (q-dogfood-keep-three): `npx eslint -f json packages/lint-rules/src | jq -r '.[] | .filePath as $f | .messages[] | select(.ruleId=="@typescript-eslint/consistent-return") | "\($f):\(.line)"'`. `default: throw new Error(…)` drops TS2366, and switch-exhaustiveness-check (shipped with `considerDefaultExhaustiveForUnions: true`) does not replace it. The `TypeInformation` guards of `build-eslint-config.ts` (`filesWithoutTypeInformation`, `keptToTypedFiles`, `typedBlocks`, whose switch is `typedBlocksGiven`) are switches now. Sites: `grep -rn ': never =' packages --include='*.ts'`. CLAUDE.md does not write any of this down.
+- Fixed (owner 2026-10-22), how an exhaustive switch over a union is written: `default: { const unhandled: never = x; return unhandled }` (TS2322 on a new variant). With no `default`, each drew `@typescript-eslint/consistent-return`, the false positive plan.md Open accepted (q-dogfood-keep-three): `npx eslint -f json packages/lint-rules/src | jq -r '.[] | .filePath as $f | .messages[] | select(.ruleId=="@typescript-eslint/consistent-return") | "\($f):\(.line)"'`. `default: throw new Error(…)` drops TS2366, and switch-exhaustiveness-check (shipped with `considerDefaultExhaustiveForUnions: true`) does not replace it. The `TypeInformation` guards of `build-eslint-config.ts` (`filesWithoutTypeInformation`, `keptToTypedFiles`, `typedBlocks`, whose switch is `typedBlocksGiven`) are switches now. Sites: `grep -rn ': never =' packages --include='*.ts'`.
 - Possible standard, as the rounds applied it: a union naming members of an open set (commands, places `init` runs) gets an exhaustive switch; a two-sided union answering one yes/no question (added|kept, completed|stopped, error|warning, eslint|oxlint form) stays a ternary or if.
 - In an ESLint rule, a switch over a syntax-tree type can need its `default` even over a closed union: a team's blocks may set their own parser and hand our rules node kinds the types do not list. `declaredValueNames` (`hook-file-naming`) keeps its default; without one it returns undefined and crashes the spread.
 - Gap: a ternary or `===` on a two-member union is checked by neither switch-exhaustiveness-check nor tsc. On `Engine`, `routeOf` (`build-routing.ts`) sends a third member to ESLint, and `isOxlintRoute` (`catalog.ts`) and `isEslintRoute` (`catalog-lookups.ts`) return false for one, so where they split rules between the engines (`partsBesideOxlint`; `build-eslint-config.ts`'s ESLint and oxlint layers) it lands in neither, dropped without an error. Search: `grep -rnE "(===|!==) *['\"](oxlint|eslint)['\"]|['\"](oxlint|eslint)['\"] *(===|!==)" packages/*/src --include='*.ts'` (tests excluded). No action while plan.md's Engines decision closes the union.
@@ -288,3 +293,87 @@ Nothing catches a recurrence of a fixed anti-pattern below unless its bullet nam
   the rule's call.
 - Not done: no changed line was broken by hand, so lines whose mutants are all CompileError (the `never` defaults) or
   that get none (a bare call) are checked only by tsc and the lanes' own tests.
+
+## Lint guards (2026-10-23, lane LA)
+- A switch over a whole union ending in `default: throw` is reported by nothing we ship: with the shipped
+  `considerDefaultExhaustiveForUnions: true`, `switch-exhaustiveness-check` reads any default as covering every case
+  (measured: a third union member behind `default: throw` draws nothing with `true`, "Cases not matched" with `false`;
+  tsc 6.0.3 passes it, and raises TS2366 once the default is gone). This repo's own ESLint reports it through
+  `house-repo/no-throwing-default-in-exhaustive-switch` (`repoOwnPlugin`), which `check` does not run: `check` builds
+  only from `agents-inc.lint.mts`, whose `rules` take catalog IDs.
+- That rule asks TypeScript every question (house round 7, 2026-10-24; owner, q-lint-never-default-approach). Each part
+  of the switch's value (the value, then each name, `this`, property, element, `!` and parenthesised expression in it,
+  but a name after a dot or in a type) is asked whether the checker reads it as never at the default's start
+  (`typeAtTheStartOf`, `shared/type-at-a-clause.ts`); the message names the first that is. Where none is, a second
+  program holds the file with the value in a const and the switch on the const (`programWithTheFileRewritten`,
+  `shared/program-with-a-file-rewritten.ts`): where that const is never at the default and the rewrite adds no type
+  error to the file, the message says to hold the value in a const (q-lint-never-default-unnarrowable). At a file's top
+  level, in a class static block or a setter it suggests the binding before the throw (q-lint-never-default-no-return);
+  a namespace body keeps the return form (owner question). What runs, and a case running on into the default, are
+  TypeScript's reading in both programs.
+- Not asked, and why: a part reading a property of a value narrowed at the default to never, or to null or undefined
+  alone, does not compile, and asking leaves its error in the program the rule shares (every candidate of the committed
+  cases asked left TS2339 in 9 of their files). Nor a part holding more than names, `this`, property and element reads,
+  `!`, parentheses, calls, binary operators and tokens: a copy holding a function, a class, an object literal or a type
+  has no symbols, so TypeScript throws or misses names. The const rewrite can drop narrowing the cases relied on
+  (`holder?.shape.kind` with `case undefined`: `holder.shape` is possibly undefined in a case), hence the error
+  comparison. TypeScript asserts its host never hands it a redirect (a package installed twice at one version), so the
+  second program's host hands it the file the redirect stands for; without that, linting such a file threw.
+- Cost: where no part is never at the default (a case runs into it, or some cases are missing), TypeScript narrows the
+  switch again in the second program. The committed 6,000-case switch a case runs into lints in 2.5 s against 0.7 s
+  before (both rules in one process, load 8), and its spec in 4.4 to 5.3 s against 3.0 s, near vitest's 5 s; every other
+  committed case under 10 ms; this repo's own lint, 3.6 ms for the rule (round 6: 26.2 ms).
+  Correction (house round 7): this entry said the value asked about was `referenceTypeScriptNarrows`'s, and that a
+  switch on a value it answered null for was read by ESLint's code path (cut at never calls; a case taken to run on
+  where ESLint ends a path TypeScript keeps). Both copies are deleted, as the owner ruled: they reported in code
+  TypeScript reads as never run and where a case runs on after `while (1)`, missed `table[key]` on a `Record` with
+  `case undefined`, and named `typeof value` where `value` compiles.
+  Correction (house round 6 review): this said no committed case reaches this reading; round 6's four
+  `engine!!`/`engine!!!` pins do.
+  Correction (house round 5): this entry said the rule reports exactly where the never default compiles, and counted
+  `!` among what TypeScript narrows nothing of. It also reports where `return unhandled` cannot compile (module top
+  level, a static block, a setter), and round 4 read a `const`, template or unique-symbol key, `super.x`, `x!` on a
+  value that cannot be null, `x!.kind` and a comma by ESLint's code path, reporting them in code that never runs.
+  Correction (house round 4): rounds 1 to 3 read every switch this way, and each review found new shapes where ESLint
+  and TypeScript part on what runs (a switch in code that never runs, or after `while (1)`; a static block), reporting
+  or missing correct code.
+  Correction: the round before decided by the case's last statement, so a case leaving by `if`/`else`, `try`/`finally`
+  or a never call read as running on.
+  Correction (fix-verify 2 review): ESTree drops parentheses, so the rule cut at `(fail())` and read `while ((true))` as
+  endless, where TypeScript does neither, and reported correct code; it now reads both on TypeScript's node. A case
+  stayed taken to run on where a later `return` ended it, or where the loop or catch was a callback's.
+- A typed rule test: `houseTypedRuleTester` lints `file.ts` in `__tests__/typed-project/`, whose tsconfig takes in no
+  file (`"files": []`), so the project service types each case with that tsconfig as the default project. ESLint given
+  a file on stdin under `packages/*/src` (`--stdin-filename`) gets no type information from our typed blocks, which ask
+  whether a tsconfig takes in a file on disk: probe a typed rule with a real file.
+- Collect-time throws: `test-collection.test.ts` lists each call made at a test file's top level, in a `describe`
+  body or in an `.each` table (and in a callback `map` and its kind call then) whose callee, through the calls the type
+  checker resolves, reaches a `throw` of ours that no `catch` takes. The tree held far more than the one helper the
+  `.each` scan of "Engines as our dependencies" found, mostly a lookup that throws on a miss (CLAUDE.md, Code) building a table or a constant, and
+  `defineLintRules` at a file's top level. Not scanned: a `throw` written in the test file itself, the top level of a production module a test
+  file loads (q-lint-collect-time-production), a module loaded by `export … from`, a `new` of a class of ours, and a
+  throw in a library.
+  Correction (LA review): a function called back into while it was read was kept as not throwing, so where two call
+  each other, the one that does not throw itself went unseen once the other was read first; nothing new in the repo.
+  Correction (fix-verify review): CLAUDE.md and plan.md said it fails on a new throw in a test file's own statements;
+  a `throw` written there is not found, only a call reaching one of ours, so both sentences were deleted.
+  Correction (q-lint-collect-time-reach, 2026-10-24): this said the top level of the helper modules tests import was
+  not scanned. The check now follows a test file's imports, and its helpers', into the modules under `__tests__/`
+  (not through `import type`) and lists each call at their top level by the helper's `module`, once per test file
+  loading it: `existingEmptyFolder` in `factories/lint-rules-factories.ts` and `installedEslintPlugin` in
+  `cases/eslint-merge-shapes.ts`.
+  Correction (lane K review, 2026-10-24): this said the calls left are pinned in `__tests__/collect-time-throws-left.ts`;
+  `test-collection.test.ts` now asserts none, and nothing imports the list.
+- Hand splits: `rule-id-splits.test.ts` lists each `split`, `indexOf` or `lastIndexOf` on a value whose type is all
+  strings but `null` and `undefined` (a type parameter read as its constraint) and whose separator's
+  type is the literal `'/'`, so a slash held in a constant counts. With `b9d5dbc`'s hand cut put back into
+  `oxlintCodeOfRule`, it fails naming that function. Not seen: a cut by regex or by `slice` at a computed index.
+  Correction (LA review): it first read only the type's own flags, so a cut of a rule ID typed as a union (`RuleId`),
+  as `Id extends string` or through `?.` went unseen; the wider read finds no new site in the repo.
+- Parallel load: the grep in the parallel-load bullet of "Expressive-TypeScript rounds 1-3" finds a test file by the engine call it makes itself, so it
+  misses one calling a helper that spawns. A census through the type checker (each `it`/`test` body whose calls reach a
+  `child_process` spawn or `new ESLint` reading a config file) found five files running oxlint in a test body with
+  vitest's 5 s default: `check-factories.test.ts`, `cli/check/oxlint-run.test.ts`, `covered-by.integration.test.ts`,
+  `runtime-globals.integration.test.ts`, and rule-data's `oxlint-file-types.integration.test.ts` (rule-data's tests take
+  a timeout of their own). Each oxlint run took under 0.2 s alone. Not given one: tests spawning git or `npm pack`
+  alone, and `cli/main.test.ts`, whose spawning module is mocked.

@@ -466,3 +466,100 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
 - Owner 2026-10-23, "Leave both as they are" (workboard card q-leaked-keys; status.md Open tasks row 11): the four keys
   in two agent transcripts of 2026-10-20 are not rotated and the transcripts are not cleaned, so the values stay valid
   and stay in those files.
+- Owner 2026-10-23 (workboard): q-lint-never-default-standard, "Add it to CLAUDE.md's Code section" (done). Accepted,
+  built by lane LA: s-lint-rules-never-default-check, as a rule this repo runs on its own code alone
+  (`house-repo/no-throwing-default-in-exhaustive-switch`, in `repoOwnPlugin`, turned on by `eslint.config.mjs`); shipping
+  it, or narrowing `considerDefaultExhaustiveForUnions`, is an owner call in plan.md Open. s-lint-rules-collect-time-throws:
+  CLAUDE.md, Tests, and `test-collection.test.ts`, the calls already there pinned for the owner (plan.md Open).
+  s-lint-rules-hand-split-guard: `rule-id-splits.test.ts`. s-lint-rules-parallel-load-timeouts: the allowance added to
+  each test file running an engine without one.
+- Owner 2026-10-24, "The script re-checks Stryker's --testFiles" (board card q-lint-only-misspelt-spec), asked what the
+  mutation round script does with a `--testFiles` entry matching no file, which Stryker drops, running every test when
+  none match: before Stryker starts, `scripts/mutate-changed-lines.mts` refuses a list holding no entry and names each
+  entry matching no file, in every spelling (`mutation-testing/test-files-given.ts`).
+- Owner 2026-10-24, "The script warns" (board card q-lint-only-module-load), asked what follows a round given
+  `--testFiles`, which turns a load-time (static) mutant on only after the test files load, so its Survived proves
+  nothing: the script prints a warning naming each such Survived mutant, to re-run without `--testFiles`, and leaves
+  the exit code as it was (`mutation-testing/load-time-mutants-survived.ts`).
+- Owner 2026-10-24, "Widen it to helper modules" (board card q-lint-collect-time-reach), asked whether
+  `test-collection.test.ts` also reads the top level of the modules a test file loads: it follows a test file's
+  imports, and its helpers', into modules under `__tests__/` (not through `import type`) and reports each call at their
+  top level reaching a throw of ours (`__tests__/collect-time-throws.ts`; learnings, Lint guards).
+- Owner 2026-10-24 (board https://claude.ai/artifact/4GpMMzy64wzXqSPZaghWTJ, the rule-candidate cards; a card is `rc-`
+  and the rule ID with `@` dropped and `/` turned into `-`). Each verdict is in `rule-candidates.json`, the card named;
+  nothing ships yet:
+  - Accepted, `recommended` until built, by the ruleset each goes to (the card's, else the accepted-rules spec's pick):
+    redundancy `unicorn/no-unnecessary-default-arguments`, `unicorn/no-repeated-call-wrappers`,
+    `unicorn/prefer-logical-operator-over-ternary`; modern-js `prefer-named-capture-group`,
+    `sonarjs/prefer-native-axios-alternative`; comments, on only where suppressions are allowed,
+    `@eslint-community/eslint-comments/disable-enable-pair`, `@eslint-community/eslint-comments/no-duplicate-disable`,
+    `@eslint-community/eslint-comments/require-description`; zod `zod/no-coerce-boolean`, `zod/no-conflicting-checks`,
+    `zod/no-duplicate-schema-methods`, `zod/no-empty-custom-schema`, `zod/no-optional-and-default-together`,
+    `zod/no-throw-in-refine`, `zod/no-transform-in-record-key`, `zod/prefer-trim-before-string-length-checks`,
+    `zod/require-brand-type-parameter`; tanstack-query `@tanstack/query/exhaustive-deps`,
+    `@tanstack/query/infinite-query-property-order`, `@tanstack/query/no-rest-destructuring`,
+    `@tanstack/query/no-unstable-deps`, `@tanstack/query/no-void-query-fn`, `@tanstack/query/stable-query-client`;
+    tanstack-router `@tanstack/router/create-route-property-order`, `@tanstack/router/route-param-names`; playwright
+    `playwright/no-duplicate-slow`, `playwright/no-element-handle`, `playwright/no-networkidle`,
+    `playwright/no-unnecessary-assertions`, `playwright/no-wait-for-selector`, `playwright/prefer-web-first-assertions`,
+    `playwright/require-to-pass-timeout`, `playwright/valid-test-tags`; security `drizzle-security/no-unsafe-query`;
+    drizzle `drizzle-security/no-unscoped-mutation`; node `e18e/prefer-throw-if-no-entry`; tailwind (opt-in)
+    `shadcn/no-raw-colors`.
+  - Accepted, `recommended`, each built only once its card is answered: `playwright/no-focused-test`,
+    `playwright/no-identical-title`, `playwright/prefer-hooks-on-top`, `playwright/require-to-throw-message`
+    (q-lint-playwright-vitest-twins: each reports the same line as a shipped `vitest/*` rule in Vitest and Jest test
+    files); jest-dom `jest-dom/prefer-checked`, `jest-dom/prefer-empty`, `jest-dom/prefer-in-document`,
+    `jest-dom/prefer-pressed`, `jest-dom/prefer-required`, `jest-dom/prefer-to-have-attribute`,
+    `jest-dom/prefer-to-have-class` (q-lint-jest-dom-without-jest-dom); react-ssr
+    `hydration-proof/no-browser-global-in-render`, `hydration-proof/no-locale-without-explicit-locale`,
+    `hydration-proof/no-storage-in-initial-render`, `hydration-proof/no-timezone-without-explicit-timezone`,
+    `hydration-proof/no-window-render-branch`, `hydration-proof/require-stable-server-snapshot`
+    (q-lint-react-ssr-in-client-apps).
+  - Accepted into the later category for the newest language features, enabled by Node version, so `parked` and off
+    beside those parked 2026-10-11: `unicorn/prefer-uint8array-hex`, `unicorn/prefer-iterator-zip`,
+    `e18e/prefer-get-or-insert`. Each one's fix, or suggestion for `prefer-iterator-zip`, writes an API Node 22.23
+    lacks (`Uint8Array#toHex`, `Iterator.zip`, `Map.prototype.getOrInsert`; measured, Node 22.23.2 and 23.10.0).
+  - Rejected, `dropped` with the card as `decidedBy`: `no-console`, `@typescript-eslint/prefer-includes`,
+    `@typescript-eslint/promise-function-async`, `unicorn/prefer-json-import`, `jest-dom/prefer-to-have-style`,
+    `anti-slop-effect/no-manual-tag-comparison`, `anti-slop-effect/no-manual-tagged-construction`,
+    `anti-slop-effect/no-service-constructor-imports`, `anti-slop-effect/prefer-effect-match`,
+    `anti-slop/require-safety-comment-for-type-assertion`, `erasable-syntax-only/*`, `llm-core/no-redundant-comments`,
+    `react-google-translate/no-conditional-text-nodes-with-siblings`.
+  - `compat/compat`, no choice, the note: "we should accept this but can the rule default to including only relevant
+    browsers like the major ones?" Yes: the rule takes a browserslist query as its one option (`schema`,
+    eslint-plugin-compat 7.0.2), so the `browser-targets` ruleset can ship one. Recorded `recommended`; the default
+    target is card q-lint-compat-default-target.
+  - Effect: the owner wants an Effect ruleset, holding `anti-slop-effect/no-manual-effect-error-tag` ported as a house
+    rule (`recommended`); its name and domain are card q-lint-effect-ruleset-name.
+  - `rc-bulk-considering`, `rc-bulk-recommended`, `rc-bulk-rejected`: unanswered, nothing recorded.
+- Lane A 2026-10-24 (`docs/work/spec-accepted-rules.md`): `prefer-named-capture-group` and
+  `sonarjs/prefer-native-axios-alternative` (modern-js) and `unicorn/prefer-logical-operator-over-ternary` (redundancy)
+  ship, their `rule-candidates.json` entries removed. `unicorn/no-unnecessary-default-arguments` and
+  `unicorn/no-repeated-call-wrappers` tripped the spec's false-alarm stop: not shipped, `recommended`, until the owner
+  answers q-lint-rc-default-args-measured and q-lint-rc-call-wrappers-measured.
+- Owner 2026-10-24 (board https://claude.ai/artifact/4GpMMzy64wzXqSPZaghWTJ), the three cards lanes A and DEP raised:
+  - "Ship it outside test files" (q-lint-rc-call-wrappers-measured): `unicorn/no-repeated-call-wrappers` ships in
+    redundancy with the test-file globs as its `ignores`, its `rule-candidates.json` entry removed. Every measured hit
+    was in a test file.
+  - Rejected, `dropped` with the card as `decidedBy`, the reason in each `why`:
+    - `unicorn/no-unnecessary-default-arguments`, "Don't ship it" (q-lint-rc-default-args-measured): most defaults it
+      reports are written out on purpose, and none read was clearly redundant.
+    - `drizzle-security/no-unsafe-query` and `drizzle-security/no-unscoped-mutation`, "Leave it out for now"
+      (q-lint-dep-drizzle-advisory), the note: "Leave it out for now but document why it is not included, along with
+      all the other documented rejections of rules." eslint-plugin-drizzle-security stays uninstalled: its optional
+      peer takes no stable drizzle-orm after 0.30, so in a Drizzle project npm nests drizzle-orm 0.30.10, under a high
+      security advisory (GHSA-gpj5-g38j-94v9), beneath our package. "For now": a later card may take them back up once
+      the plugin takes a current drizzle-orm.
+- Owner 2026-10-24, "Literal lists, checked by a test" (board card q-lint-collect-time-titles), asked how the last
+  collect-time calls, which computed test titles and rows, should move: `TWINNED_MOVED_RULES`
+  (`eslint-fallback.integration.test.ts`) and each merge differential's `SHAPE_NAMES` and `COVERAGE` are literal lists,
+  each held to what the code computes by a test of its own, as `package-manifests.test.ts`'s `INLINED_NAMES` already
+  was. `test-collection.test.ts` now asserts no call is left; CLAUDE.md, Tests, states the standard.
+- Owner 2026-10-24, "Keep it to test helper modules" (board card q-lint-collect-time-production), asked whether
+  `test-collection.test.ts` also reads the top level of production modules a test file loads: it does not. Nothing
+  changed.
+- Owner 2026-10-24, "Rebuild it" (board card q-lint-never-default-approach), asked, after round 6 again found shapes
+  where `house-repo/no-throwing-default-in-exhaustive-switch`'s own copy of TypeScript's narrowing was wrong, whether
+  to keep patching it, change the approach, or accept the dead-code-only differences. Built in house round 7: the rule
+  always asks TypeScript which value a never default can bind, each part of the switch's value, then, where none is
+  never there, a const holding it (`shared/program-with-a-file-rewritten.ts`); its own copy of the narrowing is gone.
