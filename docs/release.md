@@ -20,9 +20,9 @@ published; the other packages are bundled into it ([plan](plan.md#monorepo-layou
 
 Every release does every step.
 
-1. **Bump `version`** in `packages/lint-rules/package.json`, then run `bun install`; `bun.lock`
-   records the version. Before 1.0: minor for a feature cluster or anything that breaks a
-   consumer's setup (a new `error` rule fails their CI), patch for fixes only.
+1. **Bump `version`** in `packages/lint-rules/package.json`. Before 1.0: minor for a feature cluster
+   or anything that breaks a consumer's setup (a new `error` rule fails their CI), patch for fixes
+   only.
 2. **Build and test from the root:** `bun run build && bun run typecheck && bun run test`.
    `npm publish` from `packages/lint-rules` first runs that package's build, typecheck and tests
    (`prepublishOnly`); a failure stops it.
@@ -31,7 +31,7 @@ Every release does every step.
    Every `###` subheading in the detailed file gets its own bullet there.
 5. **Never edit an older entry,** in `CHANGELOG.md` or `changelogs/`.
 6. **The release commit:** `chore(release): <version> — <summary>`, with an em-dash (`—`, not `-`),
-   carrying `package.json`, `bun.lock`, `CHANGELOG.md` and the new `changelogs/<version>.md`.
+   carrying `package.json`, `CHANGELOG.md` and the new `changelogs/<version>.md`.
 7. **Push,** only on the owner's explicit yes.
 8. **`npm publish` from `packages/lint-rules`,** only on the owner's explicit yes.
 

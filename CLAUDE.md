@@ -132,11 +132,18 @@ Steps 7-8 are how the work is finished, not a tidy-up phase for later.
   triage it before deleting it.
 - **In an `it.fails` test, only the assertion may throw.** Run the tool (oxlint, say) in
   `beforeAll`, or the test "passes" when the tool itself crashes.
+- **Nothing that can throw runs while a test file is collected** (its top level, a `describe` body,
+  an `.each` table): call it in the test or a hook. A throw there fails the whole file: a plain run
+  reports a file error naming no assertion, and Stryker reads the mutant as Survived.
+- **A test's titles and rows come from data that cannot throw:** a literal list, held to what the
+  code computes by a test of its own (`SHAPE_NAMES` in the merge differentials); each test derives
+  the rest from its row as it runs. A list gone stale then fails that one test, by name.
 - After implementing, run StrykerJS on the lines the change touched:
   `node scripts/mutate-changed-lines.mts`. Each break it reports as not caught (Survived or
   NoCoverage) gets a test, or a measured reason. Two kinds of "not caught" prove nothing: one in
   code that runs while modules load (a constant, a top-level table) is checked again with the second
-  pass (`node scripts/mutate-changed-lines.mts stryker.static.config.mjs`); one that ran 0 tests
+  pass (`node scripts/mutate-changed-lines.mts stryker.static.config.mjs`); after a run given
+  `--testFiles`, which the script warns of, re-run it without `--testFiles`; one that ran 0 tests
   means test files failed to load, so fix the cause and re-run with `--force`. Stryker only makes
   small breaks (swap an operator, flip a condition): a break that changes a decision (drop a field,
   reorder blocks, stop after one step) is still written by hand.
@@ -150,6 +157,9 @@ Steps 7-8 are how the work is finished, not a tidy-up phase for later.
   table stakes, not the goal.
 - **No casts except at parse boundaries.** No `as unknown as`. No non-null assertions or silent
   fallbacks (`?.`, `??`, `|| []`) on data that must exist: look it up and throw on a miss.
+- **A switch covering every case of a union gets a `never` default,**
+  `default: { const unhandled: never = x; return unhandled }`, so a missing case stays a type error: no
+  default draws `consistent-return`, and `default: throw` drops TS2366 (owner 2026-10-22).
 - **No backward-compatibility shims before 1.0.** Remove old code cleanly.
 - **Named exports only** (except where a tool loads `default`, e.g. `*.config.*`). Kebab-case files.
   No magic strings or numbers.
