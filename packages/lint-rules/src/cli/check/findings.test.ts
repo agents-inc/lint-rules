@@ -62,11 +62,14 @@ const FIRST_KEY_LINE = 2
 const UNCHANGED_LINE = 3
 const DUPLICATE_LINE = 4
 const DUPLICATE_KEY_TEXT = moduleText(...WITH_A_DUPLICATE_KEY)
-const AT_BOTH_KEYS = buildOxlintDiagnostic(
-  oxlintCodeOf('no-dupe-keys', catalog),
-  spanOfLine(DUPLICATE_KEY_TEXT, FIRST_KEY_LINE),
-  spanOfLine(DUPLICATE_KEY_TEXT, DUPLICATE_LINE),
-)
+
+function diagnosticAtBothKeys(): OxlintDiagnostic {
+  return buildOxlintDiagnostic(
+    oxlintCodeOf('no-dupe-keys', catalog),
+    spanOfLine(DUPLICATE_KEY_TEXT, FIRST_KEY_LINE),
+    spanOfLine(DUPLICATE_KEY_TEXT, DUPLICATE_LINE),
+  )
+}
 
 function duplicateKeyAt(line: number): CheckFinding {
   return buildCheckFinding({ line, label: 'no-dupe-keys', message: OXLINT_FINDING_MESSAGE })
@@ -74,25 +77,25 @@ function duplicateKeyAt(line: number): CheckFinding {
 
 describe('a finding oxlint gives at several places', () => {
   it('is kept where only a later place is on a changed line, and printed at that place', () => {
-    const reports = buildFileReports({ lines: WITH_A_DUPLICATE_KEY, changed: linesChanged(DUPLICATE_LINE), oxlintDiagnostics: [AT_BOTH_KEYS] })
+    const reports = buildFileReports({ lines: WITH_A_DUPLICATE_KEY, changed: linesChanged(DUPLICATE_LINE), oxlintDiagnostics: [diagnosticAtBothKeys()] })
 
     expect(findingsIn(reports, catalog)).toStrictEqual([duplicateKeyAt(DUPLICATE_LINE)])
   })
 
   it('is printed at its first place where that one is on a changed line', () => {
-    const reports = buildFileReports({ lines: WITH_A_DUPLICATE_KEY, changed: linesChanged(FIRST_KEY_LINE), oxlintDiagnostics: [AT_BOTH_KEYS] })
+    const reports = buildFileReports({ lines: WITH_A_DUPLICATE_KEY, changed: linesChanged(FIRST_KEY_LINE), oxlintDiagnostics: [diagnosticAtBothKeys()] })
 
     expect(findingsIn(reports, catalog)).toStrictEqual([duplicateKeyAt(FIRST_KEY_LINE)])
   })
 
   it("is printed once, at its first place, where every place is the change's", () => {
-    const reports = buildFileReports({ lines: WITH_A_DUPLICATE_KEY, changed: wholeFileChanged(), oxlintDiagnostics: [AT_BOTH_KEYS] })
+    const reports = buildFileReports({ lines: WITH_A_DUPLICATE_KEY, changed: wholeFileChanged(), oxlintDiagnostics: [diagnosticAtBothKeys()] })
 
     expect(findingsIn(reports, catalog)).toStrictEqual([duplicateKeyAt(FIRST_KEY_LINE)])
   })
 
   it('is dropped where none of its places is on a changed line, beside the change', () => {
-    const reports = buildFileReports({ lines: WITH_A_DUPLICATE_KEY, changed: linesChanged(UNCHANGED_LINE), oxlintDiagnostics: [AT_BOTH_KEYS] })
+    const reports = buildFileReports({ lines: WITH_A_DUPLICATE_KEY, changed: linesChanged(UNCHANGED_LINE), oxlintDiagnostics: [diagnosticAtBothKeys()] })
 
     expect(findingsIn(reports, catalog)).toStrictEqual([])
   })

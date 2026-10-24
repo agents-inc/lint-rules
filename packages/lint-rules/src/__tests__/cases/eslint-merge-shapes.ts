@@ -34,7 +34,9 @@ const TEAM_STATES_ITS_OWN_ID = buildEslintMergeShapeValue('the team states our r
     stating: {
       ours: ARRAY_TYPE,
       teams: ARRAY_TYPE,
-      plugins: { [TYPESCRIPT_ESLINT]: installedEslintPlugin(TYPESCRIPT_ESLINT) },
+      plugins() {
+        return { [TYPESCRIPT_ESLINT]: installedEslintPlugin(TYPESCRIPT_ESLINT) }
+      },
       options: GENERIC_ARRAY_TYPE,
       teamsPrefixes: NO_TEAMS_PREFIXES,
     },
@@ -45,7 +47,9 @@ const TEAM_STATES_AN_ALIAS = buildEslintMergeShapeValue("the team states our rul
     stating: {
       ours: 'import-x/first',
       teams: 'import/first',
-      plugins: { import: buildReportingPlugin(['first']) },
+      plugins() {
+        return { import: buildReportingPlugin(['first']) }
+      },
       options: ['disable-absolute-first'],
       teamsPrefixes: NO_TEAMS_PREFIXES,
     },
@@ -56,7 +60,9 @@ const TEAM_STATES_AN_OLD_NAME = buildEslintMergeShapeValue("the team states our 
     stating: {
       ours: 'unicorn/no-for-each',
       teams: 'unicorn/no-array-for-each',
-      plugins: { unicorn: buildReportingPlugin(['no-array-for-each']) },
+      plugins() {
+        return { unicorn: buildReportingPlugin(['no-array-for-each']) }
+      },
       options: [{ checkTeamOption: true }],
       teamsPrefixes: NO_TEAMS_PREFIXES,
     },
@@ -67,7 +73,9 @@ const TEAM_STATES_A_SAME_MODULE_NAME = buildEslintMergeShapeValue('the team stat
     stating: {
       ours: '@eslint-react/x-no-missing-key',
       teams: '@eslint-react/no-missing-key',
-      plugins: { [ESLINT_REACT]: installedEslintPlugin(ESLINT_REACT) },
+      plugins() {
+        return { [ESLINT_REACT]: installedEslintPlugin(ESLINT_REACT) }
+      },
       // The rule takes no options.
       options: [],
       teamsPrefixes: NO_TEAMS_PREFIXES,
@@ -79,7 +87,9 @@ const TEAM_STATES_ITS_PREFIX_NAME = buildEslintMergeShapeValue("the team states 
     stating: {
       ours: ARRAY_TYPE,
       teams: `${TEAMS_TYPESCRIPT_ESLINT_PREFIX}/array-type`,
-      plugins: { [TEAMS_TYPESCRIPT_ESLINT_PREFIX]: installedEslintPlugin(TYPESCRIPT_ESLINT) },
+      plugins() {
+        return { [TEAMS_TYPESCRIPT_ESLINT_PREFIX]: installedEslintPlugin(TYPESCRIPT_ESLINT) }
+      },
       options: GENERIC_ARRAY_TYPE,
       teamsPrefixes: new Map([[TYPESCRIPT_ESLINT, [TEAMS_TYPESCRIPT_ESLINT_PREFIX]]]),
     },
@@ -90,7 +100,9 @@ const TEAM_STATES_A_TWIN = buildEslintMergeShapeValue("the team states typescrip
     stating: {
       ours: 'prefer-promise-reject-errors',
       teams: '@typescript-eslint/prefer-promise-reject-errors',
-      plugins: { [TYPESCRIPT_ESLINT]: installedEslintPlugin(TYPESCRIPT_ESLINT) },
+      plugins() {
+        return { [TYPESCRIPT_ESLINT]: installedEslintPlugin(TYPESCRIPT_ESLINT) }
+      },
       options: [{ allowEmptyReject: true }],
       teamsPrefixes: NO_TEAMS_PREFIXES,
     },

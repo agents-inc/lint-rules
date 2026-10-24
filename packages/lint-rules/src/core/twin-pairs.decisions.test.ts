@@ -9,7 +9,7 @@ import { buildCatalog, buildEslintRoute, buildOxlintRoute, buildQualityRuleset }
 import { buildFileOverride, buildLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { buildProjectFacts } from '../__tests__/factories/project-facts-factories.ts'
 import { oxlintEntryOfRuleFor, severityOfOxlintEntry } from '../__tests__/oxlint-config-oracle.ts'
-import { buildEslintConfig } from './build-eslint-config.ts'
+import { buildEslintConfig, type EslintPluginRegistry } from './build-eslint-config.ts'
 import { buildOxlintConfig } from './build-oxlint-config.ts'
 import type { LintRulesInput } from './lint-rules-input.ts'
 
@@ -47,7 +47,9 @@ function twinCatalogShipping(shipped: 'the core rule' | 'the extension' | 'neith
 }
 
 // The real typescript-eslint plugin, whose rules refuse options they do not take.
-const plugins = { '@typescript-eslint': pluginRegisteredUnder(eslintPlugins, '@typescript-eslint') }
+function realTypescriptEslintPlugin(): EslintPluginRegistry {
+  return { '@typescript-eslint': pluginRegisteredUnder(eslintPlugins, '@typescript-eslint') }
+}
 
 /** NOT_RUN where none applies, or it is off. */
 function oxlintRunningEntriesFor(given: LintRulesInput, catalog: Catalog, files: readonly string[]): RunningEntries {
@@ -70,15 +72,15 @@ function setUpEslintExtensionSeverities(): (given: LintRulesInput, catalog: Cata
   }
 
   return async (given, catalog, files) => {
-    const config = buildEslintConfig(given, catalog, plugins, buildProjectFacts())
+    const config = buildEslintConfig(given, catalog, realTypescriptEslintPlugin(), buildProjectFacts())
     return Object.fromEntries(await Promise.all(files.map(async (file) => [file, await runningSeverityFor(config, file)] as const)))
   }
 }
 
 describe('a twin pair whose extension alone our top level states, with options oxlint takes', () => {
-  const extensionAlone = buildLintRules({ quality: ['correctness'] }, { rules: { [EXTENSION]: [...EXTENSION_SETTING] } })
-
   it("is run by oxlint with the extension's setting on TS and JS files alike, over a ruleset shipping the core rule, which it is in force by", () => {
+    const extensionAlone = buildLintRules({ quality: ['correctness'] }, { rules: { [EXTENSION]: [...EXTENSION_SETTING] } })
+
     expect(oxlintRunningEntriesFor(extensionAlone, twinCatalogShipping('the core rule'), [TS_FILE, JS_FILE])).toStrictEqual({
       [TS_FILE]: [...EXTENSION_SETTING],
       [JS_FILE]: [...EXTENSION_SETTING],
@@ -86,6 +88,8 @@ describe('a twin pair whose extension alone our top level states, with options o
   })
 
   it('is run by no core rule of oxlint, where nothing puts the core rule in force', () => {
+    const extensionAlone = buildLintRules({ quality: ['correctness'] }, { rules: { [EXTENSION]: [...EXTENSION_SETTING] } })
+
     expect(oxlintRunningEntriesFor(extensionAlone, twinCatalogShipping('neither'), [TS_FILE, JS_FILE])).toStrictEqual({ [TS_FILE]: NOT_RUN, [JS_FILE]: NOT_RUN })
   })
 })
@@ -122,16 +126,21 @@ describe('a twin pair whose core rule alone an entry of ours states, off, where 
 describe('a twin pair whose extension alone our top level states off, over a ruleset shipping the core rule, and an entry of ours states on', () => {
   const eslintExtensionSeveritiesFor = setUpEslintExtensionSeverities()
   const catalog = twinCatalogShipping('the core rule')
-  const extensionOffThenOnInAnEntry = buildLintRules(
-    { quality: ['correctness'] },
-    { rules: { [EXTENSION]: 'off' }, fileOverrides: [buildFileOverride(LEGACY_FILES, { rules: { [EXTENSION]: [...ENTRY_EXTENSION_SETTING] } })] },
-  )
-
   it('is run by no core rule of oxlint, in the entry or elsewhere', () => {
+    const extensionOffThenOnInAnEntry = buildLintRules(
+      { quality: ['correctness'] },
+      { rules: { [EXTENSION]: 'off' }, fileOverrides: [buildFileOverride(LEGACY_FILES, { rules: { [EXTENSION]: [...ENTRY_EXTENSION_SETTING] } })] },
+    )
+
     expect(oxlintRunningEntriesFor(extensionOffThenOnInAnEntry, catalog, EVERY_FILE)).toStrictEqual(Object.fromEntries(EVERY_FILE.map((file) => [file, NOT_RUN])))
   })
 
   it("is run by ESLint as typescript-eslint's version in the entry's files alone", async () => {
+    const extensionOffThenOnInAnEntry = buildLintRules(
+      { quality: ['correctness'] },
+      { rules: { [EXTENSION]: 'off' }, fileOverrides: [buildFileOverride(LEGACY_FILES, { rules: { [EXTENSION]: [...ENTRY_EXTENSION_SETTING] } })] },
+    )
+
     expect(await eslintExtensionSeveritiesFor(extensionOffThenOnInAnEntry, catalog, [LEGACY_TS_FILE, TS_FILE])).toStrictEqual({ [LEGACY_TS_FILE]: 'error', [TS_FILE]: NOT_RUN })
   })
 })

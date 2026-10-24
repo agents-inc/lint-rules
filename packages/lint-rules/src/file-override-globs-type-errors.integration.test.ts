@@ -10,6 +10,7 @@ import {
   type SourcePosition,
 } from './__tests__/factories/file-overrides-module-factories.ts'
 import { buildTsconfigListingNodeTypes } from './__tests__/factories/tsconfig-factories.ts'
+import { PARALLEL_LOAD_TIMEOUT_MS } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { CONSUMER_INSTALL, type TempProjects } from './__tests__/temp-projects.ts'
 import { tscErrorsIn } from './__tests__/tsc-errors.ts'
@@ -33,8 +34,6 @@ const SLASH_LED_GLOB_BESIDE_OTHER_ENTRIES = buildFileOverridesModule({
 })
 const NO_GLOB_AT_ALL = buildFileOverridesModule({ entries: [entryWithFiles(NO_GLOB)] })
 const SLASH_LED_GLOB_AFTER_ANOTHER = buildFileOverridesModule({ entries: [entryWithFiles(`['src/**', ${SLASH_LED_GLOB}]`)] })
-const SLASH_LED_GLOB_AFTER_ANOTHER_AT = positionInEntry(SLASH_LED_GLOB_AFTER_ANOTHER, 0, SLASH_LED_GLOB)
-const FILES_KEY_OF_THE_ENTRY_AFTER_ANOTHER_AT = positionInEntry(SLASH_LED_GLOB_AFTER_ANOTHER, 0, FILES_KEY)
 const GLOBS_THE_TYPES_TAKE = buildFileOverridesModule({
   declarations: ["const LEGACY_GLOBS = ['legacy/**', './scripts/*.ts'] as const"],
   entries: [entryWithFiles("['x.ts']"), entryWithFiles("['./x.ts']"), entryWithFiles("['**/*.ts']"), entryWithFiles('LEGACY_GLOBS')],
@@ -93,15 +92,20 @@ describe("tsc over agents-inc.lint.mts, a glob led by / after another glob of an
     timeoutMs: TSC_RUN_TIMEOUT_MS,
     whatFailed: 'tsc could not be run on the consumer project, or its output read, before the suite',
   })
-  // A run that failed throws here, before the tests, so only the assertion can fail inside it.fails.
+  const positions = setUpRunsBeforeTheSuite(
+    () => ({ ofTheGlob: positionInEntry(SLASH_LED_GLOB_AFTER_ANOTHER, 0, SLASH_LED_GLOB), ofTheFilesKey: positionInEntry(SLASH_LED_GLOB_AFTER_ANOTHER, 0, FILES_KEY) }),
+    { timeoutMs: PARALLEL_LOAD_TIMEOUT_MS, whatFailed: "the positions in the entry's text could not be found before the suite" },
+  )
+  // A run or a reading that failed throws here, before the tests, so only the assertion can fail inside it.fails.
   beforeAll(() => {
     runs()
+    positions()
   })
 
   it("reports it on the entry's files key, saying to write it from ./", () => {
     expect(runs()).toStrictEqual({
       exitCode: TSC_REPORTED_ERRORS,
-      errors: [{ file: CONFIG_FILE, ...FILES_KEY_OF_THE_ENTRY_AFTER_ANOTHER_AT, code: TYPE_NOT_ASSIGNABLE, says: true }],
+      errors: [{ file: CONFIG_FILE, ...positions().ofTheFilesKey, code: TYPE_NOT_ASSIGNABLE, says: true }],
     })
   })
 
@@ -111,7 +115,7 @@ describe("tsc over agents-inc.lint.mts, a glob led by / after another glob of an
   it.fails('reports it at that glob, saying to write it from ./', () => {
     expect(runs()).toStrictEqual({
       exitCode: TSC_REPORTED_ERRORS,
-      errors: [{ file: CONFIG_FILE, ...SLASH_LED_GLOB_AFTER_ANOTHER_AT, code: TYPE_NOT_ASSIGNABLE, says: true }],
+      errors: [{ file: CONFIG_FILE, ...positions().ofTheGlob, code: TYPE_NOT_ASSIGNABLE, says: true }],
     })
   })
 })

@@ -19,7 +19,6 @@ const HTML_LINE = 1
 const HTML_HAS_LANG = 'jsx-a11y/html-has-lang'
 const LANG = 'jsx-a11y/lang'
 const ESLINT_ERROR = 2
-const THE_PAIR: ReadonlySet<string> = new Set([HTML_HAS_LANG, LANG, oxlintCodeOf(HTML_HAS_LANG, catalog), oxlintCodeOf(LANG, catalog)])
 const ACCESSIBILITY_LISTED = { agentRulesets: { quality: ['accessibility'] }, editorRulesets: { quality: ['accessibility'] } } as const
 const LISTING_OXLINT = { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) }
 const LISTING_NO_OXLINT = { 'package.json': packageJsonText(buildPackageJsonListingOthers()) }
@@ -28,13 +27,20 @@ function definedWith(fields: Pick<LintRules, 'rules'> = {}): (projectDir: string
   return (projectDir) => defineLintRules(buildConsumerLintRules(projectDir, ACCESSIBILITY_LISTED, fields))
 }
 
+/** Both rules, by their names in ESLint and in oxlint. */
+function namesOfThePair(): ReadonlySet<string> {
+  return new Set([HTML_HAS_LANG, LANG, oxlintCodeOf(HTML_HAS_LANG, catalog), oxlintCodeOf(LANG, catalog)])
+}
+
 function langReportsIn(run: EngineRun, file: string): ErrorAt[] {
-  return run.errorsOn(file).filter(({ rule }) => rule !== null && THE_PAIR.has(rule))
+  const thePair = namesOfThePair()
+  return run.errorsOn(file).filter(({ rule }) => rule !== null && thePair.has(rule))
 }
 
 /** Where the build has no oxlint part, ESLint's messages alone. */
 function langMessagesFromEslintIn(run: EngineRun, file: string): EslintMessageAt[] {
-  return run.eslintMessagesOn(file).filter(({ ruleId }) => ruleId !== null && THE_PAIR.has(ruleId))
+  const thePair = namesOfThePair()
+  return run.eslintMessagesOn(file).filter(({ ruleId }) => ruleId !== null && thePair.has(ruleId))
 }
 
 describe('an <html> element missing its lang, beside one giving it, the accessibility ruleset listed, in a project whose package.json lists oxlint', () => {

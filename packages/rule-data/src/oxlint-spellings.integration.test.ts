@@ -29,24 +29,27 @@ const oxlintImplementations = inventory.rules.flatMap(({ id, oxlint }) =>
 )
 const oxlintPlugins = [...new Set(oxlintImplementations.map(({ plugin }) => plugin))]
 
-const spelledRules: readonly SpelledRule[] = oxlintImplementations.map(({ id, nativeName }) => ({
-  nativeName,
-  spellings: routeOf(id, catalog).oxlintSpellings,
-}))
+/** Throws on a rule the catalog does not route, so a test reads it. */
+function spelledRulesOfTheCatalog(): readonly SpelledRule[] {
+  return oxlintImplementations.map(({ id, nativeName }) => ({
+    nativeName,
+    spellings: routeOf(id, catalog).oxlintSpellings,
+  }))
+}
 
 // One config per spelling position: config k holds the k-th spelling of every rule that has one, so
 // no two keys of one config name the same rule and each must resolve on its own.
-const spellingPositions = Array.from(
-  { length: Math.max(0, ...spelledRules.map(({ spellings }) => spellings.length)) },
-  (_, position) => position,
-)
+function spellingPositionsOf(spelledRules: readonly SpelledRule[]): number[] {
+  const mostSpellingsOfARule = Math.max(0, ...spelledRules.map(({ spellings }) => spellings.length))
+  return Array.from({ length: mostSpellingsOfARule }, (_, position) => position)
+}
 
 function spellingAt(position: number, { spellings }: SpelledRule): readonly string[] {
   return spellings.slice(position, position + 1)
 }
 
 function nativeNamesSpelledAt(position: number): readonly string[] {
-  return spelledRules
+  return spelledRulesOfTheCatalog()
     .filter((rule) => spellingAt(position, rule).length > 0)
     .map(({ nativeName }) => nativeName)
     .toSorted()
@@ -68,6 +71,8 @@ describe("the oxlint spellings of every RuleId oxlint implements, read by the in
   it(
     "resolves each spelling of each rule to that rule's native oxlint name",
     async () => {
+      const spelledRules = spelledRulesOfTheCatalog()
+      const spellingPositions = spellingPositionsOf(spelledRules)
       const printed = await Promise.all(
         spellingPositions.map((position) =>
           printConfigEnabling(
@@ -101,7 +106,7 @@ describe("the oxlint spellings of every RuleId oxlint implements, read by the in
     )
 
     it("is in no rule's spellings", () => {
-      const listedSpellings = new Set(spelledRules.flatMap(({ spellings }) => spellings))
+      const listedSpellings = new Set(spelledRulesOfTheCatalog().flatMap(({ spellings }) => spellings))
 
       expect(SPELLINGS_OXLINT_REFUSES.filter((spelling) => listedSpellings.has(spelling))).toStrictEqual([])
     })

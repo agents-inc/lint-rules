@@ -17,7 +17,7 @@ import {
   tsNocheck,
   unsuppressedDebugger,
 } from './__tests__/cases/suppression-comments.ts'
-import { setUpEngineRun } from './__tests__/engine-run.ts'
+import { type ErrorAt, setUpEngineRun } from './__tests__/engine-run.ts'
 import { buildErrorOnItsRoutedEngine, buildEslintError } from './__tests__/factories/engine-error-factories.ts'
 import { buildConsumerLintRules, buildEveryRulesetLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { defineLintRules } from './index.ts'
@@ -42,9 +42,38 @@ const ESLINT_WARNING = 1
 const ESLINT_ERROR = 2
 const ESLINT_ENV_FATAL = 'not-suppressions/eslint-env.ts: /* eslint-env */ comments are no longer supported.'
 
-const BAN_REPORT_ON_LINE_1 = [buildEslintError(THE_BAN, 1)]
-const BLANKET_DISABLE_ON_LINE_1 = [buildErrorOnItsRoutedEngine(BLANKET_DISABLE_RULE, 1)]
-const BAN_AND_LOOP = [buildEslintError(THE_BAN, 1), buildEslintError(THE_LOOP_RULE, CLASSIC_LOOP_LINE)]
+// The errors a file draws, each made as a test reads it: the catalog routes some, and its lookup throws on a miss.
+function banReportOnLine1(): ErrorAt[] {
+  return [buildEslintError(THE_BAN, 1)]
+}
+
+function banReportsOnLines1And3(): ErrorAt[] {
+  return [buildEslintError(THE_BAN, 1), buildEslintError(THE_BAN, 3)]
+}
+
+function blanketDisableOnLine1(): ErrorAt[] {
+  return [buildErrorOnItsRoutedEngine(BLANKET_DISABLE_RULE, 1)]
+}
+
+function banAndLoop(): ErrorAt[] {
+  return [buildEslintError(THE_BAN, 1), buildEslintError(THE_LOOP_RULE, CLASSIC_LOOP_LINE)]
+}
+
+function tsCommentBanOnLine1(): ErrorAt[] {
+  return [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)]
+}
+
+function debuggerReport(): ErrorAt[] {
+  return [buildErrorOnItsRoutedEngine(THE_DEBUGGER_RULE, DEBUGGER_LINE)]
+}
+
+function loopReport(): ErrorAt[] {
+  return [buildEslintError(THE_LOOP_RULE, CLASSIC_LOOP_LINE)]
+}
+
+function noErrors(): ErrorAt[] {
+  return []
+}
 
 // Typed with an index signature: the types let a rule allowSuppressions sets into rules in this shape.
 const THE_BAN_OFF: Record<string, 'off'> = { [THE_BAN]: 'off' }
@@ -52,22 +81,22 @@ const THE_BAN_OFF: Record<string, 'off'> = { [THE_BAN]: 'off' }
 // One file per form in test-fixtures/suppression-ban/forms. A bare /* eslint-disable */ draws the ban
 // alone: unicorn/no-abusive-eslint-disable is off while suppressions are banned.
 const ONE_ERROR_PER_SUPPRESSION_COMMENT = [
-  { file: 'forms/eslint-disable.ts', errors: BAN_REPORT_ON_LINE_1 },
-  { file: 'forms/eslint-disable-line-comment.ts', errors: BAN_REPORT_ON_LINE_1 },
-  { file: 'forms/eslint-disable-naming-a-rule.ts', errors: BAN_REPORT_ON_LINE_1 },
-  { file: 'forms/eslint-disable-next-line.ts', errors: BAN_REPORT_ON_LINE_1 },
-  { file: 'forms/eslint-disable-line.ts', errors: BAN_REPORT_ON_LINE_1 },
-  { file: 'forms/eslint-enable.ts', errors: [buildEslintError(THE_BAN, 1), buildEslintError(THE_BAN, 3)] },
-  { file: 'forms/eslint-rule-config.ts', errors: BAN_REPORT_ON_LINE_1 },
-  { file: 'forms/eslint-disable-of-the-ban.ts', errors: BAN_REPORT_ON_LINE_1 },
-  { file: 'forms/eslint-rule-config-of-the-ban.ts', errors: BAN_REPORT_ON_LINE_1 },
-  { file: 'forms/oxlint-disable.ts', errors: BAN_REPORT_ON_LINE_1 },
-  { file: 'forms/oxlint-disable-next-line.ts', errors: BAN_REPORT_ON_LINE_1 },
-  { file: 'forms/oxlint-disable-line.ts', errors: BAN_REPORT_ON_LINE_1 },
-  { file: 'forms/oxlint-enable.ts', errors: [buildEslintError(THE_BAN, 1), buildEslintError(THE_BAN, 3)] },
-  { file: 'forms/ts-expect-error.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
-  { file: 'forms/ts-ignore.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
-  { file: 'forms/ts-nocheck.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
+  { file: 'forms/eslint-disable.ts', errors: banReportOnLine1 },
+  { file: 'forms/eslint-disable-line-comment.ts', errors: banReportOnLine1 },
+  { file: 'forms/eslint-disable-naming-a-rule.ts', errors: banReportOnLine1 },
+  { file: 'forms/eslint-disable-next-line.ts', errors: banReportOnLine1 },
+  { file: 'forms/eslint-disable-line.ts', errors: banReportOnLine1 },
+  { file: 'forms/eslint-enable.ts', errors: banReportsOnLines1And3 },
+  { file: 'forms/eslint-rule-config.ts', errors: banReportOnLine1 },
+  { file: 'forms/eslint-disable-of-the-ban.ts', errors: banReportOnLine1 },
+  { file: 'forms/eslint-rule-config-of-the-ban.ts', errors: banReportOnLine1 },
+  { file: 'forms/oxlint-disable.ts', errors: banReportOnLine1 },
+  { file: 'forms/oxlint-disable-next-line.ts', errors: banReportOnLine1 },
+  { file: 'forms/oxlint-disable-line.ts', errors: banReportOnLine1 },
+  { file: 'forms/oxlint-enable.ts', errors: banReportsOnLines1And3 },
+  { file: 'forms/ts-expect-error.ts', errors: tsCommentBanOnLine1 },
+  { file: 'forms/ts-ignore.ts', errors: tsCommentBanOnLine1 },
+  { file: 'forms/ts-nocheck.ts', errors: tsCommentBanOnLine1 },
 ]
 
 // eslint-env.ts is a fatal ESLint message whenever ESLint reads inline config ("no longer supported").
@@ -93,7 +122,7 @@ describe('a consumer project listing every ruleset, as init writes it', () => {
   })
 
   it.each(ONE_ERROR_PER_SUPPRESSION_COMMENT)('reports one error per suppression comment in $file', ({ file, errors }) => {
-    expect(shipped.errorsOn(file)).toStrictEqual(errors)
+    expect(shipped.errorsOn(file)).toStrictEqual(errors())
   })
 
   it.each(NOT_SUPPRESSIONS)('reports no error on %s, which suppresses nothing', (file) => {
@@ -148,7 +177,7 @@ describe('the ban, on as shipped, against comments that would silence it', () =>
 
   // ESLint reads no directive, so it never looks the named rule up.
   it('reports a suppression of a rule nobody defines as a suppression, with no "Definition for rule" error', () => {
-    expect(banOn.errorsOn('src/suppression-of-a-rule-nobody-defines.ts')).toStrictEqual(BAN_REPORT_ON_LINE_1)
+    expect(banOn.errorsOn('src/suppression-of-a-rule-nobody-defines.ts')).toStrictEqual(banReportOnLine1())
   })
 
   it("adds ESLint's own warning, and nothing else, beside the ban's error on an ESLint directive", () => {
@@ -191,19 +220,19 @@ describe('suppressions allowed by allowSuppressions: true', () => {
   })
 
   it.each([
-    { comment: 'a blanket /* eslint-disable */ over clean code', file: 'forms/eslint-disable.ts', errors: BLANKET_DISABLE_ON_LINE_1 },
+    { comment: 'a blanket /* eslint-disable */ over clean code', file: 'forms/eslint-disable.ts', errors: blanketDisableOnLine1 },
     {
       comment: 'a blanket /* eslint-disable */ once, and not the loop it silences',
       file: 'src/disable-over-a-loop.ts',
-      errors: BLANKET_DISABLE_ON_LINE_1,
+      errors: blanketDisableOnLine1,
     },
-    { comment: 'nothing for an /* eslint-disable */ naming the rule it silences', file: 'src/named-disable-over-a-loop.ts', errors: [] },
-    { comment: 'a // @ts-ignore', file: 'src/ts-ignore.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
-    { comment: 'a // @ts-nocheck', file: 'forms/ts-nocheck.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
-    { comment: 'a // @ts-expect-error with no description', file: 'src/bare-ts-expect-error.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
-    { comment: 'nothing for a // @ts-expect-error with a description', file: 'src/described-ts-expect-error.ts', errors: [] },
+    { comment: 'nothing for an /* eslint-disable */ naming the rule it silences', file: 'src/named-disable-over-a-loop.ts', errors: noErrors },
+    { comment: 'a // @ts-ignore', file: 'src/ts-ignore.ts', errors: tsCommentBanOnLine1 },
+    { comment: 'a // @ts-nocheck', file: 'forms/ts-nocheck.ts', errors: tsCommentBanOnLine1 },
+    { comment: 'a // @ts-expect-error with no description', file: 'src/bare-ts-expect-error.ts', errors: tsCommentBanOnLine1 },
+    { comment: 'nothing for a // @ts-expect-error with a description', file: 'src/described-ts-expect-error.ts', errors: noErrors },
   ])('reports $comment', ({ file, errors }) => {
-    expect(allowed.errorsOn(file)).toStrictEqual(errors)
+    expect(allowed.errorsOn(file)).toStrictEqual(errors())
   })
 
   // The blanket disable's report is oxlint's, so ESLint reports nothing on the file: not the loop the
@@ -247,13 +276,13 @@ describe('suppressions banned, in test and type-test files', () => {
 
   // The loop under the named disable is reported too, so ESLint reads no inline config in test files either.
   it.each([
-    { comment: 'a // @ts-expect-error with no description', file: 'src/bare-ts-expect-error.test.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
-    { comment: 'a // @ts-ignore', file: 'src/ts-ignore.test.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
-    { comment: 'a // @ts-nocheck', file: 'src/ts-nocheck.test.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
-    { comment: 'an // eslint-disable-next-line', file: 'src/disable-next-line.test.ts', errors: BAN_REPORT_ON_LINE_1 },
-    { comment: 'an /* eslint-disable */ naming the loop rule, and the loop', file: 'src/named-disable-over-a-loop.test.ts', errors: BAN_AND_LOOP },
+    { comment: 'a // @ts-expect-error with no description', file: 'src/bare-ts-expect-error.test.ts', errors: tsCommentBanOnLine1 },
+    { comment: 'a // @ts-ignore', file: 'src/ts-ignore.test.ts', errors: tsCommentBanOnLine1 },
+    { comment: 'a // @ts-nocheck', file: 'src/ts-nocheck.test.ts', errors: tsCommentBanOnLine1 },
+    { comment: 'an // eslint-disable-next-line', file: 'src/disable-next-line.test.ts', errors: banReportOnLine1 },
+    { comment: 'an /* eslint-disable */ naming the loop rule, and the loop', file: 'src/named-disable-over-a-loop.test.ts', errors: banAndLoop },
   ])('reports $comment in a test file', ({ file, errors }) => {
-    expect(testFiles.errorsOn(file)).toStrictEqual(errors)
+    expect(testFiles.errorsOn(file)).toStrictEqual(errors())
   })
 })
 
@@ -291,15 +320,15 @@ describe('suppressions allowed for legacy/** only, by a file override', () => {
   })
 
   it.each([
-    { file: 'legacy/named-disable-over-a-loop.ts', errors: [] },
-    { file: 'src/named-disable-over-a-loop.ts', errors: BAN_AND_LOOP },
-    { file: 'legacy/disable-over-a-loop.ts', errors: BLANKET_DISABLE_ON_LINE_1 },
-    { file: 'src/disable-over-a-loop.ts', errors: BAN_AND_LOOP },
-    { file: 'legacy/described-ts-expect-error.ts', errors: [] },
-    { file: 'src/described-ts-expect-error.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
-    { file: 'legacy/ts-ignore.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
+    { file: 'legacy/named-disable-over-a-loop.ts', errors: noErrors },
+    { file: 'src/named-disable-over-a-loop.ts', errors: banAndLoop },
+    { file: 'legacy/disable-over-a-loop.ts', errors: blanketDisableOnLine1 },
+    { file: 'src/disable-over-a-loop.ts', errors: banAndLoop },
+    { file: 'legacy/described-ts-expect-error.ts', errors: noErrors },
+    { file: 'src/described-ts-expect-error.ts', errors: tsCommentBanOnLine1 },
+    { file: 'legacy/ts-ignore.ts', errors: tsCommentBanOnLine1 },
   ])('allows suppressions in legacy/** only: $file', ({ file, errors }) => {
-    expect(legacyAllowed.errorsOn(file)).toStrictEqual(errors)
+    expect(legacyAllowed.errorsOn(file)).toStrictEqual(errors())
   })
 })
 
@@ -338,23 +367,23 @@ describe("the ban turned off for legacy/** by an entry's rules", () => {
     {
       outcome: 'nothing for a disable comment, nor for the debugger oxlint lets it hide',
       file: 'legacy/disable-next-line.ts',
-      errors: [],
+      errors: noErrors,
     },
-    { outcome: 'the same disable comment outside the entry', file: 'src/disable-next-line.ts', errors: BAN_REPORT_ON_LINE_1 },
+    { outcome: 'the same disable comment outside the entry', file: 'src/disable-next-line.ts', errors: banReportOnLine1 },
     {
       outcome: 'a debugger no comment hides',
       file: 'legacy/unsuppressed-debugger.ts',
-      errors: [buildErrorOnItsRoutedEngine(THE_DEBUGGER_RULE, DEBUGGER_LINE)],
+      errors: debuggerReport,
     },
     {
       outcome: 'the loop ESLint does not let a disable comment hide, and not the comment',
       file: 'legacy/named-disable-over-a-loop.ts',
-      errors: [buildEslintError(THE_LOOP_RULE, CLASSIC_LOOP_LINE)],
+      errors: loopReport,
     },
-    { outcome: 'the same comment and loop outside the entry', file: 'src/named-disable-over-a-loop.ts', errors: BAN_AND_LOOP },
-    { outcome: 'a // @ts-ignore', file: 'legacy/ts-ignore.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
+    { outcome: 'the same comment and loop outside the entry', file: 'src/named-disable-over-a-loop.ts', errors: banAndLoop },
+    { outcome: 'a // @ts-ignore', file: 'legacy/ts-ignore.ts', errors: tsCommentBanOnLine1 },
   ])('reports $outcome: $file', ({ file, errors }) => {
-    expect(banOffForLegacy.errorsOn(file)).toStrictEqual(errors)
+    expect(banOffForLegacy.errorsOn(file)).toStrictEqual(errors())
   })
 })
 
@@ -392,13 +421,13 @@ describe('suppressions allowed at the top level and banned for strict/** by a fi
 
   // strict/disable-over-a-loop.ts: the ban's error and not unicorn's beside it.
   it.each([
-    { file: 'src/named-disable-over-a-loop.ts', errors: [] },
-    { file: 'strict/named-disable-over-a-loop.ts', errors: BAN_AND_LOOP },
-    { file: 'strict/disable-over-a-loop.ts', errors: BAN_AND_LOOP },
-    { file: 'src/described-ts-expect-error.ts', errors: [] },
-    { file: 'strict/described-ts-expect-error.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
+    { file: 'src/named-disable-over-a-loop.ts', errors: noErrors },
+    { file: 'strict/named-disable-over-a-loop.ts', errors: banAndLoop },
+    { file: 'strict/disable-over-a-loop.ts', errors: banAndLoop },
+    { file: 'src/described-ts-expect-error.ts', errors: noErrors },
+    { file: 'strict/described-ts-expect-error.ts', errors: tsCommentBanOnLine1 },
   ])('bans suppressions in strict/** only: $file', ({ file, errors }) => {
-    expect(strictBanned.errorsOn(file)).toStrictEqual(errors)
+    expect(strictBanned.errorsOn(file)).toStrictEqual(errors())
   })
 })
 
@@ -421,10 +450,10 @@ describe('a file override whose rulesets list none', () => {
   )
 
   it.each([
-    { file: 'bare/disable-over-a-loop.ts', errors: BAN_REPORT_ON_LINE_1 },
-    { file: 'bare/ts-ignore.ts', errors: [buildErrorOnItsRoutedEngine(TS_COMMENT_BAN, 1)] },
+    { file: 'bare/disable-over-a-loop.ts', errors: banReportOnLine1 },
+    { file: 'bare/ts-ignore.ts', errors: tsCommentBanOnLine1 },
   ])('drops its rulesets\' rules but keeps both bans: $file', ({ file, errors }) => {
-    expect(bare.errorsOn(file)).toStrictEqual(errors)
+    expect(bare.errorsOn(file)).toStrictEqual(errors())
   })
 
   it('leaves the loop rule on outside it, beside the ban', () => {

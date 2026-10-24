@@ -44,9 +44,8 @@ async function runFix(eslint: ESLint, code: string): Promise<FixRun> {
 // Two rules undoing each other's fix make ESLint stop after ten passes, mid-cycle. The text can
 // then match the input again, so "applied no fix" is the measure, not "text unchanged".
 describe('the ordering ruleset, fixing unions', () => {
-  const eslint = fixingEslintFor(buildConsumerLintRules(PROJECT_DIR, { agentRulesets: { quality: ['ordering'] } }))
-
   it.each(unionsToConverge)('converges on %j: a second eslint --fix applies no fix and leaves no finding', async (union) => {
+    const eslint = fixingEslintFor(buildConsumerLintRules(PROJECT_DIR, { agentRulesets: { quality: ['ordering'] } }))
     const first = await runFix(eslint, buildUnionDeclaration(union))
     const second = await runFix(eslint, first.output)
 
@@ -59,15 +58,16 @@ describe('the ordering ruleset, fixing unions', () => {
 
 describe('perfectionist/sort-union-types with its shipped options', () => {
   // A bare severity keeps the shipped options in force.
-  const eslint = fixingEslintFor(buildConsumerLintRules(PROJECT_DIR, {}, { rules: { 'perfectionist/sort-union-types': 'error' } }))
-
   it.each(unionsLeftAsWritten)('leaves %j as written: object types, then null and undefined, last', async (union) => {
+    const eslint = fixingEslintFor(buildConsumerLintRules(PROJECT_DIR, {}, { rules: { 'perfectionist/sort-union-types': 'error' } }))
     const code = buildUnionDeclaration(union)
 
     expect(await runFix(eslint, code)).toStrictEqual({ output: code, fixed: false, remaining: [], fatal: [] })
   })
 
   it.each(unionSorts)('orders $order', async ({ union, sorted }) => {
+    const eslint = fixingEslintFor(buildConsumerLintRules(PROJECT_DIR, {}, { rules: { 'perfectionist/sort-union-types': 'error' } }))
+
     expect(await runFix(eslint, buildUnionDeclaration(union))).toStrictEqual({
       output: buildUnionDeclaration(sorted),
       fixed: true,

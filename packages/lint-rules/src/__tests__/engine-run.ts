@@ -88,18 +88,19 @@ export type WrittenFiles = ProjectFiles
 
 /**
 * Copies the fixtures into a temp project, builds the configs `build` names, and runs the real oxlint CLI and
-* ESLint Node API over it. Registers hooks: call it at the top of a test file or describe block.
+* ESLint Node API over it. A build whose making can throw is given as a function, so it is made in the hook.
+* Registers hooks: call it at the top of a test file or describe block.
 */
 export function setUpEngineRun(
   fixturesDir: string,
   configFor: (projectDir: string) => DefinedLintRules,
   writtenFiles: WrittenFiles = {},
-  build: EngineBuild = AGENT_BUILD,
+  build: EngineBuild | (() => EngineBuild) = AGENT_BUILD,
   linkedPackages: readonly LinkedPackage[] = [],
 ): EngineRun {
   const completedRun = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const projectDir = tempProjects.create({ fixturesDir, files: writtenFiles, linkedPackages: [INSTALLED_OXLINT, ...linkedPackages] })
-    return runBothEngines(projectDir, emittedConfigsOf(projectDir, configFor(projectDir), build))
+    return runBothEngines(projectDir, emittedConfigsOf(projectDir, configFor(projectDir), typeof build === 'function' ? build() : build))
   })
 
   function oxlintRun(): OxlintRun {

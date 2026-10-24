@@ -64,12 +64,13 @@ const SEVERITY_NAMES: Readonly<Record<number, string>> = { 1: 'warn', 2: 'error'
 /** An untyped rule and the typed rule it is off beside wherever that one runs with type information. */
 type SplitByTypesPair = { readonly untyped: string; readonly typed: string }
 
+// The untyped rule of each pair: the catalog gives the typed one, read in each test.
 /** Both in redundancy, both run by ESLint. `flag === true` draws each, where flag is a boolean. */
-const BOOLEAN_COMPARISON_PAIR = pairSplitting('unicorn/no-unnecessary-boolean-comparison')
+const BOOLEAN_COMPARISON = 'unicorn/no-unnecessary-boolean-comparison'
 /** The untyped rule in correctness, the typed one in redundancy. `if (true)` draws each. */
-const CONSTANT_CONDITION_PAIR = pairSplitting('no-constant-condition')
+const CONSTANT_CONDITION = 'no-constant-condition'
 /** Both in correctness, both run by ESLint, and typescript-eslint's extension of the core rule. `throw 'x'` draws each. */
-const THROW_LITERAL_PAIR = pairSplitting('no-throw-literal')
+const THROW_LITERAL = 'no-throw-literal'
 
 /** The untyped rule and the typed rule the catalog records it split by types with. */
 function pairSplitting(untyped: string): SplitByTypesPair {
@@ -117,9 +118,9 @@ function finding(pair: SplitByTypesPair, by: 'untyped' | 'typed', severity: numb
 }
 
 const LINE_OF: Readonly<Record<string, number>> = {
-  [BOOLEAN_COMPARISON_PAIR.untyped]: 2,
-  [CONSTANT_CONDITION_PAIR.untyped]: 5,
-  [THROW_LITERAL_PAIR.untyped]: 11,
+  [BOOLEAN_COMPARISON]: 2,
+  [CONSTANT_CONDITION]: 5,
+  [THROW_LITERAL]: 11,
 }
 
 function agentBuildOf(lintRules: LintRulesInput): Linter.Config[] {
@@ -133,9 +134,8 @@ function rootedAtTheProject(lintRules: LintRulesInput): LintRulesInput {
 const REDUNDANCY = { quality: ['redundancy'] }
 
 describe('a pair split by types, in the agent build', () => {
-  const pair = BOOLEAN_COMPARISON_PAIR
-
   it("draws one report per file: the typed rule's in a typed TS file, the untyped rule's in a JS file and in a TS file outside every tsconfig", async () => {
+    const pair = pairSplitting(BOOLEAN_COMPARISON)
     const config = agentBuildOf(rootedAtTheProject(buildLintRules(REDUNDANCY)))
 
     expect(await pairFindingsWith(config, pair, [FILES.typedTs, FILES.js, FILES.untypedTs])).toStrictEqual({
@@ -146,6 +146,7 @@ describe('a pair split by types, in the agent build', () => {
   })
 
   it('runs the untyped rule in a typed TS file where the rules turn the typed rule off', async () => {
+    const pair = pairSplitting(BOOLEAN_COMPARISON)
     const config = agentBuildOf(rootedAtTheProject(buildLintRules(REDUNDANCY, { rules: { [pair.typed]: 'off' } })))
 
     expect(await pairFindingsWith(config, pair, [FILES.typedTs, FILES.js])).toStrictEqual({
@@ -157,6 +158,7 @@ describe('a pair split by types, in the agent build', () => {
   // Pitfall 2: the entry states nothing of the untyped rule, so the top level's typed block, which
   // states it off, would stand in the entry's typed files.
   it("runs the untyped rule in the typed TS files of an entry turning the typed rule off, and the typed rule elsewhere", async () => {
+    const pair = pairSplitting(BOOLEAN_COMPARISON)
     const config = agentBuildOf(rootedAtTheProject(buildLintRules(REDUNDANCY, { fileOverrides: [buildFileOverride([LEGACY_FILES], { rules: { [pair.typed]: 'off' } })] })))
 
     expect(await pairFindingsWith(config, pair, [FILES.typedTs, FILES.legacyTypedTs, FILES.legacyJs])).toStrictEqual({
@@ -169,6 +171,7 @@ describe('a pair split by types, in the agent build', () => {
   // Pitfall 1: the entry's plain block comes after the top level's typed block, so the untyped rule
   // it restates would run beside the typed rule in the entry's typed files.
   it("runs the typed rule alone in the typed TS files of an entry setting the untyped rule to warn, and the untyped rule at warn in its JS files", async () => {
+    const pair = pairSplitting(BOOLEAN_COMPARISON)
     const config = agentBuildOf(rootedAtTheProject(buildLintRules(REDUNDANCY, { fileOverrides: [buildFileOverride([FEATURE_FILES], { rules: { [pair.untyped]: 'warn' } })] })))
 
     expect(await pairFindingsWith(config, pair, [FILES.featureTypedTs, FILES.featureJs, FILES.typedTs])).toStrictEqual({
@@ -179,6 +182,7 @@ describe('a pair split by types, in the agent build', () => {
   })
 
   it("splits them in the files of an entry adding the typed rule's ruleset, which the top level lacks, and runs neither elsewhere", async () => {
+    const pair = pairSplitting(BOOLEAN_COMPARISON)
     const config = agentBuildOf(rootedAtTheProject(buildLintRules({}, { fileOverrides: [buildFileOverride([SRC_FILES], { rulesets: REDUNDANCY })] })))
 
     expect(await pairFindingsWith(config, pair, [FILES.typedTs, FILES.js, FILES.untypedTs, FILES.legacyTypedTs])).toStrictEqual({
@@ -191,9 +195,8 @@ describe('a pair split by types, in the agent build', () => {
 })
 
 describe('a pair split by types across two rulesets, in the agent build', () => {
-  const pair = CONSTANT_CONDITION_PAIR
-
   it("runs the untyped rule in the typed TS files of an entry dropping the typed rule's ruleset, and the typed rule alone in the other typed TS files", async () => {
+    const pair = pairSplitting(CONSTANT_CONDITION)
     const config = agentBuildOf(
       rootedAtTheProject(buildLintRules({ quality: ['correctness', 'redundancy'] }, { fileOverrides: [buildFileOverride([LEGACY_FILES], { rulesets: { quality: ['correctness'] } })] })),
     )
@@ -209,9 +212,8 @@ describe('a pair split by types across two rulesets, in the agent build', () => 
 
 // throw 'x' draws exactly one report, whichever kind of file it is in.
 describe("throw 'x', our correctness ruleset on, in the agent build", () => {
-  const pair = THROW_LITERAL_PAIR
-
   it("draws only-throw-error alone in a typed TS file, and no-throw-literal alone in a JS file and in a TS file outside every tsconfig", async () => {
+    const pair = pairSplitting(THROW_LITERAL)
     const config = agentBuildOf(rootedAtTheProject(buildLintRules({ quality: ['correctness'] })))
 
     expect(await pairFindingsWith(config, pair, [FILES.typedTs, FILES.js, FILES.untypedTs])).toStrictEqual({
@@ -225,7 +227,6 @@ describe("throw 'x', our correctness ruleset on, in the agent build", () => {
 // Pitfall 3: where a team block takes type information away, our copy of a typed block states its
 // typed rules off there; it must state the untyped rule at its setting, not off.
 describe('a pair split by types, merged into a team config that gives type information and takes it away in legacy/**', () => {
-  const pair = BOOLEAN_COMPARISON_PAIR
   const teamConfig = [
     buildTeamTypedEslintBlock('team-typed', 'projectService', { files: ['**/*.ts'] }),
     buildTeamBlockSwitchingTypesOffAsDisableTypeCheckedDoes('team-untyped', { files: [LEGACY_FILES] }),
@@ -237,6 +238,7 @@ describe('a pair split by types, merged into a team config that gives type infor
   }
 
   it("runs the typed rule alone where the team's types are, and the untyped rule where it takes them away and in JS files", async () => {
+    const pair = pairSplitting(BOOLEAN_COMPARISON)
     const config = mergedOf(buildTwoSetLintRules({ editorRulesets: REDUNDANCY }))
 
     expect(await pairFindingsWith(config, pair, [FILES.typedTs, FILES.legacyTypedTs, FILES.js])).toStrictEqual({
@@ -247,6 +249,7 @@ describe('a pair split by types, merged into a team config that gives type infor
   })
 
   it("runs the untyped rule at an entry's setting where the team takes types away, and the typed rule alone in the entry's typed files", async () => {
+    const pair = pairSplitting(BOOLEAN_COMPARISON)
     const config = mergedOf(buildTwoSetLintRules({ editorRulesets: REDUNDANCY }, { fileOverrides: [buildTwoSetFileOverride([LEGACY_FILES, FEATURE_FILES], { rules: { [pair.untyped]: 'warn' } })] }))
 
     expect(await pairFindingsWith(config, pair, [FILES.legacyTypedTs, FILES.featureTypedTs])).toStrictEqual({

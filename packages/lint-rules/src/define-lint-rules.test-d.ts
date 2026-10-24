@@ -5,11 +5,13 @@ import {
   buildConsumerLintRulesWithoutAgentRulesets,
   buildConsumerLintRulesWithoutEditorRulesets,
   buildEveryRulesetLintRules,
-  EMPTY_TSCONFIG_ROOT_DIR,
+  emptyTsconfigRootDir,
 } from './__tests__/factories/lint-rules-factories.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
+
+const EMPTY_TSCONFIG_ROOT_DIR = emptyTsconfigRootDir()
 
 const allowed = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR)
 

@@ -12,6 +12,10 @@ import {
 import { buildFileOverride, buildLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { oxlintSeverityFor } from '../__tests__/oxlint-config-oracle.ts'
 import { buildOxlintConfig } from './build-oxlint-config.ts'
+import type { LintRulesInput } from './lint-rules-input.ts'
+
+/** What an entry does to the rule, as a title names it, the lint rules giving that entry, and the rule's severity in each file. */
+type EntrySettingTheRule = { readonly entryDoes: string; readonly lintRules: () => LintRulesInput; readonly severities: Readonly<Record<string, string>> }
 
 const EVERY_CATEGORY_OFF = {
   correctness: 'off',
@@ -237,27 +241,31 @@ describe('buildOxlintConfig', () => {
 
     // oxc/no-accumulating-spread ships ignoring **/*.test.ts; an entry setting it never widens it onto those files.
     describe('whose own rules set a rule shipped with ignores', () => {
-      const entriesSettingTheRule = [
+      const entriesSettingTheRule: readonly EntrySettingTheRule[] = [
         {
           entryDoes: 'softens it while its ruleset is listed',
-          lintRules: buildLintRules(
-            { quality: ['performance'] },
-            { fileOverrides: [buildFileOverride(['src/**'], { rules: { 'oxc/no-accumulating-spread': 'warn' } })] },
-          ),
+          lintRules() {
+            return buildLintRules(
+              { quality: ['performance'] },
+              { fileOverrides: [buildFileOverride(['src/**'], { rules: { 'oxc/no-accumulating-spread': 'warn' } })] },
+            )
+          },
           severities: { 'src/a.ts': 'warn', 'src/a.test.ts': 'off', 'lib/a.ts': 'error' },
         },
         {
           entryDoes: 'turns it on while its ruleset is unlisted',
-          lintRules: buildLintRules(
-            {},
-            { fileOverrides: [buildFileOverride(['src/**'], { rules: { 'oxc/no-accumulating-spread': 'error' } })] },
-          ),
+          lintRules() {
+            return buildLintRules(
+              {},
+              { fileOverrides: [buildFileOverride(['src/**'], { rules: { 'oxc/no-accumulating-spread': 'error' } })] },
+            )
+          },
           severities: { 'src/a.ts': 'error', 'src/a.test.ts': 'off', 'lib/a.ts': 'off' },
         },
       ]
 
       it.each(entriesSettingTheRule)('keep it off under its ignores when the entry $entryDoes', ({ lintRules, severities }) => {
-        const config = buildOxlintConfig(lintRules, catalog)
+        const config = buildOxlintConfig(lintRules(), catalog)
         const applied = Object.fromEntries(
           Object.keys(severities).map((file) => [
             file,

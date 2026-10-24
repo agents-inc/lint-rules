@@ -8,7 +8,7 @@ import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
 import {
   buildConsumerLintRules,
   buildEveryRulesetLintRules,
-  EMPTY_TSCONFIG_ROOT_DIR,
+  emptyTsconfigRootDir,
 } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { oxlintConfigForFile, oxlintSeverityFor } from './__tests__/oxlint-config-oracle.ts'
@@ -37,13 +37,21 @@ type SuppressionSettings = {
 
 type BuiltConfigs = { readonly eslint: Linter.Config[]; readonly oxlint: OxlintConfig | null }
 
+type SharedFields = Partial<Omit<LintRules, 'tsconfigRootDir' | 'agentRulesets' | 'editorRulesets'>>
+
 /** A config's shared settings, the file a spec reads, and what the agent build sets there. */
 type SharedSettingsCase = {
   readonly config: string
-  readonly fields: Partial<Omit<LintRules, 'tsconfigRootDir' | 'agentRulesets' | 'editorRulesets'>>
+  readonly fields: SharedFields
   readonly agentExpected: SuppressionSettings
   readonly file: string
 }
+
+/** A config as a title names it, built in the folder a test gives, and what the agent build sets in src/a.ts. */
+type TopLevelCase = { readonly config: string; readonly lintRulesIn: (tsconfigRootDir: string) => LintRules; readonly expected: SuppressionSettings }
+
+/** A project as a title names it, its folder as a test reads it, and what the editor parts set there. */
+type EditorProjectCase = { readonly project: string; readonly projectDir: () => string; readonly editorExpected: SuppressionSettings }
 
 const TS_COMMENT_BAN = '@typescript-eslint/ban-ts-comment'
 const BLANKET_DISABLE_RULE = 'unicorn/no-abusive-eslint-disable'
@@ -165,136 +173,152 @@ function readsDirectives({ linterOptions }: Linter.Config): boolean {
 }
 
 describe('allowSuppressions at the top level, in the agent build', () => {
-  it.each([
+  it.each<TopLevelCase>([
     {
       config: 'every ruleset listed, allowSuppressions left out',
-      lintRules: buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR),
+      lintRulesIn(tsconfigRootDir) {
+        return buildEveryRulesetLintRules(tsconfigRootDir)
+      },
       expected: BANNED,
     },
     {
       config: 'every ruleset listed, allowSuppressions: false',
-      lintRules: buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, { allowSuppressions: false }),
+      lintRulesIn(tsconfigRootDir) {
+        return buildEveryRulesetLintRules(tsconfigRootDir, { allowSuppressions: false })
+      },
       expected: BANNED,
     },
     {
       config: 'every ruleset listed, allowSuppressions: true',
-      lintRules: buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, { allowSuppressions: true }),
+      lintRulesIn(tsconfigRootDir) {
+        return buildEveryRulesetLintRules(tsconfigRootDir, { allowSuppressions: true })
+      },
       expected: ALLOWED,
     },
     {
       config: 'no ruleset listed, allowSuppressions left out',
-      lintRules: buildConsumerLintRules(EMPTY_TSCONFIG_ROOT_DIR, { agentRulesets: NO_RULESETS }),
+      lintRulesIn(tsconfigRootDir) {
+        return buildConsumerLintRules(tsconfigRootDir, { agentRulesets: NO_RULESETS })
+      },
       expected: BANNED,
     },
     {
       config: 'no ruleset listed, allowSuppressions: true',
-      lintRules: buildConsumerLintRules(EMPTY_TSCONFIG_ROOT_DIR, { agentRulesets: NO_RULESETS }, { allowSuppressions: true }),
+      lintRulesIn(tsconfigRootDir) {
+        return buildConsumerLintRules(tsconfigRootDir, { agentRulesets: NO_RULESETS }, { allowSuppressions: true })
+      },
       expected: ALLOWED,
     },
-  ])('sets the suppression rules for $config', async ({ lintRules, expected }) => {
+  ])('sets the suppression rules for $config', async ({ lintRulesIn, expected }) => {
+    const lintRules = lintRulesIn(emptyTsconfigRootDir())
+
     expect(await suppressionSettingsFor(agentConfigsFor(lintRules), 'src/a.ts')).toStrictEqual(expected)
   })
 })
 
 describe('allowSuppressions at the top level, in the agent build, in test and type-test files', () => {
-  const banned = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR)
-  const allowed = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, { allowSuppressions: true })
+  const banned: SharedFields = {}
+  const allowed: SharedFields = { allowSuppressions: true }
 
   it.each([
-    { file: 'src/a.test.ts', config: 'banned', lintRules: banned, expected: BANNED_IN_TEST_FILES },
-    { file: 'src/a.spec.tsx', config: 'banned', lintRules: banned, expected: BANNED_IN_TEST_FILES },
-    { file: 'src/__tests__/a.ts', config: 'banned', lintRules: banned, expected: BANNED_IN_TEST_FILES },
-    { file: 'src/a.test-d.ts', config: 'banned', lintRules: banned, expected: BANNED_IN_TEST_FILES },
-    { file: 'src/a-test.ts', config: 'banned, in a file that only ends like a test', lintRules: banned, expected: BANNED },
-    { file: 'src/a.test.ts', config: 'allowed', lintRules: allowed, expected: ALLOWED },
-  ])('sets the suppression rules for $file, $config', async ({ lintRules, file, expected }) => {
+    { file: 'src/a.test.ts', config: 'banned', fields: banned, expected: BANNED_IN_TEST_FILES },
+    { file: 'src/a.spec.tsx', config: 'banned', fields: banned, expected: BANNED_IN_TEST_FILES },
+    { file: 'src/__tests__/a.ts', config: 'banned', fields: banned, expected: BANNED_IN_TEST_FILES },
+    { file: 'src/a.test-d.ts', config: 'banned', fields: banned, expected: BANNED_IN_TEST_FILES },
+    { file: 'src/a-test.ts', config: 'banned, in a file that only ends like a test', fields: banned, expected: BANNED },
+    { file: 'src/a.test.ts', config: 'allowed', fields: allowed, expected: ALLOWED },
+  ])('sets the suppression rules for $file, $config', async ({ fields, file, expected }) => {
+    const lintRules = buildEveryRulesetLintRules(emptyTsconfigRootDir(), fields)
+
     expect(await suppressionSettingsFor(agentConfigsFor(lintRules), file)).toStrictEqual(expected)
   })
 })
 
 describe('allowSuppressions in file overrides, in the agent build', () => {
-  const allowedForLegacy = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+  const allowedForLegacy: SharedFields = {
     fileOverrides: [{ files: ['legacy/**'], allowSuppressions: true }],
-  })
-  const bannedForStrict = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+  }
+  const bannedForStrict: SharedFields = {
     allowSuppressions: true,
     fileOverrides: [{ files: ['strict/**'], allowSuppressions: false }],
-  })
-  const otherKeysOnlyUnderAllowed = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+  }
+  const otherKeysOnlyUnderAllowed: SharedFields = {
     allowSuppressions: true,
     fileOverrides: [{ files: ['web/**'], agentRulesets: { runtimes: ['browser'] }, rules: { 'no-debugger': 'off' } }],
-  })
-  const allowedForAppsThenBannedForWeb = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+  }
+  const allowedForAppsThenBannedForWeb: SharedFields = {
     fileOverrides: [
       { files: ['apps/**'], allowSuppressions: true },
       { files: ['apps/web/**'], allowSuppressions: false },
     ],
-  })
-  const allowedForAppsThenOtherKeysForWeb = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+  }
+  const allowedForAppsThenOtherKeysForWeb: SharedFields = {
     fileOverrides: [
       { files: ['apps/**'], allowSuppressions: true },
       { files: ['apps/web/**'], agentRulesets: { runtimes: ['browser'] } },
     ],
-  })
-  const emptyRulesetsUnderAllowed = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+  }
+  const emptyRulesetsUnderAllowed: SharedFields = {
     allowSuppressions: true,
     fileOverrides: [{ files: ['bare/**'], agentRulesets: NO_RULESETS }],
-  })
-  const emptyRulesetsUnderBanned = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+  }
+  const emptyRulesetsUnderBanned: SharedFields = {
     fileOverrides: [{ files: ['bare/**'], agentRulesets: NO_RULESETS }],
-  })
+  }
 
   it.each([
-    { file: 'legacy/a.ts', config: 'an entry allowing them under a top level banning them', lintRules: allowedForLegacy, expected: ALLOWED },
-    { file: 'src/a.ts', config: 'an entry allowing them under a top level banning them', lintRules: allowedForLegacy, expected: BANNED },
-    { file: 'strict/a.ts', config: 'an entry banning them under a top level allowing them', lintRules: bannedForStrict, expected: BANNED },
-    { file: 'src/a.ts', config: 'an entry banning them under a top level allowing them', lintRules: bannedForStrict, expected: ALLOWED },
+    { file: 'legacy/a.ts', config: 'an entry allowing them under a top level banning them', fields: allowedForLegacy, expected: ALLOWED },
+    { file: 'src/a.ts', config: 'an entry allowing them under a top level banning them', fields: allowedForLegacy, expected: BANNED },
+    { file: 'strict/a.ts', config: 'an entry banning them under a top level allowing them', fields: bannedForStrict, expected: BANNED },
+    { file: 'src/a.ts', config: 'an entry banning them under a top level allowing them', fields: bannedForStrict, expected: ALLOWED },
     {
       file: 'web/a.ts',
       config: 'an entry leaving allowSuppressions out, which inherits the top level',
-      lintRules: otherKeysOnlyUnderAllowed,
+      fields: otherKeysOnlyUnderAllowed,
       expected: ALLOWED,
     },
     {
       file: 'apps/api/a.ts',
       config: 'apps/** allowing them, then apps/web/** banning them',
-      lintRules: allowedForAppsThenBannedForWeb,
+      fields: allowedForAppsThenBannedForWeb,
       expected: ALLOWED,
     },
     {
       file: 'apps/web/a.ts',
       config: 'apps/** allowing them, then apps/web/** banning them: the later entry wins',
-      lintRules: allowedForAppsThenBannedForWeb,
+      fields: allowedForAppsThenBannedForWeb,
       expected: BANNED,
     },
     {
       file: 'apps/web/a.ts',
       config: 'apps/** allowing them, then apps/web/** leaving allowSuppressions out: the earlier entry stands',
-      lintRules: allowedForAppsThenOtherKeysForWeb,
+      fields: allowedForAppsThenOtherKeysForWeb,
       expected: ALLOWED,
     },
     {
       file: 'bare/a.ts',
       config: 'an entry listing no rulesets under a top level allowing them',
-      lintRules: emptyRulesetsUnderAllowed,
+      fields: emptyRulesetsUnderAllowed,
       expected: ALLOWED,
     },
     {
       file: 'bare/a.ts',
       config: 'an entry listing no rulesets under a top level banning them',
-      lintRules: emptyRulesetsUnderBanned,
+      fields: emptyRulesetsUnderBanned,
       expected: BANNED,
     },
-    { file: 'legacy/a.test.ts', config: 'an entry allowing them under a top level banning them', lintRules: allowedForLegacy, expected: ALLOWED },
-    { file: 'strict/a.test.ts', config: 'an entry banning them under a top level allowing them', lintRules: bannedForStrict, expected: BANNED_IN_TEST_FILES },
-    { file: 'src/a.test.ts', config: 'an entry banning them under a top level allowing them', lintRules: bannedForStrict, expected: ALLOWED },
+    { file: 'legacy/a.test.ts', config: 'an entry allowing them under a top level banning them', fields: allowedForLegacy, expected: ALLOWED },
+    { file: 'strict/a.test.ts', config: 'an entry banning them under a top level allowing them', fields: bannedForStrict, expected: BANNED_IN_TEST_FILES },
+    { file: 'src/a.test.ts', config: 'an entry banning them under a top level allowing them', fields: bannedForStrict, expected: ALLOWED },
     {
       file: 'apps/web/a.test.ts',
       config: 'apps/** allowing them, then apps/web/** banning them: the later entry wins',
-      lintRules: allowedForAppsThenBannedForWeb,
+      fields: allowedForAppsThenBannedForWeb,
       expected: BANNED_IN_TEST_FILES,
     },
-  ])('sets the suppression rules for $file under $config', async ({ lintRules, file, expected }) => {
+  ])('sets the suppression rules for $file under $config', async ({ fields, file, expected }) => {
+    const lintRules = buildEveryRulesetLintRules(emptyTsconfigRootDir(), fields)
+
     expect(await suppressionSettingsFor(agentConfigsFor(lintRules), file)).toStrictEqual(expected)
   })
 })
@@ -302,65 +326,75 @@ describe('allowSuppressions in file overrides, in the agent build', () => {
 // An entry's rules naming a rule allowSuppressions sets set it in the entry's files, which the owner accepts
 // (docs/plan.md, Open, "Written limit of the config's types"). At the top level, allowSuppressions wins.
 describe('house/no-suppressions named in rules, in the agent build', () => {
-  const banOffForLegacy = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+  const banOffForLegacy: SharedFields = {
     fileOverrides: [{ files: ['legacy/**'], rules: THE_BAN_OFF }],
-  })
-  const banOffForLegacyWhileBanned = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+  }
+  const banOffForLegacyWhileBanned: SharedFields = {
     fileOverrides: [{ files: ['legacy/**'], allowSuppressions: false, rules: THE_BAN_OFF }],
-  })
-  const banOffAtTheTopLevel = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, { rules: THE_BAN_OFF })
+  }
+  const banOffAtTheTopLevel: SharedFields = { rules: THE_BAN_OFF }
 
   it.each([
-    { file: 'legacy/a.ts', config: "an entry's rules turning it off", lintRules: banOffForLegacy, expected: BANNED_BUT_THE_BAN_OFF },
-    { file: 'src/a.ts', config: "an entry's rules turning it off", lintRules: banOffForLegacy, expected: BANNED },
+    { file: 'legacy/a.ts', config: "an entry's rules turning it off", fields: banOffForLegacy, expected: BANNED_BUT_THE_BAN_OFF },
+    { file: 'src/a.ts', config: "an entry's rules turning it off", fields: banOffForLegacy, expected: BANNED },
     {
       file: 'legacy/a.ts',
       config: "an entry's rules turning it off, the entry also setting allowSuppressions: false",
-      lintRules: banOffForLegacyWhileBanned,
+      fields: banOffForLegacyWhileBanned,
       expected: BANNED_BUT_THE_BAN_OFF,
     },
-    { file: 'src/a.ts', config: 'the top-level rules turning it off', lintRules: banOffAtTheTopLevel, expected: BANNED },
-  ])('sets the suppression rules for $file under $config', async ({ lintRules, file, expected }) => {
+    { file: 'src/a.ts', config: 'the top-level rules turning it off', fields: banOffAtTheTopLevel, expected: BANNED },
+  ])('sets the suppression rules for $file under $config', async ({ fields, file, expected }) => {
+    const lintRules = buildEveryRulesetLintRules(emptyTsconfigRootDir(), fields)
+
     expect(await suppressionSettingsFor(agentConfigsFor(lintRules), file)).toStrictEqual(expected)
   })
 })
 
 describe("@typescript-eslint/ban-ts-comment named in an entry's rules, in the agent build, in test files", () => {
-  const tsCommentsBannedOutrightForSrc = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+  const tsCommentsBannedOutrightForSrc: SharedFields = {
     fileOverrides: [{ files: ['src/**'], rules: TS_COMMENTS_BANNED_OUTRIGHT }],
-  })
-  const tsCommentsBannedOutrightForSrcWhileBanned = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR, {
+  }
+  const tsCommentsBannedOutrightForSrcWhileBanned: SharedFields = {
     fileOverrides: [{ files: ['src/**'], allowSuppressions: false, rules: TS_COMMENTS_BANNED_OUTRIGHT }],
-  })
+  }
 
   it.each([
     {
       file: 'src/a.test.ts',
       config: "an entry's rules banning ts comments outright: the test-file allowance undone",
-      lintRules: tsCommentsBannedOutrightForSrc,
+      fields: tsCommentsBannedOutrightForSrc,
       expected: BANNED,
     },
     {
       file: 'lib/a.test.ts',
       config: "an entry's rules for src/** banning ts comments outright",
-      lintRules: tsCommentsBannedOutrightForSrc,
+      fields: tsCommentsBannedOutrightForSrc,
       expected: BANNED_IN_TEST_FILES,
     },
     {
       file: 'src/a.test.ts',
       config: "an entry's rules banning ts comments outright, the entry also setting allowSuppressions: false: the allowance kept",
-      lintRules: tsCommentsBannedOutrightForSrcWhileBanned,
+      fields: tsCommentsBannedOutrightForSrcWhileBanned,
       expected: BANNED_IN_TEST_FILES,
     },
-  ])('sets the suppression rules for $file under $config', async ({ lintRules, file, expected }) => {
+  ])('sets the suppression rules for $file under $config', async ({ fields, file, expected }) => {
+    const lintRules = buildEveryRulesetLintRules(emptyTsconfigRootDir(), fields)
+
     expect(await suppressionSettingsFor(agentConfigsFor(lintRules), file)).toStrictEqual(expected)
   })
 })
 
 describe('the editor parts, merged into a team config, beside the agent build of the same config', () => {
-  const projects = [
-    { project: 'whose package.json lists oxlint', projectDir: PROJECT_WITH_OXLINT, editorExpected: ALLOWED },
-    { project: 'whose package.json lists no oxlint', projectDir: EMPTY_TSCONFIG_ROOT_DIR, editorExpected: ALLOWED_WITHOUT_OXLINT },
+  const projects: readonly EditorProjectCase[] = [
+    {
+      project: 'whose package.json lists oxlint',
+      projectDir() {
+        return PROJECT_WITH_OXLINT
+      },
+      editorExpected: ALLOWED,
+    },
+    { project: 'whose package.json lists no oxlint', projectDir: emptyTsconfigRootDir, editorExpected: ALLOWED_WITHOUT_OXLINT },
   ]
   const configs: readonly SharedSettingsCase[] = [
     { config: 'allowSuppressions left out', fields: {}, agentExpected: BANNED, file: 'src/a.ts' },
@@ -378,7 +412,7 @@ describe('the editor parts, merged into a team config, beside the agent build of
   it.each(cases)(
     'allow suppressions in $file of a project $project, with $config',
     async ({ projectDir, fields, editorExpected, file }) => {
-      const lintRules = buildEveryRulesetLintRules(projectDir, fields)
+      const lintRules = buildEveryRulesetLintRules(projectDir(), fields)
 
       expect(await suppressionSettingsFor(editorConfigsFor(lintRules), file)).toStrictEqual(editorExpected)
     },
@@ -387,7 +421,7 @@ describe('the editor parts, merged into a team config, beside the agent build of
   it.each(cases)(
     'leave the agent build of $file in a project $project as allowSuppressions sets it, with $config',
     async ({ projectDir, fields, agentExpected, file }) => {
-      const lintRules = buildEveryRulesetLintRules(projectDir, fields)
+      const lintRules = buildEveryRulesetLintRules(projectDir(), fields)
 
       expect(await suppressionSettingsFor(agentConfigsFor(lintRules), file)).toStrictEqual(agentExpected)
     },

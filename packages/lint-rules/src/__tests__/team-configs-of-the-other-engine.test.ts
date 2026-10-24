@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { defineLintRules } from '../index.ts'
-import { buildConsumerLintRules, EMPTY_TSCONFIG_ROOT_DIR } from './factories/lint-rules-factories.ts'
+import { buildConsumerLintRules, emptyTsconfigRootDir } from './factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOxlint, packageJsonText } from './factories/package-json-factories.ts'
 import { TEAM_OXLINT_CONFIG_SETTING_NO_RULE, TEAM_OXLINT_CONFIG_SETTING_NO_RULE_FILE, writeTeamOxlintConfigSettingNoRule } from './team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './temp-projects.ts'
@@ -13,13 +13,15 @@ import { INSTALLED_OXLINT, setUpTempProjects } from './temp-projects.ts'
 
 const tempProjects = setUpTempProjects()
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) }, linkedPackages: [INSTALLED_OXLINT] })
-const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {})).editorRulesets
 
 describe('writeTeamOxlintConfigSettingNoRule, given an ESLint part beside oxlint', () => {
   it.each([
-    { what: 'the shared empty tsconfigRootDir', dir: EMPTY_TSCONFIG_ROOT_DIR },
-    { what: 'the temp dir itself', dir: tmpdir() },
-  ])('is refused where the part is rooted at $what, writing nothing there', ({ dir }) => {
+    { what: 'the shared empty tsconfigRootDir', rootedAt: emptyTsconfigRootDir },
+    { what: 'the temp dir itself', rootedAt: tmpdir },
+  ])('is refused where the part is rooted at $what, writing nothing there', ({ rootedAt }) => {
+    const dir = rootedAt()
+    const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {})).editorRulesets
+
     expect(() => writeTeamOxlintConfigSettingNoRule({ ...eslint, tsconfigRootDir: dir })).toThrowError(
       new Error(`${dir} is no temp project, so no team oxlint config is written into it`),
     )
@@ -27,6 +29,8 @@ describe('writeTeamOxlintConfigSettingNoRule, given an ESLint part beside oxlint
   })
 
   it('writes the config into a temp project, and gives its path', () => {
+    const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {})).editorRulesets
+
     expect({ given: writeTeamOxlintConfigSettingNoRule(eslint), files: readdirSync(projectDir).toSorted() }).toStrictEqual({
       given: TEAM_OXLINT_CONFIG_SETTING_NO_RULE,
       files: ['package.json', TEAM_OXLINT_CONFIG_SETTING_NO_RULE_FILE],

@@ -18,10 +18,10 @@ const SVELTE_GLOBAL = '$$props'
 const TEAM_SETTING = 'writable'
 
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) }, linkedPackages: [INSTALLED_OXLINT] })
-const ourParts = defineLintRules(buildConsumerLintRules(projectDir, {})).editorRulesets
 
 /** The merged config with ours merged into the team's config given. */
 function mergedInto(team: OxlintConfig): OxlintConfig {
+  const ourParts = defineLintRules(buildConsumerLintRules(projectDir, {})).editorRulesets
   return mergeOxlintConfig(team, oxlintPartOf(ourParts), NO_TEAM_ESLINT_CONFIG)
 }
 

@@ -15,8 +15,8 @@ const { lintedConfigFor } = setUpEslintConfigOracle()
 const tempProjects = setUpTempProjects()
 
 /** The editor ESLint part of our settings with the ruleset that ships n/no-unpublished-import, rooted where given, merged into the team's blocks. */
-function mergedInto(teamBlocks: readonly Linter.Config[], tsconfigRootDir: string): Linter.Config[] {
-  return ourEditorEslintPartMergedInto(teamBlocks, buildConsumerLintRules(tsconfigRootDir, MODULES_IN_BOTH_SETS))
+function mergedInto(teamBlocks: readonly Linter.Config[], tsconfigRootDir: () => string): Linter.Config[] {
+  return ourEditorEslintPartMergedInto(teamBlocks, buildConsumerLintRules(tsconfigRootDir(), MODULES_IN_BOTH_SETS))
 }
 
 async function tryExtensionsReadFor(config: Linter.Config[], file: string): Promise<string[] | undefined> {

@@ -79,6 +79,11 @@ describe('the parts of a project whose package.json lists oxlint', () => {
 
 // Without oxlint, wherever the layers state an oxc rule, the ESLint part states its stand-in with the
 // oxc rule's severity, files and ignores but none of its options, and the oxc rule not at all.
+/** The rules the editor ESLint part of a project without oxlint runs, the correctness ruleset listed, under the catalog given. */
+function eslintRulesWith(catalog: Catalog): RuleSettings {
+  return editorPartsOf(buildTwoSetLintRules({ editorRulesets: { quality: ['correctness'] } }), catalog, false).eslint.layers.rules
+}
+
 describe('the stand-ins for oxlint-only rules', () => {
   const CHAINED_OXC = 'oxc/bad-comparison-sequence'
   const CHAINED_STAND_IN = 'unicorn/no-chained-comparison'
@@ -177,14 +182,9 @@ describe('the stand-ins for oxlint-only rules', () => {
       [CHAINED_OXC, CHAINED_STAND_IN],
       [DOUBLE_OXC, CHAINED_STAND_IN],
     ])
-    const lintRules = buildTwoSetLintRules({ editorRulesets: { quality: ['correctness'] } })
 
     function catalogOf(rules: readonly RuleRoute[], eslintStandIns: ReadonlyMap<string, string>): Catalog {
       return buildCatalog({ rulesets: [buildQualityRuleset('correctness')], rules, eslintStandIns })
-    }
-
-    function eslintRulesWith(catalog: Catalog): RuleSettings {
-      return editorPartsOf(lintRules, catalog, false).eslint.layers.rules
     }
 
     it('is none where the oxlint-only rule is one oxlint runs alone and its stand-in an untyped ESLint rule, not shipped, standing in for it alone', () => {

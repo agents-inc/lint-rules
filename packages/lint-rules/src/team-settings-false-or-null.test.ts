@@ -19,8 +19,8 @@ const N_SETTINGS_KEY = 'n'
 const OURS: ResolversImportXReads = { key: 'import-x/resolver-next', names: [OUR_RESOLVER_NAME] }
 
 /** The editor ESLint part of our settings with the ruleset that ships import-x's and eslint-plugin-n's rules, rooted where given, merged into the team's blocks. */
-function mergedInto(teamBlocks: readonly Linter.Config[], tsconfigRootDir: string): Linter.Config[] {
-  return ourEditorEslintPartMergedInto(teamBlocks, buildConsumerLintRules(tsconfigRootDir, MODULES_IN_BOTH_SETS))
+function mergedInto(teamBlocks: readonly Linter.Config[], tsconfigRootDir: () => string): Linter.Config[] {
+  return ourEditorEslintPartMergedInto(teamBlocks, buildConsumerLintRules(tsconfigRootDir(), MODULES_IN_BOTH_SETS))
 }
 
 async function resolversReadFor(config: Linter.Config[], file: string): Promise<ResolversImportXReads> {

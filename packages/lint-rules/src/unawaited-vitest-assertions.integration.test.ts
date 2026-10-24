@@ -28,8 +28,6 @@ import { eslintPluginRegistry } from './eslint-plugin-registry.ts'
 
 const FLOATING_PROMISES = '@typescript-eslint/no-floating-promises'
 const VALID_EXPECT = 'vitest/valid-expect'
-const VALID_EXPECT_IN_OXLINT = oxlintCodeOf(VALID_EXPECT, catalog)
-const NAMES: ReadonlySet<string> = new Set([FLOATING_PROMISES, VALID_EXPECT, VALID_EXPECT_IN_OXLINT])
 const SRC_TEST_FILE = 'src/load.test.ts'
 const LEGACY_TEST_FILE = 'legacy/load.test.ts'
 const LEGACY_FILES = 'legacy/**'
@@ -67,7 +65,7 @@ type Listed = { readonly rulesets: Rulesets; readonly legacyEntry: Rulesets | nu
 type BuildConfigs = { readonly oxlint: OxlintConfig | null; readonly eslint: Linter.Config[] }
 
 /** A build as a test names it, its configs for what is listed, and how it spells vitest/valid-expect's finding. */
-type Build = { readonly build: string; readonly configsFor: (projectDir: string, listed: Listed) => BuildConfigs; readonly validExpect: string }
+type Build = { readonly build: string; readonly configsFor: (projectDir: string, listed: Listed) => BuildConfigs; readonly spellingOfValidExpect: () => string }
 
 type FindingsRun = RunOfAKind & {
   readonly withoutTests: readonly string[]
@@ -90,20 +88,26 @@ function editorMerge(projectDir: string, { rulesets, legacyEntry }: Listed, uses
   }
 }
 
-const AGENT_BUILD: Build = { build: 'the agent build', configsFor: agentBuild, validExpect: VALID_EXPECT_IN_OXLINT }
+function validExpectInOxlint(): string {
+  return oxlintCodeOf(VALID_EXPECT, catalog)
+}
+
+const AGENT_BUILD: Build = { build: 'the agent build', configsFor: agentBuild, spellingOfValidExpect: validExpectInOxlint }
 const EDITOR_MERGES_LISTING_OXLINT: Build = {
   build: 'the editor merges, in a project listing oxlint',
   configsFor(projectDir, listed) {
     return editorMerge(projectDir, listed, true, NO_TEAM_ESLINT_CONFIG)
   },
-  validExpect: VALID_EXPECT_IN_OXLINT,
+  spellingOfValidExpect: validExpectInOxlint,
 }
 const ESLINT_MERGE_LISTING_NO_OXLINT: Build = {
   build: 'the ESLint merge, in a project listing no oxlint',
   configsFor(projectDir, listed) {
     return editorMerge(projectDir, listed, false, NO_TEAM_ESLINT_CONFIG)
   },
-  validExpect: VALID_EXPECT,
+  spellingOfValidExpect() {
+    return VALID_EXPECT
+  },
 }
 const BUILDS: readonly Build[] = [AGENT_BUILD, EDITOR_MERGES_LISTING_OXLINT, ESLINT_MERGE_LISTING_NO_OXLINT]
 const EDITOR_PROJECTS = [
@@ -126,10 +130,11 @@ function typedProjectWithUnawaitedAssertions(tempProjects: TempProjects): string
 
 /** Each finding of either rule, from either engine, as `file:line rule`, sorted. */
 async function findingsIn(projectDir: string, { oxlint, eslint }: BuildConfigs): Promise<string[]> {
+  const names: ReadonlySet<string> = new Set([FLOATING_PROMISES, VALID_EXPECT, validExpectInOxlint()])
   const eslintFindings = eslintFindingsIn(await new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: eslint }).lintFiles(['.']), projectDir)
   const oxlintFindings = oxlint === null ? [] : oxlintFindingsOf(projectDir, oxlint)
   return [...eslintFindings, ...oxlintFindings]
-    .filter(({ rule }) => NAMES.has(rule))
+    .filter(({ rule }) => names.has(rule))
     .map(describeFinding)
     .toSorted()
 }
@@ -173,11 +178,15 @@ describe('an unawaited Vitest assertion, in a test file a tsconfig takes in', ()
     expect(runMadeFor(runs().byBuild, build).withoutTests).toStrictEqual(inBothFiles(() => FLOATING_PROMISES))
   })
 
-  it.each(BUILDS)('is reported by vitest/valid-expect alone where tests is listed, in $build', ({ build, validExpect }) => {
+  it.each(BUILDS)('is reported by vitest/valid-expect alone where tests is listed, in $build', ({ build, spellingOfValidExpect }) => {
+    const validExpect = spellingOfValidExpect()
+
     expect(runMadeFor(runs().byBuild, build).withTests).toStrictEqual(inBothFiles(() => validExpect))
   })
 
-  it.each(BUILDS)('is reported by no-floating-promises in the files of an entry dropping tests, and by vitest/valid-expect alone elsewhere, in $build', ({ build, validExpect }) => {
+  it.each(BUILDS)('is reported by no-floating-promises in the files of an entry dropping tests, and by vitest/valid-expect alone elsewhere, in $build', ({ build, spellingOfValidExpect }) => {
+    const validExpect = spellingOfValidExpect()
+
     expect(runMadeFor(runs().byBuild, build).testsDroppedForLegacy).toStrictEqual(inBothFiles((file) => (file === LEGACY_TEST_FILE ? FLOATING_PROMISES : validExpect)))
   })
 

@@ -187,18 +187,16 @@ describe('resolveRuleLayers', () => {
   })
 
   describe('an available rule enabled through rules', () => {
-    const lintRules = buildLintRules(
-      {},
-      { rules: { 'n/no-exports-assign': 'error', 'sonarjs/no-duplicate-string': 'error' } },
-    )
-
     it('runs in oxlint, under its oxlint name, when the catalog routes it to oxlint', () => {
+      const lintRules = buildLintRules({}, { rules: { 'n/no-exports-assign': 'error', 'sonarjs/no-duplicate-string': 'error' } })
+
       expect(buildOxlintConfig(lintRules, catalog).rules).toStrictEqual({
         'node/no-exports-assign': ['error'],
       })
     })
 
     it('runs in ESLint when the catalog routes it to ESLint', () => {
+      const lintRules = buildLintRules({}, { rules: { 'n/no-exports-assign': 'error', 'sonarjs/no-duplicate-string': 'error' } })
       const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
 
       expect(blockNamed(config, 'agents-inc/base').rules).toStrictEqual({
@@ -430,7 +428,6 @@ describe('a rule covered by another', () => {
 
   // The data's tests guarantee a valid cover; the core still throws on a breach, naming both rules.
   describe('a breach of the data', () => {
-    const BOTH_LISTED = buildLintRules(BOTH_RULESETS)
     const COVERED_SHIPPED = buildShippedRule('react', { coveredBy: COVER })
     const COVER_SHIPPED = buildShippedRule('declarative')
     // Covers the cover, in a chain: a rule of the cover's ruleset.
@@ -448,7 +445,9 @@ describe('a rule covered by another', () => {
     }
 
     it('is none where both ship in a ruleset and the cover is another rule, covered by none: the covered rule is left out', () => {
-      expect(Object.keys(resolveRuleLayers(BOTH_LISTED, catalogOf(COVER_SHIPPED, COVERED_SHIPPED)).rules).toSorted()).toStrictEqual([COVER, COVER_OF_THE_COVER].toSorted())
+      const bothListed = buildLintRules(BOTH_RULESETS)
+
+      expect(Object.keys(resolveRuleLayers(bothListed, catalogOf(COVER_SHIPPED, COVERED_SHIPPED)).rules).toSorted()).toStrictEqual([COVER, COVER_OF_THE_COVER].toSorted())
     })
 
     it.each([
@@ -459,13 +458,16 @@ describe('a rule covered by another', () => {
       { breach: 'the cover is not shipped', cover: null, covered: COVERED_SHIPPED },
       { breach: 'the cover is covered itself', cover: buildShippedRule('declarative', { coveredBy: COVER_OF_THE_COVER }), covered: COVERED_SHIPPED },
     ])('is refused where $breach', ({ cover, covered }) => {
-      expect(() => resolveRuleLayers(BOTH_LISTED, catalogOf(cover, covered))).toThrowError(`${COVERED}: covered by ${COVER}`)
+      const bothListed = buildLintRules(BOTH_RULESETS)
+
+      expect(() => resolveRuleLayers(bothListed, catalogOf(cover, covered))).toThrowError(`${COVERED}: covered by ${COVER}`)
     })
 
     it('is refused where the cover is the rule itself', () => {
+      const bothListed = buildLintRules(BOTH_RULESETS)
       const catalog = catalogOf(COVER_SHIPPED, buildShippedRule('react', { coveredBy: COVERED }))
 
-      expect(() => resolveRuleLayers(BOTH_LISTED, catalog)).toThrowError(`${COVERED}: covered by ${COVERED}`)
+      expect(() => resolveRuleLayers(bothListed, catalog)).toThrowError(`${COVERED}: covered by ${COVERED}`)
     })
   })
 })
@@ -556,8 +558,6 @@ describe('a rule covered in oxlint by another', () => {
 
   // The data's tests guarantee a valid cover; the core still throws on a breach, naming both rules.
   describe('a breach of the data', () => {
-    const BOTH_LISTED = buildLintRules(BOTH_RULESETS)
-
     it.each([
       { breach: 'ESLint runs the cover', cover: buildEslintRoute(COVER, { typed: false, shipped: COVER_SHIPPED }), covered: oxlintRoute(COVERED, COVERED_SHIPPED) },
       { breach: 'ESLint runs the covered rule', cover: oxlintRoute(COVER, COVER_SHIPPED), covered: buildEslintRoute(COVERED, { typed: false, shipped: COVERED_SHIPPED }) },
@@ -567,13 +567,16 @@ describe('a rule covered in oxlint by another', () => {
       { breach: 'the cover is covered in oxlint itself', cover: oxlintRoute(COVER, buildShippedRule('lang', { coveredInOxlintBy: COVER_OF_THE_COVER })), covered: oxlintRoute(COVERED, COVERED_SHIPPED) },
       { breach: 'the cover is covered itself', cover: oxlintRoute(COVER, buildShippedRule('lang', { coveredBy: COVER_OF_THE_COVER })), covered: oxlintRoute(COVERED, COVERED_SHIPPED) },
     ])('is refused beside oxlint where $breach', ({ cover, covered }) => {
-      expect(() => resolveRuleLayersBesideOxlint(BOTH_LISTED, catalogOf(cover, covered))).toThrowError(`${COVERED}: covered in oxlint by ${COVER}`)
+      const bothListed = buildLintRules(BOTH_RULESETS)
+
+      expect(() => resolveRuleLayersBesideOxlint(bothListed, catalogOf(cover, covered))).toThrowError(`${COVERED}: covered in oxlint by ${COVER}`)
     })
 
     it('is none without oxlint, where the relation is not read', () => {
+      const bothListed = buildLintRules(BOTH_RULESETS)
       const catalog = catalogOf(buildEslintRoute(COVER, { typed: false, shipped: COVER_SHIPPED }), oxlintRoute(COVERED, COVERED_SHIPPED))
 
-      expect(Object.keys(resolveRuleLayers(BOTH_LISTED, catalog).rules).toSorted()).toStrictEqual([COVER, COVER_OF_THE_COVER, COVERED, OTHER_ACCESSIBILITY_RULE].toSorted())
+      expect(Object.keys(resolveRuleLayers(bothListed, catalog).rules).toSorted()).toStrictEqual([COVER, COVER_OF_THE_COVER, COVERED, OTHER_ACCESSIBILITY_RULE].toSorted())
     })
   })
 })
@@ -778,10 +781,11 @@ describe('layersKeepingRules, given an entry that gives allowSuppressions', () =
       }),
     ],
   })
-  const lintRules = buildLintRules({}, { allowSuppressions: true, fileOverrides: [buildFileOverride(['strict/**'], { allowSuppressions: false })] })
-  const kept = layersKeepingRules(resolveRuleLayers(lintRules, routedToBothEngines), ({ id }) => id === 'demo/strict')
 
   it("keeps in the entry's suppression rules only the rules it is told to, so ruleIdsOnIn names no other", () => {
+    const lintRules = buildLintRules({}, { allowSuppressions: true, fileOverrides: [buildFileOverride(['strict/**'], { allowSuppressions: false })] })
+    const kept = layersKeepingRules(resolveRuleLayers(lintRules, routedToBothEngines), ({ id }) => id === 'demo/strict')
+
     expect({
       entrySuppressionRules: kept.fileOverrides.map((layer) => Object.keys(suppressionRulesOf(layer))),
       ruleIdsOn: ruleIdsOnIn(kept),

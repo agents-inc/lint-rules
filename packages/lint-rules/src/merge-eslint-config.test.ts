@@ -2926,19 +2926,19 @@ describe('a typed rule of ours, beside a team block that gives type information 
 // ESLint reads a files entry of negations alone as every file but those it names (measured). The team's
 // bare severity would keep the options of any block of ours before it, so none of ours may apply there.
 describe('a team block whose files are a negation alone, stating our rule by a bare severity', () => {
-  const teamConfig = [
-    buildTeamEslintBlock('team', {
-      files: ['!legacy/**'],
-      plugins: { [TYPESCRIPT_ESLINT_PREFIX]: installedEslintPlugin(TYPESCRIPT_ESLINT_PREFIX) },
-      rules: { [ARRAY_TYPE]: 'warn' },
-    }),
-  ]
   const fields = { rules: { [ARRAY_TYPE]: 'error' } } satisfies SharedFields
   const files = ['src/a.ts', 'legacy/a.ts']
 
   it.each(PROJECTS)(
     "is the team's in every file: its entry, none of our options with it, in the files the negation leaves in, and no entry in the files it takes out, in a project $project",
     async ({ projectDir }) => {
+      const teamConfig = [
+        buildTeamEslintBlock('team', {
+          files: ['!legacy/**'],
+          plugins: { [TYPESCRIPT_ESLINT_PREFIX]: installedEslintPlugin(TYPESCRIPT_ESLINT_PREFIX) },
+          rules: { [ARRAY_TYPE]: 'warn' },
+        }),
+      ]
       const config = mergedEditorEslintConfig(projectDir, fields, teamConfig)
 
       expect(await entriesOf(config, ARRAY_TYPE, files)).toStrictEqual({
@@ -2952,16 +2952,15 @@ describe('a team block whose files are a negation alone, stating our rule by a b
 // A team typed block's negated ignore takes a folder back into the block, where a team block sets our
 // rule by a bare severity: none of our options may stay there.
 describe("a typed rule of ours, beside a team typed block whose negated ignore takes back a folder the team sets the rule in", () => {
-  const teamConfig = [
-    buildTeamTypedEslintBlock('team-typed', 'projectService', { files: ['**/*.ts'], ignores: ['legacy/**', '!legacy/keep/**'] }),
-    buildTeamEslintBlock('team-keep', {
-      files: ['legacy/keep/**'],
-      plugins: { [TYPESCRIPT_ESLINT_PREFIX]: installedEslintPlugin(TYPESCRIPT_ESLINT_PREFIX) },
-      rules: { [FLOATING_PROMISES]: 'warn' },
-    }),
-  ]
-
   it("is the team's there, none of our options with it, and in the rest of the files the team types, where it runs nowhere", async () => {
+    const teamConfig = [
+      buildTeamTypedEslintBlock('team-typed', 'projectService', { files: ['**/*.ts'], ignores: ['legacy/**', '!legacy/keep/**'] }),
+      buildTeamEslintBlock('team-keep', {
+        files: ['legacy/keep/**'],
+        plugins: { [TYPESCRIPT_ESLINT_PREFIX]: installedEslintPlugin(TYPESCRIPT_ESLINT_PREFIX) },
+        rules: { [FLOATING_PROMISES]: 'warn' },
+      }),
+    ]
     const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, { rules: { [FLOATING_PROMISES]: ['error', { ignoreVoid: false }] } }, teamConfig)
 
     expect({

@@ -31,12 +31,12 @@ const TEAM_JSX_A11Y_PREFIX = 'a11y'
 const TEAM_PLUGIN_VERSION = '1.0.0'
 
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJson()) } })
-const { eslint } = defineLintRules(
-  buildConsumerLintRules(projectDir, {}, { rules: { [OUR_PROMISE_RULE]: 'error', [OUR_ARRAY_TYPE]: 'error', [OUR_ALT_TEXT]: 'error' } }),
-).editorRulesets
 
 /** The severity of our rule given in a source file, beside a team block registering the plugin given under the prefix given and turning the rule under it off: undefined where no block sets ours. */
 async function oursBeside(prefix: string, plugin: ESLint.Plugin, ruleName: string, ourRule: string): Promise<string | undefined> {
+  const { eslint } = defineLintRules(
+    buildConsumerLintRules(projectDir, {}, { rules: { [OUR_PROMISE_RULE]: 'error', [OUR_ARRAY_TYPE]: 'error', [OUR_ALT_TEXT]: 'error' } }),
+  ).editorRulesets
   const merged = mergeEslintConfig([buildTeamEslintBlock('team', { plugins: { [prefix]: plugin }, rules: { [`${prefix}/${ruleName}`]: 'off' } })], eslint, NO_TEAM_OXLINT_CONFIG)
   return ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, ourRule)
 }

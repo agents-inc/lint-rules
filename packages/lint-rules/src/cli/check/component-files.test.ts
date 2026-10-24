@@ -39,9 +39,11 @@ describe('isAComponentExtension', () => {
 
 describe("the component files' blocks, as check's ESLint engine reads them", () => {
   it.each([
-    { setting: 'left out', settings: buildLintRules({}) },
-    { setting: 'false', settings: buildLintRules({}, { allowSuppressions: false }) },
-  ])("allow suppressions in no component where the top level's allowSuppressions is $setting", async ({ settings }) => {
+    { setting: 'left out', fields: {} },
+    { setting: 'false', fields: { allowSuppressions: false } },
+  ])("allow suppressions in no component where the top level's allowSuppressions is $setting", async ({ fields }) => {
+    const settings = buildLintRules({}, fields)
+
     expect(await componentsAllowingSuppressions(settings)).toStrictEqual([])
   })
 

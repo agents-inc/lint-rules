@@ -84,18 +84,23 @@ describe('offBlocksOf, for files of another type in a folder', () => {
 })
 
 describe('offBlocksOf, for files of one type in either of two folders', () => {
-  const offs = offBlocksOf(
-    [{ names: [RULE], where: [buildFilesTerm([VUE_FILES, IN_THE_SRC_FOLDER]), buildFilesTerm([VUE_FILES, IN_THE_LIB_FOLDER])] }],
-    offBlockName,
-  )
-
   it('writes one block, whose ignores take both folders back', () => {
+    const offs = offBlocksOf(
+      [{ names: [RULE], where: [buildFilesTerm([VUE_FILES, IN_THE_SRC_FOLDER]), buildFilesTerm([VUE_FILES, IN_THE_LIB_FOLDER])] }],
+      offBlockName,
+    )
+
     expect(offs).toStrictEqual([
       { name: offBlockName(0), ignores: [EVERY_FILE_IGNORED, `!${IN_THE_SRC_FOLDER}`, `!${IN_THE_LIB_FOLDER}`, EVERY_FILE_BUT_A_VUE_FILE], rules: { [RULE]: 'off' } },
     ])
   })
 
   it('turns the rule off in both folders, and leaves it as it was outside them', async () => {
+    const offs = offBlocksOf(
+      [{ names: [RULE], where: [buildFilesTerm([VUE_FILES, IN_THE_SRC_FOLDER]), buildFilesTerm([VUE_FILES, IN_THE_LIB_FOLDER])] }],
+      offBlockName,
+    )
+
     expect(
       await severitiesOf(VUE_FILES_RUNNING_THE_RULE, offs, [VUE_FILE, VUE_FILE_IN_THE_LIB_FOLDER, VUE_FILE_IN_THE_TEST_FOLDER]),
     ).toStrictEqual([

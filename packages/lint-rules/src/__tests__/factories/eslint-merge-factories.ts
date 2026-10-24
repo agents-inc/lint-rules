@@ -9,11 +9,14 @@ import { buildTeamEslintBlock, buildTeamEslintBlockTurningOn } from './team-conf
 
 type TeamEslintConfig = Parameters<typeof defineConfig>[number]
 
-/** `teamsPrefixes` is keyed by our prefix; the options are valid for the module the team's name runs. */
+/**
+ * `teamsPrefixes` is keyed by our prefix; the options are valid for the module the team's name runs. `plugins` gives
+ * them as a test builds the shape, as looking up an installed one throws on a miss.
+ */
 type TeamsNameOfOurRule = {
   readonly ours: string
   readonly teams: string
-  readonly plugins: Readonly<Record<string, ESLint.Plugin>>
+  readonly plugins: () => Readonly<Record<string, ESLint.Plugin>>
   readonly options: readonly unknown[]
   readonly teamsPrefixes: ReadonlyMap<string, readonly string[]>
 }
@@ -95,7 +98,7 @@ export function buildEslintMergeShape(tsconfigRootDir: string, values: readonly 
   if (stating === undefined || scope === undefined || entryOf === undefined) {
     throw new Error("a shape gives the name the team states, where the team's block applies, and its entry")
   }
-  const teamBlock = buildTeamEslintBlock('team', { ...scope, plugins: { ...stating.plugins }, rules: { [stating.teams]: entryOf(stating.options) } })
+  const teamBlock = buildTeamEslintBlock('team', { ...scope, plugins: { ...stating.plugins() }, rules: { [stating.teams]: entryOf(stating.options) } })
   return { stating, teamConfig: [teamBlock], lintRules: buildTwoSetLintRules({}, { tsconfigRootDir, ...ourSettingsOf(stating.ours, ours) }) }
 }
 

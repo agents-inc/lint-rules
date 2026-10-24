@@ -2,7 +2,7 @@
 // stops compiling. mergeOxlintConfig refuses only by these types the wrong part as its second argument, and a third
 // argument that is not the path of the team's ESLint config or null: no check of ours refuses either at run time (owner,
 // 2026-10-20). What an untyped oxlint.config.mts gets instead: untyped-oxlint-config.test.ts.
-import { buildEveryRulesetLintRules, EMPTY_TSCONFIG_ROOT_DIR } from './__tests__/factories/lint-rules-factories.ts'
+import { buildEveryRulesetLintRules, emptyTsconfigRootDir } from './__tests__/factories/lint-rules-factories.ts'
 import { buildTeamOxlintConfig } from './__tests__/factories/team-config-factories.ts'
 import { NO_TEAM_ESLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 import type { EslintPart, OxlintPart } from './core/editor-parts.ts'
@@ -11,7 +11,7 @@ import { mergeOxlintConfig } from './oxlint.ts'
 
 const ESLINT_CONFIG_FILE = 'eslint.config.mjs'
 
-const { editorRulesets } = defineLintRules(buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR))
+const { editorRulesets } = defineLintRules(buildEveryRulesetLintRules(emptyTsconfigRootDir()))
 const { eslint, oxlint } = editorRulesets
 const theirs = buildTeamOxlintConfig()
 

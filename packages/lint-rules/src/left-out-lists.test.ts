@@ -4,7 +4,7 @@ import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
 import {
   buildConsumerLintRules,
   buildConsumerLintRulesLeavingListsOut,
-  EMPTY_TSCONFIG_ROOT_DIR,
+  emptyTsconfigRootDir,
 } from './__tests__/factories/lint-rules-factories.ts'
 import { createProjectListingOxlint } from './__tests__/factories/package-json-factories.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
@@ -18,12 +18,20 @@ type Rulesets = LintRules['agentRulesets']
 /** A set as a consumer may write it at the top level, lists left out, and which lists that leaves out. */
 type SetLeavingListsOut = { readonly leftOut: string; readonly set: Partial<Rulesets> }
 
+/** A project as a title names it, and its folder as a test reads it: the empty one is made then. */
+type ProjectCase = { readonly project: string; readonly projectDir: () => string }
+
 const tempProjects = setUpTempProjects()
 const PROJECT_WITH_OXLINT = createProjectListingOxlint(tempProjects)
 
-const PROJECTS = [
-  { project: 'whose package.json lists oxlint', projectDir: PROJECT_WITH_OXLINT },
-  { project: 'with no package.json', projectDir: EMPTY_TSCONFIG_ROOT_DIR },
+const PROJECTS: readonly ProjectCase[] = [
+  {
+    project: 'whose package.json lists oxlint',
+    projectDir() {
+      return PROJECT_WITH_OXLINT
+    },
+  },
+  { project: 'with no package.json', projectDir: emptyTsconfigRootDir },
 ]
 
 // Every list left out, and some: a fix for a set leaving every list out alone passes the first and fails the rest.
@@ -39,8 +47,8 @@ const A_FILE_OF_EACH_KIND = ['src/a.ts', 'src/a.js', 'src/a.tsx']
 
 describe.each(PROJECTS)('an editor set leaving lists out, in a project $project', ({ projectDir }) => {
   it.each(SETS_LEAVING_LISTS_OUT)('leaving out $leftOut gives the editor parts of the same set with those lists empty', ({ set }) => {
-    const leavingListsOut = defineLintRules(buildConsumerLintRulesLeavingListsOut(projectDir, { editorRulesets: set }))
-    const givingThemEmpty = defineLintRules(buildConsumerLintRules(projectDir, { editorRulesets: set }))
+    const leavingListsOut = defineLintRules(buildConsumerLintRulesLeavingListsOut(projectDir(), { editorRulesets: set }))
+    const givingThemEmpty = defineLintRules(buildConsumerLintRules(projectDir(), { editorRulesets: set }))
 
     expect(leavingListsOut.editorRulesets).toStrictEqual(givingThemEmpty.editorRulesets)
   })

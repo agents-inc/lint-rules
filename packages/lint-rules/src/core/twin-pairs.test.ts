@@ -11,7 +11,7 @@ import { setUpEslintConfigOracle } from '../__tests__/eslint-config-oracle.ts'
 import { buildProjectFacts } from '../__tests__/factories/project-facts-factories.ts'
 import { oxlintEntryOfRuleFor, severityOfOxlintEntry } from '../__tests__/oxlint-config-oracle.ts'
 import { NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG } from '../__tests__/team-configs-of-the-other-engine.ts'
-import { buildEslintConfig } from './build-eslint-config.ts'
+import { buildEslintConfig, type EslintPluginRegistry } from './build-eslint-config.ts'
 import { buildOxlintConfig } from './build-oxlint-config.ts'
 import { editorPartsOf } from './editor-parts.ts'
 import type { LintRulesInput, TwoSetLintRulesInput } from './lint-rules-input.ts'
@@ -56,10 +56,14 @@ const catalogExtendingTheCoreRuleTwice = buildCatalog({
 })
 
 /** Our rules state typescript-eslint's version alone, with an option oxlint refuses. */
-const lintRules = buildLintRules({ quality: ['correctness'] }, { rules: { [EXTENSION]: ['error', { [REFUSED_OPTION]: true }] } })
+function lintRulesStatingTheExtensionAlone(): LintRulesInput {
+  return buildLintRules({ quality: ['correctness'] }, { rules: { [EXTENSION]: ['error', { [REFUSED_OPTION]: true }] } })
+}
 
 // The real typescript-eslint plugin, whose rules refuse options they do not take.
-const plugins = { '@typescript-eslint': pluginRegisteredUnder(eslintPlugins, '@typescript-eslint') }
+function realTypescriptEslintPlugin(): EslintPluginRegistry {
+  return { '@typescript-eslint': pluginRegisteredUnder(eslintPlugins, '@typescript-eslint') }
+}
 
 /** NOT_RUN where no statement of it applies or it is off. */
 function oxlintRunningEntryFor(given: LintRulesInput, file: string): unknown {
@@ -82,10 +86,12 @@ describe('a twin pair whose extension alone our top level states, with an option
 
   /** ESLint fills in the default options the rule declares. */
   async function ourSettingAsEslintFillsIn(): Promise<unknown> {
-    return ruleEntryFor([{ files: [TS_FILE], plugins, rules: { [EXTENSION]: ['error', { [REFUSED_OPTION]: true }] } }], TS_FILE, EXTENSION)
+    return ruleEntryFor([{ files: [TS_FILE], plugins: realTypescriptEslintPlugin(), rules: { [EXTENSION]: ['error', { [REFUSED_OPTION]: true }] } }], TS_FILE, EXTENSION)
   }
 
   it("is run by oxlint on JS files alone, with the ruleset's setting, in the agent build's oxlint config", () => {
+    const lintRules = lintRulesStatingTheExtensionAlone()
+
     expect({ [TS_FILE]: oxlintRunningEntryFor(lintRules, TS_FILE), [JS_FILE]: oxlintRunningEntryFor(lintRules, JS_FILE) }).toStrictEqual({
       [TS_FILE]: NOT_RUN,
       [JS_FILE]: ['error', ...RULESET_OPTIONS],
@@ -93,11 +99,13 @@ describe('a twin pair whose extension alone our top level states, with an option
   })
 
   it('never gives oxlint the option it refuses', () => {
+    const lintRules = lintRulesStatingTheExtensionAlone()
+
     expect(JSON.stringify(buildOxlintConfig(lintRules, twinCatalog)).includes(REFUSED_OPTION)).toBe(false)
   })
 
   it("is run by ESLint on TS files alone, as typescript-eslint's version with our setting, in the agent build's ESLint config", async () => {
-    const config = buildEslintConfig(lintRules, twinCatalog, plugins, buildProjectFacts())
+    const config = buildEslintConfig(lintRulesStatingTheExtensionAlone(), twinCatalog, realTypescriptEslintPlugin(), buildProjectFacts())
 
     expect({
       [TS_FILE]: { core: await runningEntryFor(config, TS_FILE, CORE_RULE), extension: await runningEntryFor(config, TS_FILE, EXTENSION) },
@@ -111,12 +119,12 @@ describe('a twin pair whose extension alone our top level states, with an option
 
 // The same in an entry: its TS files go to ESLint, its JS files keep the top level's setting in oxlint.
 describe('a twin pair whose extension alone an entry of ours states, with an option oxlint refuses, over a ruleset shipping the core rule', () => {
-  const entryLintRules = buildLintRules(
-    { quality: ['correctness'] },
-    { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [EXTENSION]: ['error', { [REFUSED_OPTION]: true }] } })] },
-  )
-
   it("is run by oxlint everywhere but the entry's TS files, with the ruleset's setting, and never given the option it refuses", () => {
+    const entryLintRules = buildLintRules(
+      { quality: ['correctness'] },
+      { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [EXTENSION]: ['error', { [REFUSED_OPTION]: true }] } })] },
+    )
+
     expect({
       entries: Object.fromEntries([LEGACY_TS_FILE, LEGACY_JS_FILE, TS_FILE, JS_FILE].map((file) => [file, oxlintRunningEntryFor(entryLintRules, file)])),
       givesTheRefusedOption: JSON.stringify(buildOxlintConfig(entryLintRules, twinCatalog)).includes(REFUSED_OPTION),
@@ -129,9 +137,9 @@ describe('a twin pair whose extension alone an entry of ours states, with an opt
 
 // A refused key makes oxlint load none of the config, so the setting stays out of oxlint even beside a taken key.
 describe('a twin pair whose extension alone our top level states, with an option holding a key oxlint refuses beside one it takes, over a ruleset shipping the core rule', () => {
-  const mixedLintRules = buildLintRules({ quality: ['correctness'] }, { rules: { [EXTENSION]: ['error', { [REFUSED_OPTION]: true, [TAKEN_OPTION]: false }] } })
-
   it("is run by oxlint on JS files alone, with the ruleset's setting, and never given the option it refuses", () => {
+    const mixedLintRules = buildLintRules({ quality: ['correctness'] }, { rules: { [EXTENSION]: ['error', { [REFUSED_OPTION]: true, [TAKEN_OPTION]: false }] } })
+
     expect({
       entries: { [TS_FILE]: oxlintRunningEntryFor(mixedLintRules, TS_FILE), [JS_FILE]: oxlintRunningEntryFor(mixedLintRules, JS_FILE) },
       givesTheRefusedOption: JSON.stringify(buildOxlintConfig(mixedLintRules, twinCatalog)).includes(REFUSED_OPTION),
@@ -142,12 +150,12 @@ describe('a twin pair whose extension alone our top level states, with an option
 // The entry states no ruleset, so the extension is the pair's only name there and the core rule takes its setting.
 describe('a core rule two rules extend, the second of which alone an entry of ours states, over a ruleset shipping the core rule', () => {
   const entryOptions = [{ [TAKEN_OPTION]: false }]
-  const entryLintRules = buildLintRules(
-    { quality: ['correctness'] },
-    { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [SECOND_EXTENSION]: ['error', ...entryOptions] } })] },
-  )
-
   it("is run by oxlint with the extension's setting in the entry's files, and with the ruleset's elsewhere", () => {
+    const entryLintRules = buildLintRules(
+      { quality: ['correctness'] },
+      { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [SECOND_EXTENSION]: ['error', ...entryOptions] } })] },
+    )
+
     expect(
       Object.fromEntries([LEGACY_TS_FILE, LEGACY_JS_FILE, TS_FILE, JS_FILE].map((file) => [file, oxlintRunningEntryUnder(catalogExtendingTheCoreRuleTwice, entryLintRules, file)])),
     ).toStrictEqual({
@@ -182,13 +190,16 @@ function setUpEslintRunningEntries(): (given: LintRulesInput, files: readonly st
   }
 
   return async (given, files) => {
-    const config = buildEslintConfig(given, twinCatalog, plugins, buildProjectFacts())
+    const config = buildEslintConfig(given, twinCatalog, realTypescriptEslintPlugin(), buildProjectFacts())
     const entries = await Promise.all(
       files.map(async (file) => [file, { core: await runningEntryFor(config, file, CORE_RULE), extension: await runningEntryFor(config, file, EXTENSION) }] as const),
     )
     return Object.fromEntries(entries)
   }
 }
+
+/** Where the editor set states both names, as a title names it, and the fields stating them. */
+type StatingBothNames = { readonly where: string; readonly fields: NonNullable<Parameters<typeof buildTwoSetLintRules>[1]> }
 
 /** In the editor ESLint part of a project listing oxlint, merged into an empty team config. */
 function setUpMergedEslintRunningEntries(): (given: TwoSetLintRulesInput, files: readonly string[]) => Promise<Readonly<Record<string, unknown>>> {
@@ -201,7 +212,7 @@ function setUpMergedEslintRunningEntries(): (given: TwoSetLintRulesInput, files:
 
   return async (given, files) => {
     const { eslint } = editorPartsOf(given, twinCatalog, true)
-    const config = mergeEslintPart([], eslint, twinCatalog, plugins, lintRulesPackageVersion(), NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG)
+    const config = mergeEslintPart([], eslint, twinCatalog, realTypescriptEslintPlugin(), lintRulesPackageVersion(), NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG)
     const entries = await Promise.all(
       files.map(async (file) => [file, { core: await runningEntryFor(config, file, CORE_RULE), extension: await runningEntryFor(config, file, EXTENSION) }] as const),
     )
@@ -212,18 +223,20 @@ function setUpMergedEslintRunningEntries(): (given: TwoSetLintRulesInput, files:
 /** ESLint fills in the default options the rule declares. */
 function setUpExtensionEntryAsEslintFillsIn(): (setting: StatedSetting) => Promise<unknown> {
   const { ruleEntryFor } = setUpEslintConfigOracle()
-  return async ([severity, ...options]) => ruleEntryFor([{ files: [TS_FILE], plugins, rules: { [EXTENSION]: [severity, ...options] } }], TS_FILE, EXTENSION)
+  return async ([severity, ...options]) => ruleEntryFor([{ files: [TS_FILE], plugins: realTypescriptEslintPlugin(), rules: { [EXTENSION]: [severity, ...options] } }], TS_FILE, EXTENSION)
 }
 
 describe('a twin pair both of whose names our top level states, with settings oxlint takes, over a ruleset shipping the core rule', () => {
   const eslintRunningEntriesFor = setUpEslintRunningEntries()
-  const bothNamed = buildLintRules({ quality: ['correctness'] }, { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: EXTENSION_SETTING } })
-
   it("is run by oxlint with the extension's setting on TS files and the core rule's on JS files, in the agent build's oxlint config", () => {
+    const bothNamed = buildLintRules({ quality: ['correctness'] }, { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: EXTENSION_SETTING } })
+
     expect(oxlintRunningEntriesFor(bothNamed, [TS_FILE, JS_FILE])).toStrictEqual({ [TS_FILE]: EXTENSION_SETTING, [JS_FILE]: CORE_SETTING })
   })
 
   it("is run by no rule of the agent build's ESLint config, oxlint running the pair in every file", async () => {
+    const bothNamed = buildLintRules({ quality: ['correctness'] }, { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: EXTENSION_SETTING } })
+
     expect(await eslintRunningEntriesFor(bothNamed, [TS_FILE, JS_FILE])).toStrictEqual({
       [TS_FILE]: { core: NOT_RUN, extension: NOT_RUN },
       [JS_FILE]: { core: NOT_RUN, extension: NOT_RUN },
@@ -233,22 +246,24 @@ describe('a twin pair both of whose names our top level states, with settings ox
 
 // The name a layer states alone decides the pair in every file, so TS files take the core rule's setting.
 describe('a twin pair whose core rule alone our top level states, over a ruleset shipping the core rule', () => {
-  const coreAlone = buildLintRules({ quality: ['correctness'] }, { rules: { [CORE_RULE]: CORE_SETTING } })
-
   it("is run by oxlint with the core rule's setting on TS and JS files alike, in the agent build's oxlint config", () => {
+    const coreAlone = buildLintRules({ quality: ['correctness'] }, { rules: { [CORE_RULE]: CORE_SETTING } })
+
     expect(oxlintRunningEntriesFor(coreAlone, [TS_FILE, JS_FILE])).toStrictEqual({ [TS_FILE]: CORE_SETTING, [JS_FILE]: CORE_SETTING })
   })
 })
 
 describe('a twin pair both of whose names our top level states, the extension off, over a ruleset shipping the core rule', () => {
   const eslintRunningEntriesFor = setUpEslintRunningEntries()
-  const extensionOff = buildLintRules({ quality: ['correctness'] }, { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: 'off' } })
-
   it("is run by oxlint on JS files alone, with the core rule's setting, in the agent build's oxlint config", () => {
+    const extensionOff = buildLintRules({ quality: ['correctness'] }, { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: 'off' } })
+
     expect(oxlintRunningEntriesFor(extensionOff, [TS_FILE, JS_FILE])).toStrictEqual({ [TS_FILE]: NOT_RUN, [JS_FILE]: CORE_SETTING })
   })
 
   it("is run by no rule of the agent build's ESLint config", async () => {
+    const extensionOff = buildLintRules({ quality: ['correctness'] }, { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: 'off' } })
+
     expect(await eslintRunningEntriesFor(extensionOff, [TS_FILE, JS_FILE])).toStrictEqual({
       [TS_FILE]: { core: NOT_RUN, extension: NOT_RUN },
       [JS_FILE]: { core: NOT_RUN, extension: NOT_RUN },
@@ -260,13 +275,15 @@ describe('a twin pair both of whose names our top level states, the extension of
 // rule; JS files run neither.
 describe('a twin pair both of whose names our top level states, the core rule off, over a ruleset shipping the core rule', () => {
   const eslintRunningEntriesFor = setUpEslintRunningEntries()
-  const coreOff = buildLintRules({ quality: ['correctness'] }, { rules: { [CORE_RULE]: 'off', [EXTENSION]: EXTENSION_SETTING } })
-
   it("is run by oxlint on TS files alone, with the extension's setting, in the agent build's oxlint config", () => {
+    const coreOff = buildLintRules({ quality: ['correctness'] }, { rules: { [CORE_RULE]: 'off', [EXTENSION]: EXTENSION_SETTING } })
+
     expect(oxlintRunningEntriesFor(coreOff, [TS_FILE, JS_FILE])).toStrictEqual({ [TS_FILE]: EXTENSION_SETTING, [JS_FILE]: NOT_RUN })
   })
 
   it("is run by no rule of the agent build's ESLint config, the JS file included", async () => {
+    const coreOff = buildLintRules({ quality: ['correctness'] }, { rules: { [CORE_RULE]: 'off', [EXTENSION]: EXTENSION_SETTING } })
+
     expect(await eslintRunningEntriesFor(coreOff, [TS_FILE, JS_FILE])).toStrictEqual({
       [TS_FILE]: { core: NOT_RUN, extension: NOT_RUN },
       [JS_FILE]: { core: NOT_RUN, extension: NOT_RUN },
@@ -276,12 +293,12 @@ describe('a twin pair both of whose names our top level states, the core rule of
 
 describe('a twin pair both of whose names an entry of ours states, the core rule off, over a ruleset shipping the core rule', () => {
   const eslintRunningEntriesFor = setUpEslintRunningEntries()
-  const coreOffInAnEntry = buildLintRules(
-    { quality: ['correctness'] },
-    { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [CORE_RULE]: 'off', [EXTENSION]: EXTENSION_SETTING } })] },
-  )
-
   it("is run by oxlint with the extension's setting on the entry's TS files, nowhere on its JS files, and with the ruleset's elsewhere", () => {
+    const coreOffInAnEntry = buildLintRules(
+      { quality: ['correctness'] },
+      { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [CORE_RULE]: 'off', [EXTENSION]: EXTENSION_SETTING } })] },
+    )
+
     expect(oxlintRunningEntriesFor(coreOffInAnEntry, EVERY_FILE)).toStrictEqual({
       [LEGACY_TS_FILE]: EXTENSION_SETTING,
       [LEGACY_JS_FILE]: NOT_RUN,
@@ -291,6 +308,11 @@ describe('a twin pair both of whose names an entry of ours states, the core rule
   })
 
   it("is run by no rule of the agent build's ESLint config, the entry's JS file included", async () => {
+    const coreOffInAnEntry = buildLintRules(
+      { quality: ['correctness'] },
+      { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [CORE_RULE]: 'off', [EXTENSION]: EXTENSION_SETTING } })] },
+    )
+
     expect(await eslintRunningEntriesFor(coreOffInAnEntry, EVERY_FILE)).toStrictEqual(
       Object.fromEntries(EVERY_FILE.map((file) => [file, { core: NOT_RUN, extension: NOT_RUN }])),
     )
@@ -302,15 +324,15 @@ describe('a twin pair both of whose names the editor set states, the core rule o
   const mergedEslintRunningEntriesFor = setUpMergedEslintRunningEntries()
   const CORRECTNESS = { editorRulesets: { quality: ['correctness'] } }
 
-  it.each([
-    { where: 'our top level', given: buildTwoSetLintRules(CORRECTNESS, { rules: { [CORE_RULE]: 'off', [EXTENSION]: EXTENSION_SETTING } }) },
+  it.each<StatingBothNames>([
+    { where: 'our top level', fields: { rules: { [CORE_RULE]: 'off', [EXTENSION]: EXTENSION_SETTING } } },
     {
       where: 'an entry of ours',
-      given: buildTwoSetLintRules(CORRECTNESS, {
-        fileOverrides: [buildTwoSetFileOverride(['legacy/**'], { rules: { [CORE_RULE]: 'off', [EXTENSION]: EXTENSION_SETTING } })],
-      }),
+      fields: { fileOverrides: [buildTwoSetFileOverride(['legacy/**'], { rules: { [CORE_RULE]: 'off', [EXTENSION]: EXTENSION_SETTING } })] },
     },
-  ])('is run by no rule of the merged ESLint config, where $where states both names, the JS files included', async ({ given }) => {
+  ])('is run by no rule of the merged ESLint config, where $where states both names, the JS files included', async ({ fields }) => {
+    const given = buildTwoSetLintRules(CORRECTNESS, fields)
+
     expect(await mergedEslintRunningEntriesFor(given, EVERY_FILE)).toStrictEqual(
       Object.fromEntries(EVERY_FILE.map((file) => [file, { core: NOT_RUN, extension: NOT_RUN }])),
     )
@@ -319,12 +341,12 @@ describe('a twin pair both of whose names the editor set states, the core rule o
 
 describe('a twin pair both of whose names an entry of ours states, with settings oxlint takes, over a ruleset shipping the core rule', () => {
   const eslintRunningEntriesFor = setUpEslintRunningEntries()
-  const bothNamedInAnEntry = buildLintRules(
-    { quality: ['correctness'] },
-    { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: EXTENSION_SETTING } })] },
-  )
-
   it("is run by oxlint with the extension's setting on the entry's TS files, the core rule's on its JS files, and the ruleset's elsewhere", () => {
+    const bothNamedInAnEntry = buildLintRules(
+      { quality: ['correctness'] },
+      { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: EXTENSION_SETTING } })] },
+    )
+
     expect(oxlintRunningEntriesFor(bothNamedInAnEntry, EVERY_FILE)).toStrictEqual({
       [LEGACY_TS_FILE]: EXTENSION_SETTING,
       [LEGACY_JS_FILE]: CORE_SETTING,
@@ -334,6 +356,11 @@ describe('a twin pair both of whose names an entry of ours states, with settings
   })
 
   it("is run by no rule of the agent build's ESLint config, oxlint running the pair in every file", async () => {
+    const bothNamedInAnEntry = buildLintRules(
+      { quality: ['correctness'] },
+      { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: EXTENSION_SETTING } })] },
+    )
+
     expect(await eslintRunningEntriesFor(bothNamedInAnEntry, EVERY_FILE)).toStrictEqual(
       Object.fromEntries(EVERY_FILE.map((file) => [file, { core: NOT_RUN, extension: NOT_RUN }])),
     )
@@ -343,12 +370,12 @@ describe('a twin pair both of whose names an entry of ours states, with settings
 describe('a twin pair both of whose names our top level states, the extension with an option oxlint refuses, over a ruleset shipping the core rule', () => {
   const eslintRunningEntriesFor = setUpEslintRunningEntries()
   const extensionEntryAsEslintFillsIn = setUpExtensionEntryAsEslintFillsIn()
-  const bothNamed = buildLintRules(
-    { quality: ['correctness'] },
-    { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: EXTENSION_SETTING_OXLINT_REFUSES } },
-  )
-
   it("is run by oxlint on JS files alone, with the core rule's setting, and never given the option it refuses", () => {
+    const bothNamed = buildLintRules(
+      { quality: ['correctness'] },
+      { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: EXTENSION_SETTING_OXLINT_REFUSES } },
+    )
+
     expect({
       entries: oxlintRunningEntriesFor(bothNamed, [TS_FILE, JS_FILE]),
       givesTheRefusedOption: JSON.stringify(buildOxlintConfig(bothNamed, twinCatalog)).includes(REFUSED_OPTION),
@@ -356,6 +383,11 @@ describe('a twin pair both of whose names our top level states, the extension wi
   })
 
   it("is run by ESLint on TS files alone, as typescript-eslint's version with its setting, in the agent build's ESLint config", async () => {
+    const bothNamed = buildLintRules(
+      { quality: ['correctness'] },
+      { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: EXTENSION_SETTING_OXLINT_REFUSES } },
+    )
+
     expect(await eslintRunningEntriesFor(bothNamed, [TS_FILE, JS_FILE])).toStrictEqual({
       [TS_FILE]: { core: NOT_RUN, extension: await extensionEntryAsEslintFillsIn(EXTENSION_SETTING_OXLINT_REFUSES) },
       [JS_FILE]: { core: NOT_RUN, extension: NOT_RUN },
@@ -366,12 +398,12 @@ describe('a twin pair both of whose names our top level states, the extension wi
 describe('a twin pair both of whose names an entry of ours states, the extension with an option oxlint refuses, over a ruleset shipping the core rule', () => {
   const eslintRunningEntriesFor = setUpEslintRunningEntries()
   const extensionEntryAsEslintFillsIn = setUpExtensionEntryAsEslintFillsIn()
-  const bothNamedInAnEntry = buildLintRules(
-    { quality: ['correctness'] },
-    { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: EXTENSION_SETTING_OXLINT_REFUSES } })] },
-  )
-
   it("is run by oxlint everywhere but the entry's TS files, the core rule's setting on its JS files, and never given the option it refuses", () => {
+    const bothNamedInAnEntry = buildLintRules(
+      { quality: ['correctness'] },
+      { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: EXTENSION_SETTING_OXLINT_REFUSES } })] },
+    )
+
     expect({
       entries: oxlintRunningEntriesFor(bothNamedInAnEntry, EVERY_FILE),
       givesTheRefusedOption: JSON.stringify(buildOxlintConfig(bothNamedInAnEntry, twinCatalog)).includes(REFUSED_OPTION),
@@ -387,6 +419,11 @@ describe('a twin pair both of whose names an entry of ours states, the extension
   })
 
   it("is run by ESLint on the entry's TS files alone, as typescript-eslint's version with its setting", async () => {
+    const bothNamedInAnEntry = buildLintRules(
+      { quality: ['correctness'] },
+      { fileOverrides: [buildFileOverride(['legacy/**'], { rules: { [CORE_RULE]: CORE_SETTING, [EXTENSION]: EXTENSION_SETTING_OXLINT_REFUSES } })] },
+    )
+
     expect(await eslintRunningEntriesFor(bothNamedInAnEntry, EVERY_FILE)).toStrictEqual({
       [LEGACY_TS_FILE]: { core: NOT_RUN, extension: await extensionEntryAsEslintFillsIn(EXTENSION_SETTING_OXLINT_REFUSES) },
       [LEGACY_JS_FILE]: { core: NOT_RUN, extension: NOT_RUN },

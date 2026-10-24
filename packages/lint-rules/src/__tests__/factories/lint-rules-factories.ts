@@ -29,8 +29,13 @@ export type LintRulesPiece = Pick<SharedFields, 'rules' | 'fileOverrides'>
 // One folder for every spec of a test file, in the file's own temp dir.
 const EMPTY_TSCONFIG_ROOT_DIR_NAME = 'lint-rules-empty-tsconfig-root'
 
-/** `tsconfigRootDir` must name an existing absolute folder; empty, so the project lists no oxlint and has no TS file. */
-export const EMPTY_TSCONFIG_ROOT_DIR = existingEmptyFolder(join(tmpdir(), EMPTY_TSCONFIG_ROOT_DIR_NAME))
+/**
+ * `tsconfigRootDir` must name an existing absolute folder; empty, so the project lists no oxlint and has no TS file.
+ * Made where it is missing, and throws where it holds anything: call it in a test or a hook, not while vitest collects.
+ */
+export function emptyTsconfigRootDir(): string {
+  return existingEmptyFolder(join(tmpdir(), EMPTY_TSCONFIG_ROOT_DIR_NAME))
+}
 
 const NO_RULESETS = { quality: [], libs: {}, runtimes: [] } as const satisfies Rulesets
 
@@ -69,13 +74,13 @@ export const EVERY_RULESET = {
   languages: [],
 } as const satisfies Rulesets
 
-/** Lists left out are empty, so a spec names every ruleset its assertion depends on. */
+/** Lists left out are empty, so a spec names every ruleset its assertion depends on. Throws as emptyTsconfigRootDir does. */
 export function buildLintRules(
   rulesets: Partial<RulesetsInput>,
   fields: Partial<Omit<LintRulesInput, 'rulesets'>> = {},
 ): LintRulesInput {
   return {
-    tsconfigRootDir: EMPTY_TSCONFIG_ROOT_DIR,
+    tsconfigRootDir: emptyTsconfigRootDir(),
     rulesets: { quality: [], libs: {}, runtimes: [], ...rulesets },
     ...fields,
   }
@@ -88,12 +93,13 @@ export function buildFileOverride(
   return { files, ...fields }
 }
 
+/** Throws as emptyTsconfigRootDir does. */
 export function buildTwoSetLintRules(
   { agentRulesets = {}, editorRulesets = {} }: TwoSetRulesetSets,
   fields: Partial<Omit<TwoSetLintRulesInput, 'agentRulesets' | 'editorRulesets'>> = {},
 ): TwoSetLintRulesInput {
   return {
-    tsconfigRootDir: EMPTY_TSCONFIG_ROOT_DIR,
+    tsconfigRootDir: emptyTsconfigRootDir(),
     agentRulesets: { quality: [], libs: {}, runtimes: [], ...agentRulesets },
     editorRulesets: { quality: [], libs: {}, runtimes: [], ...editorRulesets },
     ...fields,

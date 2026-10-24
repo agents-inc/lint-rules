@@ -20,7 +20,7 @@ import { eslintPluginRegistry } from './eslint-plugin-registry.ts'
 const SHIPPING_THE_OXC_RULES = { quality: ['correctness', 'redundancy'] }
 
 /** A file of a case, in a folder of the oxc rule's name, so no two cases' files meet. */
-type FixtureFile = { readonly path: string; readonly source: string; readonly standIn: string }
+type FixtureFile = { readonly path: string; readonly source: string; readonly standInCase: StandInCase }
 
 /** The rule the catalog records standing in for the oxlint-only rule without oxlint. */
 function standInOf({ oxlintRule }: StandInCase): string {
@@ -31,11 +31,10 @@ function standInOf({ oxlintRule }: StandInCase): string {
 
 function fixtureFilesOf(standInCase: StandInCase): FixtureFile[] {
   const folder = `src/${standInCase.oxlintRule.replace('/', '-')}`
-  return standInCase.reportedIn.map(({ path, source }) => ({ path: `${folder}/${path}`, source, standIn: standInOf(standInCase) }))
+  return standInCase.reportedIn.map(({ path, source }) => ({ path: `${folder}/${path}`, source, standInCase }))
 }
 
 const FIXTURES = STAND_IN_CASES.flatMap(fixtureFilesOf)
-const STAND_IN_IDS: ReadonlySet<string> = new Set(FIXTURES.map(({ standIn }) => standIn))
 const FIXTURE_FILES = FIXTURES.map(({ path }) => path)
 
 const tempProjects = setUpTempProjects()
@@ -43,12 +42,13 @@ const PROJECT_DIR = tempProjects.create({ files: Object.fromEntries(FIXTURES.map
 
 /** Each fixture file's findings of a stand-in, by rule ID, sorted. */
 async function standInsReportedWith(config: Linter.Config[]): Promise<Readonly<Record<string, readonly string[]>>> {
+  const standInIds: ReadonlySet<string> = new Set(FIXTURES.map(({ standInCase }) => standInOf(standInCase)))
   const findings = eslintFindingsIn(await new ESLint({ cwd: PROJECT_DIR, overrideConfigFile: true, overrideConfig: config }).lintFiles(FIXTURE_FILES), PROJECT_DIR)
   return Object.fromEntries(
     FIXTURE_FILES.map((file) => [
       file,
       findings
-        .filter((found) => found.file === file && STAND_IN_IDS.has(found.rule))
+        .filter((found) => found.file === file && standInIds.has(found.rule))
         .map(({ rule }) => rule)
         .toSorted(),
     ]),
@@ -64,7 +64,7 @@ const NONE_IN_ANY_FIXTURE = Object.fromEntries(FIXTURE_FILES.map((file) => [file
 
 describe('the ESLint stand-ins for oxc rules, each on its fixture', () => {
   it('fire, each on its own fixture alone, through the ESLint merge of a project without oxlint', async () => {
-    expect(await standInsReportedWith(editorMergeOf(false))).toStrictEqual(Object.fromEntries(FIXTURES.map(({ path, standIn }) => [path, [standIn]])))
+    expect(await standInsReportedWith(editorMergeOf(false))).toStrictEqual(Object.fromEntries(FIXTURES.map(({ path, standInCase }) => [path, [standInOf(standInCase)]])))
   })
 
   it('are stated by no block of the ESLint merge of a project with oxlint, which runs the oxc rules', async () => {

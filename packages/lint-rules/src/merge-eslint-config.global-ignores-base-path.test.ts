@@ -5,6 +5,7 @@ import { buildPackageJson, packageJsonText } from './__tests__/factories/package
 import { buildTeamEslintBlock } from './__tests__/factories/team-config-factories.ts'
 import { NO_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
+import type { EslintPart } from './core/editor-parts.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
@@ -19,7 +20,11 @@ const CONFINED_COPY = '/confined/'
 const OUR_BASE_BLOCK_CONFINED = 'agents-inc/base/confined/0'
 
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJson()) } })
-const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { [NO_VAR]: 'error' } })).editorRulesets
+
+/** Our ESLint part, stating no-var. */
+function ourEslintPart(): EslintPart {
+  return defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { [NO_VAR]: 'error' } })).editorRulesets.eslint
+}
 
 /** The names of our blocks the merge moved a rule into a copy of: none where they keep their names. */
 function confinedCopiesIn(merged: readonly Linter.Config[]): (string | undefined)[] {
@@ -28,18 +33,21 @@ function confinedCopiesIn(merged: readonly Linter.Config[]): (string | undefined
 
 describe("our blocks, beside a team's global ignores read from a basePath, which leave dist/ out and take a keep.js back", () => {
   it('keep the names they have outside a merge, where the basePath is a folder of the project, whose keep.js no default ignore leaves out', () => {
+    const eslint = ourEslintPart()
     const merged = mergeEslintConfig([buildTeamEslintBlock('team/global-ignores', { basePath: 'packages/app', ignores: ['dist/', '!dist/keep.js'] })], eslint, NO_TEAM_OXLINT_CONFIG)
 
     expect(confinedCopiesIn(merged)).toStrictEqual([])
   })
 
   it.each(['..', '../elsewhere'])('keep the names they have outside a merge, where the basePath is outside the project, %s, whose keep.js is no file of the project', (basePath) => {
+    const eslint = ourEslintPart()
     const merged = mergeEslintConfig([buildTeamEslintBlock('team/global-ignores', { basePath, ignores: ['dist/', '!dist/keep.js'] })], eslint, NO_TEAM_OXLINT_CONFIG)
 
     expect(confinedCopiesIn(merged)).toStrictEqual([])
   })
 
   it("move each rule into a copy kept out of the files our part never lints, where the basePath is the project's parent and takes every node_modules folder back", () => {
+    const eslint = ourEslintPart()
     const merged = mergeEslintConfig([buildTeamEslintBlock('team/global-ignores', { basePath: '..', ignores: ['dist/', '!**/node_modules/'] })], eslint, NO_TEAM_OXLINT_CONFIG)
 
     expect(confinedCopiesIn(merged)).toStrictEqual([OUR_BASE_BLOCK_CONFINED])

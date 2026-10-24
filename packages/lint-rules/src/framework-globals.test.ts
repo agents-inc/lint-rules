@@ -11,7 +11,7 @@ import {
 import { ourEditorEslintPartMergedInto } from './__tests__/editor-merges-read-by-eslint.ts'
 import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
 import { namesDefinedIn } from './__tests__/eslint-globals.ts'
-import { buildConsumerLintRules, CORRECTNESS_IN_BOTH_SETS, EMPTY_TSCONFIG_ROOT_DIR } from './__tests__/factories/lint-rules-factories.ts'
+import { buildConsumerLintRules, CORRECTNESS_IN_BOTH_SETS, emptyTsconfigRootDir } from './__tests__/factories/lint-rules-factories.ts'
 import { createProjectListingOxlint } from './__tests__/factories/package-json-factories.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { defineLintRules, type LintRules } from './index.ts'
@@ -40,7 +40,7 @@ function mergedIntoAnEmptyTeamConfig(tsconfigRootDir: string): Linter.Config[] {
 const CONFIGS = [
   { config: 'the agent build', build: () => agentConfigsOf(defineLintRules(correctnessIn(projectListingOxlint))).eslint },
   { config: 'the editor part of a project whose package.json lists oxlint, merged into an empty team config', build: () => mergedIntoAnEmptyTeamConfig(projectListingOxlint) },
-  { config: 'the editor part of a project whose package.json lists no oxlint, merged into an empty team config', build: () => mergedIntoAnEmptyTeamConfig(EMPTY_TSCONFIG_ROOT_DIR) },
+  { config: 'the editor part of a project whose package.json lists no oxlint, merged into an empty team config', build: () => mergedIntoAnEmptyTeamConfig(emptyTsconfigRootDir()) },
 ]
 
 CONFIGS.forEach(({ config, build }) => {

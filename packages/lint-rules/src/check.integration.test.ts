@@ -1124,6 +1124,9 @@ describe('check on unused pairs beside comment-like text in a string or a templa
   })
 })
 
+/** A comment another writer changes after oxlint read it: its file, its text as oxlint read it, and the writer's text. */
+type OutOfDateComment = { readonly file: string; readonly asOxlintReadIt: readonly string[]; readonly writersText: string }
+
 describe('check where another writer changes suppression comments after oxlint read them, where suppressions are allowed', () => {
   // Another writer edits each file between oxlint's read and check's: a report that no longer fits the text
   // goes unreported, never refusing the run, and the next run reports the comment where it is.
@@ -1144,19 +1147,22 @@ describe('check where another writer changes suppression comments after oxlint r
     return moduleText(...movedDownByAnotherWriter(aSuppressionPartlyUnused(form)))
   }
 
-  const OUT_OF_DATE = [
-    ...MOVED.map(({ file, form }) => ({ file, asOxlintReadIt: aSuppressionPartlyUnused(form), writersText: writersTextOf(form) })),
-    { ...SHIFTED, writersText: moduleText(...withACharacterAddedToTheFirstLine(SHIFTED.asOxlintReadIt)) },
-    { ...UNDER_A_STRING, writersText: moduleText(...A_WHOLLY_UNUSED_OXLINT_DISABLE_BELOW_A_STRING_HOLDING_ITS_TEXT) },
-  ]
+  function outOfDate(): OutOfDateComment[] {
+    return [
+      ...MOVED.map(({ file, form }) => ({ file, asOxlintReadIt: aSuppressionPartlyUnused(form), writersText: writersTextOf(form) })),
+      { ...SHIFTED, writersText: moduleText(...withACharacterAddedToTheFirstLine(SHIFTED.asOxlintReadIt)) },
+      { ...UNDER_A_STRING, writersText: moduleText(...A_WHOLLY_UNUSED_OXLINT_DISABLE_BELOW_A_STRING_HOLDING_ITS_TEXT) },
+    ]
+  }
 
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
+    const outOfDateComments = outOfDate()
     const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED) })
     IN_PLACE.forEach(({ file, form }) => project.write(file, moduleText(...aSuppressionPartlyUnused(form))))
-    OUT_OF_DATE.forEach(({ file, asOxlintReadIt }) => project.write(file, moduleText(...asOxlintReadIt)))
+    outOfDateComments.forEach(({ file, asOxlintReadIt }) => project.write(file, moduleText(...asOxlintReadIt)))
     project.write('src/other.ts', moduleText(exportedConstant('other'), DEBUGGER_STATEMENT))
-    const result = runCheck(project.dir, anotherWriterAsOxlintsLintRunEnds(OUT_OF_DATE.map(({ file, writersText }) => ({ path: project.pathOf(file), text: writersText }))))
-    return { result, textsNow: OUT_OF_DATE.map(({ file }) => project.read(file)), nextRun: runCheck(project.dir) }
+    const result = runCheck(project.dir, anotherWriterAsOxlintsLintRunEnds(outOfDateComments.map(({ file, writersText }) => ({ path: project.pathOf(file), text: writersText }))))
+    return { result, textsNow: outOfDateComments.map(({ file }) => project.read(file)), nextRun: runCheck(project.dir) }
   })
 
   it("reports none of the comments it read out of date, in either form, and refuses nothing: reports the comments nobody changed and the finding in another file, keeps the writer's text, and exits 1", () => {
@@ -1174,14 +1180,14 @@ describe('check where another writer changes suppression comments after oxlint r
       stderr: '',
       findings: ['src/allowed/eslint-in-place.ts:2 unused suppression', 'src/allowed/oxlint-in-place.ts:2 unused suppression', 'src/other.ts:2 no-debugger'],
       inPlaceMessages: [unusedSuppressionMessageOf('no-console'), unusedSuppressionMessageOf('no-console')],
-      textsNow: OUT_OF_DATE.map(({ writersText }) => writersText),
+      textsNow: outOfDate().map(({ writersText }) => writersText),
     })
   })
 
   it('reports each of those comments where it is now on the next run', () => {
     const { stdout } = run().nextRun
 
-    expect(OUT_OF_DATE.flatMap(({ file }) => findingsInFile(stdout, file))).toStrictEqual([
+    expect(outOfDate().flatMap(({ file }) => findingsInFile(stdout, file))).toStrictEqual([
       'src/allowed/eslint-moved.ts:3 unused suppression',
       'src/allowed/oxlint-moved.ts:3 unused suppression',
       'src/allowed/oxlint-shifted.ts:2 unused suppression',

@@ -26,7 +26,6 @@ const FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/react-version', imp
 const COMPONENT_FILE = 'src/legacy.jsx'
 const UNSAFE_LIFECYCLE_LINE = 4
 const NO_UNSAFE = 'react/no-unsafe'
-const NO_UNSAFE_IN_OXLINT = oxlintCodeOf(NO_UNSAFE, catalog)
 const ESLINT_ERROR = 2
 const REACT_VERSION = '18.3.0'
 // Below the 16.3 react/no-unsafe starts at.
@@ -44,7 +43,8 @@ function definedIn(projectDir: string): ReturnType<typeof defineLintRules> {
 }
 
 function unsafeLifecycleReportsIn(run: EngineRun): ErrorAt[] {
-  return run.errorsOn(COMPONENT_FILE).filter(({ rule }) => rule === NO_UNSAFE || rule === NO_UNSAFE_IN_OXLINT)
+  const noUnsafeInOxlint = oxlintCodeOf(NO_UNSAFE, catalog)
+  return run.errorsOn(COMPONENT_FILE).filter(({ rule }) => rule === NO_UNSAFE || rule === noUnsafeInOxlint)
 }
 
 /** Where the build has no oxlint part, ESLint's messages alone. */

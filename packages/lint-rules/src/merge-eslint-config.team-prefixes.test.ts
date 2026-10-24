@@ -1,3 +1,4 @@
+import type { ESLint } from 'eslint'
 import { describe, expect, it } from 'vitest'
 import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
 import { installedEslintPlugin } from './__tests__/factories/eslint-merge-factories.ts'
@@ -17,15 +18,18 @@ const { ruleSeverityInProjectFor } = setUpEslintConfigOracle()
 
 const SOURCE_FILE = 'src/a.ts'
 const OUR_REGEXP_RULE = 'regexp/prefer-regexp-exec'
-const TEAM_PREFIXES_OF_OUR_PLUGINS = { ts: installedEslintPlugin('@typescript-eslint'), rx: installedEslintPlugin('regexp') }
+
+function teamPrefixesOfOurPlugins(): Readonly<Record<string, ESLint.Plugin>> {
+  return { ts: installedEslintPlugin('@typescript-eslint'), rx: installedEslintPlugin('regexp') }
+}
 
 describe('mergeEslintConfig, given a team block registering typescript-eslint as ts and eslint-plugin-regexp as rx', () => {
   const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJson()) } })
-  const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { [OUR_REGEXP_RULE]: 'error' } })).editorRulesets
 
   /** Our regexp rule's severity in a source file, beside the team block stating the key given off. */
   async function ourRegexpRuleBeside(teamKey: string): Promise<string | undefined> {
-    const merged = mergeEslintConfig([buildTeamEslintBlock('team', { plugins: TEAM_PREFIXES_OF_OUR_PLUGINS, rules: { [teamKey]: 'off' } })], eslint, NO_TEAM_OXLINT_CONFIG)
+    const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { [OUR_REGEXP_RULE]: 'error' } })).editorRulesets
+    const merged = mergeEslintConfig([buildTeamEslintBlock('team', { plugins: teamPrefixesOfOurPlugins(), rules: { [teamKey]: 'off' } })], eslint, NO_TEAM_OXLINT_CONFIG)
     return ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, OUR_REGEXP_RULE)
   }
 

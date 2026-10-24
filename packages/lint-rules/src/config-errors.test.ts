@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { oxlintPartOf } from './__tests__/agent-configs.ts'
-import { buildEveryRulesetLintRules, EMPTY_TSCONFIG_ROOT_DIR } from './__tests__/factories/lint-rules-factories.ts'
+import { buildEveryRulesetLintRules, emptyTsconfigRootDir } from './__tests__/factories/lint-rules-factories.ts'
 import {
   buildPackageJsonListingOxlint,
   createProjectListingOxlint,
@@ -15,11 +15,17 @@ import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
-const validLintRules = buildEveryRulesetLintRules(EMPTY_TSCONFIG_ROOT_DIR)
 const PACKAGE_JSON = 'package.json'
+
+/** Every ruleset listed, in the empty tsconfigRootDir, which is made as each test builds it. */
+function buildValidLintRules(): LintRules {
+  return buildEveryRulesetLintRules(emptyTsconfigRootDir())
+}
 
 describe('an error in agents-inc.lint.mts', () => {
   it('is absent from a valid config, both sets given', () => {
+    const validLintRules = buildValidLintRules()
+
     expect(() => defineLintRules(validLintRules)).not.toThrow()
   })
 })
@@ -36,12 +42,16 @@ describe('tsconfigRootDir in agents-inc.lint.mts', () => {
   ]
 
   it.each(refusedValues)('is refused $refused, naming the file, the key, the value and the condition it fails', ({ value, reason }) => {
+    const validLintRules = buildValidLintRules()
+
     expect(() => defineLintRules({ ...validLintRules, tsconfigRootDir: value })).toThrowError(
       new Error(`agents-inc.lint.mts: tsconfigRootDir: "${value}" ${reason}`),
     )
   })
 
   it('is accepted as the absolute path of an existing folder', () => {
+    const validLintRules = buildValidLintRules()
+
     expect(() => defineLintRules({ ...validLintRules, tsconfigRootDir: projectDir })).not.toThrow()
   })
 
@@ -52,6 +62,7 @@ describe('tsconfigRootDir in agents-inc.lint.mts', () => {
 
     it('is refused for the condition it fails, not for that package.json', () => {
       const value = join(projectWithAMalformedPackageJson, 'no-such-folder')
+      const validLintRules = buildValidLintRules()
 
       expect(() => defineLintRules({ ...validLintRules, tsconfigRootDir: value })).toThrow(
         new Error(`agents-inc.lint.mts: tsconfigRootDir: "${value}" does not exist`),
@@ -59,6 +70,8 @@ describe('tsconfigRootDir in agents-inc.lint.mts', () => {
     })
 
     it('passes as an existing folder, and that package.json is then blamed', () => {
+      const validLintRules = buildValidLintRules()
+
       expect(() => defineLintRules({ ...validLintRules, tsconfigRootDir: projectWithAMalformedPackageJson })).toThrow(
         new Error(`${join(projectWithAMalformedPackageJson, PACKAGE_JSON)}: not valid JSON`),
       )
@@ -68,12 +81,16 @@ describe('tsconfigRootDir in agents-inc.lint.mts', () => {
 
 describe('allowSuppressions in agents-inc.lint.mts', () => {
   it.each([[true], [false]])('is accepted as %s', (allowSuppressions) => {
+    const validLintRules = buildValidLintRules()
+
     expect(() => defineLintRules({ ...validLintRules, allowSuppressions })).not.toThrow()
   })
 })
 
 describe('a library ruleset in agents-inc.lint.mts', () => {
   it('is accepted in its own domain', () => {
+    const validLintRules = buildValidLintRules()
+
     expect(() => defineLintRules({ ...validLintRules, agentRulesets: { ...validLintRules.agentRulesets, libs: { data: ['drizzle'] } } })).not.toThrow()
   })
 })
@@ -82,6 +99,7 @@ describe('a library ruleset in agents-inc.lint.mts', () => {
 // (docs/plan.md, Open, "Written limit of the config's types").
 describe('a suppression rule set in agents-inc.lint.mts', () => {
   it('is absent from a config that allows suppressions through allowSuppressions and sets other rules', () => {
+    const validLintRules = buildValidLintRules()
     const allowingSuppressions = {
       ...validLintRules,
       allowSuppressions: true,

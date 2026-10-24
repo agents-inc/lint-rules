@@ -22,7 +22,6 @@ const ROOT_FILE = 'src/a.ts'
 const TEAM_TRY_EXTENSIONS = ['.js', '.ts']
 
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJson()) } })
-const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, { editorRulesets: { quality: ['modules'] } })).editorRulesets
 
 /** The file's settings.n, as ESLint calculates it from the project: undefined where no block gives one. */
 async function nSettingsFor(merged: Linter.Config[], file: string): Promise<unknown> {
@@ -36,6 +35,7 @@ describe("mergeEslintConfig, given a team block for packages/app's TS files, by 
   const teamBlock = buildTeamEslintBlock('team/app', { basePath: 'packages/app', files: ['**/*.ts'], settings: { node: { tryExtensions: TEAM_TRY_EXTENSIONS } } })
 
   it("keeps our settings.n out of the package's TS files, and in the project's other TS files", async () => {
+    const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, { editorRulesets: { quality: ['modules'] } })).editorRulesets
     const merged = mergeEslintConfig([teamBlock], eslint, NO_TEAM_OXLINT_CONFIG)
 
     expect({ inThePackage: await nSettingsFor(merged, PACKAGE_FILE), elsewhere: isRecord(await nSettingsFor(merged, ROOT_FILE)) }).toStrictEqual({

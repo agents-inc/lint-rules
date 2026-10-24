@@ -157,7 +157,7 @@ describe('house/require-class-helper, turned on through rules', () => {
   })
 })
 
-// Opt-in upstream and shipped in no ruleset here; oxlint has neither. Each fixture holds a call each
+// Opt-in upstream; oxlint has neither. Each fixture holds a call each
 // rule reports and, below it, one it leaves alone.
 describe('the rules eslint-plugin-unicorn 78 adds, turned on through rules', () => {
   const unicorn78Rules = setUpEngineRun(FIXTURES_DIR, (projectDir) =>
@@ -223,7 +223,7 @@ describe('a suppression comment in ESLint, in a team config registering react me
       'package.json': packageJsonText(buildPackageJsonListingOxlint()),
       [SUPPRESSES_A_RULE_NOBODY_DEFINES_FILE]: suppressionOfARuleNobodyDefines,
     },
-    buildEditorBuild({ teamEslintConfig: [buildTeamEslintBlock('team-react', { plugins: { react: pluginRegisteredUnder(eslintPlugins, 'react') } })] }),
+    () => buildEditorBuild({ teamEslintConfig: [buildTeamEslintBlock('team-react', { plugins: { react: pluginRegisteredUnder(eslintPlugins, 'react') } })] }),
   )
 
   it('is loaded by ESLint without a fatal message on any file', () => {

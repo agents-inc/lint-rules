@@ -22,7 +22,6 @@ const NEXTJS_KEYS = ['@next/no-img-element', '@next/next/no-html-link-for-pages'
 const NOT_STATED = 'not stated'
 
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) }, linkedPackages: [INSTALLED_OXLINT] })
-const ourParts = defineLintRules(buildConsumerLintRules(projectDir, {})).editorRulesets
 
 /** The team config, its root listing the plugins given, nextjs listed for vendor/**, and an override for app/** stating each nextjs key on. */
 function teamStatingNextjsKeysInApp(rootPlugins: NonNullable<OxlintConfig['plugins']>): OxlintConfig {
@@ -37,6 +36,7 @@ function teamStatingNextjsKeysInApp(rootPlugins: NonNullable<OxlintConfig['plugi
 
 /** Each key's entry in the app file, under the key itself, in the config merged into the team config given. */
 function entriesInTheAppFile(team: OxlintConfig): Readonly<Record<string, unknown>> {
+  const ourParts = defineLintRules(buildConsumerLintRules(projectDir, {})).editorRulesets
   const merged = mergeOxlintConfig(team, oxlintPartOf(ourParts), NO_TEAM_ESLINT_CONFIG)
   return Object.fromEntries(NEXTJS_KEYS.map((key) => [key, oxlintEntryOfRuleFor(merged, APP_FILE, [key]) ?? NOT_STATED]))
 }

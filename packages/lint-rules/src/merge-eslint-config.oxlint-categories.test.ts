@@ -14,6 +14,7 @@ import { buildConsumerLintRules } from './__tests__/factories/lint-rules-factori
 import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildTsconfig } from './__tests__/factories/tsconfig-factories.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
+import type { EslintPart } from './core/editor-parts.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
@@ -43,11 +44,14 @@ const projectDir = tempProjects.create({
   },
   linkedPackages: [INSTALLED_OXLINT],
 })
-const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { [NO_THIS_ALIAS]: 'error', [NO_FLOATING_PROMISES]: 'error' } })).editorRulesets
+
+function ourEslintPart(): EslintPart {
+  return defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { [NO_THIS_ALIAS]: 'error', [NO_FLOATING_PROMISES]: 'error' } })).editorRulesets.eslint
+}
 
 /** Our rule's severity in a source file, merged beside the team oxlint config given: undefined where no block sets it. */
 async function oursBeside(oxlintConfig: string, ruleId: string): Promise<string | undefined> {
-  return ruleSeverityInProjectFor(projectDir, mergeEslintConfig([], eslint, { oxlintConfig }), SOURCE_FILE, ruleId)
+  return ruleSeverityInProjectFor(projectDir, mergeEslintConfig([], ourEslintPart(), { oxlintConfig }), SOURCE_FILE, ruleId)
 }
 
 describe('mergeEslintConfig, given a team oxlint config writing categories', () => {
@@ -72,6 +76,8 @@ describe('mergeEslintConfig, given a team oxlint config writing correctness on f
 
 describe('mergeEslintConfig, given a team oxlint config listing a plugin by another name oxlint takes for it, and writing correctness on', () => {
   it.each(CONFIGS_LISTING_A_PLUGIN_BY_ANOTHER_NAME)('reads the config listing $plugin as $alias', ({ file }) => {
+    const eslint = ourEslintPart()
+
     expect(() => mergeEslintConfig([], eslint, { oxlintConfig: file })).not.toThrow()
   })
 

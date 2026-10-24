@@ -91,7 +91,12 @@ const TEAM_ALONE = { name: "the team's configs alone", eslint: 'eslint.team-alon
 
 /** Lints the project with each build, by the real oxlint CLI and ESLint Node API. Registers hooks: call it in a describe block. */
 export function setUpBothEnginesRuns(project: BothEnginesProject): () => BothEnginesRuns {
-  return setUpRunsBeforeTheSuite((tempProjects) => bothEnginesRunsOf(tempProjects, project), BOTH_ENGINES_RUNS)
+  return setUpBothEnginesRunsOf(() => project)
+}
+
+/** As setUpBothEnginesRuns, the project made in the hook too, so a throw making it fails each test, not the file. */
+export function setUpBothEnginesRunsOf(projectOf: () => BothEnginesProject): () => BothEnginesRuns {
+  return setUpRunsBeforeTheSuite((tempProjects) => bothEnginesRunsOf(tempProjects, projectOf()), BOTH_ENGINES_RUNS)
 }
 
 async function bothEnginesRunsOf(tempProjects: TempProjects, project: BothEnginesProject): Promise<BothEnginesRuns> {

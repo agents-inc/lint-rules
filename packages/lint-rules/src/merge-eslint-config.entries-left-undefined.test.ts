@@ -21,9 +21,9 @@ const LEGACY_FILES = ['legacy/**']
 
 describe('mergeEslintConfig, given a team block for legacy files stating one of our rules', () => {
   const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJson()) } })
-  const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: OURS_RUN_BY_ESLINT })).editorRulesets
 
   it('keeps ours of it in every other file where the block leaves its entry undefined, which states no rule', async () => {
+    const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: OURS_RUN_BY_ESLINT })).editorRulesets
     const merged = mergeEslintConfig([buildTeamEslintBlock('team/legacy', { files: LEGACY_FILES, rules: { [NO_VAR]: undefined } })], eslint, NO_TEAM_OXLINT_CONFIG)
 
     expect({
@@ -33,6 +33,7 @@ describe('mergeEslintConfig, given a team block for legacy files stating one of 
   })
 
   it("drops ours of it in every file where the block states it off, which makes it the team's", async () => {
+    const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: OURS_RUN_BY_ESLINT })).editorRulesets
     const merged = mergeEslintConfig([buildTeamEslintBlock('team/legacy', { files: LEGACY_FILES, rules: { [NO_VAR]: 'off' } })], eslint, NO_TEAM_OXLINT_CONFIG)
 
     expect({

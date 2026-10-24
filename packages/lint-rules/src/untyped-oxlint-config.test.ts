@@ -7,6 +7,7 @@ import { buildTeamOxlintConfig } from './__tests__/factories/team-config-factori
 import { NOT_STATED, ourPartsIn, projectListingOxlintIn, severityStatedFor } from './__tests__/other-engine-merges.ts'
 import { NO_TEAM_ESLINT_CONFIG, TEAM_ESLINT_CONFIG_SETTING_NO_RULE, teamEslintConfigSettingNoRuleFiles } from './__tests__/team-configs-of-the-other-engine.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
+import type { EditorParts } from './core/editor-parts.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
 // What an untyped oxlint.config.mts does: one whose type errors nobody reads. The types refuse every value below as
@@ -17,10 +18,6 @@ type OurRulesStated = Readonly<Record<string, string>>
 
 const tempProjects = setUpTempProjects()
 const projectDir = projectListingOxlintIn(tempProjects, teamEslintConfigSettingNoRuleFiles)
-// Two rules oxlint runs for us, and two ESLint does, whose copies oxlint's default correctness category would run.
-const editorRulesets = ourPartsIn(projectDir, { ...OURS_RUN_BY_OXLINT, ...OURS_RUN_BY_ESLINT })
-const { eslint } = editorRulesets
-const oxlint = oxlintPartOf(editorRulesets)
 // Leaves correctness at oxlint's default.
 const theirs = buildTeamOxlintConfig()
 const SOURCE_FILE = 'src/a.ts'
@@ -30,6 +27,11 @@ const INSTALLED_OXLINT_LOOKED_UP_FROM_NO_FOLDER = 'oxlint.config.mts: a package.
 // Node's error for an argument of the wrong type, such as a path that is no string.
 const NODE_REFUSING_A_PATH_THAT_IS_NO_STRING = { name: 'TypeError', code: 'ERR_INVALID_ARG_TYPE' }
 
+// Two rules oxlint runs for us, and two ESLint does, whose copies oxlint's default correctness category would run.
+function ourEditorParts(): EditorParts {
+  return ourPartsIn(projectDir, { ...OURS_RUN_BY_OXLINT, ...OURS_RUN_BY_ESLINT })
+}
+
 /** How the merged config sets each of our rules in a TS source file. */
 function ourRulesStatedIn(merged: Readonly<OxlintConfig>): OurRulesStated {
   return Object.fromEntries(OUR_RULES.map((ruleId) => [ruleId, severityStatedFor(merged, SOURCE_FILE, ruleId)]))
@@ -37,6 +39,7 @@ function ourRulesStatedIn(merged: Readonly<OxlintConfig>): OurRulesStated {
 
 describe('the ESLint part handed to mergeOxlintConfig, in an untyped oxlint.config.mts', () => {
   it('builds, with no error, a config stating none of our rules: oxlint runs none of the rules our oxlint part runs, and its copies of the ESLint-run ones stay on', () => {
+    const { eslint } = ourEditorParts()
     // @ts-expect-error mergeOxlintConfig takes the oxlint part, not the ESLint part
     const merged = mergeOxlintConfig(theirs, eslint, NO_TEAM_ESLINT_CONFIG)
 
@@ -44,6 +47,7 @@ describe('the ESLint part handed to mergeOxlintConfig, in an untyped oxlint.conf
   })
 
   it('is not what the oxlint part builds, which turns on the rules oxlint runs for us and turns off its copies of the ESLint-run ones', () => {
+    const oxlint = oxlintPartOf(ourEditorParts())
     const merged = mergeOxlintConfig(theirs, oxlint, NO_TEAM_ESLINT_CONFIG)
 
     expect(ourRulesStatedIn(merged)).toStrictEqual({ [NO_DEBUGGER]: 'error', [NO_EMPTY_PATTERN]: 'error', [NO_VAR]: 'off', [ARRAY_TYPE]: 'off' })
@@ -54,6 +58,8 @@ describe('the ESLint part handed to mergeOxlintConfig, in an untyped oxlint.conf
 // does not resolve says to install it.
 describe('a value that is neither part, handed to mergeOxlintConfig in an untyped oxlint.config.mts', () => {
   it('stops, where it is the object holding both parts, at the check of the installed oxlint, naming undefined as the folder', () => {
+    const editorRulesets = ourEditorParts()
+
     // @ts-expect-error mergeOxlintConfig takes the oxlint part, not the object holding both parts
     expect(() => mergeOxlintConfig(theirs, editorRulesets, NO_TEAM_ESLINT_CONFIG)).toThrow(new Error(INSTALLED_OXLINT_LOOKED_UP_FROM_NO_FOLDER))
   })
@@ -73,21 +79,29 @@ describe('a value that is neither part, handed to mergeOxlintConfig in an untype
 describe("mergeOxlintConfig's third argument, in an untyped oxlint.config.mts", () => {
   // The text is V8's.
   it('stops, where it is left out, at a TypeError', () => {
+    const oxlint = oxlintPartOf(ourEditorParts())
+
     // @ts-expect-error the path of the team's ESLint config is required
     expect(() => mergeOxlintConfig(theirs, oxlint)).toThrow(TypeError)
   })
 
   it('stops, where it is null, at a TypeError', () => {
+    const oxlint = oxlintPartOf(ourEditorParts())
+
     // @ts-expect-error the third argument is an object holding the path, not null
     expect(() => mergeOxlintConfig(theirs, oxlint, null)).toThrow(TypeError)
   })
 
   it.each(THIRD_ARGUMENTS_HOLDING_NO_PATH)('stops, where it is $what, at the TypeError Node throws for a path that is no string', ({ given }) => {
+    const oxlint = oxlintPartOf(ourEditorParts())
+
     // @ts-expect-error eslintConfig is a path or null
     expect(() => mergeOxlintConfig(theirs, oxlint, given)).toThrow(expect.objectContaining(NODE_REFUSING_A_PATH_THAT_IS_NO_STRING))
   })
 
   it("merges where eslintConfig names the team's ESLint config, which sets none of our rules", () => {
+    const oxlint = oxlintPartOf(ourEditorParts())
+
     expect(ourRulesStatedIn(mergeOxlintConfig(theirs, oxlint, TEAM_ESLINT_CONFIG_SETTING_NO_RULE))).toStrictEqual({
       [NO_DEBUGGER]: 'error',
       [NO_EMPTY_PATTERN]: 'error',

@@ -16,6 +16,7 @@ import { buildConsumerLintRules } from './__tests__/factories/lint-rules-factori
 import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildTsconfig } from './__tests__/factories/tsconfig-factories.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
+import type { EslintPart } from './core/editor-parts.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
@@ -46,14 +47,21 @@ const projectDir = tempProjects.create({
   },
   linkedPackages: [INSTALLED_OXLINT],
 })
-const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { [SONARJS_RULE]: 'error', [ESLINT_REACT_RULE]: 'error' } })).editorRulesets
+
+function ourEslintPart(): EslintPart {
+  return defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { [SONARJS_RULE]: 'error', [ESLINT_REACT_RULE]: 'error' } })).editorRulesets.eslint
+}
 
 describe("mergeEslintConfig, given a team oxlint config turning sonarjs's anchor-precedence off under sonarjs/", () => {
   it.each(CONFIGS_LISTING_THE_SONARJS_JS_PLUGIN)('drops ours of it where the config loads $listing, whose rules take that prefix', async ({ file }) => {
+    const eslint = ourEslintPart()
+
     expect(await ruleSeverityInProjectFor(projectDir, mergeEslintConfig([], eslint, { oxlintConfig: file }), SOURCE_FILE, SONARJS_RULE)).toBeUndefined()
   })
 
   it.each(CONFIGS_LISTING_NO_SONARJS_JS_PLUGIN)('keeps ours where the config loads $listing, so the key names no rule it loads', async ({ file }) => {
+    const eslint = ourEslintPart()
+
     expect(await ruleSeverityInProjectFor(projectDir, mergeEslintConfig([], eslint, { oxlintConfig: file }), SOURCE_FILE, SONARJS_RULE)).toBe('error')
   })
 })
@@ -61,22 +69,30 @@ describe("mergeEslintConfig, given a team oxlint config turning sonarjs's anchor
 // A scoped package's JS plugin takes its scope as its prefix: @eslint-react/eslint-plugin names @eslint-react.
 describe("mergeEslintConfig, given a team oxlint config turning eslint-react's dom-no-dangerously-set-innerhtml off under @eslint-react/", () => {
   it("drops ours of it where the config loads the JS plugin by its scoped package's name", async () => {
+    const eslint = ourEslintPart()
+
     expect(await ruleSeverityInProjectFor(projectDir, mergeEslintConfig([], eslint, { oxlintConfig: CONFIG_LISTING_A_SCOPED_JS_PLUGIN.file }), SOURCE_FILE, ESLINT_REACT_RULE)).toBeUndefined()
   })
 
   it('keeps ours where the config states the key but loads no JS plugin', async () => {
+    const eslint = ourEslintPart()
+
     expect(await ruleSeverityInProjectFor(projectDir, mergeEslintConfig([], eslint, { oxlintConfig: CONFIG_STATING_THE_ESLINT_REACT_RULE_ALONE.file }), SOURCE_FILE, ESLINT_REACT_RULE)).toBe('error')
   })
 })
 
 describe("mergeEslintConfig, given a team oxlint config's plugins", () => {
   it('refuses a config listing a plugin oxlint has no plugin of, naming it', () => {
+    const eslint = ourEslintPart()
+
     expect(() => mergeEslintConfig([], eslint, { oxlintConfig: CONFIG_LISTING_NO_PLUGIN_OF_OXLINTS.file })).toThrowError(
       new Error(`"${NO_PLUGIN_OF_OXLINTS}" names no plugin of oxlint's`),
     )
   })
 
   it('reads a config listing plugins oxlint has, one by another name oxlint takes for it', () => {
+    const eslint = ourEslintPart()
+
     expect(() => mergeEslintConfig([], eslint, { oxlintConfig: CONFIG_LISTING_PLUGINS_OF_OXLINTS.file })).not.toThrow()
   })
 })

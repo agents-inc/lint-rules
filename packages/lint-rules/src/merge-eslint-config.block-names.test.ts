@@ -16,7 +16,6 @@ const tempProjects = setUpTempProjects()
 const OUR_PREFIX = 'agents-inc/'
 
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJson()) } })
-const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, { editorRulesets: { quality: ['modules'] } })).editorRulesets
 
 /** The names of the merged blocks that are not the team's, each as the block gives it. */
 function namesOfOurBlocks(merged: readonly Linter.Config[], teamBlocks: readonly Linter.Config[]): readonly (string | undefined)[] {
@@ -26,6 +25,7 @@ function namesOfOurBlocks(merged: readonly Linter.Config[], teamBlocks: readonly
 
 describe('mergeEslintConfig, given team blocks giving settings our eslint-plugin-n settings yield to in some packages', () => {
   it('names each block it adds under agents-inc/, the blocks keeping our settings to other files included', () => {
+    const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, { editorRulesets: { quality: ['modules'] } })).editorRulesets
     const named = namesOfOurBlocks(mergeEslintConfig([...TEAMS_N_SETTINGS_BLOCKS], eslint, NO_TEAM_OXLINT_CONFIG), TEAMS_N_SETTINGS_BLOCKS)
 
     expect(named.filter((name) => name === undefined || !name.startsWith(OUR_PREFIX))).toStrictEqual([])

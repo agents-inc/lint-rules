@@ -10,6 +10,7 @@ import { buildProjectFacts } from './__tests__/factories/project-facts-factories
 import { buildTeamEslintBlock } from './__tests__/factories/team-config-factories.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG, NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 import { type RunOfAKind, runMadeFor, setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
+import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { buildEslintConfig } from './core/build-eslint-config.ts'
 import { buildOxlintConfig } from './core/build-oxlint-config.ts'
@@ -46,10 +47,8 @@ const OXLINT_CONFIG_FILE = 'covered-by.oxlintrc.json'
 const BOTH_RULESETS = { quality: ['immutability', 'declarative'] }
 const COVERED_RULESET_ALONE = { quality: ['immutability'] }
 const covered = 'prefer-const'
-const cover = coverOf(covered)
-const PAIR_NAMES: ReadonlySet<string> = new Set([covered, cover, `eslint(${covered})`])
-// The team turns the cover off: it is the team's, in every file.
-const TEAM_ESLINT_CONFIG_SETTING_THE_COVER: Linter.Config[] = [buildTeamEslintBlock('team/no-let', { rules: { [cover]: 'off' } })]
+
+allowEveryTestForParallelLoad()
 
 const tempProjects = setUpTempProjects()
 const PROJECT_DIR = tempProjects.create({
@@ -73,6 +72,19 @@ function coverOf(rule: string): string {
   return shipped.coveredBy
 }
 
+function pairNames(): ReadonlySet<string> {
+  return new Set([covered, coverOf(covered), `eslint(${covered})`])
+}
+
+// The team turns the cover off: it is the team's, in every file.
+function teamEslintConfigSettingTheCover(): Linter.Config[] {
+  return [buildTeamEslintBlock('team/no-let', { rules: { [coverOf(covered)]: 'off' } })]
+}
+
+function coversFinding(): string {
+  return `${SOURCE_FILE}:1 ${coverOf(covered)}`
+}
+
 /** The configs of one build: an oxlint config where oxlint runs, and an ESLint config. */
 type BuildConfigs = { readonly oxlint: OxlintConfig | null; readonly eslint: Linter.Config[] }
 
@@ -87,7 +99,7 @@ async function findingsOfIn({ oxlint, eslint }: BuildConfigs, file: string, name
 }
 
 async function pairFindingsWith(configs: BuildConfigs): Promise<string[]> {
-  return findingsOfIn(configs, SOURCE_FILE, PAIR_NAMES)
+  return findingsOfIn(configs, SOURCE_FILE, pairNames())
 }
 
 function oxlintFindingsOf(config: OxlintConfig, file: string): ReturnType<typeof oxlintFindingsIn> {
@@ -114,7 +126,6 @@ function editorMerge(rulesets: Rulesets, usesOxlint: boolean, teamEslintConfig: 
   }
 }
 
-const COVERS_FINDING = `${SOURCE_FILE}:1 ${cover}`
 const COVEREDS_FINDING_BY_OXLINT = `${SOURCE_FILE}:1 eslint(${covered})`
 const COVEREDS_FINDING_BY_ESLINT = `${SOURCE_FILE}:1 ${covered}`
 
@@ -133,7 +144,7 @@ const BUILDS = [
 
 describe("prefer-const, covered by functional/no-let, on a let never reassigned", () => {
   it.each(BUILDS)("draws the cover's report alone where both rulesets are listed, in $build", async ({ configsFor }) => {
-    expect(await pairFindingsWith(configsFor(BOTH_RULESETS))).toStrictEqual([COVERS_FINDING])
+    expect(await pairFindingsWith(configsFor(BOTH_RULESETS))).toStrictEqual([coversFinding()])
   })
 
   it.each(BUILDS)("draws its own report where the cover's ruleset is not listed, in $build", async ({ configsFor, coveredsFinding }) => {
@@ -144,7 +155,7 @@ describe("prefer-const, covered by functional/no-let, on a let never reassigned"
     { project: 'listing oxlint', usesOxlint: true },
     { project: 'listing no oxlint', usesOxlint: false },
   ])('draws no report of ours where the team sets the cover, both rulesets listed, in the editor merges of a project $project', async ({ usesOxlint }) => {
-    expect(await pairFindingsWith(editorMerge(BOTH_RULESETS, usesOxlint, TEAM_ESLINT_CONFIG_SETTING_THE_COVER))).toStrictEqual([])
+    expect(await pairFindingsWith(editorMerge(BOTH_RULESETS, usesOxlint, teamEslintConfigSettingTheCover()))).toStrictEqual([])
   })
 })
 
