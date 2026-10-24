@@ -1,5 +1,85 @@
 [
   {
+    "id": "@eslint-community/eslint-comments/disable-enable-pair",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@eslint-community/eslint-comments/no-aggregating-enable",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@eslint-community/eslint-comments/no-duplicate-disable",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@eslint-community/eslint-comments/no-restricted-disable",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@eslint-community/eslint-comments/no-unlimited-disable",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@eslint-community/eslint-comments/no-unused-enable",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@eslint-community/eslint-comments/no-use",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@eslint-community/eslint-comments/require-description",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
     "id": "@eslint-react/dom-no-dangerously-set-innerhtml",
     "engine": "eslint",
     "oxlintName": null,
@@ -2353,6 +2433,106 @@
       "eslint-plugin-nextjs/no-unwanted-polyfillio",
       "nextjs/no-unwanted-polyfillio"
     ],
+    "shipped": null
+  },
+  {
+    "id": "@tanstack/query/exhaustive-deps",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@tanstack/query/infinite-query-property-order",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@tanstack/query/mutation-property-order",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@tanstack/query/no-rest-destructuring",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@tanstack/query/no-unstable-deps",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@tanstack/query/no-void-query-fn",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@tanstack/query/prefer-query-options",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@tanstack/query/stable-query-client",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@tanstack/router/create-route-property-order",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "@tanstack/router/route-param-names",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
     "shipped": null
   },
   {
@@ -5494,6 +5674,306 @@
     "shipped": null
   },
   {
+    "id": "e18e/ban-dependencies",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/no-delete-property",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/no-indexof-equality",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/no-spread-in-reduce",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-array-at",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-array-fill",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-array-from-map",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-array-some",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-array-to-reversed",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-array-to-sorted",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-array-to-spliced",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-charcode-at-in-loop",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-date-now",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-exponentiation-operator",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-flatmap-over-map-flat",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-get-or-insert",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-includes",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-includes-over-regex-test",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-inline-equality",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-nullish-coalescing",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-object-has-own",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-regex-test",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-slice-over-split-index",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-spread-syntax",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-static-collator",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-static-regex",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-string-fromcharcode",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-throw-if-no-entry",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-timer-args",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "e18e/prefer-url-canparse",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
     "id": "eqeqeq",
     "engine": "eslint",
     "oxlintName": null,
@@ -6183,6 +6663,156 @@
       "files": null,
       "ignores": null
     }
+  },
+  {
+    "id": "hydration-proof/audit-suppress-hydration-warning",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/no-browser-global-in-render",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/no-client-only-initial-state",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/no-date-in-render",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/no-global-render-counter",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/no-invalid-interactive-nesting",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/no-locale-without-explicit-locale",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/no-match-media-in-render",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/no-random-in-render",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/no-storage-in-initial-render",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/no-timezone-without-explicit-timezone",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/no-unstable-id",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/no-window-render-branch",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/require-deterministic-list-order",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "hydration-proof/require-stable-server-snapshot",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
   },
   {
     "id": "id-denylist",
@@ -7050,6 +7680,126 @@
       "typescript-eslint/init-declarations",
       "typescript/init-declarations"
     ],
+    "shipped": null
+  },
+  {
+    "id": "jest-dom/prefer-checked",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "jest-dom/prefer-empty",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "jest-dom/prefer-enabled-disabled",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "jest-dom/prefer-focus",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "jest-dom/prefer-in-document",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "jest-dom/prefer-pressed",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "jest-dom/prefer-required",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "jest-dom/prefer-to-have-attribute",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "jest-dom/prefer-to-have-class",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "jest-dom/prefer-to-have-style",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "jest-dom/prefer-to-have-text-content",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "jest-dom/prefer-to-have-value",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
     "shipped": null
   },
   {
@@ -13053,6 +13803,676 @@
     }
   },
   {
+    "id": "playwright/consistent-spacing-between-blocks",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/expect-expect",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/max-expects",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/max-nested-describe",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/missing-playwright-await",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-action-timeout",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-commented-out-tests",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-conditional-expect",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-conditional-in-test",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-duplicate-hooks",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-duplicate-slow",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-element-handle",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-eval",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-export",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-focused-test",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-force-option",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-get-by-title",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-hooks",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-identical-title",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-magic-timeouts",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-nested-step",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-networkidle",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-nth-methods",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-page-pause",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-raw-locators",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-restricted-locators",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-restricted-matchers",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-restricted-roles",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-skipped-test",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-slowed-test",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-standalone-expect",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-template-literal-title",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-test-return-statement",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-unnecessary-assertions",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-unsafe-references",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-unused-locators",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-useless-await",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-useless-not",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-wait-for-navigation",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-wait-for-selector",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/no-wait-for-timeout",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-comparison-matcher",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-ending-with-an-expect",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-equality-matcher",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-hooks-in-order",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-hooks-on-top",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-locator",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-lowercase-title",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-native-locators",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-strict-equal",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-to-be",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-to-contain",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-to-have-count",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-to-have-length",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/prefer-web-first-assertions",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/require-annotation-reason",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/require-hook",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/require-soft-assertions",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/require-tags",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/require-to-pass-timeout",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/require-to-throw-message",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/require-top-level-describe",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/valid-describe-callback",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/valid-expect",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/valid-expect-in-promise",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/valid-test-tags",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "playwright/valid-title",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
     "id": "prefer-arrow-callback",
     "engine": "eslint",
     "oxlintName": null,
@@ -13145,7 +14565,12 @@
       "eslint/prefer-named-capture-group",
       "prefer-named-capture-group"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "modern-js",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "prefer-numeric-literals",
@@ -17043,6 +18468,66 @@
     }
   },
   {
+    "id": "shadcn/no-arbitrary-values",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "shadcn/no-inline-styles",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "shadcn/no-raw-colors",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "shadcn/no-restyle",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "shadcn/no-unknown-classes",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "shadcn/require-static-classes",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
     "id": "sonarjs/anchor-precedence",
     "engine": "eslint",
     "oxlintName": null,
@@ -20029,7 +21514,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "modern-js",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "sonarjs/prefer-native-jquery-alternative",
@@ -23798,7 +25288,16 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "redundancy",
+      "options": [],
+      "files": null,
+      "ignores": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      ]
+    }
   },
   {
     "id": "unicorn/no-return-array-push",
@@ -25771,7 +27270,12 @@
       "eslint-plugin-unicorn/prefer-logical-operator-over-ternary",
       "unicorn/prefer-logical-operator-over-ternary"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "redundancy",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-map-from-entries",
@@ -28929,6 +30433,446 @@
       "eslint/yoda",
       "yoda"
     ],
+    "shipped": null
+  },
+  {
+    "id": "zod/array-style",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/consistent-import",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/consistent-import-source",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/consistent-object-schema-type",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/consistent-schema-output-type-style",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/consistent-schema-var-name",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-any-schema",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-coerce-boolean",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-conflicting-checks",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-duplicate-schema-methods",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-dynamic-schema-value",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-empty-custom-schema",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-function-scoped-schema",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-native-enum",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-number-schema-with-finite",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-number-schema-with-int",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-number-schema-with-is-finite",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-number-schema-with-is-int",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-number-schema-with-safe",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-number-schema-with-step",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-optional-and-default-together",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-promise-schema",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-schema-with-is-nullable",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-schema-with-is-optional",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-throw-in-refine",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-transform-in-record-key",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-unknown-schema",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/no-unnecessary-readonly",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/prefer-enum-over-literal-union",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/prefer-loose-object",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/prefer-map-set-size-over-min-max",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/prefer-meta",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/prefer-meta-last",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/prefer-nullish",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/prefer-strict-object",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/prefer-string-length-over-min-max",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/prefer-string-schema-with-trim",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/prefer-top-level-string-formats",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/prefer-trim-before-string-length-checks",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/prefer-tuple-over-array-length",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/prefer-validate",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/require-brand-type-parameter",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/require-error-message",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": null
+  },
+  {
+    "id": "zod/schema-error-property-style",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
     "shipped": null
   }
 ]

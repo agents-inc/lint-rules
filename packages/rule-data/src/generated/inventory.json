@@ -3,17 +3,24 @@
     "oxlint": "1.87.0",
     "eslint": "10.12.0",
     "eslintPlugins": {
+      "@eslint-community/eslint-comments": "4.8.1",
       "@eslint-react": "5.26.5",
+      "@tanstack/query": "5.104.5",
+      "@tanstack/router": "1.162.0",
       "@typescript-eslint": "8.71.1",
       "check-file": "3.3.2",
       "css-modules": "2.12.0",
+      "e18e": "0.8.1",
       "functional": "10.0.1",
       "house": "0.0.0",
+      "hydration-proof": "1.0.1",
       "import-x": "4.17.1",
+      "jest-dom": "5.10.1",
       "jsx-a11y": "0.2.0",
       "n": "18.4.1",
       "no-secrets": "2.3.3",
       "perfectionist": "5.12.1",
+      "playwright": "2.12.1",
       "promise": "7.3.0",
       "react": "7.37.5",
       "react-hook-form": "0.3.1",
@@ -21,14 +28,88 @@
       "react-perf": "3.3.3",
       "react-you-might-not-need-an-effect": "1.0.2",
       "regexp": "3.3.1",
+      "shadcn": "0.2.3",
       "sonarjs": "4.2.2",
       "storybook": "10.6.1",
       "testing-library": "7.16.2",
       "unicorn": "78.0.0",
-      "vitest": "1.6.27"
+      "vitest": "1.6.27",
+      "zod": "5.2.2"
     }
   },
   "rules": [
+    {
+      "id": "@eslint-community/eslint-comments/disable-enable-pair",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@eslint-community/eslint-comments/no-aggregating-enable",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@eslint-community/eslint-comments/no-duplicate-disable",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@eslint-community/eslint-comments/no-restricted-disable",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@eslint-community/eslint-comments/no-unlimited-disable",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@eslint-community/eslint-comments/no-unused-disable",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": true,
+        "typed": false
+      }
+    },
+    {
+      "id": "@eslint-community/eslint-comments/no-unused-enable",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@eslint-community/eslint-comments/no-use",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@eslint-community/eslint-comments/require-description",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
     {
       "id": "@eslint-react/dom-no-dangerously-set-innerhtml",
       "oxlint": null,
@@ -1697,6 +1778,86 @@
         "eslintAliases": []
       },
       "eslint": null
+    },
+    {
+      "id": "@tanstack/query/exhaustive-deps",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@tanstack/query/infinite-query-property-order",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@tanstack/query/mutation-property-order",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@tanstack/query/no-rest-destructuring",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@tanstack/query/no-unstable-deps",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@tanstack/query/no-void-query-fn",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@tanstack/query/prefer-query-options",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@tanstack/query/stable-query-client",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@tanstack/router/create-route-property-order",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "@tanstack/router/route-param-names",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
     },
     {
       "id": "@typescript-eslint/adjacent-overload-signatures",
@@ -3848,6 +4009,246 @@
       }
     },
     {
+      "id": "e18e/ban-dependencies",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/no-delete-property",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/no-indexof-equality",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/no-spread-in-reduce",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-array-at",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-array-fill",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-array-from-map",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-array-some",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-array-to-reversed",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-array-to-sorted",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-array-to-spliced",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-charcode-at-in-loop",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-date-now",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-exponentiation-operator",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-flatmap-over-map-flat",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-get-or-insert",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-includes",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-includes-over-regex-test",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-inline-equality",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-nullish-coalescing",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-object-has-own",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-regex-test",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-slice-over-split-index",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-spread-syntax",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-static-collator",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-static-regex",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-string-fromcharcode",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-throw-if-no-entry",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-timer-args",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "e18e/prefer-url-canparse",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
       "id": "eol-last",
       "oxlint": null,
       "eslint": {
@@ -4305,6 +4706,126 @@
     },
     {
       "id": "house/require-class-helper",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/audit-suppress-hydration-warning",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/no-browser-global-in-render",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/no-client-only-initial-state",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/no-date-in-render",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/no-global-render-counter",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/no-invalid-interactive-nesting",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/no-locale-without-explicit-locale",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/no-match-media-in-render",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/no-random-in-render",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/no-storage-in-initial-render",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/no-timezone-without-explicit-timezone",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/no-unstable-id",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/no-window-render-branch",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/require-deterministic-list-order",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "hydration-proof/require-stable-server-snapshot",
       "oxlint": null,
       "eslint": {
         "deprecated": false,
@@ -5036,6 +5557,102 @@
           "@typescript-eslint/init-declarations"
         ]
       },
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "jest-dom/prefer-checked",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "jest-dom/prefer-empty",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "jest-dom/prefer-enabled-disabled",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "jest-dom/prefer-focus",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "jest-dom/prefer-in-document",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "jest-dom/prefer-pressed",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "jest-dom/prefer-required",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "jest-dom/prefer-to-have-attribute",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "jest-dom/prefer-to-have-class",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "jest-dom/prefer-to-have-style",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "jest-dom/prefer-to-have-text-content",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "jest-dom/prefer-to-have-value",
+      "oxlint": null,
       "eslint": {
         "deprecated": false,
         "typed": false
@@ -9762,6 +10379,542 @@
       }
     },
     {
+      "id": "playwright/consistent-spacing-between-blocks",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/expect-expect",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/max-expects",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/max-nested-describe",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/missing-playwright-await",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-action-timeout",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-commented-out-tests",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-conditional-expect",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-conditional-in-test",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-duplicate-hooks",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-duplicate-slow",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-element-handle",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-eval",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-export",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-focused-test",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-force-option",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-get-by-title",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-hooks",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-identical-title",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-magic-timeouts",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-nested-step",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-networkidle",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-nth-methods",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-page-pause",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-raw-locators",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-restricted-locators",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-restricted-matchers",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-restricted-roles",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-skipped-test",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-slowed-test",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-standalone-expect",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-template-literal-title",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-test-return-statement",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-unnecessary-assertions",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-unsafe-references",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-unused-locators",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-useless-await",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-useless-not",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-wait-for-navigation",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-wait-for-selector",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/no-wait-for-timeout",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-comparison-matcher",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-ending-with-an-expect",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-equality-matcher",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-hooks-in-order",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-hooks-on-top",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-locator",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-lowercase-title",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-native-locators",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-strict-equal",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-to-be",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-to-contain",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-to-have-count",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-to-have-length",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/prefer-web-first-assertions",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/require-annotation-reason",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/require-hook",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/require-soft-assertions",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/require-tags",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/require-to-pass-timeout",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/require-to-throw-message",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/require-top-level-describe",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/valid-describe-callback",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/valid-expect",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/valid-expect-in-promise",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/valid-test-tags",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "playwright/valid-title",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
       "id": "prefer-arrow-callback",
       "oxlint": {
         "oxlintName": "prefer-arrow-callback",
@@ -12708,6 +13861,54 @@
       "oxlint": null,
       "eslint": {
         "deprecated": true,
+        "typed": false
+      }
+    },
+    {
+      "id": "shadcn/no-arbitrary-values",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "shadcn/no-inline-styles",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "shadcn/no-raw-colors",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "shadcn/no-restyle",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "shadcn/no-unknown-classes",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "shadcn/require-static-classes",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
         "typed": false
       }
     },
@@ -21254,6 +22455,358 @@
         "category": "style",
         "eslintAliases": []
       },
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/array-style",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/consistent-import",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/consistent-import-source",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/consistent-object-schema-type",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/consistent-schema-output-type-style",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/consistent-schema-var-name",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-any-schema",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-coerce-boolean",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-conflicting-checks",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-duplicate-schema-methods",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-dynamic-schema-value",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-empty-custom-schema",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-function-scoped-schema",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-native-enum",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-number-schema-with-finite",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-number-schema-with-int",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-number-schema-with-is-finite",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-number-schema-with-is-int",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-number-schema-with-safe",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-number-schema-with-step",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-optional-and-default-together",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-promise-schema",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-schema-with-is-nullable",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-schema-with-is-optional",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-throw-in-refine",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-transform-in-record-key",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-unknown-schema",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/no-unnecessary-readonly",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/prefer-enum-over-literal-union",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/prefer-loose-object",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/prefer-map-set-size-over-min-max",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/prefer-meta",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/prefer-meta-last",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/prefer-nullish",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/prefer-strict-object",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/prefer-string-length-over-min-max",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/prefer-string-schema-with-trim",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/prefer-top-level-string-formats",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/prefer-trim-before-string-length-checks",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/prefer-tuple-over-array-length",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/prefer-validate",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/require-brand-type-parameter",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/require-error-message",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "zod/schema-error-property-style",
+      "oxlint": null,
       "eslint": {
         "deprecated": false,
         "typed": false
