@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { RuleTester } from '@typescript-eslint/rule-tester'
 import { afterAll, describe, it } from 'vitest'
 
@@ -10,4 +11,15 @@ RuleTester.it = it
 export const houseRuleTester = new RuleTester({
   languageOptions: { parserOptions: { ecmaFeatures: { jsx: true } } },
   linterOptions: { reportUnusedDisableDirectives: 'off' },
+})
+
+// Each case is `file.ts` in a folder whose tsconfig takes in no file, so the project service types it
+// with that tsconfig as the default project.
+export const houseTypedRuleTester = new RuleTester({
+  languageOptions: {
+    parserOptions: {
+      projectService: { allowDefaultProject: ['*.ts'], defaultProject: 'tsconfig.json' },
+      tsconfigRootDir: fileURLToPath(new URL('typed-project', import.meta.url)),
+    },
+  },
 })
