@@ -13,5 +13,5 @@ export default defineConfig({
   // Without eager, re-exported types from the TS-source @workspace packages fail with MISSING_EXPORT.
   dts: { eager: true },
   // The @workspace packages are never published, so they are always inlined.
-  deps: { alwaysBundle: [/^@workspace\//] },
+  deps: { alwaysBundle: [/^@workspace\//u] },
 })

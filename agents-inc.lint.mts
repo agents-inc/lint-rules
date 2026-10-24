@@ -96,9 +96,10 @@ const config = defineLintRules({
     '**/*.gen.*',
     '**/*.min.js',
     '**/mockServiceWorker.js',
-    // Code that breaks rules on purpose, and the copies of the source Stryker makes.
+    // Code that breaks rules on purpose, the copies of the source Stryker makes, and the folder the agents-inc CLI writes.
     'packages/lint-rules/test-fixtures/**',
     '.stryker-tmp/**',
+    '.agents-inc/**',
   ],
 
   rules: {},
@@ -108,6 +109,28 @@ const config = defineLintRules({
       // ESLint calls a function in `files`, but its types hold only globs there: filesEntryAlsoMatching casts to them.
       files: ['packages/lint-rules/src/core/eslint-file-types.ts'],
       rules: { '@typescript-eslint/no-unsafe-type-assertion': 'off' },
+    },
+    {
+      // ESLint calls a rule's listeners and uses nothing they return, so a rule reports and gathers what it walks
+      // through side effects, and RuleTester takes vitest's hooks as assignments to it. `{*[!t],…}` names each file in
+      // rules/ but the tests (the names ending in `.test`), as both engines read it: oxlint reads no extglob.
+      files: [
+        'packages/eslint-plugin-house/src/rules/{*[!t],*[!s]t,*[!e]st,*[!t]est,*[!.]test}.ts',
+        'packages/eslint-plugin-house/src/shared/**',
+        'packages/eslint-plugin-house/src/__tests__/house-rule-tester.ts',
+      ],
+      rules: { 'functional/immutable-data': 'off', 'functional/no-expression-statements': 'off', 'functional/no-return-void': 'off' },
+    },
+    {
+      // A type test makes its assertions in calls at its top level, which tsc checks and nothing runs.
+      files: ['**/*.test-d.ts'],
+      rules: { 'unicorn/no-top-level-side-effects': 'off' },
+    },
+    {
+      // A Stryker config drops the build it spreads in with `buildCommand: undefined`: Stryker refuses `null` there,
+      // and leaving the key out by a rest-sibling omit draws oxlint's default no-unused-vars, which runs in config files.
+      files: ['stryker.*.config.mjs'],
+      rules: { 'sonarjs/no-undefined-assignment': 'off' },
     },
   ],
 })
