@@ -22,7 +22,9 @@ import {
   type EslintMergeShape,
   type EslintMergeShapeValue,
 } from './__tests__/factories/eslint-merge-factories.ts'
-import { coverageOf, pairsMetInNoShape, pairwiseShapes, type Shape, shapeNameOf } from './__tests__/pairwise-shapes.ts'
+import { coverageOf, pairsMetInNoShape, pairwiseShapes, type Shape, type ShapeCoverage, shapeNamed, shapeNameOf } from './__tests__/pairwise-shapes.ts'
+import { PARALLEL_LOAD_TIMEOUT_MS } from './__tests__/parallel-load.ts'
+import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
 import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { editorPartsOf } from './core/editor-parts.ts'
@@ -47,8 +49,51 @@ type ShapeRun = {
   readonly inPlay: RulesInPlay
 }
 
-const SHAPES = pairwiseShapes(ESLINT_MERGE_DIMENSIONS, ESLINT_MERGE_SEEDS)
-const COVERAGE = coverageOf(ESLINT_MERGE_DIMENSIONS, SHAPES)
+const COVERAGE: ShapeCoverage = {
+  shapes: 34,
+  combinations: 3240,
+  pairsMet: 236,
+  pairs: 236,
+  triplesMet: 537,
+  triples: 1218,
+}
+// The shapes' names, in order: a test below holds them, and COVERAGE, to the dimensions and seeds.
+const SHAPE_NAMES: readonly string[] = [
+  'the team states our rule by its own ID; in every file; a bare severity; our top-level rules turn it on; no entry of ours states it; no ignores of ours',
+  'the team states our rule by its own ID; in the files it names; a bare severity; our top-level rules leave it out; an entry of ours turns it on; our ignores name the vendor folders',
+  "the team states our rule under the team's own prefix for our plugin; in every file; a bare severity; our top-level rules turn it on; an entry of ours turns it off; our ignores name the vendor folders bare, as vendor",
+  "the team states typescript-eslint's twin of our rule; in every file; a full entry; our top-level rules turn it on; an entry of ours turns it on; our ignores name one vendor folder with a trailing slash, as legacy/vendor/",
+  'the team states our rule by its own ID; in the files it names under its basePath; a full entry; our top-level rules turn it on; no entry of ours states it; our ignores name the vendor folders bare, as vendor',
+  "the team states our rule's alias; in every file; a full entry; our top-level rules turn it on; an entry of ours turns it off; our ignores name the vendor folders by vendor/, every folder of that name",
+  'the team states our rule by its own ID; outside its ignores, a negation taking a folder back; off; our top-level rules turn it off; an entry of ours turns it off; our ignores name one vendor folder with a trailing slash, as legacy/vendor/',
+  "the team states our rule's alias; in the files it names; off; our top-level rules leave it out; no entry of ours states it; no ignores of ours",
+  "the team states our rule's alias; outside its ignores, a negation taking a folder back; a bare severity; our top-level rules turn it off; an entry of ours turns it on; our ignores name the vendor folders bare, as vendor",
+  "the team states our rule's alias; in the files it names under its basePath; a bare severity; our top-level rules leave it out; an entry of ours turns it off; our ignores name one vendor folder with a trailing slash, as legacy/vendor/",
+  "the team states our renamed rule's old name, which our plugin no longer defines; in every file; off; our top-level rules leave it out; an entry of ours turns it on; our ignores name the vendor folders by vendor/, every folder of that name",
+  "the team states our renamed rule's old name, which our plugin no longer defines; in the files it names; a full entry; our top-level rules turn it off; no entry of ours states it; our ignores name the vendor folders",
+  "the team states our renamed rule's old name, which our plugin no longer defines; outside its ignores, a negation taking a folder back; a bare severity; our top-level rules turn it on; no entry of ours states it; our ignores name the vendor folders by vendor/, every folder of that name",
+  "the team states our renamed rule's old name, which our plugin no longer defines; in the files it names under its basePath; off; our top-level rules turn it on; an entry of ours turns it on; no ignores of ours",
+  'the team states the other name our plugin binds our rule to; in every file; a bare severity; our top-level rules turn it off; no entry of ours states it; no ignores of ours',
+  'the team states the other name our plugin binds our rule to; in the files it names; a full entry; our top-level rules leave it out; an entry of ours turns it off; our ignores name the vendor folders bare, as vendor',
+  'the team states the other name our plugin binds our rule to; outside its ignores, a negation taking a folder back; a full entry; our top-level rules leave it out; an entry of ours turns it on; no ignores of ours',
+  'the team states the other name our plugin binds our rule to; in the files it names under its basePath; off; our top-level rules turn it on; no entry of ours states it; our ignores name the vendor folders',
+  "the team states our rule under the team's own prefix for our plugin; in the files it names; a full entry; our top-level rules leave it out; no entry of ours states it; our ignores name one vendor folder with a trailing slash, as legacy/vendor/",
+  "the team states our rule under the team's own prefix for our plugin; outside its ignores, a negation taking a folder back; off; our top-level rules turn it off; an entry of ours turns it on; our ignores name the vendor folders",
+  "the team states our rule under the team's own prefix for our plugin; in the files it names under its basePath; a bare severity; our top-level rules turn it off; no entry of ours states it; our ignores name the vendor folders by vendor/, every folder of that name",
+  "the team states typescript-eslint's twin of our rule; in the files it names; a bare severity; our top-level rules leave it out; no entry of ours states it; our ignores name the vendor folders by vendor/, every folder of that name",
+  "the team states typescript-eslint's twin of our rule; outside its ignores, a negation taking a folder back; off; our top-level rules turn it off; an entry of ours turns it off; no ignores of ours",
+  "the team states typescript-eslint's twin of our rule; in the files it names under its basePath; a bare severity; our top-level rules leave it out; no entry of ours states it; our ignores name the vendor folders",
+  "the team states our renamed rule's old name, which our plugin no longer defines; in every file; a bare severity; our top-level rules leave it out; an entry of ours turns it off; our ignores name the vendor folders",
+  'the team states our rule by its own ID; in every file; a bare severity; our top-level rules leave it out; no entry of ours states it; our ignores name the vendor folders by vendor/, every folder of that name',
+  "the team states our rule's alias; in every file; a bare severity; our top-level rules leave it out; no entry of ours states it; our ignores name the vendor folders",
+  "the team states our renamed rule's old name, which our plugin no longer defines; in every file; off; our top-level rules leave it out; no entry of ours states it; our ignores name the vendor folders bare, as vendor",
+  "the team states our renamed rule's old name, which our plugin no longer defines; in every file; a bare severity; our top-level rules leave it out; no entry of ours states it; our ignores name one vendor folder with a trailing slash, as legacy/vendor/",
+  'the team states the other name our plugin binds our rule to; in every file; a bare severity; our top-level rules leave it out; no entry of ours states it; our ignores name one vendor folder with a trailing slash, as legacy/vendor/',
+  'the team states the other name our plugin binds our rule to; in every file; a bare severity; our top-level rules leave it out; no entry of ours states it; our ignores name the vendor folders by vendor/, every folder of that name',
+  "the team states our rule under the team's own prefix for our plugin; in every file; a bare severity; our top-level rules leave it out; no entry of ours states it; no ignores of ours",
+  "the team states typescript-eslint's twin of our rule; in every file; a bare severity; our top-level rules leave it out; no entry of ours states it; our ignores name the vendor folders bare, as vendor",
+  'the team states our rule by its own ID; in the files it names; a bare severity; our top-level rules turn it on; no entry of ours states it; no ignores of ours',
+]
 
 const PROJECT = setUpTempProjects().create({})
 // The parts are built for each mode directly, so the project needs no package.json.
@@ -58,6 +103,11 @@ const MODES = [
 ]
 
 const { calculatedRulesOfEach } = setUpEslintConfigOracle()
+
+const builtShapes = setUpRunsBeforeTheSuite(() => pairwiseShapes(ESLINT_MERGE_DIMENSIONS, ESLINT_MERGE_SEEDS), {
+  timeoutMs: PARALLEL_LOAD_TIMEOUT_MS,
+  whatFailed: 'the shapes could not be built from the dimensions and seeds',
+})
 
 /** The three configs of the shape, each read in every file: merged, the team's alone, and ours alone. */
 async function runOf(shape: Shape<EslintMergeShapeValue>, usesOxlint: boolean): Promise<ShapeRun> {
@@ -143,14 +193,20 @@ function mergedConfigOf(shape: Shape<EslintMergeShapeValue>, usesOxlint: boolean
 }
 
 describe('the ESLint merge shapes', () => {
+  it('are those the titles name, in order, with the coverage the first title gives, as built from the dimensions and seeds', () => {
+    const shapes = pairwiseShapes(ESLINT_MERGE_DIMENSIONS, ESLINT_MERGE_SEEDS)
+
+    expect({ names: shapes.map(shapeNameOf), coverage: coverageOf(ESLINT_MERGE_DIMENSIONS, shapes) }).toStrictEqual({ names: SHAPE_NAMES, coverage: COVERAGE })
+  })
+
   // What the run leaves out, in its title, so a verbose run prints it.
   it(`run ${String(COVERAGE.shapes)} of the ${String(COVERAGE.combinations)} combinations, meeting every pair of values: left out, ${String(COVERAGE.triples - COVERAGE.triplesMet)} of the ${String(COVERAGE.triples)} triples of values meet in no shape`, () => {
-    expect(pairsMetInNoShape(ESLINT_MERGE_DIMENSIONS, SHAPES)).toStrictEqual([])
+    expect(pairsMetInNoShape(ESLINT_MERGE_DIMENSIONS, builtShapes())).toStrictEqual([])
   })
 
   // A name the team states that is no name in play would be compared nowhere.
   it('put the name each team block states among the names the merge is checked over', () => {
-    const notInPlay = SHAPES.map((shape) => buildEslintMergeShape(PROJECT, shape)).filter(
+    const notInPlay = builtShapes().map((shape) => buildEslintMergeShape(PROJECT, shape)).filter(
       (built) => !namesInPlay(rulesInPlayOf(built.stating.ours, built.stating.teamsPrefixes, new Set(), catalog)).includes(shapeStating(built)),
     )
 
@@ -159,7 +215,7 @@ describe('the ESLint merge shapes', () => {
 
   // A block no path can match changes nothing, so the merge should never write one.
   it.each(MODES)('merge into configs writing no block whose files no path can match, $mode', ({ usesOxlint }) => {
-    const blocksMatchingNoFile = SHAPES.flatMap((shape, index) =>
+    const blocksMatchingNoFile = builtShapes().flatMap((shape, index) =>
       eslintBlocksMatchingNoFile(mergedConfigOf(shape, usesOxlint)).map((block) => `shape ${String(index)}, ${block}`),
     )
 
@@ -169,17 +225,17 @@ describe('the ESLint merge shapes', () => {
 
 // Each shape's name in full in its title, which it.each's $-interpolation would cut short.
 describe.each(MODES)('mergeEslintConfig $mode, against ESLint calculating each file', ({ usesOxlint }) => {
-  SHAPES.forEach((shape, index) => {
-    it(`shape ${String(index)} gives every name of the rule and its twins, in every file, the entry the contract owes: ${shapeNameOf(shape)}`, async () => {
-      const { merged, owed } = entriesOwedIn(await runOf(shape, usesOxlint))
+  SHAPE_NAMES.forEach((name, index) => {
+    it(`shape ${String(index)} gives every name of the rule and its twins, in every file, the entry the contract owes: ${name}`, async () => {
+      const { merged, owed } = entriesOwedIn(await runOf(shapeNamed(builtShapes(), name), usesOxlint))
 
       expect(merged).toStrictEqual(owed)
     })
   })
 
-  SHAPES.forEach((shape, index) => {
-    it(`shape ${String(index)} adds no name of a rule to a file beyond those the team's config alone runs there: ${shapeNameOf(shape)}`, async () => {
-      expect(namesOnBeyondTheTeamsIn(await runOf(shape, usesOxlint))).toStrictEqual([])
+  SHAPE_NAMES.forEach((name, index) => {
+    it(`shape ${String(index)} adds no name of a rule to a file beyond those the team's config alone runs there: ${name}`, async () => {
+      expect(namesOnBeyondTheTeamsIn(await runOf(shapeNamed(builtShapes(), name), usesOxlint))).toStrictEqual([])
     })
   })
 })

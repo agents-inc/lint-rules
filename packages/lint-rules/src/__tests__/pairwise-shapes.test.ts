@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildDimension } from './factories/shape-factories.ts'
-import { coverageOf, pairsMetInNoShape, pairwiseShapes } from './pairwise-shapes.ts'
+import { buildDimension, buildTeamShapeValue } from './factories/shape-factories.ts'
+import { coverageOf, pairsMetInNoShape, pairwiseShapes, shapeNamed } from './pairwise-shapes.ts'
 
 // The shapes the oxlint merge's differential test runs: every two values of two dimensions meet in
 // one of them, so the run stays small while no pair goes untried.
@@ -79,5 +79,25 @@ describe('pairsMetInNoShape', () => {
     ]
 
     expect(pairsMetInNoShape([SIZE, COLOUR], shapes)).toStrictEqual([])
+  })
+})
+
+describe('shapeNamed', () => {
+  const SMALL = buildTeamShapeValue('small', {})
+  const LARGE = buildTeamShapeValue('large', {})
+  const RED = buildTeamShapeValue('red', {})
+  const BLUE = buildTeamShapeValue('blue', {})
+  const SHAPES = [
+    [SMALL, RED],
+    [SMALL, BLUE],
+    [LARGE, RED],
+  ]
+
+  it('finds the shape whose values shapeNameOf joins into the name', () => {
+    expect(shapeNamed(SHAPES, 'small; blue')).toStrictEqual([SMALL, BLUE])
+  })
+
+  it('refuses a name no shape has', () => {
+    expect(() => shapeNamed(SHAPES, 'large; blue')).toThrow(/no shape is named large; blue/u)
   })
 })

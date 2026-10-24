@@ -32,6 +32,13 @@ export function shapeNameOf(shape: Shape<{ readonly name: string }>): string {
   return shape.map(({ name }) => name).join(SHAPE_NAME_SEPARATOR)
 }
 
+/** The shape a test's title names, found by that name so the two cannot come apart. */
+export function shapeNamed<V extends { readonly name: string }>(shapes: ReadonlyArray<Shape<V>>, name: string): Shape<V> {
+  const shape = shapes.find((candidate) => shapeNameOf(candidate) === name)
+  if (shape === undefined) throw new Error(`no shape is named ${name}`)
+  return shape
+}
+
 /**
  * Shapes in which every two values of two dimensions meet, the seeds first: the values of one seed
  * meet in one shape. Greedy and in a fixed order: each later shape starts from the first two values

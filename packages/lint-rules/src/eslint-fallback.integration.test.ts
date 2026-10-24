@@ -29,12 +29,26 @@ import { defineLintRules } from './index.ts'
 const FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/eslint-fallback', import.meta.url))
 const FIXTURE_INDEX = 'fixtures.json'
 const TWIN_FIXTURE_INDEX = 'twin-fixtures.json'
+// How a title names the run that proves a covered moved rule.
+const WHERE_EVERY_COVER_IS_OFF = ', where the rule covering it is off'
 
 // Parse boundary: the fixture indexes, rule ID to fixture file.
 const fixtureFileById = JSON.parse(readFileSync(join(FIXTURES_DIR, FIXTURE_INDEX), 'utf8')) as Readonly<Record<string, string>>
 const twinFixtureFileByCoreRule = JSON.parse(readFileSync(join(FIXTURES_DIR, TWIN_FIXTURE_INDEX), 'utf8')) as Readonly<
   Record<string, string>
 >
+
+// The twinned moved rules, in order, each with where the run proving it is: a test below holds them to typescript-eslint and the catalog.
+const TWINNED_MOVED_RULES: ReadonlyArray<TwinPair & { readonly where: string }> = [
+  { core: 'max-params', twin: '@typescript-eslint/max-params', where: '' },
+  { core: 'no-dupe-class-members', twin: '@typescript-eslint/no-dupe-class-members', where: '' },
+  { core: 'no-shadow', twin: '@typescript-eslint/no-shadow', where: '' },
+  { core: 'no-unused-expressions', twin: '@typescript-eslint/no-unused-expressions', where: WHERE_EVERY_COVER_IS_OFF },
+  { core: 'no-unused-private-class-members', twin: '@typescript-eslint/no-unused-private-class-members', where: '' },
+  { core: 'no-unused-vars', twin: '@typescript-eslint/no-unused-vars', where: '' },
+  { core: 'no-useless-constructor', twin: '@typescript-eslint/no-useless-constructor', where: '' },
+  { core: 'prefer-destructuring', twin: '@typescript-eslint/prefer-destructuring', where: '' },
+]
 
 const fallback = setUpEngineRun(
   FIXTURES_DIR,
@@ -59,8 +73,8 @@ function everyCoverOfAMovedRuleOff(): Readonly<Record<string, 'off'>> {
 }
 
 /** The run that proves the moved rule: the one with every cover off where another rule covers it, the one with every ruleset listed otherwise. */
-function runProving(id: string): { readonly run: EngineRun; readonly where: string } {
-  return isCovered(routeOf(id, catalog)) ? { run: fallbackWithEveryCoverOff, where: ', where the rule covering it is off' } : { run: fallback, where: '' }
+function runProving(route: Readonly<RuleRoute>): { readonly run: EngineRun; readonly where: string } {
+  return isCovered(route) ? { run: fallbackWithEveryCoverOff, where: WHERE_EVERY_COVER_IS_OFF } : { run: fallback, where: '' }
 }
 
 function fixtureFileOf(id: string): string {
@@ -132,7 +146,7 @@ describe('the editor ESLint part of a project whose package.json lists no oxlint
     ).toStrictEqual([])
   })
 
-  it.each(provenMovedRules().map(({ id }) => ({ id, ...runProving(id) })))('fires $id on its fixture$where', ({ id, run }) => {
+  it.each(provenMovedRules().map((route) => ({ id: route.id, ...runProving(route) })))('fires $id on its fixture$where', ({ id, run }) => {
     expect(run.eslintRuleIdsOn(fixtureFileOf(id))).toContain(id)
   })
 
@@ -155,10 +169,19 @@ describe('the editor ESLint part of a project whose package.json lists no oxlint
   })
 })
 
+describe('the twinned moved rules the tests on their fixtures are listed by', () => {
+  it('are each moved core rule a current typescript-eslint rule extends, in order, with its twin and where the run proving it is', () => {
+    const computed = twinnedMovedRules().map(({ core, twin }) => ({ core, twin, where: runProving(routeOf(core, catalog)).where }))
+
+    expect(computed).toStrictEqual(TWINNED_MOVED_RULES)
+  })
+})
+
 describe('each moved core rule a current typescript-eslint rule extends, in a project whose package.json lists no oxlint', () => {
-  it.each(twinnedMovedRules().map((pair) => ({ ...pair, ...runProving(pair.core) })))(
+  it.each(TWINNED_MOVED_RULES)(
     'runs $twin, and not $core, on its TS fixture$where, firing there with no fatal message',
-    ({ run, ...pair }) => {
+    (pair) => {
+      const { run } = runProving(routeOf(pair.core, catalog))
       const file = twinFixtureFileOf(pair.core)
 
       expect({ fatal: fatalMessagesOn(run, file), ...pairOn(run, file, pair) }).toStrictEqual({
@@ -169,9 +192,10 @@ describe('each moved core rule a current typescript-eslint rule extends, in a pr
     },
   )
 
-  it.each(twinnedMovedRules().map((pair) => ({ ...pair, ...runProving(pair.core) })))(
+  it.each(TWINNED_MOVED_RULES)(
     'runs $core, and not $twin, on its JS fixture$where, firing there with no fatal message',
-    ({ run, ...pair }) => {
+    (pair) => {
+      const { run } = runProving(routeOf(pair.core, catalog))
       const file = fixtureFileOf(pair.core)
 
       expect({ fatal: fatalMessagesOn(run, file), ...pairOn(run, file, pair) }).toStrictEqual({
