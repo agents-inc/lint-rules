@@ -24,6 +24,20 @@ export function survivedMutantWithoutATestCount(line: number): ReportedMutant {
   return mutantAt(line, 'Survived')
 }
 
+/** In code that runs while modules load, which Stryker marks `static`. */
+export function staticSurvivedMutant(line: number, testsCompleted: number): ReportedMutant {
+  return { ...survivedMutant(line, testsCompleted), static: true }
+}
+
+export function staticKilledMutant(line: number, testsCompleted: number): ReportedMutant {
+  return { ...killedMutant(line, testsCompleted), static: true }
+}
+
+/** Stryker marks each mutant static or not; this one it marks not. */
+export function survivedMutantNotStatic(line: number, testsCompleted: number): ReportedMutant {
+  return { ...survivedMutant(line, testsCompleted), static: false }
+}
+
 export function mutationReport(mutantsByFile: Readonly<Record<string, readonly ReportedMutant[]>>): MutationReport {
   return {
     files: Object.fromEntries(Object.entries(mutantsByFile).map(([file, mutants]) => [file, { mutants }])),

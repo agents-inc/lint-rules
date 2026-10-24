@@ -4,6 +4,8 @@ export type ReportedMutant = {
   readonly mutatorName: string
   readonly status: string
   readonly testsCompleted?: number
+  /** In code that runs while modules load. */
+  readonly static?: boolean
   readonly location: { readonly start: { readonly line: number; readonly column: number } }
 }
 
@@ -21,9 +23,13 @@ export function parseMutationReport(json: string): MutationReport {
 export function mutantsSurvivedWithoutATest(report: MutationReport): string[] {
   return Object.entries(report.files).flatMap(([file, { mutants }]) =>
     mutants
-      .filter((mutant) => mutant.status === SURVIVED && testsRunFor(file, mutant) === 0)
+      .filter((mutant) => isSurvived(mutant) && testsRunFor(file, mutant) === 0)
       .map((mutant) => describeMutant(file, mutant)),
   )
+}
+
+export function isSurvived(mutant: ReportedMutant): boolean {
+  return mutant.status === SURVIVED
 }
 
 function testsRunFor(file: string, mutant: ReportedMutant): number {
@@ -33,6 +39,6 @@ function testsRunFor(file: string, mutant: ReportedMutant): number {
   return mutant.testsCompleted
 }
 
-function describeMutant(file: string, { location: { start }, mutatorName }: ReportedMutant): string {
+export function describeMutant(file: string, { location: { start }, mutatorName }: ReportedMutant): string {
   return `${file}:${start.line}:${start.column} ${mutatorName}`
 }

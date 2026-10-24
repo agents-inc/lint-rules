@@ -19,6 +19,14 @@ To set it up in another repo, such as `~/dev/cli`: [playbook](mutation-testing-p
   config file given as the first argument runs alone instead. The other arguments go on to Stryker
   (`--force`, `--dryRunOnly`). After each run it reads `mutation.json`; it exits 1 when a run failed
   or reported a mutant Survived after running no test (see Swallowed errors below).
+- **One lane's changed lines, with the specs that reach them:** add
+  `--only <file>,<file>:<startLine>-<endLine>` (paths from the repo root) and Stryker's own
+  `--testFiles <spec>,<spec>`. The round then mutates only the changed lines inside those files and
+  ranges, and its first test run takes only those specs: name every spec that reaches the lines,
+  those running the built CLI included, or their mutants read as not caught. The script refuses a
+  file that is not on disk or that no config of the round mutates, and a `--testFiles` entry that
+  matches no file, or a list with none. After such a run it names each load-time mutant reported
+  Survived, which proves nothing there (Load-time code below).
 - **Lines you name:** `bun run mutation --mutate "<file>:<startLine>-<endLine>,..."`; a file with no
   range is mutated whole. For rule-data or house, name its config first:
   `bun run mutation stryker.rule-data.config.mjs --mutate ...`.
@@ -34,14 +42,16 @@ gitignored.
 What each result means:
 
 - **Survived** or **NoCoverage:** no test caught it. Add a test, or show with a run of the real tool
-  that the mutant changes nothing. Two kinds of Survived prove nothing: one in lint-rules code that
-  runs while modules load, and one that ran fewer tests than it should, 0 among them (Known limits).
+  that the mutant changes nothing. Two kinds of Survived prove nothing: one in code that runs while
+  modules load, in lint-rules or under `--testFiles`, and one that ran fewer tests than it should, 0
+  among them (Known limits).
 - **Killed:** a test failed. **CompileError:** the TypeScript checker refused the mutant, so it never ran.
 - **Timeout:** Stryker counts it as caught. It is not proof: re-run that mutant alone, with a
   `--mutate` range around it (see Ranges below for its columns).
 - **Ignored:** only code that runs while a test file loads reaches it (`ignoreStatic`, on in
-  lint-rules' config alone). The second pass under Load-time code runs it. The rule-data and house
-  configs run such a mutant with every test of the package, on before any test file loads.
+  lint-rules' config alone). The second pass under Load-time code runs it. Without `--testFiles`,
+  the rule-data and house configs run such a mutant with every test of the package, on before any
+  test file loads.
 
 ## How the integration tests see a mutant
 
@@ -58,10 +68,9 @@ mutated code reads. In the initial run, it loads `mutation-testing/child-coverag
 child (`NODE_OPTIONS`), so the mutants a child covers are credited to the test that spawned it, and
 the mutants a file's `beforeAll` and `afterAll` hooks cover go to every test of that file.
 
-The bridge also gives the copy an empty `.git` folder, as rule-data's mutation config does itself when
-it loads. oxlint honours `.gitignore` up to the nearest folder holding `.git`, so without one it reads
-the repo's own `.gitignore`, which ignores `.stryker-tmp/`, finds no file to lint in the copy, and
-`oxlint --rules` exits 1 (measured).
+The bridge also gives the copy an empty `.git` folder. oxlint honours `.gitignore` up to the nearest
+folder holding `.git`, so without one it reads the repo's own `.gitignore`, which ignores
+`.stryker-tmp/`, finds no file to lint in the copy, and `oxlint --rules` exits 1 (measured).
 
 The bridge relies on Stryker's internals: the `__stryker__` global and the order of its hooks. A
 Stryker upgrade can break it without an error. After one, run
@@ -90,19 +99,21 @@ From the trial on 2026-10-14 and the adoption runs:
   `bun run mutation stryker.static.config.mjs --mutate <ranges>`, or for a round
   `node scripts/mutate-changed-lines.mts stryker.static.config.mjs`. A mutant either pass kills is
   caught. The pass keeps its own incremental file, and its reports replace the first pass's. Or break
-  the line by hand and serve it through a Vite `load` hook.
+  the line by hand and serve it through a Vite `load` hook. Given `--testFiles`, every config, the
+  second pass among them, turns such a mutant on only after the test files load, so its Survived
+  proves nothing there either: re-run it without `--testFiles`.
 - **Ranges.** A mutant counts only if it lies wholly inside a range, so a changed line inside a longer
   expression or block gets the mutants of its own parts, not of the whole. A deleted line gives none.
   Ranges count columns from 0; the report counts them from 1.
-- **Time.** Every run starts by running its package's whole suite on one worker. A mutant the CLI
-  test files cover reruns those files, which can take many minutes for one mutant. `timeoutMS` is 30
-  minutes, so a slow mutant is not reported as Timeout (and so as caught); a mutant that never ends
-  takes that long too.
+- **Time.** Every run starts by running its package's whole suite on one worker, or the specs
+  `--testFiles` names. A mutant the CLI test files cover reruns those files, which can take many
+  minutes for one mutant. `timeoutMS` is 30 minutes, so a slow mutant is not reported as Timeout
+  (and so as caught); a mutant that never ends takes that long too.
 - **Swallowed errors.** A test file that fails to load (an import that breaks, a hook that throws
   while the file is collected) adds no tests, and the run still passes. Before counting, check that
   the initial run's test count ("Ran N tests") equals the tests a plain `vitest run` of the package
-  runs (for the second pass, one given `--exclude` for each file
-  `vitest.mutation.in-process.config.ts` leaves out). It happens mid-run too: a mutant that breaks
+  runs (of the same spec files, after `--testFiles`; for the second pass, one given `--exclude` for
+  each file `vitest.mutation.in-process.config.ts` leaves out). It happens mid-run too: a mutant that breaks
   something the tests share makes every later test file fail to load, and each later mutant is
   reported Survived after running 0 tests (measured 2026-10-15). A Survived that ran 0 tests is not
   a result. The round script fails on one; after `bun run mutation`, each mutant's `testsCompleted`
@@ -112,8 +123,9 @@ From the trial on 2026-10-14 and the adoption runs:
   2026-10-15: in rule-data's `catalog.ts`, a mutant emptying the object `parseShippedRule` passes to
   `parseTurnedOnBy` was reported Survived after running 212 of 316 tests, and a plain vitest run of
   it fails 8 test files). The round script does
-  not catch this. A Survived in code that runs while modules load ran every test (rule-data, house,
-  the second pass), so it is a result only when its `testsCompleted` equals the initial run's count.
+  not catch this. Without `--testFiles`, a Survived in code that runs while modules load ran every
+  test (rule-data, house, the second pass), so it is a result only when its `testsCompleted` equals
+  the initial run's count.
 - **Incremental mode.** The runner reports which file a test is in but not where, so an edit to a test
   file counts as a change to every test in it. A change outside the mutated and test files (the data
   JSON, fixtures, a dependency) goes unnoticed: pass `--force` after one.
