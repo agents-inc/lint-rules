@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, globSync, readFileSync, realpathSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { satisfies, subset } from 'semver'
+import { satisfies, subset, valid } from 'semver'
 import ts from 'typescript'
 
 export type Manifest = {
@@ -113,6 +113,19 @@ export function listingDisagreements(shipped: Manifest, inlined: Manifest): List
     const shippedVersion = shippedListings.get(name)
     return shippedVersion === undefined || shippedVersion === inlinedVersion ? [] : [{ name, shipped: shippedVersion, inlined: inlinedVersion }]
   })
+}
+
+/** In the shipped manifest's order. */
+export function dependenciesNoInlinedPackageLists(shipped: Manifest, inlined: readonly Manifest[]): string[] {
+  const listedByInlined = new Set(inlined.flatMap((manifest) => namesListedUnder(manifest, ['dependencies'])))
+  return namesListedUnder(shipped, ['dependencies']).filter((name) => !listedByInlined.has(name))
+}
+
+/** As `name: its version`, each dependency not given as one exact version. */
+export function dependenciesNotPinned(manifest: Manifest): string[] {
+  return Object.entries(listedUnder(manifest, 'dependencies'))
+    .filter(([, version]) => valid(version) !== version)
+    .map(([name, version]) => `${name}: ${version}`)
 }
 
 function listingsOf(manifest: Manifest): ReadonlyMap<string, string> {

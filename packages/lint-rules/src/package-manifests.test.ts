@@ -4,10 +4,13 @@ import { fileURLToPath } from 'node:url'
 import inventory from '@workspace/rule-data/generated/inventory.json' with { type: 'json' }
 import { beforeAll, describe, expect, it } from 'vitest'
 import {
+  dependenciesNoInlinedPackageLists,
   dependenciesNotListedBy,
+  dependenciesNotPinned,
   installedManifestPath,
   listingDisagreements,
   type LockedWorkspace,
+  type LockedWorkspaces,
   lockDisagreements,
   type Manifest,
   nodeVersionsAdmittedBy,
@@ -26,15 +29,13 @@ function devDependencyNamesOf({ name, devDependencies }: Manifest): string[] {
 
 const PACKAGE_DIR = fileURLToPath(new URL('..', import.meta.url))
 const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
-const LOCKED_WORKSPACES = readLockedWorkspaces(join(REPO_ROOT, 'bun.lock'))
 const WORKSPACE_DIRS = workspaceDirsOf(REPO_ROOT)
 const SHIPPED = readManifest(join(PACKAGE_DIR, 'package.json'))
 // tsdown inlines every @workspace package (tsdown.config.ts, deps.alwaysBundle), so the shipped
 // manifest lists their dependencies itself, at the versions they were built and generated against.
 const WORKSPACE_SCOPE = '@workspace/'
-const INLINED: readonly Manifest[] = devDependencyNamesOf(SHIPPED)
-  .filter((name) => name.startsWith(WORKSPACE_SCOPE))
-  .map((name) => readManifest(installedManifestPath(PACKAGE_DIR, name)))
+// The @workspace packages the shipped manifest lists, by name: a test below holds them to the manifest.
+const INLINED_NAMES = ['@workspace/eslint-plugin-house', '@workspace/rule-data', '@workspace/typescript-config']
 
 // Node versions at the edges of the engines range (`^22.18.0 || >=24`): 22.18 is the first Node 22
 // that loads agents-inc.lint.mts without a flag, and ESLint 10 admits no Node 23.
@@ -60,6 +61,15 @@ function nodeRangeShipped(): string {
 
 function licenseTextIn(dir: string): string {
   return readFileSync(join(dir, LICENSE_FILE), 'utf8')
+}
+
+function lockedWorkspaces(): LockedWorkspaces {
+  return readLockedWorkspaces(join(REPO_ROOT, 'bun.lock'))
+}
+
+/** Throws where the package is not installed for this one. */
+function inlinedManifestOf(name: string): Manifest {
+  return readManifest(installedManifestPath(PACKAGE_DIR, name))
 }
 
 describe('the Node versions @agents-inc/lint-rules admits, by its engines field', () => {
@@ -151,14 +161,18 @@ describe('the ESLint and oxlint @agents-inc/lint-rules runs', () => {
   })
 })
 
-describe.each(INLINED.map((manifest) => ({ manifest, name: manifest.name })))(
+describe.each(INLINED_NAMES.map((name) => ({ name })))(
   'the packages @agents-inc/lint-rules lists, beside $name, which its build inlines',
-  ({ manifest }) => {
+  ({ name }) => {
     it('include every package it depends on', () => {
+      const manifest = inlinedManifestOf(name)
+
       expect(dependenciesNotListedBy(SHIPPED, manifest)).toStrictEqual([])
     })
 
     it('give each package both list the version it lists', () => {
+      const manifest = inlinedManifestOf(name)
+
       expect(listingDisagreements(SHIPPED, manifest)).toStrictEqual([])
     })
   },
@@ -166,16 +180,29 @@ describe.each(INLINED.map((manifest) => ({ manifest, name: manifest.name })))(
 
 describe('the workspace packages the build inlines', () => {
   it('are each @workspace package the shipped manifest lists', () => {
-    expect(INLINED.map(({ name }) => name)).toStrictEqual([
-      '@workspace/eslint-plugin-house',
-      '@workspace/rule-data',
-      '@workspace/typescript-config',
-    ])
+    const inlined = devDependencyNamesOf(SHIPPED)
+      .filter((name) => name.startsWith(WORKSPACE_SCOPE))
+      .map(inlinedManifestOf)
+
+    expect(inlined.map(({ name }) => name)).toStrictEqual(INLINED_NAMES)
+  })
+})
+
+// What its own code imports or runs: every other package it depends on is one a package its build inlines depends on.
+const ITS_OWN_DEPENDENCIES = ['@eslint/compat', 'eslint', 'eslint-import-resolver-typescript', 'globals', 'oxlint']
+
+describe('the packages @agents-inc/lint-rules depends on', () => {
+  it('are its own and those the packages its build inlines depend on, so it installs no plugin rule-data leaves out', () => {
+    expect(dependenciesNoInlinedPackageLists(SHIPPED, INLINED_NAMES.map(inlinedManifestOf))).toStrictEqual(ITS_OWN_DEPENDENCIES)
+  })
+
+  it('are each pinned to one version', () => {
+    expect(dependenciesNotPinned(SHIPPED)).toStrictEqual([])
   })
 })
 
 function lockedWorkspaceAt(dir: string): LockedWorkspace {
-  const locked = LOCKED_WORKSPACES[dir]
+  const locked = lockedWorkspaces()[dir]
   if (locked === undefined) throw new Error(`bun.lock records no workspace at "${dir}"`)
   return locked
 }
@@ -185,7 +212,7 @@ function lockedWorkspaceAt(dir: string): LockedWorkspace {
 // nothing else notices a stale line.
 describe("the repo's bun.lock", () => {
   it('records each workspace of the repo, and no other', () => {
-    expect(Object.keys(LOCKED_WORKSPACES).toSorted()).toStrictEqual(WORKSPACE_DIRS)
+    expect(Object.keys(lockedWorkspaces()).toSorted()).toStrictEqual(WORKSPACE_DIRS)
   })
 
   it.each(WORKSPACE_DIRS.map((dir) => ({ dir, workspace: dir === '' ? 'the root' : dir })))(

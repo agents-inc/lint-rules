@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest'
 import { bunLockText, workspacesInTheBunLockText } from './cases/bun-lock-text.ts'
 import { buildLockedWorkspace, buildManifest, installedManifestFile, manifestFileIn } from './factories/manifest-factories.ts'
 import {
+  dependenciesNoInlinedPackageLists,
   dependenciesNotListedBy,
+  dependenciesNotPinned,
   installedManifestPath,
   listingDisagreements,
   lockDisagreements,
@@ -157,6 +159,51 @@ describe('listingDisagreements', () => {
     expect(listingDisagreements(shipped, inlined)).toStrictEqual([
       { name: 'drifted-plugin', shipped: '2.0.0', inlined: '2.0.1' },
       { name: 'drifted-tool', shipped: '3.0.0', inlined: '3.1.0' },
+    ])
+  })
+})
+
+describe('dependenciesNoInlinedPackageLists', () => {
+  it('names a dependency of the shipped package no inlined package depends on, one an inlined package lists only as a devDependency too, and not one any of them depends on', () => {
+    const shipped = buildManifest('shipped', {
+      dependencies: { 'its-own-engine': '1.0.0', [SHARED]: '1.0.0', 'held-plugin': '1.0.0', 'a-plugin-of-the-other': '1.0.0', 'a-dev-tool-of-one': '1.0.0' },
+      devDependencies: { 'inlined-sibling': 'workspace:*' },
+    })
+    const inlined = [
+      buildManifest('inlined', { dependencies: { [SHARED]: '1.0.0' }, devDependencies: { 'a-dev-tool-of-one': '1.0.0' } }),
+      buildManifest('another-inlined', { dependencies: { 'a-plugin-of-the-other': '1.0.0' } }),
+    ]
+
+    expect(dependenciesNoInlinedPackageLists(shipped, inlined)).toStrictEqual(['its-own-engine', 'held-plugin', 'a-dev-tool-of-one'])
+  })
+})
+
+describe('dependenciesNotPinned', () => {
+  it('names a dependency given as a range, a tag or a workspace link, and not one pinned to a release or a prerelease, nor a devDependency or peer given as a range', () => {
+    const manifest = buildManifest('shipped', {
+      dependencies: {
+        pinned: '1.0.0',
+        'a-prerelease': '1.0.0-rc.1',
+        caret: '^1.0.0',
+        tilde: '~1.0.0',
+        'at-least': '>=1.0.0',
+        'x-range': '1.x',
+        any: '*',
+        tagged: 'latest',
+        linked: 'workspace:*',
+      },
+      devDependencies: { 'a-dev-tool': '^1.0.0' },
+      peerDependencies: { 'a-peer': '>=1.0.0' },
+    })
+
+    expect(dependenciesNotPinned(manifest)).toStrictEqual([
+      'caret: ^1.0.0',
+      'tilde: ~1.0.0',
+      'at-least: >=1.0.0',
+      'x-range: 1.x',
+      'any: *',
+      'tagged: latest',
+      'linked: workspace:*',
     ])
   })
 })
