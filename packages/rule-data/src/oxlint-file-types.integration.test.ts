@@ -172,7 +172,7 @@ describe('the extensions data/oxlint-file-types.json says oxlint lints by defaul
       filesLinted: extensions.length,
       filesReported: extensions.map((extension) => `${EXTENSIONS_FOLDER}/a.${extension}`).toSorted(),
     })
-  })
+  }, OXLINT_TIMEOUT_MS)
 })
 
 function outcomeOfFile(byFile: ReadonlyMap<string, TriggerOutcome>, file: string): TriggerOutcome {

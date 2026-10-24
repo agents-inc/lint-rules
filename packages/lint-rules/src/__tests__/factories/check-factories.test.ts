@@ -3,6 +3,7 @@ import { type OxlintDiagnostic, oxlintReportFrom } from '../../cli/check/oxlint-
 import { A_SYNTAX_ERROR } from '../cases/check-sources.ts'
 import { SUPPRESSION_PAIR_CASES } from '../cases/suppression-pairs.ts'
 import { rawOxlintOutput } from '../oxlint-raw-output.ts'
+import { allowEveryTestForParallelLoad } from '../parallel-load.ts'
 import { setUpTempProjects } from '../temp-projects.ts'
 import {
   A_SUPPRESSION_REASON,
@@ -37,6 +38,8 @@ const ENABLE_COMMENTS: readonly { readonly enable: EnableComment; readonly namin
 ])
 const PAIR_ENABLE_LINE = 3
 const BROKEN_LINE = 2
+
+allowEveryTestForParallelLoad()
 
 const tempProjects = setUpTempProjects()
 

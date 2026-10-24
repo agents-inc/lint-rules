@@ -9,6 +9,7 @@ import { buildTeamEslintBlock, buildTeamOxlintConfig } from './__tests__/factori
 import { isRecord } from './core/is-record.ts'
 import { oxlintConfigForFile } from './__tests__/oxlint-config-oracle.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG, NO_TEAM_ESLINT_CONFIG, writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
+import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules, type LintRules } from './index.ts'
@@ -38,6 +39,8 @@ const BROWSER_SET: Parameters<typeof buildConsumerLintRules>[1] = {
 const NO_UNDEF_OFF_IN_LIB: Pick<LintRules, 'fileOverrides'> = { fileOverrides: [{ files: ['lib/**'], rules: { 'no-undef': 'off' } }] }
 const TEAM_ESLINT_CONFIG_SETTING_NO_UNDEF: Linter.Config[] = [buildTeamEslintBlock('team/no-undef', { files: ['**/*.js'], rules: { 'no-undef': 'error' } })]
 const TEAM_OXLINT_CONFIG_SETTING_NO_UNDEF = buildTeamOxlintConfig({ categories: { correctness: 'off' }, rules: { 'no-undef': 'error' } })
+
+allowEveryTestForParallelLoad()
 
 const tempProjects = setUpTempProjects()
 const { calculatedConfigInProjectFor } = setUpEslintConfigOracle()

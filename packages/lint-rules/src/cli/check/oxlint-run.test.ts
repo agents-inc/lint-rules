@@ -8,9 +8,12 @@ import { buildCatalog, buildEslintRoute, buildOxlintRoute, buildQualityRuleset }
 import { OXLINT_REFUSAL_OF_A_RULE, RULE_OXLINT_DOES_NOT_HAVE } from '../../__tests__/cases/oxlint-refusals.ts'
 import { buildWithheldFixes, DEBUGGER_STATEMENT, moduleText } from '../../__tests__/factories/check-factories.ts'
 import { settledOf } from '../../__tests__/settled-runs.ts'
+import { allowEveryTestForParallelLoad } from '../../__tests__/parallel-load.ts'
 import { setUpTempProjects } from '../../__tests__/temp-projects.ts'
 import { oxlintRulesFailed } from './not-checked.ts'
 import { fixRunConfigOf, oxlintLintRun, tempOxlintConfigIn } from './oxlint-run.ts'
+
+allowEveryTestForParallelLoad()
 
 const tempProjects = setUpTempProjects()
 
