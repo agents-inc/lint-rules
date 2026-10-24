@@ -5084,6 +5084,20 @@
     }
   },
   {
+    "id": "prefer-named-capture-group",
+    "ruleset": "modern-js",
+    "engine": "oxlint",
+    "oxlintName": "prefer-named-capture-group",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "low",
+      "alternative": "conventions",
+      "note": "rc-prefer-named-capture-group",
+      "by": "accepted-spec-2026-10-24"
+    }
+  },
+  {
     "id": "prefer-numeric-literals",
     "ruleset": "modern-js",
     "engine": "eslint",
@@ -8270,6 +8284,18 @@
     }
   },
   {
+    "id": "sonarjs/prefer-native-axios-alternative",
+    "ruleset": "modern-js",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-sonarjs-prefer-native-axios-alternative",
+      "by": "accepted-spec-2026-10-24"
+    }
+  },
+  {
     "id": "sonarjs/prefer-native-lodash-alternative",
     "ruleset": "modern-js",
     "engine": "eslint",
@@ -10356,6 +10382,24 @@
     }
   },
   {
+    "id": "unicorn/no-repeated-call-wrappers",
+    "ruleset": "redundancy",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "ignores": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+    ],
+    "assignment": {
+      "confidence": "low",
+      "alternative": "complexity",
+      "note": "rc-unicorn-no-repeated-call-wrappers",
+      "by": "accepted-spec-2026-10-24"
+    }
+  },
+  {
     "id": "unicorn/no-return-array-push",
     "ruleset": "correctness",
     "engine": "eslint",
@@ -11368,6 +11412,19 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
+    }
+  },
+  {
+    "id": "unicorn/prefer-logical-operator-over-ternary",
+    "ruleset": "redundancy",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-logical-operator-over-ternary",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-unicorn-prefer-logical-operator-over-ternary",
+      "by": "accepted-spec-2026-10-24"
     }
   },
   {

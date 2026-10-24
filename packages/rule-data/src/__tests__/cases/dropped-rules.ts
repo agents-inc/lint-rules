@@ -1,5 +1,5 @@
-// Every installed rule we decided against shipping, by the card or decision that dropped it (round 2's
-// cards: docs/work/spec-core.md 4.2; the owner's 2026-10-10 rule changes: decisions.md).
+// Every rule we decided against shipping, by the card or decision that dropped it (round 2's cards:
+// docs/work/spec-core.md 4.2; the owner's 2026-10-10 rule changes and 2026-10-24 rc-* cards: decisions.md).
 
 const OWNER_2026_10_10 = 'owner-2026-10-10'
 const OFF_FIVE = 'q-dogfood-off-five'
@@ -24,13 +24,26 @@ export const DROPPED_RULES: Readonly<Record<string, string>> = {
   '@typescript-eslint/no-unsafe-unary-minus': 'r2-d43',
   '@typescript-eslint/no-use-before-define': OWNER_2026_10_10,
   '@typescript-eslint/prefer-for-of': 'r2-d35',
+  '@typescript-eslint/prefer-includes': 'rc-typescript-eslint-prefer-includes',
+  '@typescript-eslint/promise-function-async': 'rc-typescript-eslint-promise-function-async',
+  'anti-slop-effect/no-manual-tag-comparison': 'rc-anti-slop-effect-no-manual-tag-comparison',
+  'anti-slop-effect/no-manual-tagged-construction': 'rc-anti-slop-effect-no-manual-tagged-construction',
+  'anti-slop-effect/no-service-constructor-imports': 'rc-anti-slop-effect-no-service-constructor-imports',
+  'anti-slop-effect/prefer-effect-match': 'rc-anti-slop-effect-prefer-effect-match',
+  'anti-slop/require-safety-comment-for-type-assertion': 'rc-anti-slop-require-safety-comment-for-type-assertion',
+  'drizzle-security/no-unsafe-query': 'q-lint-dep-drizzle-advisory',
+  'drizzle-security/no-unscoped-mutation': 'q-lint-dep-drizzle-advisory',
+  'erasable-syntax-only/*': 'rc-erasable-syntax-only',
   'functional/no-class-inheritance': 'r2-d18',
   'functional/no-loop-statements': OWNER_2026_10_10,
   'import-x/no-rename-default': 'q-r4-no-rename-default',
+  'jest-dom/prefer-to-have-style': 'rc-jest-dom-prefer-to-have-style',
   'jsx-a11y/anchor-has-content': 'r2-d28',
   'jsx-a11y/no-aria-hidden-on-focusable': 'r2-d26',
+  'llm-core/no-redundant-comments': 'rc-llm-core-no-redundant-comments',
   'n/no-extraneous-import': 'r2-d59',
   'n/no-extraneous-require': 'r2-d59',
+  'no-console': 'rc-no-console',
   'no-eq-null': OWNER_2026_10_10,
   'no-implicit-globals': 'q-global-assign-twice',
   'no-use-before-define': OWNER_2026_10_10,
@@ -40,6 +53,7 @@ export const DROPPED_RULES: Readonly<Record<string, string>> = {
   'oxc/bad-replace-all-arg': 'r2-d52',
   'promise/no-multiple-resolved': 'r2-d48',
   'promise/prefer-await-to-then': 'r2-d54',
+  'react-google-translate/no-conditional-text-nodes-with-siblings': 'rc-react-google-translate-no-conditional-text-nodes-with-siblings',
   'react-hooks/set-state-in-effect': 'r2-d20',
   'react/iframe-missing-sandbox': 'r2-d11',
   'react/jsx-key': 'r2-d1',
@@ -72,10 +86,12 @@ export const DROPPED_RULES: Readonly<Record<string, string>> = {
   'unicorn/no-misrefactored-assignment': STAND_INS_WITHOUT_OXLINT,
   'unicorn/no-nested-ternary': 'r2-d69',
   'unicorn/no-this-outside-of-class': 'r2-d77',
+  'unicorn/no-unnecessary-default-arguments': 'q-lint-rc-default-args-measured',
   'unicorn/no-unnecessary-splice': 'r2-c3',
   'unicorn/no-unreadable-new-expression': OFF_FIVE,
   'unicorn/no-unsafe-string-replacement': OFF_FIVE,
   'unicorn/no-useless-recursion': 'r2-c1',
+  'unicorn/prefer-json-import': 'rc-unicorn-prefer-json-import',
   'unicorn/prefer-reflect-apply': 'r2-d80',
   'unicorn/prefer-short-arrow-method': 'q-dogfood-function-style-pair',
   'unicorn/prefer-single-replace': 'r2-c4',

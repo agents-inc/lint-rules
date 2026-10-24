@@ -7,7 +7,7 @@ export const TEST_FILE_GLOBS: readonly string[] = ['**/*.{test,spec}.{ts,tsx,js,
 /** Story files, where Testing Library runs in `play` functions. */
 export const STORY_FILE_GLOB = '**/*.stories.{ts,tsx,js,jsx,mjs}'
 
-/** Every rule that skips test and type-test files: the five that skipped them first, then the ten that judge test code by source-code standards. */
+/** Every rule that skips test and type-test files: those that skipped them first, then those that judge test code by source-code standards. */
 export const RULES_SKIPPING_TEST_FILES: readonly string[] = [
   '@typescript-eslint/no-non-null-assertion',
   'max-lines',
@@ -23,6 +23,7 @@ export const RULES_SKIPPING_TEST_FILES: readonly string[] = [
   'sonarjs/max-lines-per-function',
   'sonarjs/no-undefined-assignment',
   'unicorn/no-incorrect-template-string-interpolation',
+  'unicorn/no-repeated-call-wrappers',
   'unicorn/prefer-await',
 ]
 

@@ -91,16 +91,19 @@ export const ROUND_2_DROPS: readonly Drop[] = [
 ]
 
 /**
- * The modern-js rules whose fix writes an API Node 22 lacks: shipped off until a category for the
- * newest language features, enabled by Node version, exists.
+ * The installed rules whose rewrite needs an API Node 22 lacks: off until a category for the newest
+ * language features, enabled by Node version, exists. In data/rule-candidates.json's order.
  */
 export const RULES_NEEDING_NEWER_NODE: readonly string[] = [
+  'e18e/prefer-get-or-insert',
   'unicorn/prefer-dispose',
   'unicorn/prefer-error-is-error',
   'unicorn/prefer-get-or-insert-computed',
   'unicorn/prefer-iterator-concat',
+  'unicorn/prefer-iterator-zip',
   'unicorn/prefer-promise-try',
   'unicorn/prefer-regexp-escape',
   'unicorn/prefer-temporal',
   'unicorn/prefer-uint8array-base64',
+  'unicorn/prefer-uint8array-hex',
 ]

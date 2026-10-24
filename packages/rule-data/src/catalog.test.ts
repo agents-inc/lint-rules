@@ -427,16 +427,16 @@ describe('the catalog, src/generated/routing.json', () => {
       expect(routesById).toStrictEqual(Object.fromEntries(RULES_NEEDING_NEWER_NODE.map((id) => [id, { engine: 'eslint', shipped: null }])))
     })
 
-    // oxlint has neither, so ESLint runs each where a team turns it on by ID.
-    it('makes each rule eslint-plugin-unicorn 78 adds a RuleId run by ESLint, shipped in no ruleset', () => {
+    // oxlint has neither, so ESLint runs each: in its ruleset where we ship it, elsewhere where a team turns it on by ID.
+    it('makes each rule eslint-plugin-unicorn 78 adds a RuleId run by ESLint, shipped as listed or in no ruleset', () => {
       const routesById = Object.fromEntries(
-        RULES_UNICORN_78_ADDS.map((id) => {
+        Object.keys(RULES_UNICORN_78_ADDS).map((id) => {
           const route = catalog.rules.get(id)
           return [id, route === undefined ? 'no RuleId' : { engine: route.engine, shipped: route.shipped }]
         }),
       )
 
-      expect(routesById).toStrictEqual(Object.fromEntries(RULES_UNICORN_78_ADDS.map((id) => [id, { engine: 'eslint', shipped: null }])))
+      expect(routesById).toStrictEqual(Object.fromEntries(Object.entries(RULES_UNICORN_78_ADDS).map(([id, shipped]) => [id, { engine: 'eslint', shipped }])))
     })
 
     it('gives a rule only ESLint has no oxlint spellings', () => {
