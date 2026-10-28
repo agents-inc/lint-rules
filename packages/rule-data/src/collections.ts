@@ -12,20 +12,13 @@ export function compareCodeUnits(left: string, right: string): number {
 
 /** Groups in the order their key first appears. */
 export function groupBy<Item>(items: readonly Item[], keyOf: (item: Item) => string): ReadonlyMap<string, readonly Item[]> {
-  const groups = new Map<string, Item[]>()
-  for (const item of items) {
-    const key = keyOf(item)
-    const group = groups.get(key)
-    if (group === undefined) groups.set(key, [item])
-    else group.push(item)
-  }
-  return groups
+  return Map.groupBy(items, keyOf)
 }
 
 /** Every key two or more items share, with those items. */
 export function sharedKeys<Item>(
   items: readonly Item[],
   keyOf: (item: Item) => string,
-): readonly (readonly [string, readonly Item[]])[] {
+): ReadonlyArray<readonly [string, readonly Item[]]> {
   return [...groupBy(items, keyOf)].filter(([, group]) => group.length > 1)
 }

@@ -19,7 +19,7 @@ function unshippedEslintRule(id: string): RuleRoute {
 
 /** The walk's sources: the pairs and routes given, and nothing else recorded unless given. */
 function sourcesOf(
-  pairs: readonly (readonly [string, string])[],
+  pairs: ReadonlyArray<readonly [string, string]>,
   routes: readonly RuleRoute[],
   recorded: Partial<Pick<StandInSources, 'candidateIds' | 'eslintFallbackSkips' | 'ruleIdsWithAnEslintVersion'>> = {},
 ): StandInSources {

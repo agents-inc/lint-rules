@@ -10,13 +10,13 @@ function extensionNamed(id: string) {
 
 describe('typescriptEslintExtensions', () => {
   it('names the core rule each extension extends, and holds no rule only typescript-eslint has', () => {
-    const ids = typescriptEslintExtensions().map(({ id }) => id)
+    const ids = new Set(typescriptEslintExtensions().map(({ id }) => id))
 
     expect({
       noUnusedVars: extensionNamed('@typescript-eslint/no-unused-vars').coreRule,
       noShadow: extensionNamed('@typescript-eslint/no-shadow').coreRule,
-      arrayType: ids.includes('@typescript-eslint/array-type'),
-      noExplicitAny: ids.includes('@typescript-eslint/no-explicit-any'),
+      arrayType: ids.has('@typescript-eslint/array-type'),
+      noExplicitAny: ids.has('@typescript-eslint/no-explicit-any'),
     }).toStrictEqual({ noUnusedVars: 'no-unused-vars', noShadow: 'no-shadow', arrayType: false, noExplicitAny: false })
   })
 

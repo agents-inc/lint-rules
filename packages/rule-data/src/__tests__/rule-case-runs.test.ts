@@ -50,8 +50,8 @@ describe('shippedSettingsOf', () => {
   it('throws for a rule we do not ship, and for one that is off where suppressions are allowed, naming the rule', () => {
     const offWhereAllowed = buildEslintRoute('house/banned-only', { typed: false, oxlintSpellings: [], shipped: buildShippedRuleDecidedBySuppressions({ banned: { options: [] }, allowed: 'off' }) })
 
-    expect(() => shippedSettingsOf(eslintRule('plugin/unshipped'))).toThrow(/plugin\/unshipped is not shipped/)
-    expect(() => shippedSettingsOf(offWhereAllowed)).toThrow(/house\/banned-only is off where suppressions are allowed/)
+    expect(() => shippedSettingsOf(eslintRule('plugin/unshipped'))).toThrow(/plugin\/unshipped is not shipped/u)
+    expect(() => shippedSettingsOf(offWhereAllowed)).toThrow(/house\/banned-only is off where suppressions are allowed/u)
   })
 })
 
@@ -87,7 +87,7 @@ describe('eslintBlocksOf', () => {
     const extensions = ['@typescript-eslint/no-invalid-this', 'other/no-invalid-this']
     const catalogParts = { rules: new Map(extensions.map((id) => [id, eslintRule(id)])), coreRuleExtensions: new Map([['no-invalid-this', extensions]]) }
 
-    expect(() => eslintBlocksOf(oxlintCoreRule('no-invalid-this'), settings, catalogParts)).toThrow(/@typescript-eslint\/no-invalid-this, other\/no-invalid-this/)
+    expect(() => eslintBlocksOf(oxlintCoreRule('no-invalid-this'), settings, catalogParts)).toThrow(/@typescript-eslint\/no-invalid-this, other\/no-invalid-this/u)
   })
 })
 
@@ -123,12 +123,11 @@ describe("each engine's outcome on each file, against the installed engines", ()
   it(
     "gives oxlint's finding, its silence, a file it cannot parse as not linted, and silence in the rule's ignores",
     async () => {
-      const outcomes = oxlintOutcomesOf(projectDir(), 'outcomes.oxlintrc.json', { oxlintName: 'no-debugger', oxlintPlugin: 'eslint' }, shippedSettingsOf(noDebuggerInOxlint), [
-        DEBUGGER_FILE,
-        QUIET_FILE,
-        UNPARSABLE_FILE,
-        SKIPPED_FILE,
-      ])
+      const outcomes = oxlintOutcomesOf(
+        { projectDir: projectDir(), files: [DEBUGGER_FILE, QUIET_FILE, UNPARSABLE_FILE, SKIPPED_FILE], configFile: 'outcomes.oxlintrc.json' },
+        { oxlintName: 'no-debugger', oxlintPlugin: 'eslint' },
+        shippedSettingsOf(noDebuggerInOxlint),
+      )
 
       expect(Object.fromEntries(outcomes)).toStrictEqual({
         [DEBUGGER_FILE.path]: 'reports',
@@ -143,7 +142,11 @@ describe("each engine's outcome on each file, against the installed engines", ()
   it(
     'gives every file as not linted where oxlint refuses the config',
     () => {
-      const outcomes = oxlintOutcomesOf(projectDir(), 'refused.oxlintrc.json', { oxlintName: 'no-such-rule', oxlintPlugin: 'eslint' }, UNSHIPPED_RULE_SETTINGS, [DEBUGGER_FILE, QUIET_FILE])
+      const outcomes = oxlintOutcomesOf(
+        { projectDir: projectDir(), files: [DEBUGGER_FILE, QUIET_FILE], configFile: 'refused.oxlintrc.json' },
+        { oxlintName: 'no-such-rule', oxlintPlugin: 'eslint' },
+        UNSHIPPED_RULE_SETTINGS,
+      )
 
       expect(Object.fromEntries(outcomes)).toStrictEqual({ [DEBUGGER_FILE.path]: 'not linted', [QUIET_FILE.path]: 'not linted' })
     },
@@ -151,8 +154,10 @@ describe("each engine's outcome on each file, against the installed engines", ()
   )
 
   it('throws for a rule shipping files of its own, which the oxlint build refuses', () => {
-    expect(() => oxlintOutcomesOf(projectDir(), 'files.oxlintrc.json', { oxlintName: 'no-debugger', oxlintPlugin: 'eslint' }, { ...UNSHIPPED_RULE_SETTINGS, files: ['**/*.ts'] }, [DEBUGGER_FILE])).toThrow(
-      /no-debugger ships files of its own/,
+    const run = { projectDir: projectDir(), files: [DEBUGGER_FILE], configFile: 'files.oxlintrc.json' }
+
+    expect(() => oxlintOutcomesOf(run, { oxlintName: 'no-debugger', oxlintPlugin: 'eslint' }, { ...UNSHIPPED_RULE_SETTINGS, files: ['**/*.ts'] })).toThrow(
+      /no-debugger ships files of its own/u,
     )
   })
 })

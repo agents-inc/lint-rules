@@ -50,7 +50,6 @@ type RuleWithMeta = { meta?: { deprecated?: unknown; docs?: object | undefined }
 type RuleBinding = { readonly id: string; readonly rule: RuleWithMeta }
 
 const OXLINT_PACKAGE = 'oxlint'
-const OXLINT_BIN = 'oxlint'
 const ESLINT_PACKAGE = 'eslint'
 const OXLINT_LIST_RULES_ARGS: readonly string[] = ['--rules', '--format=json']
 /**
@@ -64,6 +63,7 @@ const execFileAsync = promisify(execFile)
 /** The rules and versions of the oxlint, ESLint and ESLint plugins installed beside this package. */
 export async function readInstalledEngines(): Promise<InstalledEngines> {
   const [versions, oxlintRules] = await Promise.all([readVersions(), readOxlintRules()])
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- ESLint 10.12 lists its core rules nowhere else: `Linter` has no `getRules`, its `./rules` export is types only, and no other export holds them
   return { versions, oxlintRules, eslintRules: readEslintRules(builtinRules, eslintPlugins) }
 }
 
@@ -108,10 +108,10 @@ async function oxlintCliPath(): Promise<string> {
 
 function oxlintBinOf(manifest: object): string {
   const bin = 'bin' in manifest ? manifest.bin : undefined
-  if (!isObject(bin) || !(OXLINT_BIN in bin) || typeof bin[OXLINT_BIN] !== 'string') {
-    throw new Error(`oxlint's package.json has no bin.${OXLINT_BIN}`)
+  if (!isObject(bin) || !('oxlint' in bin) || typeof bin.oxlint !== 'string') {
+    throw new Error("oxlint's package.json has no bin.oxlint")
   }
-  return bin[OXLINT_BIN]
+  return bin.oxlint
 }
 
 function parseOxlintRuleListings(stdout: string): readonly OxlintRuleListing[] {
@@ -123,20 +123,19 @@ function parseOxlintRuleListings(stdout: string): readonly OxlintRuleListing[] {
 }
 
 function isOxlintRuleListing(value: unknown): value is OxlintRuleListing {
-  return (
-    isObject(value) &&
-    'scope' in value &&
-    typeof value.scope === 'string' &&
-    'value' in value &&
-    typeof value.value === 'string' &&
-    'type_aware' in value &&
-    typeof value.type_aware === 'boolean' &&
-    'category' in value &&
-    typeof value.category === 'string'
-  )
+  return isObject(value) && hasRuleName(value) && hasTypeAwarenessAndCategory(value)
 }
 
-function installedOxlintRuleOf({ scope, value, type_aware: typeAware, category }: OxlintRuleListing): InstalledOxlintRule {
+/** The scope and the name within it, which together make the rule's oxlint name. */
+function hasRuleName(listing: object): boolean {
+  return 'scope' in listing && typeof listing.scope === 'string' && 'value' in listing && typeof listing.value === 'string'
+}
+
+function hasTypeAwarenessAndCategory(listing: object): boolean {
+  return 'type_aware' in listing && typeof listing.type_aware === 'boolean' && 'category' in listing && typeof listing.category === 'string'
+}
+
+function installedOxlintRuleOf({ scope, value, type_aware: typeAware, category }: Readonly<OxlintRuleListing>): InstalledOxlintRule {
   return { oxlintName: oxlintNameOf({ scope, ruleName: value }), typeAware, category: parseOxlintCategory(category) }
 }
 
@@ -153,7 +152,7 @@ function bindingsOfCoreRules(coreRules: ReadonlyMap<string, Rule.RuleModule>): R
   return [...coreRules].map(([name, rule]) => ({ id: name, rule }))
 }
 
-function bindingsOfPlugin(prefix: string, plugin: ESLint.Plugin): RuleBinding[] {
+function bindingsOfPlugin(prefix: string, plugin: Readonly<ESLint.Plugin>): RuleBinding[] {
   return Object.entries(rulesOf(prefix, plugin)).map(([name, rule]) => ({ id: `${prefix}/${name}`, rule }))
 }
 
@@ -162,25 +161,25 @@ function installedRulesBoundBy(bindings: readonly RuleBinding[]): InstalledEslin
   return bindings.map(({ id, rule }) => installedEslintRule(id, rule, otherIdsBoundTo(rule, id, bindings)))
 }
 
-function otherIdsBoundTo(rule: RuleWithMeta, id: string, bindings: readonly RuleBinding[]): string[] {
+function otherIdsBoundTo(rule: Readonly<RuleWithMeta>, id: string, bindings: readonly RuleBinding[]): string[] {
   return bindings
     .filter((binding) => binding.rule === rule && binding.id !== id)
     .map((binding) => binding.id)
     .toSorted(compareCodeUnits)
 }
 
-function rulesOf(prefix: string, plugin: ESLint.Plugin): NonNullable<ESLint.Plugin['rules']> {
+function rulesOf(prefix: string, plugin: Readonly<ESLint.Plugin>): NonNullable<ESLint.Plugin['rules']> {
   return foundOr(plugin.rules, `the plugin registered as ${prefix} has no rules`)
 }
 
-function installedEslintRule(id: string, rule: RuleWithMeta, sameModuleAs: readonly string[]): InstalledEslintRule {
+function installedEslintRule(id: string, rule: Readonly<RuleWithMeta>, sameModuleAs: readonly string[]): InstalledEslintRule {
   const extendsCoreRule = coreRuleExtendedBy(id, rule)
   return {
     id,
     deprecated: isDeprecated(rule),
     typed: requiresTypeChecking(rule),
-    ...(extendsCoreRule === null ? {} : { extendsCoreRule }),
-    ...(sameModuleAs.length === 0 ? {} : { sameModuleAs }),
+    ...(extendsCoreRule !== null && { extendsCoreRule }),
+    ...(sameModuleAs.length > 0 && { sameModuleAs }),
   }
 }
 
@@ -188,7 +187,7 @@ function installedEslintRule(id: string, rule: RuleWithMeta, sameModuleAs: reado
  * typescript-eslint's `extendsBaseRule`: true where the core rule has the rule's own name, the core
  * rule's name where it differs.
  */
-function coreRuleExtendedBy(id: string, { meta }: RuleWithMeta): string | null {
+function coreRuleExtendedBy(id: string, { meta }: Readonly<RuleWithMeta>): string | null {
   const docs = meta?.docs
   if (docs === undefined || !('extendsBaseRule' in docs)) return null
   const { extendsBaseRule } = docs
@@ -196,12 +195,12 @@ function coreRuleExtendedBy(id: string, { meta }: RuleWithMeta): string | null {
   return typeof extendsBaseRule === 'string' ? extendsBaseRule : null
 }
 
-function isDeprecated({ meta }: RuleWithMeta): boolean {
+function isDeprecated({ meta }: Readonly<RuleWithMeta>): boolean {
   return meta?.deprecated !== undefined && meta.deprecated !== false
 }
 
 /** typescript-eslint's flag. Some typed rules of other plugins lack it; the canonical list stores `typed`. */
-function requiresTypeChecking({ meta }: RuleWithMeta): boolean {
+function requiresTypeChecking({ meta }: Readonly<RuleWithMeta>): boolean {
   const docs = meta?.docs
   return docs !== undefined && 'requiresTypeChecking' in docs && docs.requiresTypeChecking === true
 }

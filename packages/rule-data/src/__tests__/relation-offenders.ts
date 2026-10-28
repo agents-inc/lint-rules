@@ -22,28 +22,40 @@ const SPLIT_BY_TYPES: Breach<CanonicalRule> = ['splits by types with another rul
 const TYPED: Breach<CanonicalRule> = ['is typed', ({ typed }) => typed]
 const UNTYPED: Breach<CanonicalRule> = ['is untyped', ({ typed }) => !typed]
 
-const UNTYPED_RULE_BREACHES: readonly Breach<CanonicalRule>[] = [TYPED, RUN_BY_OXLINT, SCOPED, TURNED_ON_BY_NO_RULESET, COVERED]
-const TYPED_RULE_BREACHES: readonly Breach<CanonicalRule>[] = [UNTYPED, RUN_BY_OXLINT, SCOPED, TURNED_ON_BY_NO_RULESET, COVERED, SPLIT_BY_TYPES]
+const UNTYPED_RULE_BREACHES: ReadonlyArray<Breach<CanonicalRule>> = [TYPED, RUN_BY_OXLINT, SCOPED, TURNED_ON_BY_NO_RULESET, COVERED]
+const TYPED_RULE_BREACHES: ReadonlyArray<Breach<CanonicalRule>> = [UNTYPED, RUN_BY_OXLINT, SCOPED, TURNED_ON_BY_NO_RULESET, COVERED, SPLIT_BY_TYPES]
 
 /** A way a covered rule and its cover can break what is guaranteed of the pair: what is wrong of them, if anything. */
-type PairBreach = (rule: CanonicalRule, cover: CanonicalRule) => readonly string[]
+type PairBreach = (rule: Readonly<CanonicalRule>, cover: Readonly<CanonicalRule>) => readonly string[]
 
 /** A way the rule another names can run on fewer files than the rule naming it: where, said of the rule named. */
-type FilesLeft = (rule: CanonicalRule, named: CanonicalRule) => readonly string[]
+type FilesLeft = (rule: Readonly<CanonicalRule>, named: Readonly<CanonicalRule>) => readonly string[]
 
-const COVERS_ITSELF: PairBreach = (rule, cover) => (cover.id === rule.id ? ['the rule covers itself'] : [])
-const SHARES_A_RULESET: PairBreach = (rule, cover) => (rule.ruleset !== undefined && cover.ruleset === rule.ruleset ? [`both are in ${rule.ruleset}`] : [])
+function coversItself(rule: Readonly<CanonicalRule>, cover: Readonly<CanonicalRule>): readonly string[] {
+  return cover.id === rule.id ? ['the rule covers itself'] : []
+}
 
-const RUNS_ONLY_ON_ITS_FILES: FilesLeft = (rule, { files }) =>
-  files === undefined || isLimitedTo(rule, files) ? [] : [`runs only on ${files.join(', ')}`]
-const SKIPS_WHAT_THE_RULE_RUNS_ON: FilesLeft = (rule, named) =>
-  (named.ignores ?? []).filter((glob) => !(rule.ignores ?? []).includes(glob)).map((glob) => `skips ${glob}`)
-const RUNS_ONLY_WHERE_TYPES_ARE_KNOWN: FilesLeft = (rule, named) => (named.typed && !rule.typed ? ['runs only where types are known'] : [])
+function sharesARuleset(rule: Readonly<CanonicalRule>, cover: Readonly<CanonicalRule>): readonly string[] {
+  return rule.ruleset !== undefined && cover.ruleset === rule.ruleset ? [`both are in ${rule.ruleset}`] : []
+}
+
+function runsOnlyOnItsFiles(rule: Readonly<CanonicalRule>, { files }: Readonly<CanonicalRule>): readonly string[] {
+  return files === undefined || isLimitedTo(rule, files) ? [] : [`runs only on ${files.join(', ')}`]
+}
+
+function skipsWhatTheRuleRunsOn(rule: Readonly<CanonicalRule>, named: Readonly<CanonicalRule>): readonly string[] {
+  return (named.ignores ?? []).filter((glob) => !(rule.ignores ?? []).includes(glob)).map((glob) => `skips ${glob}`)
+}
+
+function runsOnlyWhereTypesAreKnown(rule: Readonly<CanonicalRule>, named: Readonly<CanonicalRule>): readonly string[] {
+  return named.typed && !rule.typed ? ['runs only where types are known'] : []
+}
+
 const KEPT_TO_SOME_FILES_BY_ESLINT_ALONE = 'the rule holding it is run by oxlint, and only our ESLint config keeps an entry to the files the rule it is left to runs on'
 
 // Not counted: files only oxlint lints, such as `.vue`, which a cover ESLint runs never reaches (my-covered-by-components),
 // and files a cover's own code skips by name, such as a story in sonarjs/no-debug-commands-in-ui-tests (my-debugging-utils-stories).
-const FILES_THE_NAMED_RULE_CAN_LEAVE: readonly FilesLeft[] = [RUNS_ONLY_ON_ITS_FILES, SKIPS_WHAT_THE_RULE_RUNS_ON, RUNS_ONLY_WHERE_TYPES_ARE_KNOWN]
+const FILES_THE_NAMED_RULE_CAN_LEAVE: readonly FilesLeft[] = [runsOnlyOnItsFiles, skipsWhatTheRuleRunsOn, runsOnlyWhereTypesAreKnown]
 
 /** Without oxlint, ESLint does not take over a rule the skip list names, so nothing runs it there. */
 function onTheEslintFallbackSkipList(eslintFallbackSkips: ReadonlyMap<string, string>): Breach<CanonicalRule> {
@@ -53,29 +65,33 @@ function onTheEslintFallbackSkipList(eslintFallbackSkips: ReadonlyMap<string, st
 /** A kind of cover: what a finding calls it, the cover a rule names by it, and what the covered rule, its cover and the pair must not be. */
 type CoverKind = {
   readonly called: string
-  readonly coverOf: (rule: CanonicalRule) => RuleRelation | undefined
-  readonly coveredRuleBreaches: readonly Breach<CanonicalRule>[]
-  readonly coverBreaches: readonly Breach<CanonicalRule>[]
+  readonly coverOf: (rule: Readonly<CanonicalRule>) => RuleRelation | undefined
+  readonly coveredRuleBreaches: ReadonlyArray<Breach<CanonicalRule>>
+  readonly coverBreaches: ReadonlyArray<Breach<CanonicalRule>>
   readonly pairBreaches: readonly PairBreach[]
 }
 
 const COVERED_BY: CoverKind = {
   called: 'covered by',
-  coverOf: ({ coveredBy }) => coveredBy,
+  coverOf({ coveredBy }) {
+    return coveredBy
+  },
   coveredRuleBreaches: [TURNED_ON_BY_NO_RULESET],
   // A cover that is itself left out somewhere would leave nothing reporting there.
   coverBreaches: [TURNED_ON_BY_NO_RULESET, COVERED, SPLIT_BY_TYPES],
-  pairBreaches: [COVERS_ITSELF, SHARES_A_RULESET],
+  pairBreaches: [coversItself, sharesARuleset],
 }
 
 // oxlint runs both, or the relation has nothing to leave out; the pair may share a ruleset, since the
 // cover reports every case the covered rule does.
 const COVERED_IN_OXLINT_BY: CoverKind = {
   called: 'covered in oxlint by',
-  coverOf: ({ coveredInOxlintBy }) => coveredInOxlintBy,
+  coverOf({ coveredInOxlintBy }) {
+    return coveredInOxlintBy
+  },
   coveredRuleBreaches: [TURNED_ON_BY_NO_RULESET, RUN_BY_ESLINT],
   coverBreaches: [TURNED_ON_BY_NO_RULESET, RUN_BY_ESLINT, COVERED, COVERED_IN_OXLINT],
-  pairBreaches: [COVERS_ITSELF],
+  pairBreaches: [coversItself],
 }
 
 const COVER_KINDS: readonly CoverKind[] = [COVERED_BY, COVERED_IN_OXLINT_BY]
@@ -131,7 +147,7 @@ export function splitByTypesOffenders(rules: readonly CanonicalRule[]): string[]
   const broken = relations.flatMap(({ rule, other }) => {
     const label = `${rule.id} split by types with ${other}`
     const typedRule = shippedById.get(other)
-    if (typedRule === undefined) return [`${label}: the typed rule does not ship`]
+    if (typedRule === undefined) return `${label}: the typed rule does not ship`
     return [
       ...breachesOf(rule, UNTYPED_RULE_BREACHES).map((wrong) => `${label}: the untyped rule ${wrong}`),
       ...breachesOf(typedRule, TYPED_RULE_BREACHES).map((wrong) => `${label}: the typed rule ${wrong}`),
@@ -174,27 +190,27 @@ function filesLeftBy({ label, rule, cover }: CoverPair): string[] {
   return filesLeftByTheNamedRule(rule, cover).map((where) => `${label}: the cover ${where}`)
 }
 
-function filesLeftByTheNamedRule(rule: CanonicalRule, named: CanonicalRule): string[] {
+function filesLeftByTheNamedRule(rule: Readonly<CanonicalRule>, named: Readonly<CanonicalRule>): string[] {
   return FILES_THE_NAMED_RULE_CAN_LEAVE.flatMap((leaves) => leaves(rule, named))
 }
 
-function wrongOfAllowance({ label, holder, allowance, leftTo }: AllowanceLeft, breachesOfTheRuleLeftTo: readonly Breach<CanonicalRule>[]): string[] {
+function wrongOfAllowance({ label, holder, allowance, leftTo }: AllowanceLeft, breachesOfTheRuleLeftTo: ReadonlyArray<Breach<CanonicalRule>>): string[] {
   return [...wrongOfTheRuleLeftTo(holder, leftTo, breachesOfTheRuleLeftTo), ...wrongOfTheEntry(holder, allowance)].map((wrong) => `${label}: ${wrong}`)
 }
 
-function wrongOfTheRuleLeftTo(holder: CanonicalRule, leftTo: CanonicalRule | undefined, breachesOfTheRuleLeftTo: readonly Breach<CanonicalRule>[]): string[] {
+function wrongOfTheRuleLeftTo(holder: Readonly<CanonicalRule>, leftTo: Readonly<CanonicalRule> | undefined, breachesOfTheRuleLeftTo: ReadonlyArray<Breach<CanonicalRule>>): string[] {
   if (leftTo === undefined) return ['the rule it is left to does not ship']
-  const wrongOfIt = [...breachesOf(leftTo, breachesOfTheRuleLeftTo), ...RUNS_ONLY_WHERE_TYPES_ARE_KNOWN(holder, leftTo)]
+  const wrongOfIt = [...breachesOf(leftTo, breachesOfTheRuleLeftTo), ...runsOnlyWhereTypesAreKnown(holder, leftTo)]
   return [...wrongOfIt.map((wrong) => `the rule it is left to ${wrong}`), ...wrongOfAnOxlintHolder(holder, leftTo)]
 }
 
 /** Our oxlint config gives a rule one setting in every file. */
-function wrongOfAnOxlintHolder(holder: CanonicalRule, leftTo: CanonicalRule): string[] {
+function wrongOfAnOxlintHolder(holder: Readonly<CanonicalRule>, leftTo: Readonly<CanonicalRule>): string[] {
   const isKeptToSomeFiles = leftTo.files !== undefined || leftTo.ignores !== undefined
   return isKeptToSomeFiles && holder.engine === 'oxlint' ? [KEPT_TO_SOME_FILES_BY_ESLINT_ALONE] : []
 }
 
-function wrongOfTheEntry(holder: CanonicalRule, allowance: CanonicalAllowanceLeftTo): string[] {
+function wrongOfTheEntry(holder: Readonly<CanonicalRule>, allowance: CanonicalAllowanceLeftTo): string[] {
   return holdsTheEntry(holder.options, allowance) ? [] : ['the shipped options hold no such entry']
 }
 
@@ -203,7 +219,7 @@ function allowancesLeftIn(rules: readonly CanonicalRule[]): AllowanceLeft[] {
   return rules.flatMap((holder) => allowancesLeftBy(holder, shippedById))
 }
 
-function allowancesLeftBy(holder: CanonicalRule, shippedById: ReadonlyMap<string, CanonicalRule>): AllowanceLeft[] {
+function allowancesLeftBy(holder: Readonly<CanonicalRule>, shippedById: ReadonlyMap<string, CanonicalRule>): AllowanceLeft[] {
   const { allowancesLeftTo = [] } = holder
   return allowancesLeftTo.map((allowance) => ({
     label: `${holder.id} leaves ${allowance.option} entry ${JSON.stringify(allowance.entry)} to ${allowance.rule}`,
@@ -220,12 +236,12 @@ function holdsTheEntry(options: readonly unknown[], { option, entry }: Canonical
 
 function entriesListedUnder(given: unknown, option: string): readonly unknown[] {
   if (!isObject(given)) return []
-  const fields: readonly (readonly [string, unknown])[] = Object.entries(given)
+  const fields: ReadonlyArray<readonly [string, unknown]> = Object.entries(given)
   return fields.flatMap(([key, value]): readonly unknown[] => (key === option && Array.isArray(value) ? value : []))
 }
 
-function isLimitedTo({ files }: CanonicalRule, globs: readonly string[]): boolean {
-  return files !== undefined && files.every((glob) => globs.includes(glob))
+function isLimitedTo({ files }: Readonly<CanonicalRule>, globs: readonly string[]): boolean {
+  return files?.every((glob) => globs.includes(glob)) === true
 }
 
 function coverPairsOf(rules: readonly CanonicalRule[], { called, coverOf }: CoverKind): CoverPair[] {
@@ -233,9 +249,9 @@ function coverPairsOf(rules: readonly CanonicalRule[], { called, coverOf }: Cove
   return relationsOf(rules, coverOf).map(({ rule, other }) => ({ label: `${rule.id} ${called} ${other}`, rule, cover: shippedById.get(other) }))
 }
 
-function relationsOf(rules: readonly CanonicalRule[], relationOf: (rule: CanonicalRule) => { readonly rule: string } | undefined): Relation[] {
+function relationsOf(rules: readonly CanonicalRule[], relationOf: (rule: Readonly<CanonicalRule>) => { readonly rule: string } | undefined): Relation[] {
   return rules.flatMap((rule) => {
     const relation = relationOf(rule)
-    return relation === undefined ? [] : [{ rule, other: relation.rule }]
+    return relation === undefined ? [] : { rule, other: relation.rule }
   })
 }

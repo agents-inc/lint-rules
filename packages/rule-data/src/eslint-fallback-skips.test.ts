@@ -12,16 +12,16 @@ import { pluginPrefixOf } from './rule-id-parts.ts'
 // extension on TS files and the core rule on JS files.
 
 const idsWithAnEslintVersion: ReadonlySet<string> = new Set(
-  inventory.rules.flatMap(({ id, eslint }) => (eslint === null ? [] : [id])),
+  inventory.rules.flatMap(({ id, eslint }) => (eslint === null ? [] : id)),
 )
 
 /** A shipped rule oxlint runs that ESLint has a version of: one the ESLint part takes over without oxlint. */
-function isMovedRule(route: RuleRoute | undefined): boolean {
-  return route !== undefined && route.engine === 'oxlint' && route.shipped !== null && idsWithAnEslintVersion.has(route.id)
+function isMovedRule(route: Readonly<RuleRoute> | undefined): boolean {
+  return route?.engine === 'oxlint' && route.shipped !== null && idsWithAnEslintVersion.has(route.id)
 }
 
 function movedRuleIds(): string[] {
-  return [...catalog.rules.values()].filter(isMovedRule).map(({ id }) => id)
+  return catalog.rules.values().toArray().filter(isMovedRule).map(({ id }) => id)
 }
 
 /** The typescript-eslint rules that extend a moved core rule, as the installed plugin says. */
@@ -32,7 +32,12 @@ function extensionsOfMovedCoreRules(): TypescriptEslintExtension[] {
 
 describe('the ESLint-fallback skip list, read through the catalog', () => {
   it('names only moved rules: each shipped, run by oxlint, and in ESLint too', () => {
-    expect([...catalog.eslintFallbackSkips.keys()].filter((id) => !isMovedRule(catalog.rules.get(id)))).toStrictEqual([])
+    expect(
+      catalog.eslintFallbackSkips
+        .keys()
+        .filter((id) => !isMovedRule(catalog.rules.get(id)))
+        .toArray(),
+    ).toStrictEqual([])
   })
 
   it('leaves off it moved rules whose fixture fires in ESLint, for the ESLint part to run', () => {

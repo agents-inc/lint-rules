@@ -32,7 +32,7 @@ describe('renderRuleIds', () => {
       }),
     ]
 
-    expect(renderRuleIds(routes)).toStrictEqual(
+    expect(renderRuleIds(routes)).toBe(
       `${GENERATED_HEADER}
 
 export type RuleId =
@@ -57,7 +57,7 @@ describe('renderRulesetNames', () => {
       buildRulesetDefinition('browser', { list: 'runtimes', domain: null, env: 'browser' }),
     ]
 
-    expect(renderRulesetNames(definitions)).toStrictEqual(
+    expect(renderRulesetNames(definitions)).toBe(
       `${GENERATED_HEADER}
 
 export type QualityRulesetName =
@@ -84,6 +84,6 @@ export type LanguageRulesetName = never
       buildRulesetDefinition('vitest', { list: 'libs', domain: null }),
     ]
 
-    expect(() => renderRulesetNames(definitions)).toThrow(/vitest/)
+    expect(() => renderRulesetNames(definitions)).toThrow(/vitest/u)
   })
 })

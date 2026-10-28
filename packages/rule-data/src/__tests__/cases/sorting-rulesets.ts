@@ -38,7 +38,7 @@ export const RULES_THAT_SORT = {
 }
 
 /** The opt-in rulesets that sort nothing: strict design tokens, and the browser-support checks, which need a browser target. */
-const OPT_IN_RULESETS_THAT_SORT_NOTHING: readonly string[] = ['tailwind', 'browser-targets']
+const OPT_IN_RULESETS_THAT_SORT_NOTHING: ReadonlySet<string> = new Set(['tailwind', 'browser-targets'])
 
 /** Whether the ruleset is one that sorts code, which gives its `sortsCode`. */
 export function isSortingRuleset(ruleset: string): boolean {
@@ -47,5 +47,5 @@ export function isSortingRuleset(ruleset: string): boolean {
 
 /** Whether `init` leaves the ruleset out of a new config: one that sorts code, or one of the two that sort nothing. */
 export function isOptInRuleset(ruleset: string): boolean {
-  return isSortingRuleset(ruleset) || OPT_IN_RULESETS_THAT_SORT_NOTHING.includes(ruleset)
+  return isSortingRuleset(ruleset) || OPT_IN_RULESETS_THAT_SORT_NOTHING.has(ruleset)
 }

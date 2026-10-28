@@ -28,7 +28,12 @@ export function outcomesOf(report: OxlintJsonReport, files: readonly string[]): 
   const unparsed = new Set(report.diagnostics.filter(({ url }) => url === undefined).map(({ filename }) => filename))
   const strays = [...reported].filter((filename) => !files.includes(filename))
   if (strays.length > 0) throw new Error(`oxlint reported in files it was not given: ${strays.join(', ')}`)
-  return new Map(files.map((file) => [file, unparsed.has(file) ? 'cannot parse' : reported.has(file) ? 'reports' : 'silent']))
+  return new Map(files.map((file) => [file, outcomeOfFile(file, reported, unparsed)]))
+}
+
+function outcomeOfFile(file: string, reported: ReadonlySet<string>, unparsed: ReadonlySet<string>): TriggerOutcome {
+  if (unparsed.has(file)) return 'cannot parse'
+  return reported.has(file) ? 'reports' : 'silent'
 }
 
 export function runOxlintJson(projectDir: string, configFile: string, paths: readonly string[]): OxlintJsonReport {

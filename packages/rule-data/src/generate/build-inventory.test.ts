@@ -99,9 +99,29 @@ describe('buildInventory', () => {
         ],
         eslintRules: [buildInstalledEslintRule('unicorn/no-for-each', { deprecated: false, typed: false })],
       })
-      const joinBoth = () => buildInventory(installed)
+      function joinBoth(): ReturnType<typeof buildInventory> {
+        return buildInventory(installed)
+      }
 
-      expect(joinBoth).toThrow(/unicorn\/no-array-for-each and unicorn\/no-for-each → unicorn\/no-for-each/)
+      expect(joinBoth).toThrow(/unicorn\/no-array-for-each and unicorn\/no-for-each → unicorn\/no-for-each/u)
+    })
+
+    it('names every canonical ID two oxlint rules map to in one error, each with its oxlint names, in the order oxlint lists them', () => {
+      const installed = buildInstalledEngines({
+        oxlintRules: [
+          buildInstalledOxlintRule('unicorn/no-array-for-each', { typeAware: false }),
+          buildInstalledOxlintRule('unicorn/prefer-dom-node-dataset', { typeAware: false }),
+          buildInstalledOxlintRule('unicorn/no-for-each', { typeAware: false }),
+          buildInstalledOxlintRule('unicorn/dom-node-dataset', { typeAware: false }),
+        ],
+        eslintRules: [],
+      })
+
+      expect(() => buildInventory(installed)).toThrow(
+        new Error(
+          'Two oxlint rules map to one canonical ID (fix data/oxlint-scopes.json): unicorn/no-array-for-each and unicorn/no-for-each → unicorn/no-for-each; unicorn/prefer-dom-node-dataset and unicorn/dom-node-dataset → unicorn/dom-node-dataset',
+        ),
+      )
     })
   })
 })

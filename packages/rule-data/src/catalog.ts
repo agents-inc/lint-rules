@@ -181,7 +181,7 @@ export const catalog: Catalog = {
  */
 export const ruleIdsOxlintRunsTypeAware: ReadonlySet<string> = new Set(inventory.rules.filter(isRunTypeAwareByOxlint).map(({ id }) => id))
 
-export function routeOf(id: string, { rules }: Pick<Catalog, 'rules'>): RuleRoute {
+export function routeOf(id: string, { rules }: Readonly<Pick<Catalog, 'rules'>>): RuleRoute {
   return foundOr(rules.get(id), `unknown rule ID "${id}"`)
 }
 
@@ -190,22 +190,22 @@ export function isOxlintRoute(route: RuleRoute): route is OxlintRoute {
 }
 
 /** What the rule ships with; a rule we do not ship throws. */
-export function shippedRuleOf({ id, shipped }: RuleRoute): ShippedRule {
+export function shippedRuleOf({ id, shipped }: Readonly<RuleRoute>): ShippedRule {
   if (shipped === null) throw new Error(`${id} is not shipped`)
   return shipped
 }
 
-function isRunTypeAwareByOxlint({ oxlint }: InventoryRule): boolean {
-  return oxlint !== null && oxlint.typeAware
+function isRunTypeAwareByOxlint({ oxlint }: Readonly<InventoryRule>): boolean {
+  return oxlint?.typeAware === true
 }
 
-function oxlintRuleOf({ id, oxlint }: InventoryRule): OxlintRule[] {
+function oxlintRuleOf({ id, oxlint }: Readonly<InventoryRule>): OxlintRule[] {
   if (oxlint === null) return []
   return [{ id, oxlintName: oxlint.oxlintName, oxlintPlugin: oxlint.oxlintPlugin, category: parseOxlintCategory(oxlint.category) }]
 }
 
-function coreRuleExtensionOf({ id, eslint }: InventoryRule): CoreRuleExtension[] {
-  if (eslint === null || eslint.extendsCoreRule === undefined) return []
+function coreRuleExtensionOf({ id, eslint }: Readonly<InventoryRule>): CoreRuleExtension[] {
+  if (eslint?.extendsCoreRule === undefined) return []
   return [{ id, coreRule: eslint.extendsCoreRule }]
 }
 

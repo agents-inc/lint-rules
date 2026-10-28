@@ -25,7 +25,7 @@ type CanonicalRuleField = Omit<CanonicalRule, 'engine' | 'whenSuppressions'> & {
 /** The canonical list. Its invariants are checked by canonical-list.test.ts, not at load. */
 export const canonicalRules: readonly CanonicalRule[] = rules.map(parseCanonicalRule)
 
-function parseCanonicalRule({ whenSuppressions, ...rule }: CanonicalRuleField): CanonicalRule {
+function parseCanonicalRule({ whenSuppressions, ...rule }: Readonly<CanonicalRuleField>): CanonicalRule {
   return { ...rule, engine: parseEngine(rule.engine), ...whenSuppressionsOf(rule.id, whenSuppressions) }
 }
 

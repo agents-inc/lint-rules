@@ -105,7 +105,7 @@ describe('canonicalIdOf', () => {
 
   describe('a scope oxlint-scopes.json does not list', () => {
     it('throws, naming the scope', () => {
-      expect(() => canonicalIdOf('svelte/valid-compile')).toThrow(/svelte/)
+      expect(() => canonicalIdOf('svelte/valid-compile')).toThrow(/svelte/u)
     })
 
     it('does not stop a listed scope from mapping', () => {
@@ -139,7 +139,7 @@ describe('oxlintPluginOf', () => {
 
   describe('a scope oxlint-scopes.json does not list', () => {
     it('throws, naming the scope', () => {
-      expect(() => oxlintPluginOf('svelte/valid-compile')).toThrow(/svelte/)
+      expect(() => oxlintPluginOf('svelte/valid-compile')).toThrow(/svelte/u)
     })
 
     it('does not stop a listed scope from answering', () => {
@@ -173,7 +173,7 @@ describe('eslintAliasCandidatesOf', () => {
 
   describe('a scope oxlint-scopes.json does not list', () => {
     it('throws, naming the scope', () => {
-      expect(() => eslintAliasCandidatesOf('svelte/valid-compile')).toThrow(/svelte/)
+      expect(() => eslintAliasCandidatesOf('svelte/valid-compile')).toThrow(/svelte/u)
     })
 
     it('does not stop a listed scope from answering', () => {
@@ -341,7 +341,7 @@ describe('oxlintSpellingsOf', () => {
 
   describe('a scope oxlint-scopes.json does not list', () => {
     it('throws, naming the scope', () => {
-      expect(() => oxlintSpellingsOf('svelte/valid-compile')).toThrow(/svelte/)
+      expect(() => oxlintSpellingsOf('svelte/valid-compile')).toThrow(/svelte/u)
     })
 
     it('does not stop a listed scope from answering', () => {

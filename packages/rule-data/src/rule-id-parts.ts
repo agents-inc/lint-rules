@@ -35,9 +35,8 @@ const extraEslintAliasesByOxlintName: ReadonlyMap<string, readonly string[]> = n
  */
 export function pluginPrefixOf(ruleId: string): string | null {
   if (!ruleId.includes('/')) return null
-  return ruleId.startsWith(SCOPED_PACKAGE_MARK)
-    ? ruleId.slice(0, ruleId.lastIndexOf('/'))
-    : ruleId.slice(0, ruleId.indexOf('/'))
+  const prefixEnd = ruleId.startsWith(SCOPED_PACKAGE_MARK) ? ruleId.lastIndexOf('/') : ruleId.indexOf('/')
+  return ruleId.slice(0, prefixEnd)
 }
 
 /**
@@ -50,7 +49,7 @@ export function ruleNameOf(ruleId: string): string {
 }
 
 /** The name `oxlint --rules` prints and oxlint's config accepts: bare for core rules. */
-export function oxlintNameOf({ scope, ruleName }: OxlintNameParts): string {
+export function oxlintNameOf({ scope, ruleName }: Readonly<OxlintNameParts>): string {
   return scope === CORE_SCOPE ? ruleName : `${scope}/${ruleName}`
 }
 
@@ -115,7 +114,7 @@ function packageFormOf(prefix: string): string {
 }
 
 /** The rule's ID under a scope's ESLint prefix: bare for core rules. */
-function eslintIdIn({ eslintPrefix }: OxlintScope, ruleName: string): string {
+function eslintIdIn({ eslintPrefix }: Readonly<OxlintScope>, ruleName: string): string {
   return eslintPrefix === null ? ruleName : `${eslintPrefix}/${ruleName}`
 }
 

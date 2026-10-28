@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildCoreRulesBindingModules,
   buildPluginBindingModules,
+  buildPluginHoldingNoRules,
 } from '../__tests__/factories/eslint-plugin-factories.ts'
 import { eslintPlugins } from '../eslint-plugins.ts'
 import { readEslintRules } from './read-installed.ts'
@@ -55,9 +56,18 @@ describe('readEslintRules', () => {
     ])
   })
 
+  it('throws on a plugin holding no rules, naming the prefix it is registered under', () => {
+    const plugins = { team: buildPluginHoldingNoRules() }
+
+    expect(() => readEslintRules(NO_CORE_RULES, plugins)).toThrow(new Error('the plugin registered as team has no rules'))
+  })
+
   it("records the installed @eslint-react's x-no-missing-key and no-missing-key as each other's other name", () => {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- ESLint 10.12 lists its core rules nowhere else: `Linter` has no `getRules`, its `./rules` export is types only, and no other export holds them
     const installed = readEslintRules(builtinRules, eslintPlugins)
-    const installedRule = (id: string): unknown => installed.find((rule) => rule.id === id)
+    function installedRule(id: string): unknown {
+      return installed.find((rule) => rule.id === id)
+    }
 
     expect({
       prefixed: installedRule('@eslint-react/x-no-missing-key'),

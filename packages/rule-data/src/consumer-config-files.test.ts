@@ -94,6 +94,7 @@ describe('consumerConfigFiles, the one source of the names of the files a consum
 
 describe('the rules that report the files plan.md has a consumer write', () => {
   const projectDir = setUpTempDir('rule-data-consumer-files-')
+  // eslint-disable-next-line functional/no-let -- TS2588 as a const: beforeAll makes it once before the suite and the tests read it; setUpRunsBeforeTheSuite, the helper for that, is in lint-rules' tests, which rule-data cannot import (lint-rules depends on rule-data)
   let eslint: ESLint
 
   beforeAll(() => {

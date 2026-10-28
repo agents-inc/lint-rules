@@ -9,7 +9,7 @@ import { setUpTempDir } from './__tests__/temp-dirs.ts'
 import { catalog, routeOf } from './catalog.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
 
-type SpelledRule = { nativeName: string; spellings: readonly string[] }
+type SpelledRule = { readonly nativeName: string; readonly spellings: readonly string[] }
 
 const OXLINT_TIMEOUT_MS = 60_000
 
@@ -25,7 +25,7 @@ const SPELLINGS_OXLINT_REFUSES = [
 ]
 
 const oxlintImplementations = inventory.rules.flatMap(({ id, oxlint }) =>
-  oxlint === null ? [] : [{ id, nativeName: oxlint.oxlintName, plugin: oxlint.oxlintPlugin }],
+  oxlint === null ? [] : { id, nativeName: oxlint.oxlintName, plugin: oxlint.oxlintPlugin },
 )
 const oxlintPlugins = [...new Set(oxlintImplementations.map(({ plugin }) => plugin))]
 

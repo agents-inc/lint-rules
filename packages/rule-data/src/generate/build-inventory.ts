@@ -41,7 +41,7 @@ export type Inventory = { versions: InventoryVersions; rules: readonly Inventory
 type OxlintRuleByCanonicalId = { id: string; implementation: OxlintImplementation }
 
 /** Joins the installed engines' rules on their canonical (ESLint) ID, sorted by ID. */
-export function buildInventory({ versions, oxlintRules, eslintRules }: InstalledEngines): Inventory {
+export function buildInventory({ versions, oxlintRules, eslintRules }: Readonly<InstalledEngines>): Inventory {
   const oxlintById = oxlintImplementationsById(oxlintRules)
   const eslintById = eslintImplementationsById(eslintRules)
   const ids = idsEitherEngineHas(oxlintById, eslintById)
@@ -61,8 +61,7 @@ function idsEitherEngineHas(
 function oxlintImplementationsById(
   oxlintRules: readonly InstalledOxlintRule[],
 ): ReadonlyMap<string, OxlintImplementation> {
-  const rules = oxlintRules.map(withCanonicalId)
-  assertOneOxlintRulePerCanonicalId(rules)
+  const rules = withOneOxlintRulePerCanonicalId(oxlintRules.map(withCanonicalId))
   return new Map(rules.map(({ id, implementation }) => [id, implementation]))
 }
 
@@ -72,7 +71,7 @@ function eslintImplementationsById(
   return new Map(eslintRules.map(({ id, ...implementation }) => [id, implementation]))
 }
 
-function withCanonicalId({ oxlintName, typeAware, category }: InstalledOxlintRule): OxlintRuleByCanonicalId {
+function withCanonicalId({ oxlintName, typeAware, category }: Readonly<InstalledOxlintRule>): OxlintRuleByCanonicalId {
   return {
     id: canonicalIdOf(oxlintName),
     implementation: {
@@ -85,9 +84,10 @@ function withCanonicalId({ oxlintName, typeAware, category }: InstalledOxlintRul
   }
 }
 
-function assertOneOxlintRulePerCanonicalId(rules: readonly OxlintRuleByCanonicalId[]): void {
+/** The rules given, once no two of them map to one canonical ID: throws naming each ID two map to. */
+function withOneOxlintRulePerCanonicalId(rules: readonly OxlintRuleByCanonicalId[]): readonly OxlintRuleByCanonicalId[] {
   const clashes = sharedKeys(rules, ({ id }) => id)
-  if (clashes.length === 0) return
+  if (clashes.length === 0) return rules
   const described = clashes.map(
     ([id, group]) => `${group.map(({ implementation }) => implementation.oxlintName).join(' and ')} → ${id}`,
   )

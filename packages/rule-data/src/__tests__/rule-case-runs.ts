@@ -22,6 +22,9 @@ export type CaseFile = { readonly path: string; readonly source: string; readonl
  */
 export type FileOutcome = 'reports' | 'silent' | 'not linted'
 
+/** Where a case's files are, and the oxlint config file its run writes. */
+export type CaseRun = { readonly projectDir: string; readonly files: readonly CaseFile[]; readonly configFile: string }
+
 export type RuleSettings = {
   readonly options: readonly unknown[]
   readonly files: readonly string[] | null
@@ -42,7 +45,7 @@ const REACT_VERSION = '19.0'
  * The settings a shipped rule runs with: its own, or, for a rule `allowSuppressions` decides, the
  * ones it runs with where suppressions are allowed.
  */
-export function shippedSettingsOf(route: RuleRoute): RuleSettings {
+export function shippedSettingsOf(route: Readonly<RuleRoute>): RuleSettings {
   const shipped = shippedRuleOf(route)
   const { options, files, ignores } = shipped
   if (!('whenSuppressions' in shipped)) return { options, files, ignores }
@@ -68,9 +71,9 @@ export const UNSHIPPED_RULE_SETTINGS: RuleSettings = { options: [], files: null,
  * The rules ESLint runs for a route: the route's own rule, except that without oxlint ESLint runs a
  * moved core rule's current typescript-eslint extension on TS files in its place.
  */
-export function eslintBlocksOf(route: RuleRoute, settings: RuleSettings, { rules, coreRuleExtensions }: Pick<Catalog, 'rules' | 'coreRuleExtensions'>): readonly EslintRuleBlock[] {
+export function eslintBlocksOf(route: Readonly<RuleRoute>, settings: RuleSettings, { rules, coreRuleExtensions }: Readonly<Pick<Catalog, 'rules' | 'coreRuleExtensions'>>): readonly EslintRuleBlock[] {
   const extensions = coreRuleExtensions.get(route.id)
-  if (route.engine === 'eslint' || extensions === undefined) return [{ ruleId: route.id, settings }]
+  if (extensions === undefined || route.engine === 'eslint') return [{ ruleId: route.id, settings }]
   const currentExtensions = extensions.filter((extension) => rules.has(extension))
   const [extension] = currentExtensions
   if (extension === undefined) return [{ ruleId: route.id, settings }]
@@ -125,11 +128,9 @@ export async function eslintOutcomesOf(
  * outcome.
  */
 export function oxlintOutcomesOf(
-  projectDir: string,
-  configFile: string,
+  { projectDir, files: caseFiles, configFile }: CaseRun,
   { oxlintName, oxlintPlugin }: { readonly oxlintName: string; readonly oxlintPlugin: string },
   { options, files, ignores }: RuleSettings,
-  caseFiles: readonly CaseFile[],
 ): ReadonlyMap<string, FileOutcome> {
   if (files !== null) throw new Error(`${oxlintName} ships files of its own, which the oxlint build refuses`)
   const config = {

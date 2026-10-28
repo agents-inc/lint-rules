@@ -9,6 +9,7 @@ import { PROJECT_MANIFEST, type RuleCase, type StubPackage, STUB_PACKAGES, TYPED
 import type { StandInCase } from './cases/stand-ins.ts'
 import {
   type CaseFile,
+  type CaseRun,
   type FileOutcome,
   type RuleSettings,
   UNSHIPPED_RULE_SETTINGS,
@@ -36,9 +37,6 @@ type CatalogParts = Readonly<Pick<Catalog, 'rules' | 'coreRuleExtensions' | 'esl
 
 /** The rule a case runs, with the settings it ships, and the catalog that names its ESLint blocks. */
 type RuleRun = { readonly route: Readonly<RuleRoute>; readonly settings: RuleSettings; readonly catalogParts: CatalogParts }
-
-/** Where a case's files are, and the oxlint config file its run writes. */
-type CaseRun = { readonly projectDir: string; readonly files: readonly CaseFile[]; readonly configFile: string }
 
 type RuleCaseOutcomes = {
   /** The case's rule with its shipped settings, on each engine the case names or each that may run it; its files under `folder`. */
@@ -108,7 +106,7 @@ async function standInCaseOutcomesIn(projectDir: string, folder: string, { oxlin
   const reported = inFolder(folder, reportedIn)
   const files = [...silent, ...reported]
   await writeCaseFiles(projectDir, files)
-  const oxlint = Object.fromEntries(oxlintOutcomesOf(projectDir, `${folder}.oxlintrc.json`, oxlintNamesOf(route), shippedSettingsOf(route), files))
+  const oxlint = Object.fromEntries(oxlintOutcomesOf({ projectDir, files, configFile: `${folder}.oxlintrc.json` }, oxlintNamesOf(route), shippedSettingsOf(route)))
   const eslint = Object.fromEntries(await eslintOutcomesOf(projectDir, [{ ruleId: standIn, settings: UNSHIPPED_RULE_SETTINGS }], files, { typed: false }))
   const owed = owedOutcomes(silent, reported)
   return { actual: { [oxlintRule]: oxlint, [standIn]: eslint }, expected: { [oxlintRule]: owed, [standIn]: owed } }
@@ -123,7 +121,7 @@ async function outcomesOn(engine: Engine, { route, settings, catalogParts }: Rul
   const read = readBy(engine, files)
   const outcomes =
     engine === 'oxlint'
-      ? oxlintOutcomesOf(projectDir, configFile, oxlintNamesOf(route), settings, read)
+      ? oxlintOutcomesOf({ projectDir, files: read, configFile }, oxlintNamesOf(route), settings)
       : await eslintOutcomesOf(projectDir, eslintBlocksOf(route, settings, catalogParts), read, { typed: route.typed })
   return Object.fromEntries(outcomes)
 }

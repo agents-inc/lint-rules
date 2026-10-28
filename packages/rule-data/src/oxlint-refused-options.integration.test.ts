@@ -12,6 +12,7 @@ import { optionListsTheSchemaTakes, optionsOnlyTheFirstSchemaTakes } from './__t
 import { setUpTempDir } from './__tests__/temp-dirs.ts'
 import {
   type EngineReport,
+  type FixtureFile,
   oxlintReportOn,
   schemaOfTheCoreRule,
   schemaOfTheExtension,
@@ -68,9 +69,20 @@ function isHonoured({ typescriptEslint, oxlint }: FixtureOutcome): boolean {
   return oxlint !== 'refused' && JSON.stringify(oxlint) === JSON.stringify(typescriptEslint)
 }
 
+function fixtureOptionsOf(coreRule: string): string[] {
+  return [...new Set(EXTENSION_ONLY_OPTION_FIXTURES.filter((fixture) => fixture.coreRule === coreRule).map(({ option }) => option))].toSorted()
+}
+
+/** Each item's result, in order, each run started once the run before it has settled: the runs write the same files of the project. */
+function eachInTurn<Item, Result>(items: readonly Item[], run: (item: Item, index: number) => Promise<Result>): Promise<readonly Result[]> {
+  return items.reduce<Promise<readonly Result[]>>(async (earlier, item, index) => [...(await earlier), await run(item, index)], Promise.resolve([]))
+}
+
 describe("the options typescript-eslint's version of each twin pair takes, given to oxlint's copy of the core rule, against data/oxlint-refused-options.json", () => {
   const projectDir = setUpTempDir('rule-data-oxlint-refused-options-')
+  // eslint-disable-next-line functional/no-let -- TS2588 as a const: beforeAll makes it once before the suite and the tests read it; setUpRunsBeforeTheSuite, the helper for that, is in lint-rules' tests, which rule-data cannot import (lint-rules depends on rule-data)
   let verdicts: readonly OptionVerdict[] = []
+  // eslint-disable-next-line functional/no-let -- TS2588, as on the let above
   let outcomes: readonly FixtureOutcome[] = []
 
   async function verdictOf(pair: TwinPairRoutedToOxlint, options: readonly unknown[], keys: readonly string[]): Promise<OptionVerdict> {
@@ -80,15 +92,15 @@ describe("the options typescript-eslint's version of each twin pair takes, given
 
   async function outcomeOf(fixture: ExtensionOnlyOptionFixture, index: number): Promise<FixtureOutcome> {
     const pair = pairOf(fixture.coreRule)
-    const file = `fixture-${String(index)}.ts`
-    await writeFile(join(projectDir(), file), fixture.source)
+    const fixtureFile: FixtureFile = { file: `fixture-${String(index)}.ts`, source: fixture.source, kind: fixture.reportOf }
+    await writeFile(join(projectDir(), fixtureFile.file), fixture.source)
     const typescriptEslint = changeOf(
-      await typescriptEslintReportOn(projectDir(), pair.extension, fixture.without, file, fixture.reportOf),
-      await typescriptEslintReportOn(projectDir(), pair.extension, fixture.with, file, fixture.reportOf),
+      await typescriptEslintReportOn(projectDir(), pair.extension, fixture.without, fixtureFile),
+      await typescriptEslintReportOn(projectDir(), pair.extension, fixture.with, fixtureFile),
     )
     const oxlint = oxlintChangeOf(
-      oxlintReportOn(projectDir(), pair, fixture.without, file, fixture.source, fixture.reportOf),
-      oxlintReportOn(projectDir(), pair, fixture.with, file, fixture.source, fixture.reportOf),
+      oxlintReportOn(projectDir(), pair, fixture.without, fixtureFile),
+      oxlintReportOn(projectDir(), pair, fixture.with, fixtureFile),
     )
     return { fixture, typescriptEslint, oxlint }
   }
@@ -97,38 +109,35 @@ describe("the options typescript-eslint's version of each twin pair takes, given
     await writeFile(join(projectDir(), 'tsconfig.json'), JSON.stringify(TSCONFIG))
     await writeFile(join(projectDir(), IMPORTED_FILE.name), IMPORTED_FILE.source)
     const lists = TWIN_PAIRS.flatMap((pair) => optionListsTheSchemaTakes(schemaOfTheExtension(pair.extension)).map((list) => ({ pair, ...list })))
-    const made: OptionVerdict[] = []
-    for (const { pair, options, keys } of lists) made.push(await verdictOf(pair, options, keys))
-    verdicts = made
-    const fixtureOutcomes: FixtureOutcome[] = []
-    for (const [index, fixture] of EXTENSION_ONLY_OPTION_FIXTURES.entries()) fixtureOutcomes.push(await outcomeOf(fixture, index))
-    outcomes = fixtureOutcomes
+    verdicts = await eachInTurn(lists, ({ pair, options, keys }) => verdictOf(pair, options, keys))
+    outcomes = await eachInTurn(EXTENSION_ONLY_OPTION_FIXTURES, outcomeOf)
   }, ENGINES_TIMEOUT_MS)
 
   it('are loaded by oxlint wherever they set no key the data lists', () => {
     expect(
-      verdicts.filter(({ pair, keys, refused }) => refused && !keys.some((key) => isListed(pair, key))).map(({ pair, options }) => `${pair.coreRule} ${JSON.stringify(options)}`),
+      verdicts.filter(({ pair, keys, refused }) => refused && keys.every((key) => !isListed(pair, key))).map(({ pair, options }) => `${pair.coreRule} ${JSON.stringify(options)}`),
     ).toStrictEqual([])
   })
 
-  it('are refused by oxlint, or shown not honoured by a fixture, under each key the data lists', () => {
-    const refusedUnder = (pair: TwinPairRoutedToOxlint, key: string): boolean => verdicts.some((verdict) => verdict.pair === pair && verdict.refused && verdict.keys.includes(key))
-    const shownNotHonoured = (pair: TwinPairRoutedToOxlint, key: string): boolean =>
-      outcomes.some((outcome) => outcome.fixture.coreRule === pair.coreRule && outcome.fixture.key === key && !isHonoured(outcome))
+  function isRefusedUnder(pair: TwinPairRoutedToOxlint, key: string): boolean {
+    return verdicts.some((verdict) => verdict.pair === pair && verdict.refused && verdict.keys.includes(key))
+  }
 
+  function isShownNotHonoured(pair: TwinPairRoutedToOxlint, key: string): boolean {
+    return outcomes.some((outcome) => outcome.fixture.coreRule === pair.coreRule && outcome.fixture.key === key && !isHonoured(outcome))
+  }
+
+  it('are refused by oxlint, or shown not honoured by a fixture, under each key the data lists', () => {
     expect(
       TWIN_PAIRS.flatMap((pair) =>
         optionKeysOxlintRefuses(pair.oxlintName)
-          .filter((key) => !refusedUnder(pair, key) && !shownNotHonoured(pair, key))
+          .filter((key) => !isRefusedUnder(pair, key) && !isShownNotHonoured(pair, key))
           .map((key) => `${pair.coreRule}: ${key}`),
       ),
     ).toStrictEqual([])
   })
 
   it("hold a fixture for each option only typescript-eslint's version of a twin pair takes, as the installed schemas say, and for no other", () => {
-    const fixtureOptionsOf = (coreRule: string): string[] =>
-      [...new Set(EXTENSION_ONLY_OPTION_FIXTURES.filter((fixture) => fixture.coreRule === coreRule).map(({ option }) => option))].toSorted()
-
     expect(Object.fromEntries(TWIN_PAIRS.map(({ coreRule }) => [coreRule, fixtureOptionsOf(coreRule)]))).toStrictEqual(
       Object.fromEntries(TWIN_PAIRS.map(({ coreRule, extension }) => [coreRule, optionsOnlyTheFirstSchemaTakes(schemaOfTheExtension(extension), schemaOfTheCoreRule(coreRule))])),
     )

@@ -22,7 +22,7 @@ describe('printedRuleNamesOf', () => {
   })
 
   it('throws on printed output without a rules object, quoting the output', () => {
-    expect(() => printedRuleNamesOf(buildPrintedOutputWithoutRules())).toThrow(/no rules object: \{"plugins"/)
+    expect(() => printedRuleNamesOf(buildPrintedOutputWithoutRules())).toThrow(/no rules object: \{"plugins"/u)
   })
 })
 
@@ -34,15 +34,15 @@ describe('parseOxlintJsonReport', () => {
   })
 
   it('throws on a report without diagnostics, or without the number of files, quoting the output', () => {
-    expect(() => parseOxlintJsonReport(buildPrintedOxlintJsonReportWithout('diagnostics'))).toThrow(/has no diagnostics: \{"number_of_files"/)
-    expect(() => parseOxlintJsonReport(buildPrintedOxlintJsonReportWithout('number_of_files'))).toThrow(/has no number of files: \{"diagnostics"/)
+    expect(() => parseOxlintJsonReport(buildPrintedOxlintJsonReportWithout('diagnostics'))).toThrow(/has no diagnostics: \{"number_of_files"/u)
+    expect(() => parseOxlintJsonReport(buildPrintedOxlintJsonReportWithout('number_of_files'))).toThrow(/has no number of files: \{"diagnostics"/u)
   })
 
   it('throws on a diagnostic with no file, with a link that is no string, or with a label giving no line, quoting the diagnostic', () => {
     const finding = buildRuleFinding('a.ts')
 
-    expect(() => parseOxlintJsonReport(buildPrintedOxlintJsonReport([{ ...finding, filename: 1 }]))).toThrow(/with no file: \{"filename":1,/)
-    expect(() => parseOxlintJsonReport(buildPrintedOxlintJsonReport([{ ...finding, url: 1 }]))).toThrow(/url is no string: \{"filename":"a\.ts","url":1,/)
-    expect(() => parseOxlintJsonReport(buildPrintedOxlintJsonReport([{ ...finding, labels: [{ span: {} }] }]))).toThrow(/labels that each give a line: \{"filename":"a\.ts"/)
+    expect(() => parseOxlintJsonReport(buildPrintedOxlintJsonReport([{ ...finding, filename: 1 }]))).toThrow(/with no file: \{"filename":1,/u)
+    expect(() => parseOxlintJsonReport(buildPrintedOxlintJsonReport([{ ...finding, url: 1 }]))).toThrow(/url is no string: \{"filename":"a\.ts","url":1,/u)
+    expect(() => parseOxlintJsonReport(buildPrintedOxlintJsonReport([{ ...finding, labels: [{ span: {} }] }]))).toThrow(/labels that each give a line: \{"filename":"a\.ts"/u)
   })
 })

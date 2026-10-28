@@ -17,7 +17,7 @@ const RECORDED_DATE = /^\d{4}-\d{2}-\d{2}$/u
 const shippedIds: ReadonlySet<string> = new Set(canonicalRules.map((rule) => rule.id))
 
 // Every prefix of a RuleId, and null for core rules: the engines and plugins we install.
-const installedPrefixes: ReadonlySet<string | null> = new Set([...catalog.rules.keys()].map(pluginPrefixOf))
+const installedPrefixes: ReadonlySet<string | null> = new Set(catalog.rules.keys().toArray().map(pluginPrefixOf))
 
 function candidateFor(id: string) {
   const candidate = candidates.find((entry) => entry.id === id)
@@ -44,7 +44,7 @@ describe('the rules we do not ship, data/rule-candidates.json', () => {
     it('has no status other than considering, recommended, parked, needs-owner, dropped or not-reviewed', () => {
       const unknownStatus = candidates
         .filter((candidate) => !STATUSES.has(candidate.status))
-        .map((candidate) => `${candidate.id} (${String(candidate.status)})`)
+        .map((candidate) => `${candidate.id} (${candidate.status})`)
 
       expect(unknownStatus).toStrictEqual([])
     })
@@ -82,7 +82,11 @@ describe('the rules we do not ship, data/rule-candidates.json', () => {
     // A plugin or engine upgrade that adds rules fails here, each new RuleId named.
     it('has no installed rule we do not ship without an entry', () => {
       const candidateIds = new Set(candidates.map(({ id }) => id))
-      const unrecorded = [...catalog.rules.values()].filter(({ id, shipped }) => shipped === null && !candidateIds.has(id)).map(({ id }) => id)
+      const unrecorded = catalog.rules
+        .values()
+        .filter(({ id, shipped }) => shipped === null && !candidateIds.has(id))
+        .map(({ id }) => id)
+        .toArray()
 
       expect(unrecorded).toStrictEqual([])
     })

@@ -42,7 +42,11 @@ function renderTypeFile(declarations: readonly string[]): string {
 /** One member per line, so a rule added or removed is a one-line diff. */
 function renderUnionType(name: string, members: readonly string[]): string {
   if (members.length === 0) return `export type ${name} = never`
-  return `export type ${name} =${members.map((member) => `\n  | ${literalOf(member)}`).join('')}`
+  return `export type ${name} =${members.map(unionMemberLine).join('')}`
+}
+
+function unionMemberLine(member: string): string {
+  return `\n  | ${literalOf(member)}`
 }
 
 /** Each domain may list only its own rulesets, and every domain is optional. */
@@ -65,7 +69,7 @@ function namesIn(definitions: readonly RulesetDefinition[], list: RulesetList): 
   return definitionsIn(definitions, list).map(({ name }) => name)
 }
 
-function libsDomainOf({ name, domain }: RulesetDefinition): string {
+function libsDomainOf({ name, domain }: Readonly<RulesetDefinition>): string {
   if (domain === null) throw new Error(`libs ruleset ${name} has no domain`)
   return domain
 }

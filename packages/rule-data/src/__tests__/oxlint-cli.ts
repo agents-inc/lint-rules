@@ -77,7 +77,7 @@ function diagnosticOf(diagnostic: unknown): OxlintJsonDiagnostic {
   if (!('labels' in diagnostic) || !Array.isArray(diagnostic.labels) || !diagnostic.labels.every(isLabel)) {
     throw new Error(`oxlint reported a diagnostic without labels that each give a line: ${JSON.stringify(diagnostic)}`)
   }
-  return { filename: diagnostic.filename, ...(url === undefined ? {} : { url }), labels: diagnostic.labels }
+  return { filename: diagnostic.filename, ...(url !== undefined && { url }), labels: diagnostic.labels }
 }
 
 function isLabel(label: unknown): label is OxlintJsonLabel {

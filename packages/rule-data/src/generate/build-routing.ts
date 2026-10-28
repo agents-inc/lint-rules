@@ -92,9 +92,8 @@ type RoutingSources = { inventory: Inventory; canonicalRules: readonly Canonical
 type RuleIdWithOxlintName = { readonly id: string; readonly oxlintName: string }
 
 /** The engine and shipped settings of every `RuleId`, sorted by ID. */
-export function buildRouting(sources: RoutingSources): readonly RoutingEntry[] {
-  const ruleIds = ruleIdsOf(sources)
-  assertOneRuleIdPerOxlintName(sources.inventory.rules, ruleIds)
+export function buildRouting(sources: Readonly<RoutingSources>): readonly RoutingEntry[] {
+  const ruleIds = withOneRuleIdPerOxlintName(sources.inventory.rules, ruleIdsOf(sources))
   const installedById = new Map(sources.inventory.rules.map((rule) => [rule.id, rule]))
   const canonicalById = new Map(sources.canonicalRules.map((rule) => [rule.id, rule]))
 
@@ -107,25 +106,26 @@ export function buildRouting(sources: RoutingSources): readonly RoutingEntry[] {
  * Every rule a consumer can name: the canonical list, every rule oxlint has, and every ESLint rule
  * that is not deprecated. A deprecated rule is one only when the canonical list ships it.
  */
-function ruleIdsOf({ inventory, canonicalRules }: RoutingSources): ReadonlySet<string> {
+function ruleIdsOf({ inventory, canonicalRules }: Readonly<RoutingSources>): ReadonlySet<string> {
   const current = inventory.rules.filter(hasCurrentImplementation)
   return new Set([...canonicalRules.map(({ id }) => id), ...current.map(({ id }) => id)])
 }
 
-function hasCurrentImplementation({ oxlint, eslint }: InventoryRule): boolean {
+function hasCurrentImplementation({ oxlint, eslint }: Readonly<InventoryRule>): boolean {
   return oxlint !== null || (eslint !== null && !eslint.deprecated)
 }
 
-function assertOneRuleIdPerOxlintName(rules: readonly InventoryRule[], ruleIds: ReadonlySet<string>): void {
+/** The rule IDs given, once no two of them share an oxlint name: throws naming each name two share. */
+function withOneRuleIdPerOxlintName(rules: readonly InventoryRule[], ruleIds: ReadonlySet<string>): ReadonlySet<string> {
   const ruleIdsOxlintHas = rules.filter(({ id }) => ruleIds.has(id)).flatMap(idWithOxlintNameOf)
   const clashes = sharedKeys(ruleIdsOxlintHas, ({ oxlintName }) => oxlintName)
-  if (clashes.length === 0) return
+  if (clashes.length === 0) return ruleIds
   const described = clashes.map(([oxlintName, group]) => `${group.map(({ id }) => id).join(' and ')} (${oxlintName})`)
   throw new Error(`Rule IDs share one oxlint name: ${described.join('; ')}`)
 }
 
 /** The rule's ID beside oxlint's name for it: none where oxlint has no version of it. */
-function idWithOxlintNameOf({ id, oxlint }: InventoryRule): readonly RuleIdWithOxlintName[] {
+function idWithOxlintNameOf({ id, oxlint }: Readonly<InventoryRule>): readonly RuleIdWithOxlintName[] {
   return oxlint === null ? [] : [{ id, oxlintName: oxlint.oxlintName }]
 }
 
@@ -133,7 +133,7 @@ function installedRuleOf(id: string, installedById: ReadonlyMap<string, Inventor
   return foundOr(installedById.get(id), `${id} is in data/rules.json, but no installed engine has it`)
 }
 
-function routeOf(installed: InventoryRule, canonical: CanonicalRule | undefined, ruleIds: ReadonlySet<string>): RoutingEntry {
+function routeOf(installed: Readonly<InventoryRule>, canonical: Readonly<CanonicalRule> | undefined, ruleIds: ReadonlySet<string>): RoutingEntry {
   const shipped = canonical === undefined ? null : shippedRuleOf(canonical)
   const engine = canonical === undefined ? defaultEngineOf(installed) : canonical.engine
   return engine === 'oxlint'
@@ -141,7 +141,7 @@ function routeOf(installed: InventoryRule, canonical: CanonicalRule | undefined,
     : eslintRouteOf(installed, canonical, shipped)
 }
 
-function shippedRuleOf(canonical: CanonicalRule): RoutedShippedRule {
+function shippedRuleOf(canonical: Readonly<CanonicalRule>): RoutedShippedRule {
   const { options, files, ignores } = canonical
   return {
     ...turnedOnByOf(canonical),
@@ -155,26 +155,26 @@ function shippedRuleOf(canonical: CanonicalRule): RoutedShippedRule {
 }
 
 /** `readsRuntimeGlobals: true` where the canonical list says so: the field left out otherwise. */
-function runtimeGlobalsMarkOf({ readsRuntimeGlobals }: CanonicalRule): Pick<RoutedShippedRule, 'readsRuntimeGlobals'> {
+function runtimeGlobalsMarkOf({ readsRuntimeGlobals }: Readonly<CanonicalRule>): Pick<RoutedShippedRule, 'readsRuntimeGlobals'> {
   return readsRuntimeGlobals === true ? { readsRuntimeGlobals: true } : {}
 }
 
 /** Each allowance the canonical list records, without its reason: the field left out where it records none. */
-function allowancesLeftToOf({ allowancesLeftTo }: CanonicalRule): Pick<RoutedShippedRule, 'allowancesLeftTo'> {
+function allowancesLeftToOf({ allowancesLeftTo }: Readonly<CanonicalRule>): Pick<RoutedShippedRule, 'allowancesLeftTo'> {
   if (allowancesLeftTo === undefined) return {}
   return { allowancesLeftTo: allowancesLeftTo.map(({ option, entry, rule }) => ({ option, entry, rule })) }
 }
 
 /** Each relation the canonical list records, as the other rule's ID: none where it records none. */
-function relatedRuleIdsOf({ coveredBy, coveredInOxlintBy, splitByTypesWith }: CanonicalRule): Pick<RoutedShippedRule, 'coveredBy' | 'coveredInOxlintBy' | 'splitByTypesWith'> {
+function relatedRuleIdsOf({ coveredBy, coveredInOxlintBy, splitByTypesWith }: Readonly<CanonicalRule>): Pick<RoutedShippedRule, 'coveredBy' | 'coveredInOxlintBy' | 'splitByTypesWith'> {
   return {
-    ...(coveredBy === undefined ? {} : { coveredBy: coveredBy.rule }),
-    ...(coveredInOxlintBy === undefined ? {} : { coveredInOxlintBy: coveredInOxlintBy.rule }),
-    ...(splitByTypesWith === undefined ? {} : { splitByTypesWith: splitByTypesWith.rule }),
+    ...(coveredBy !== undefined && { coveredBy: coveredBy.rule }),
+    ...(coveredInOxlintBy !== undefined && { coveredInOxlintBy: coveredInOxlintBy.rule }),
+    ...(splitByTypesWith !== undefined && { splitByTypesWith: splitByTypesWith.rule }),
   }
 }
 
-function turnedOnByOf({ id, ruleset, alwaysOn, whenSuppressions, options }: CanonicalRule): TurnedOnBy {
+function turnedOnByOf({ id, ruleset, alwaysOn, whenSuppressions, options }: Readonly<CanonicalRule>): TurnedOnBy {
   if (whenSuppressions === undefined) return parseTurnedOnBy(id, { ruleset, alwaysOn })
   return {
     whenSuppressions: {
@@ -197,11 +197,11 @@ function resolvedSettingOf(
 }
 
 /** A rule nobody routed runs on oxlint when oxlint can run it without type information. */
-function defaultEngineOf({ oxlint }: InventoryRule): Engine {
+function defaultEngineOf({ oxlint }: Readonly<InventoryRule>): Engine {
   return oxlint !== null && !oxlint.typeAware ? 'oxlint' : 'eslint'
 }
 
-function oxlintRouteOf(installed: InventoryRule, shipped: RoutedShippedRule | null, ruleIds: ReadonlySet<string>): RoutingEntry {
+function oxlintRouteOf(installed: Readonly<InventoryRule>, shipped: Readonly<RoutedShippedRule> | null, ruleIds: ReadonlySet<string>): RoutingEntry {
   const { id, oxlint } = installed
   if (oxlint === null) throw new Error(`${id} is routed to oxlint, which does not have it`)
   return {
@@ -218,7 +218,7 @@ function oxlintRouteOf(installed: InventoryRule, shipped: RoutedShippedRule | nu
 }
 
 /** The canonical list's `typed` wins: some typed plugin rules do not declare it in their meta. */
-function eslintRouteOf(installed: InventoryRule, canonical: CanonicalRule | undefined, shipped: RoutedShippedRule | null): RoutingEntry {
+function eslintRouteOf(installed: Readonly<InventoryRule>, canonical: Readonly<CanonicalRule> | undefined, shipped: Readonly<RoutedShippedRule> | null): RoutingEntry {
   const { id, oxlint, eslint } = installed
   if (eslint === null) throw new Error(`${id} is routed to ESLint, which does not have it`)
   return {
@@ -237,7 +237,7 @@ function eslintRouteOf(installed: InventoryRule, canonical: CanonicalRule | unde
 }
 
 /** The other names ESLint's version of the rule goes by in its plugin: none where ESLint has no version, or binds it once. */
-function sameModuleNamesOf({ eslint }: InventoryRule): Pick<RuleRoute, 'sameModuleAs'> {
-  if (eslint === null || eslint.sameModuleAs === undefined) return {}
+function sameModuleNamesOf({ eslint }: Readonly<InventoryRule>): Pick<RuleRoute, 'sameModuleAs'> {
+  if (eslint?.sameModuleAs === undefined) return {}
   return { sameModuleAs: eslint.sameModuleAs }
 }

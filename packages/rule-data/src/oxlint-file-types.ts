@@ -29,6 +29,6 @@ function guardOf(oxlintName: string): FileGuard {
   return guard === undefined ? NO_GUARD : guard
 }
 
-function eachRuleWithItsGuard(guard: FileGuard): [string, FileGuard][] {
+function eachRuleWithItsGuard(guard: FileGuard): Array<[string, FileGuard]> {
   return guard.rules.map((oxlintName) => [oxlintName, guard])
 }

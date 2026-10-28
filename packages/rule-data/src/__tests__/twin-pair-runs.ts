@@ -9,7 +9,7 @@ import type { Catalog } from '../catalog.ts'
 import { ruleNameOf } from '../rule-id-parts.ts'
 import type { ReportKind } from './cases/extension-only-option-fixtures.ts'
 import { buildOxlintConfigRunningTheRuleWith } from './factories/oxlint-config-factories.ts'
-import { type OxlintJsonReport, oxlintJsonRun } from './oxlint-cli.ts'
+import { type OxlintJsonDiagnostic, type OxlintJsonReport, oxlintJsonRun } from './oxlint-cli.ts'
 import { typescriptEslintRules } from './typescript-eslint-extensions.ts'
 
 // Each twin pair oxlint runs the core rule of, and each engine's report on a file under the options
@@ -23,6 +23,9 @@ export type TwinPairRoutedToOxlint = {
   readonly oxlintPlugin: string
 }
 
+/** A fixture's file in the project, the source it is written with, and what to read of a run over it. */
+export type FixtureFile = { readonly file: string; readonly source: string; readonly kind: ReportKind }
+
 /** What an engine made of a file: its report, or, for oxlint, its refusal to load the config. */
 export type EngineReport = { readonly outcome: 'refused' } | { readonly outcome: 'reported'; readonly report: readonly string[] }
 
@@ -31,12 +34,15 @@ const OXLINT_CONFIG_FILE = 'fixture.oxlintrc.json'
 const TS_FILES = '**/*.ts'
 
 /** Each core rule routed to oxlint, paired with each extension of it the catalog records as no alias of it. */
-export function twinPairsRoutedToOxlint({ rules, coreRuleExtensions }: Catalog): TwinPairRoutedToOxlint[] {
-  return [...rules.values()].flatMap(({ id, engine, oxlintName, oxlintPlugin, eslintAliases }) => {
-    const extensions = coreRuleExtensions.get(id)
-    if (engine !== 'oxlint' || extensions === undefined) return []
-    return extensions.filter((extension) => !eslintAliases.includes(extension)).map((extension) => ({ coreRule: id, extension, oxlintName, oxlintPlugin }))
-  })
+export function twinPairsRoutedToOxlint({ rules, coreRuleExtensions }: Readonly<Catalog>): TwinPairRoutedToOxlint[] {
+  return rules
+    .values()
+    .flatMap(({ id, engine, oxlintName, oxlintPlugin, eslintAliases }) => {
+      const extensions = coreRuleExtensions.get(id)
+      if (engine !== 'oxlint' || extensions === undefined) return []
+      return extensions.filter((extension) => !eslintAliases.includes(extension)).map((extension) => ({ coreRule: id, extension, oxlintName, oxlintPlugin }))
+    })
+    .toArray()
 }
 
 /** The schema of typescript-eslint's rule, as its installed plugin declares it: none for a rule that declares no options. */
@@ -48,6 +54,7 @@ export function schemaOfTheExtension(extension: string): unknown {
 
 /** The schema of ESLint's core rule, as the installed ESLint declares it: none for a rule that declares no options. */
 export function schemaOfTheCoreRule(coreRule: string): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- ESLint 10.12 lists its core rules nowhere else: `Linter` has no `getRules`, its `./rules` export is types only, and no other export holds them
   const rule = builtinRules.get(coreRule)
   if (rule === undefined) throw new Error(`the installed ESLint has no core rule ${coreRule}`)
   return schemaDeclaredBy(rule.meta)
@@ -55,14 +62,14 @@ export function schemaOfTheCoreRule(coreRule: string): unknown {
 
 /** A rule's schema: none, so no options, where its meta declares none. */
 function schemaDeclaredBy(meta: { readonly schema?: unknown } | undefined): unknown {
-  return meta === undefined || meta.schema === undefined ? [] : meta.schema
+  return meta?.schema === undefined ? [] : meta.schema
 }
 
 /**
  * typescript-eslint's rule over the project's TS file, with the options given, through the real
  * ESLint and the project's tsconfig: the lines it reports, or the file's text after its safe fixes.
  */
-export async function typescriptEslintReportOn(projectDir: string, extension: string, options: readonly unknown[], file: string, kind: ReportKind): Promise<readonly string[]> {
+export async function typescriptEslintReportOn(projectDir: string, extension: string, options: readonly unknown[], { file, kind }: Pick<FixtureFile, 'file' | 'kind'>): Promise<readonly string[]> {
   const eslint = new ESLint({
     cwd: projectDir,
     overrideConfigFile: true,
@@ -89,7 +96,7 @@ export async function typescriptEslintReportOn(projectDir: string, extension: st
  * options given: the lines it reports, or the file's text after its safe fixes (`--fix`); or its
  * refusal to load the config.
  */
-export function oxlintReportOn(projectDir: string, pair: TwinPairRoutedToOxlint, options: readonly unknown[], file: string, source: string, kind: ReportKind): EngineReport {
+export function oxlintReportOn(projectDir: string, pair: TwinPairRoutedToOxlint, options: readonly unknown[], { file, source, kind }: FixtureFile): EngineReport {
   writeFileSync(join(projectDir, file), source)
   const config = buildOxlintConfigRunningTheRuleWith(pair.oxlintName, options, { plugins: [pair.oxlintPlugin] })
   writeFileSync(join(projectDir, OXLINT_CONFIG_FILE), JSON.stringify(config))
@@ -101,7 +108,13 @@ export function oxlintReportOn(projectDir: string, pair: TwinPairRoutedToOxlint,
 }
 
 function diagnosticLinesIn({ diagnostics }: OxlintJsonReport): number[] {
-  return diagnostics.flatMap(({ labels: [firstLabel] }) => (firstLabel === undefined ? [] : [firstLabel.span.line]))
+  return diagnostics.flatMap(lineOfTheFirstLabel)
+}
+
+/** The line a diagnostic's first label points at: none where it has no label. */
+function lineOfTheFirstLabel({ labels }: OxlintJsonDiagnostic): readonly number[] {
+  const [firstLabel] = labels
+  return firstLabel === undefined ? [] : [firstLabel.span.line]
 }
 
 /** Each line once, as `line N`, in order. */

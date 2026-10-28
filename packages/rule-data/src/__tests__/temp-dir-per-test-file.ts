@@ -17,10 +17,13 @@ export default class TempDirPerTestFileRunner extends TestRunner {
   #testFileTempDir: string | undefined
 
   onBeforeCollect(): void {
+    // eslint-disable-next-line functional/immutable-data -- vitest calls onBeforeCollect and onAfterRunFiles on one runner, so the folder made in the first reaches the second only on the instance
     this.#testFileTempDir = mkdtempSync(join(tmpdir(), TEST_FILE_TEMP_DIR_PREFIX))
+    // eslint-disable-next-line functional/immutable-data -- os.tmpdir() reads TMPDIR from process.env, the one place the test file and every process it starts read it from
     process.env[TEMP_DIR_VARIABLE] = this.#testFileTempDir
   }
 
+  // eslint-disable-next-line functional/prefer-immutable-types -- TS2345 as readonly: super.onAfterRunFiles, vitest's TestRunner, takes the files as a mutable RunnerTestFile[]
   override onAfterRunFiles(files: RunnerTestFile[]): void {
     super.onAfterRunFiles(files)
     if (this.#testFileTempDir === undefined) throw new Error('the test file finished without the temp dir given it before it was collected')

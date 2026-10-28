@@ -7,7 +7,7 @@ import type { RulesetDefinition } from '../../catalog.ts'
  */
 export function buildRulesetDefinition(
   name: string,
-  fields: Pick<RulesetDefinition, 'domain' | 'list'> & Partial<Pick<RulesetDefinition, 'env' | 'optIn' | 'sortsCode'>>,
+  fields: Readonly<Pick<RulesetDefinition, 'domain' | 'list'> & Partial<Pick<RulesetDefinition, 'env' | 'optIn' | 'sortsCode'>>>,
 ): RulesetDefinition {
   return { name, env: null, optIn: false, sortsCode: false, ...fields }
 }

@@ -11,11 +11,11 @@ import { buildShippedRule } from './__tests__/factories/shipped-rule-factories.t
 import { negatedShippedGlobsIn } from './__tests__/negated-globs.ts'
 import { coreRulesExtendedMoreThanOnce, twinsSharedByShippedRules } from './__tests__/twin-offenders.ts'
 import { typescriptEslintExtensions } from './__tests__/typescript-eslint-extensions.ts'
-import { catalog, isOxlintRoute, parseRuleRoute, routeOf, shippedRuleOf } from './catalog.ts'
+import { catalog, isOxlintRoute, parseRuleRoute, routeOf, ruleIdsOxlintRunsTypeAware, shippedRuleOf } from './catalog.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
 import { ruleNameOf } from './rule-id-parts.ts'
 
-const routes = [...catalog.rules.values()]
+const routes = catalog.rules.values().toArray()
 const nativeOxlintNameById: ReadonlyMap<string, string> = new Map(
   inventory.rules.flatMap<[string, string]>(({ id, oxlint }) => (oxlint === null ? [] : [[id, oxlint.oxlintName]])),
 )
@@ -96,7 +96,7 @@ describe('the catalog, src/generated/routing.json', () => {
         ['no-loop-func', ['@typescript-eslint/no-loop-func', 'other/no-loop-func']],
       ])
       const shipped = buildShippedRule('quality')
-      const routes = [
+      const givenRoutes = [
         buildEslintRoute('@typescript-eslint/no-invalid-this', { typed: false, oxlintSpellings: [], shipped }),
         buildEslintRoute('other/no-invalid-this', { typed: false, oxlintSpellings: [], shipped }),
         buildEslintRoute('no-shadow', { typed: false, oxlintSpellings: [], shipped }),
@@ -105,7 +105,7 @@ describe('the catalog, src/generated/routing.json', () => {
         buildEslintRoute('other/no-loop-func', { typed: false, oxlintSpellings: [], shipped: null }),
       ]
 
-      expect(twinsSharedByShippedRules(routes, coreRuleExtensions)).toStrictEqual([
+      expect(twinsSharedByShippedRules(givenRoutes, coreRuleExtensions)).toStrictEqual([
         'no-invalid-this: @typescript-eslint/no-invalid-this, other/no-invalid-this',
       ])
     })
@@ -113,7 +113,7 @@ describe('the catalog, src/generated/routing.json', () => {
 
   describe('the walk the negation offenders list reads', () => {
     it('names each negated files and ignores glob of a shipped rule, and none led by a character class, a plain glob or an unshipped rule', () => {
-      const routes = [
+      const givenRoutes = [
         buildEslintRoute('plugin/negates-files', {
           typed: false,
           oxlintSpellings: [],
@@ -132,7 +132,7 @@ describe('the catalog, src/generated/routing.json', () => {
         buildEslintRoute('plugin/unshipped', { typed: false, oxlintSpellings: [], shipped: null }),
       ]
 
-      expect(negatedShippedGlobsIn(routes)).toStrictEqual([
+      expect(negatedShippedGlobsIn(givenRoutes)).toStrictEqual([
         'plugin/negates-files files: !**/*.d.ts',
         'plugin/negates-ignores ignores: !**/legacy/typed/**',
       ])
@@ -383,21 +383,20 @@ describe('the catalog, src/generated/routing.json', () => {
     // `tsconfig` option reads them for a JS file too. import-x/no-extraneous-dependencies reports what
     // n/no-extraneous-import did.
     it("ships n/no-unpublished-import with enhanced-resolve's tsconfig option beside its allowModules, and n/no-extraneous-import not at all", () => {
+      const anyModules: unknown = expect.any(Array)
+
       expect({
         'n/no-unpublished-import': shippedRuleOf(routeOf('n/no-unpublished-import', catalog)).options,
         'n/no-extraneous-import': routeOf('n/no-extraneous-import', catalog).shipped,
       }).toStrictEqual({
-        'n/no-unpublished-import': [{ allowModules: expect.any(Array), resolverConfig: { tsconfig: true } }],
+        'n/no-unpublished-import': [{ allowModules: anyModules, resolverConfig: { tsconfig: true } }],
         'n/no-extraneous-import': null,
       })
     })
 
     // Each engine still has a dropped rule, so a team can turn it on by ID.
     it('keeps each round 2 drop a RuleId, shipped in no ruleset', () => {
-      const shippedOrUnknown = ROUND_2_DROPS.flatMap(({ dropped }) => dropped).filter((id) => {
-        const route = catalog.rules.get(id)
-        return route === undefined || route.shipped !== null
-      })
+      const shippedOrUnknown = ROUND_2_DROPS.flatMap(({ dropped }) => dropped).filter((id) => catalog.rules.get(id)?.shipped !== null)
 
       expect(shippedOrUnknown).toStrictEqual([])
     })
@@ -407,8 +406,8 @@ describe('the catalog, src/generated/routing.json', () => {
       const lostWithoutOxlint = ROUND_2_DROPS.flatMap(({ stillReporting }) => stillReporting).filter((id) => {
         const route = catalog.rules.get(id)
         if (route === undefined || route.engine === 'eslint') return false
-        const takenOver = catalog.ruleIdsWithAnEslintVersion.has(id) && !catalog.eslintFallbackSkips.has(id)
-        return !takenOver && !catalog.eslintStandIns.has(id)
+        const isTakenOver = catalog.ruleIdsWithAnEslintVersion.has(id) && !catalog.eslintFallbackSkips.has(id)
+        return !isTakenOver && !catalog.eslintStandIns.has(id)
       })
 
       expect(lostWithoutOxlint).toStrictEqual([])
@@ -505,5 +504,21 @@ describe('the route lookups', () => {
       expect(shippedRuleOf(OXLINT_ROUTE)).toBe(SHIPPED_IN_QUALITY)
       expect(() => shippedRuleOf(UNSHIPPED_ESLINT_ROUTE)).toThrow('plugin/eslint-rule is not shipped')
     })
+  })
+})
+
+// Rules read from src/generated/inventory.json: oxlint's version needs type information, oxlint's does not, and
+// oxlint has none.
+const RULE_OXLINT_RUNS_TYPE_AWARE = '@typescript-eslint/no-floating-promises'
+const RULE_OXLINT_RUNS_WITHOUT_TYPES = 'no-debugger'
+const RULE_ONLY_ESLINT_HAS = 'sonarjs/cognitive-complexity'
+
+describe('ruleIdsOxlintRunsTypeAware', () => {
+  it('holds a rule the oxlint we install runs only with type information, and neither one it runs without them nor one only ESLint has', () => {
+    expect({
+      typeAware: ruleIdsOxlintRunsTypeAware.has(RULE_OXLINT_RUNS_TYPE_AWARE),
+      withoutTypes: ruleIdsOxlintRunsTypeAware.has(RULE_OXLINT_RUNS_WITHOUT_TYPES),
+      eslintOnly: ruleIdsOxlintRunsTypeAware.has(RULE_ONLY_ESLINT_HAS),
+    }).toStrictEqual({ typeAware: true, withoutTypes: false, eslintOnly: false })
   })
 })

@@ -14,13 +14,13 @@ export type StandInSources = Pick<Catalog, 'eslintFallbackSkips' | 'eslintStandI
  * `stand-in for oxlint rule: what is wrong` for each pair that does not hold, then `stand-in: stands
  * in for …` for each stand-in named for more than one rule.
  */
-export function standInOffenders({ eslintStandIns, rules, ruleIdsWithAnEslintVersion, eslintFallbackSkips, candidateIds }: StandInSources): string[] {
-  const oxlintRuleBreaches: readonly Breach<RuleRoute>[] = [
+export function standInOffenders({ eslintStandIns, rules, ruleIdsWithAnEslintVersion, eslintFallbackSkips, candidateIds }: Readonly<StandInSources>): string[] {
+  const oxlintRuleBreaches: ReadonlyArray<Breach<RuleRoute>> = [
     ['does not ship', ({ shipped }) => shipped === null],
     ['is run by ESLint', ({ engine }) => engine === 'eslint'],
     ['has an ESLint version, which ESLint takes over without oxlint', ({ id }) => ruleIdsWithAnEslintVersion.has(id)],
   ]
-  const standInBreaches: readonly Breach<RuleRoute>[] = [
+  const standInBreaches: ReadonlyArray<Breach<RuleRoute>> = [
     ['is run by oxlint', ({ engine }) => engine === 'oxlint'],
     ['is typed', ({ typed }) => typed],
     ['ships', ({ shipped }) => shipped !== null],
@@ -38,7 +38,7 @@ export function standInOffenders({ eslintStandIns, rules, ruleIdsWithAnEslintVer
   return [...broken, ...shared]
 }
 
-function breachesOfSide(side: string, route: RuleRoute | undefined, breaches: readonly Breach<RuleRoute>[]): string[] {
+function breachesOfSide(side: string, route: Readonly<RuleRoute> | undefined, breaches: ReadonlyArray<Breach<RuleRoute>>): string[] {
   if (route === undefined) return [`${side} is no RuleId`]
   return breachesOf(route, breaches).map((wrong) => `${side} ${wrong}`)
 }

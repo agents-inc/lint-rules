@@ -4,14 +4,18 @@ import { findPackageJSON } from 'node:module'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  buildPluginWithRuleWhoseCreateIsNoFunction,
   buildPluginWithRuleWithoutCreate,
+  buildPluginWithRuleWithoutCreateBesideOneWith,
   buildPluginWithoutRules,
   buildRulesPlugin,
 } from './__tests__/factories/eslint-plugin-factories.ts'
+import ruleDataManifest from '../package.json' with { type: 'json' }
 import { type HeldPlugin, heldPluginsOutOfPlace } from './__tests__/held-plugins.ts'
 import { eslintPlugins } from './eslint-plugins.ts'
 import { eslintPluginPackageNames } from './generate/eslint-plugin-package-names.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
+import { isObject } from './is-object.ts'
 
 const PACKAGE_NAME_BY_PREFIX = {
   '@eslint-community/eslint-comments': '@eslint-community/eslint-plugin-eslint-comments',
@@ -66,15 +70,14 @@ const HELD_PLUGINS: readonly HeldPlugin[] = [
   { heldBy: 'q-lint-dep-drizzle-advisory', prefix: 'drizzle-security', packageName: 'eslint-plugin-drizzle-security' },
 ]
 
-const { dependencies: ruleDataDependencies }: { dependencies: Readonly<Record<string, string>> } = JSON.parse(
-  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
-)
+const ruleDataDependencies: Readonly<Record<string, string>> = ruleDataManifest.dependencies
 
-function installedVersionOf(packageName: string): string {
+/** The version the package's installed manifest gives: undefined where it gives none. */
+function installedVersionOf(packageName: string): unknown {
   const packageJsonPath = findPackageJSON(packageName, import.meta.url)
   if (packageJsonPath === undefined) throw new Error(`${packageName} is not installed`)
-  const { version }: { version: string } = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
-  return version
+  const manifest: unknown = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
+  return isObject(manifest) && 'version' in manifest ? manifest.version : undefined
 }
 
 describe('eslintPlugins, the runtime registry', () => {
@@ -129,11 +132,23 @@ describe('the load-time check on a plugin whose types do not fit ESLint.Plugin',
   ])(
     'refuses to load when the module exports $exported, naming the prefix and not the private package',
     async ({ housePlugin }) => {
-      await expect(registryLoadedWithHouseExporting(housePlugin)).rejects.toThrowError(
+      await expect(registryLoadedWithHouseExporting(housePlugin)).rejects.toThrow(
         new Error('the plugin registered as house does not export an ESLint plugin with rules'),
       )
     },
   )
+
+  it('refuses to load when one rule of the module has no create, beside one that has', async () => {
+    await expect(registryLoadedWithHouseExporting(buildPluginWithRuleWithoutCreateBesideOneWith('broken-rule', 'some-rule'))).rejects.toThrow(
+      new Error('the plugin registered as house does not export an ESLint plugin with rules'),
+    )
+  })
+
+  it('refuses to load when a rule of the module has a create that is no function', async () => {
+    await expect(registryLoadedWithHouseExporting(buildPluginWithRuleWhoseCreateIsNoFunction('some-rule'))).rejects.toThrow(
+      new Error('the plugin registered as house does not export an ESLint plugin with rules'),
+    )
+  })
 
   it.each(checkedBesideHouse)('refuses to load when $packageName exports no rules, naming the prefix $prefix', async ({ prefix, packageName }) => {
     await expect(registryLoadedWith(packageName, { default: buildPluginWithoutRules() })).rejects.toThrow(

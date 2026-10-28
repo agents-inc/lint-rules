@@ -20,7 +20,7 @@ describe('outcomesOf', () => {
   })
 
   it('throws on a diagnostic in a file it was not given, naming the file', () => {
-    expect(() => outcomesOf(buildOxlintJsonReport([buildRuleFinding('stray.ts')]), ['a.ts'])).toThrow(/not given: stray\.ts/)
+    expect(() => outcomesOf(buildOxlintJsonReport([buildRuleFinding('stray.ts')]), ['a.ts'])).toThrow(/not given: stray\.ts/u)
   })
 })
 

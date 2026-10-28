@@ -30,6 +30,6 @@ export function twinsSharedByShippedRules(routes: Iterable<RuleRoute>, coreRuleE
 function twinsOf(ruleId: string, coreRuleExtensions: Catalog['coreRuleExtensions']): string[] {
   return [...coreRuleExtensions].flatMap(([coreRule, extensions]) => {
     if (coreRule === ruleId) return [...extensions]
-    return extensions.includes(ruleId) ? [coreRule] : []
+    return extensions.includes(ruleId) ? coreRule : []
   })
 }

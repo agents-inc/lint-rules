@@ -48,6 +48,11 @@ const USER_EVENT_METHODS: readonly string[] = [
   'upload',
 ]
 
+/** A user-event method as user-event 14 declares it. */
+function userEventMethodDeclaration(method: string): string {
+  return `declare function ${method}(...args: unknown[]): Promise<void>`
+}
+
 /** The package a consumer's config files import: a devDependency of theirs. */
 const OUR_PACKAGE = '@agents-inc/lint-rules'
 
@@ -70,7 +75,7 @@ export declare const screen: Screen
   },
   {
     name: '@testing-library/user-event',
-    declarations: `${USER_EVENT_METHODS.map((method) => `declare function ${method}(...args: unknown[]): Promise<void>`).join('\n')}
+    declarations: `${USER_EVENT_METHODS.map(userEventMethodDeclaration).join('\n')}
 declare const userEventApi: {
 ${USER_EVENT_METHODS.map((method) => `  ${method}: typeof ${method}`).join('\n')}
 }

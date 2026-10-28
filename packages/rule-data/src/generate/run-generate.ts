@@ -28,17 +28,19 @@ export async function generateFiles(): Promise<readonly GeneratedFile[]> {
 
 async function writeGeneratedFiles(): Promise<void> {
   const files = await generateFiles()
+  // eslint-disable-next-line functional/no-expression-statements -- without it `bun run generate` writes no file; what Promise.all answers, one undefined per write, is read by nothing
   await Promise.all(files.map(writeGeneratedFile))
 }
 
-async function writeGeneratedFile({ path, contents }: GeneratedFile): Promise<void> {
+async function writeGeneratedFile({ path, contents }: Readonly<GeneratedFile>): Promise<void> {
   const target = fileURLToPath(new URL(path, PACKAGE_ROOT))
+  // eslint-disable-next-line functional/no-expression-statements -- without it the write after it fails with ENOENT where the folder is missing; what mkdir answers, the first folder it made, is read by nothing
   await mkdir(dirname(target), { recursive: true })
   await writeFile(target, contents)
 }
 
 function isRunAsScript(): boolean {
-  const entryScript = process.argv[1]
+  const [, entryScript] = process.argv
   return entryScript !== undefined && pathToFileURL(entryScript).href === import.meta.url
 }
 

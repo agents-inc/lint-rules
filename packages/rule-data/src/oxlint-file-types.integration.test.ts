@@ -69,6 +69,7 @@ function typesOwingAFinding(rule: string): FileType[] {
 
 describe("the file types data/oxlint-file-types.json says oxlint runs each rule it guards in, against the installed oxlint's reports", () => {
   const projectDir = setUpTempDir('rule-data-oxlint-file-types-')
+  // eslint-disable-next-line functional/no-let -- TS2588 as a const: beforeAll makes it once before the suite and the tests read it; setUpRunsBeforeTheSuite, the helper for that, is in lint-rules' tests, which rule-data cannot import (lint-rules depends on rule-data)
   let outcomesByRule: OutcomesByRule = new Map()
 
   function typesWhere(rule: string, outcome: TriggerOutcome): FileType[] {
@@ -92,7 +93,7 @@ describe("the file types data/oxlint-file-types.json says oxlint runs each rule 
   }
 
   /** One oxlint run over the files of each type: what it made of each file. */
-  function outcomesOfEachType(): { readonly type: FileType; readonly byFile: ReadonlyMap<string, TriggerOutcome> }[] {
+  function outcomesOfEachType(): Array<{ readonly type: FileType; readonly byFile: ReadonlyMap<string, TriggerOutcome> }> {
     return FILE_TYPES.map((type) => ({
       type,
       byFile: outcomesOf(
@@ -163,7 +164,7 @@ describe('the extensions data/oxlint-file-types.json says oxlint lints by defaul
 
   it('lints a file of each of them, and no file of any other extension', () => {
     const report = runOxlintJson(projectDir(), EXTENSIONS_CONFIG, [EXTENSIONS_FOLDER])
-    const extensions = fileTypesOxlintRunsTheRuleIn(UNGUARDED_RULE).extensions
+    const { extensions } = fileTypesOxlintRunsTheRuleIn(UNGUARDED_RULE)
 
     expect({
       filesLinted: report.number_of_files,

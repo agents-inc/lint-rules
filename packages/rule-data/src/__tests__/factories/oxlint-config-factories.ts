@@ -17,7 +17,7 @@ type OxlintConfigFile = {
  */
 export function buildOxlintConfigEnabling(
   ruleKeys: readonly string[],
-  { plugins }: { plugins: readonly string[] },
+  { plugins }: { readonly plugins: readonly string[] },
 ): OxlintConfigFile {
   return {
     plugins,
@@ -47,9 +47,9 @@ export function buildPrintedOutputWithoutRules(): string {
 
 /** An oxlint config running each rule given only in the files its globs match, and nothing by category. */
 export function buildOxlintConfigRunningEachRuleIn(
-  ruleFiles: readonly { readonly files: readonly string[]; readonly rule: string; readonly options: readonly unknown[] | undefined }[],
-  { plugins }: { plugins: readonly string[] },
-): Omit<OxlintConfigFile, 'rules'> & { overrides: { files: readonly string[]; rules: Readonly<Record<string, unknown>> }[] } {
+  ruleFiles: ReadonlyArray<{ readonly files: readonly string[]; readonly rule: string; readonly options: readonly unknown[] | undefined }>,
+  { plugins }: { readonly plugins: readonly string[] },
+): Omit<OxlintConfigFile, 'rules'> & { overrides: Array<{ files: readonly string[]; rules: Readonly<Record<string, unknown>> }> } {
   return {
     plugins,
     categories: ALL_CATEGORIES_OFF,
@@ -61,7 +61,7 @@ export function buildOxlintConfigRunningEachRuleIn(
 export function buildOxlintConfigRunningTheRuleWith(
   rule: string,
   options: readonly unknown[],
-  { plugins }: { plugins: readonly string[] },
+  { plugins }: { readonly plugins: readonly string[] },
 ): Omit<OxlintConfigFile, 'rules'> & { rules: Readonly<Record<string, readonly unknown[]>> } {
   return {
     plugins,

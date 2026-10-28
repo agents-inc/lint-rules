@@ -5,7 +5,7 @@
 /** A file type oxlint is given: an extension it lints by default, or a kind of declaration file. */
 export type FileType = (typeof LINTED_EXTENSIONS)[number] | keyof typeof DECLARATION_FILE_TYPES
 
-/** How a .vue or .svelte file opens the script block holding the code, where not as plain TypeScript: TSX, or a Vue `<script setup>`. */
+/** How a .vue or .svelte file opens the script block holding the code, where not as plain TypeScript: TSX, or a Vue.js `<script setup>`. */
 export type ScriptBlock = 'setup' | 'tsx'
 
 /** Code that draws a rule wherever oxlint runs the rule on it. */

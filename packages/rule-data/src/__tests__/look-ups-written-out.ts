@@ -10,7 +10,10 @@ const LINE_BREAK = '\n'
 
 /** The line of each look-up written out by hand in the source text, from 1. */
 export function linesWritingOutALookUp(source: string): number[] {
-  return [...source.matchAll(A_MISS_THAT_THROWS)].map(({ index }) => lineAt(source, index))
+  return source
+    .matchAll(A_MISS_THAT_THROWS)
+    .map(({ index }) => lineAt(source, index))
+    .toArray()
 }
 
 /** `file:line` for each look-up written out by hand in the folder's TypeScript, tests aside, sorted by file. */

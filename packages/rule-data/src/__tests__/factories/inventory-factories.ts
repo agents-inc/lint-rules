@@ -24,7 +24,7 @@ const OXLINT_CATEGORY: OxlintCategory = 'correctness'
  * reads the versions, so they are fixed here rather than asked for.
  */
 export function buildInstalledEngines(
-  rules: Pick<InstalledEngines, 'eslintRules' | 'oxlintRules'>,
+  rules: Readonly<Pick<InstalledEngines, 'eslintRules' | 'oxlintRules'>>,
 ): InstalledEngines {
   return { versions: FIXED_VERSIONS, ...rules }
 }
@@ -32,7 +32,7 @@ export function buildInstalledEngines(
 /** One line of `oxlint --rules`, under the name oxlint prints. */
 export function buildInstalledOxlintRule(
   oxlintName: string,
-  fields: Omit<InstalledOxlintRule, 'oxlintName' | 'category'> & Partial<Pick<InstalledOxlintRule, 'category'>>,
+  fields: Readonly<Omit<InstalledOxlintRule, 'oxlintName' | 'category'> & Partial<Pick<InstalledOxlintRule, 'category'>>>,
 ): InstalledOxlintRule {
   return { oxlintName, category: OXLINT_CATEGORY, ...fields }
 }
@@ -40,7 +40,7 @@ export function buildInstalledOxlintRule(
 /** One rule of ESLint core or of a registered plugin, under its ESLint ID. */
 export function buildInstalledEslintRule(
   id: string,
-  fields: Omit<InstalledEslintRule, 'id'>,
+  fields: Readonly<Omit<InstalledEslintRule, 'id'>>,
 ): InstalledEslintRule {
   return { id, ...fields }
 }
@@ -59,19 +59,19 @@ export function buildInventory(rules: readonly InventoryRule[]): Inventory {
  */
 export function buildInventoryRule(
   id: string,
-  implementations: Pick<InventoryRule, 'oxlint' | 'eslint'>,
+  implementations: Readonly<Pick<InventoryRule, 'oxlint' | 'eslint'>>,
 ): InventoryRule {
   return { id, ...implementations }
 }
 
 export function buildOxlintImplementation(
   oxlintName: string,
-  fields: Omit<OxlintImplementation, 'oxlintName' | 'category'> & Partial<Pick<OxlintImplementation, 'category'>>,
+  fields: Readonly<Omit<OxlintImplementation, 'oxlintName' | 'category'> & Partial<Pick<OxlintImplementation, 'category'>>>,
 ): OxlintImplementation {
   return { oxlintName, category: OXLINT_CATEGORY, ...fields }
 }
 
-export function buildEslintImplementation(fields: EslintImplementation): EslintImplementation {
+export function buildEslintImplementation(fields: Readonly<EslintImplementation>): EslintImplementation {
   return { ...fields }
 }
 
@@ -81,8 +81,10 @@ export function buildEslintImplementation(fields: EslintImplementation): EslintI
  */
 export function buildCanonicalRule(
   id: string,
-  fields: Pick<CanonicalRule, 'engine' | 'options' | 'ruleset' | 'typed'> &
-    Partial<Pick<CanonicalRule, 'allowancesLeftTo' | 'alwaysOn' | 'coveredBy' | 'coveredInOxlintBy' | 'files' | 'ignores' | 'oxlintName' | 'readsRuntimeGlobals' | 'splitByTypesWith' | 'whenSuppressions'>>,
+  fields: Readonly<
+    Pick<CanonicalRule, 'engine' | 'options' | 'ruleset' | 'typed'> &
+      Partial<Pick<CanonicalRule, 'allowancesLeftTo' | 'alwaysOn' | 'coveredBy' | 'coveredInOxlintBy' | 'files' | 'ignores' | 'oxlintName' | 'readsRuntimeGlobals' | 'splitByTypesWith' | 'whenSuppressions'>>
+  >,
 ): CanonicalRule {
   return { id, assignment: { confidence: 'high', by: 'plugin' }, ...fields }
 }
@@ -90,9 +92,9 @@ export function buildCanonicalRule(
 /** The route of a rule oxlint runs: oxlint never has type information, so `typed` is false. */
 export function buildOxlintRoute(
   id: string,
-  fields: Pick<RuleRoute, 'eslintAliases' | 'oxlintSpellings' | 'shipped'> & {
-    oxlintName: string
-    oxlintPlugin: string
+  fields: Readonly<Pick<RuleRoute, 'eslintAliases' | 'oxlintSpellings' | 'shipped'>> & {
+    readonly oxlintName: string
+    readonly oxlintPlugin: string
   },
 ): OxlintRoute {
   return { id, engine: 'oxlint', typed: false, ...fields }
@@ -104,7 +106,7 @@ export function buildOxlintRoute(
  */
 export function buildEslintRoute(
   id: string,
-  fields: Pick<RuleRoute, 'oxlintSpellings' | 'shipped' | 'typed'>,
+  fields: Readonly<Pick<RuleRoute, 'oxlintSpellings' | 'shipped' | 'typed'>>,
 ): EslintRoute {
   return { id, engine: 'eslint', oxlintName: null, oxlintPlugin: null, eslintAliases: [], ...fields }
 }
@@ -112,9 +114,9 @@ export function buildEslintRoute(
 /** `buildOxlintRoute` as the generator writes it: `shipped` holds a relation only where `data/rules.json` records one. */
 export function buildOxlintRoutingEntry(
   id: string,
-  fields: Pick<RoutingEntry, 'eslintAliases' | 'oxlintSpellings' | 'shipped'> & {
-    oxlintName: string
-    oxlintPlugin: string
+  fields: Readonly<Pick<RoutingEntry, 'eslintAliases' | 'oxlintSpellings' | 'shipped'>> & {
+    readonly oxlintName: string
+    readonly oxlintPlugin: string
   },
 ): RoutingEntry {
   return { id, engine: 'oxlint', typed: false, ...fields }
@@ -123,7 +125,7 @@ export function buildOxlintRoutingEntry(
 /** `buildEslintRoute` as the generator writes it: `shipped` holds a relation only where `data/rules.json` records one. */
 export function buildEslintRoutingEntry(
   id: string,
-  fields: Pick<RoutingEntry, 'oxlintSpellings' | 'shipped' | 'typed'>,
+  fields: Readonly<Pick<RoutingEntry, 'oxlintSpellings' | 'shipped' | 'typed'>>,
 ): RoutingEntry {
   return { id, engine: 'eslint', oxlintName: null, oxlintPlugin: null, eslintAliases: [], ...fields }
 }

@@ -502,10 +502,27 @@ describe('buildRouting', () => {
           eslint: null,
         }),
       ])
-      const routeBoth = () => buildRouting({ inventory, canonicalRules: [] })
+      function routeBoth(): ReturnType<typeof buildRouting> {
+        return buildRouting({ inventory, canonicalRules: [] })
+      }
 
-      expect(routeBoth).toThrow(/unicorn\/no-for-each/)
-      expect(routeBoth).toThrow(/unicorn\/no-array-for-each/)
+      expect(routeBoth).toThrow(/unicorn\/no-for-each/u)
+      expect(routeBoth).toThrow(/unicorn\/no-array-for-each/u)
+    })
+
+    it('names every oxlint name two RuleIds claim in one error, each with the IDs claiming it, in inventory order', () => {
+      const inventory = buildInventory([
+        buildInventoryRule('unicorn/no-array-for-each', { oxlint: OXLINT_NO_ARRAY_FOR_EACH, eslint: null }),
+        buildInventoryRule('unicorn/no-for-each', { oxlint: OXLINT_NO_ARRAY_FOR_EACH, eslint: UNTYPED_ESLINT_VERSION }),
+        buildInventoryRule('unicorn/no-thenable', { oxlint: OXLINT_NO_THENABLE, eslint: UNTYPED_ESLINT_VERSION }),
+        buildInventoryRule('unicorn/x-no-thenable', { oxlint: OXLINT_NO_THENABLE, eslint: null }),
+      ])
+
+      expect(() => buildRouting({ inventory, canonicalRules: [] })).toThrow(
+        new Error(
+          'Rule IDs share one oxlint name: unicorn/no-array-for-each and unicorn/no-for-each (unicorn/no-array-for-each); unicorn/no-thenable and unicorn/x-no-thenable (unicorn/no-thenable)',
+        ),
+      )
     })
 
     it('routes both when each has an oxlint name of its own', () => {
@@ -586,10 +603,12 @@ describe('buildRouting', () => {
           typed: false,
         }),
       ]
-      const route = () => buildRouting({ inventory, canonicalRules })
+      function route(): ReturnType<typeof buildRouting> {
+        return buildRouting({ inventory, canonicalRules })
+      }
 
-      expect(route).toThrow(/react-hooks\/rules-of-hooks/)
-      expect(route).toThrow(/ESLint/)
+      expect(route).toThrow(/react-hooks\/rules-of-hooks/u)
+      expect(route).toThrow(/ESLint/u)
     })
 
     it('throws for a canonical rule routed to oxlint that only ESLint has, naming the rule and oxlint', () => {
@@ -603,10 +622,12 @@ describe('buildRouting', () => {
           typed: false,
         }),
       ]
-      const route = () => buildRouting({ inventory, canonicalRules })
+      function route(): ReturnType<typeof buildRouting> {
+        return buildRouting({ inventory, canonicalRules })
+      }
 
-      expect(route).toThrow(/sonarjs\/cognitive-complexity/)
-      expect(route).toThrow(/oxlint/)
+      expect(route).toThrow(/sonarjs\/cognitive-complexity/u)
+      expect(route).toThrow(/oxlint/u)
     })
 
     it('throws for a rule outside the canonical list that only oxlint has, as a type-aware version', () => {
@@ -616,9 +637,11 @@ describe('buildRouting', () => {
           eslint: null,
         }),
       ])
-      const route = () => buildRouting({ inventory, canonicalRules: [] })
+      function route(): ReturnType<typeof buildRouting> {
+        return buildRouting({ inventory, canonicalRules: [] })
+      }
 
-      expect(route).toThrow(/@typescript-eslint\/no-floating-promises/)
+      expect(route).toThrow(/@typescript-eslint\/no-floating-promises/u)
     })
   })
 
@@ -645,7 +668,7 @@ describe('buildRouting', () => {
         }),
       ]
 
-      expect(() => buildRouting({ inventory, canonicalRules })).toThrow(/sonarjs\/no-such-rule/)
+      expect(() => buildRouting({ inventory, canonicalRules })).toThrow(/sonarjs\/no-such-rule/u)
     })
   })
 

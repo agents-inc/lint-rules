@@ -8,6 +8,9 @@ export type OptionList = { readonly options: readonly unknown[]; readonly keys: 
 /** A schema node's paths, each `.key` or `[]` for an array's items from the options' root, and its enum values, each `path=value`. */
 type SchemaPaths = { readonly keys: ReadonlySet<string>; readonly enumValues: ReadonlySet<string> }
 
+/** The paths and enum values found below a node, in the order found, a path reached twice listed twice. */
+type PathsFound = { readonly keys: readonly string[]; readonly enumValues: readonly string[] }
+
 const REF_PREFIX = '#/'
 const REF_SEPARATOR = '/'
 const ITEMS_PATH = '[]'
@@ -24,7 +27,7 @@ const A_STRING = 'x'
 export function optionListsTheSchemaTakes(schema: unknown): OptionList[] {
   const root = asTheRuleReadsIt(schema)
   const lists = listsOfPositions(root, root)
-  const eachOnce = [...new Map(lists.map((options) => [JSON.stringify(options), options])).values()]
+  const eachOnce = new Map(lists.map((options) => [JSON.stringify(options), options])).values().toArray()
   return eachOnce.map((options) => ({ options, keys: keysSetBy(options) }))
 }
 
@@ -61,8 +64,8 @@ function listsOfItems(positions: readonly unknown[], root: unknown): unknown[][]
 
 function valuesOf(node: unknown, root: unknown): unknown[] {
   const resolved = resolvedIn(root, node)
-  const enumValues = fieldOf(resolved, 'enum')
-  if (Array.isArray(enumValues)) return [...enumValues]
+  const enumValues = enumValuesOf(resolved)
+  if (enumValues !== null) return [...enumValues]
   const alternatives = alternativesOf(resolved)
   if (alternatives !== null) return alternatives.flatMap((alternative) => valuesOf(alternative, root))
   switch (typeOf(resolved)) {
@@ -85,22 +88,37 @@ function valuesOf(node: unknown, root: unknown): unknown[] {
 
 /** Every key path and enum value of the schema, alternatives and array items included. */
 function pathsOf(root: unknown): SchemaPaths {
-  const keys = new Set<string>()
-  const enumValues = new Set<string>()
-  const walk = (node: unknown, path: string): void => {
-    const resolved = resolvedIn(root, node)
-    const values = fieldOf(resolved, 'enum')
-    if (Array.isArray(values)) values.forEach((value) => enumValues.add(`${path}${ENUM_VALUE_SEPARATOR}${JSON.stringify(value)}`))
-    alternativesOf(resolved)?.forEach((alternative) => walk(alternative, path))
-    positionsOf(fieldOf(resolved, 'items')).forEach((item) => walk(item, path === '' ? path : `${path}${ITEMS_PATH}`))
-    propertiesOf(resolved).forEach(([key, property]) => {
-      const keyPath = `${path}${KEY_PATH}${key}`
-      keys.add(keyPath)
-      walk(property, keyPath)
-    })
+  const { keys, enumValues } = pathsBelow(root, root, '')
+  return { keys: new Set(keys), enumValues: new Set(enumValues) }
+}
+
+/** The node's enum values at its path, then what its alternatives, its array items and its properties hold. */
+function pathsBelow(root: unknown, node: unknown, path: string): PathsFound {
+  const resolved = resolvedIn(root, node)
+  const below = [
+    ...(alternativesOf(resolved) ?? []).map((alternative) => pathsBelow(root, alternative, path)),
+    ...positionsOf(fieldOf(resolved, 'items')).map((item) => pathsBelow(root, item, itemsPathOf(path))),
+    ...propertiesOf(resolved).map(([key, property]) => pathsOfProperty(root, property, `${path}${KEY_PATH}${key}`)),
+  ]
+  return {
+    keys: below.flatMap(({ keys }) => keys),
+    enumValues: [...enumValuePathsAt(resolved, path), ...below.flatMap(({ enumValues }) => enumValues)],
   }
-  walk(root, '')
-  return { keys, enumValues }
+}
+
+/** A property's own key path, then the paths below it. */
+function pathsOfProperty(root: unknown, property: unknown, keyPath: string): PathsFound {
+  const { keys, enumValues } = pathsBelow(root, property, keyPath)
+  return { keys: [keyPath, ...keys], enumValues }
+}
+
+function enumValuePathsAt(node: unknown, path: string): string[] {
+  return (enumValuesOf(node) ?? []).map((value) => `${path}${ENUM_VALUE_SEPARATOR}${JSON.stringify(value)}`)
+}
+
+/** The path of an array's items: the options' root stays the root, since its items are the options' positions. */
+function itemsPathOf(path: string): string {
+  return path === '' ? path : `${path}${ITEMS_PATH}`
 }
 
 /** Whether the schema has the path: the options' root it always has. */
@@ -141,6 +159,11 @@ function resolvedIn(root: unknown, node: unknown): unknown {
     }, root)
 }
 
+function enumValuesOf(node: unknown): readonly unknown[] | null {
+  const enumValues = fieldOf(node, 'enum')
+  return Array.isArray(enumValues) ? enumValues : null
+}
+
 function alternativesOf(node: unknown): readonly unknown[] | null {
   const alternatives = fieldOf(node, 'oneOf') ?? fieldOf(node, 'anyOf')
   return Array.isArray(alternatives) ? alternatives : null
@@ -157,7 +180,7 @@ function itemSchemaOf(node: unknown): unknown {
   return Array.isArray(items) ? items[0] : items
 }
 
-function propertiesOf(node: unknown): [string, unknown][] {
+function propertiesOf(node: unknown): Array<[string, unknown]> {
   const properties = fieldOf(node, 'properties')
   return isObject(properties) ? Object.entries(properties) : []
 }

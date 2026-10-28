@@ -9,6 +9,7 @@ import { afterAll, beforeAll } from 'vitest'
  * block, before the block's own hooks, so the folder exists for every other hook.
  */
 export function setUpTempDir(prefix: string): () => string {
+  // eslint-disable-next-line functional/no-let -- TS2588 as a const: beforeAll makes the folder and afterAll removes it, where setUpRunsBeforeTheSuite makes a value once and only reads it; and that helper is in lint-rules' tests, which rule-data cannot import (lint-rules depends on rule-data)
   let tempDir: string | undefined
 
   beforeAll(async () => {

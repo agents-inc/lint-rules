@@ -13,13 +13,15 @@ import { catalog } from './catalog.ts'
 // data/without-an-eslint-stand-in.json records the search.
 
 /** The shipped rules oxlint runs that ESLint has no version of, so nothing checks without oxlint but a stand-in. */
-const OXLINT_ONLY_RULES: readonly string[] = [...catalog.rules.values()]
+const OXLINT_ONLY_RULES: readonly string[] = catalog.rules
+  .values()
   .filter(({ engine, shipped, id }) => engine === 'oxlint' && shipped !== null && !catalog.ruleIdsWithAnEslintVersion.has(id))
   .map(({ id }) => id)
+  .toArray()
 
 describe('the ESLint stand-ins, data/eslint-stand-ins.json, read through the catalog', () => {
   it('stand in for exactly the oxlint rules the owner chose one for, each with the reason that starts with its card or questions.md number', () => {
-    expect(Object.fromEntries(Object.entries(standIns).map(([oxlintRule, { standIn, because }]) => [oxlintRule, { standIn, card: because.split(':')[0] }]))).toStrictEqual(
+    expect(Object.fromEntries(Object.entries(standIns).map(([oxlintRule, { standIn, because }]) => [oxlintRule, { standIn, card: because.split(':', 1)[0] }]))).toStrictEqual(
       ESLINT_STAND_INS,
     )
   })
@@ -45,7 +47,7 @@ describe('the ESLint stand-ins, data/eslint-stand-ins.json, read through the cat
 
 describe('the oxlint rules no ESLint rule stands in for, data/without-an-eslint-stand-in.json', () => {
   it('are exactly the ones the search found none for, each with the reason that starts with its card', () => {
-    expect(Object.fromEntries(Object.entries(withoutAStandIn).map(([oxlintRule, because]) => [oxlintRule, because.split(':')[0]]))).toStrictEqual(WITHOUT_AN_ESLINT_STAND_IN)
+    expect(Object.fromEntries(Object.entries(withoutAStandIn).map(([oxlintRule, because]) => [oxlintRule, because.split(':', 1)[0]]))).toStrictEqual(WITHOUT_AN_ESLINT_STAND_IN)
   })
 
   it('are keyed in ascending order', () => {

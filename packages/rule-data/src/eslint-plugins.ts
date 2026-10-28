@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference -- TS7016 without it: lint-rules' typecheck reaches this file through its imports, not through rule-data's tsconfig, and finds no declaration for eslint-plugin-css-modules, -promise, -react-hook-form and -react-perf
 /// <reference path="./untyped-eslint-plugins.d.ts" />
 import e18e from '@e18e/eslint-plugin'
 import eslintComments from '@eslint-community/eslint-plugin-eslint-comments'
@@ -12,7 +13,7 @@ import checkFile from 'eslint-plugin-check-file'
 import cssModules from 'eslint-plugin-css-modules'
 import functional from 'eslint-plugin-functional'
 import hydrationProof from 'eslint-plugin-hydration-proof'
-import importX from 'eslint-plugin-import-x'
+import { importX } from 'eslint-plugin-import-x'
 import jestDom from 'eslint-plugin-jest-dom'
 import jsxA11y from 'eslint-plugin-jsx-a11y-x'
 import n from 'eslint-plugin-n'

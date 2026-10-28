@@ -14,6 +14,7 @@ const GENERATED_FILE_PATHS = [
 const GENERATE_TIMEOUT_MS = 120_000
 
 describe('the committed generated files', () => {
+  // eslint-disable-next-line functional/no-let -- TS2588 as a const: beforeAll makes it once before the suite and the tests read it; setUpRunsBeforeTheSuite, the helper for that, is in lint-rules' tests, which rule-data cannot import (lint-rules depends on rule-data)
   let generatedContentsByPath: ReadonlyMap<string, string>
 
   beforeAll(async () => {
@@ -22,7 +23,7 @@ describe('the committed generated files', () => {
   }, GENERATE_TIMEOUT_MS)
 
   it('are exactly the files the generator produces', () => {
-    expect([...generatedContentsByPath.keys()].toSorted()).toStrictEqual(GENERATED_FILE_PATHS)
+    expect(generatedContentsByPath.keys().toArray().toSorted()).toStrictEqual(GENERATED_FILE_PATHS)
   })
 
   it.each(GENERATED_FILE_PATHS)(
