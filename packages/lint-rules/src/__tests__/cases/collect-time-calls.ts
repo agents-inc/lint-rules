@@ -100,6 +100,19 @@ export function innerLoopEnd(n: number): number {
 export function reachesTheInnerLoop(n: number): number {
   return innerLoopEnd(n)
 }
+
+export function throwsAfterDescending(n: number): number {
+  descendsToTheEnd(n)
+  throw new Error('after descending')
+}
+
+export function descendsToTheEnd(n: number): number {
+  return callsBothCallersBack(n)
+}
+
+export function callsBothCallersBack(n: number): number {
+  return n > 0 ? throwsAfterDescending(n - 1) + descendsToTheEnd(n - 1) : n
+}
 `
 
 export const THROWING_CALLS_AS_THE_FILE_IS_COLLECTED = `import { lookUp, lookUpThroughAnother } from './helpers.ts'
@@ -204,6 +217,14 @@ export const AN_INNER_LOOP_REACHED_AGAIN_UNDER_ITS_THROWING_CALLER = `import { r
 
 const THROWN = throwsAfterBothReads(1)
 const REACHED = reachesTheInnerLoop(1)
+`
+
+// The innermost calls back into the outermost caller first, then into the one between.
+export const A_FUNCTION_CALLING_BACK_INTO_BOTH_ITS_CALLERS_THE_OUTER_ONE_FIRST = `import { callsBothCallersBack, descendsToTheEnd, throwsAfterDescending } from './helpers.ts'
+
+const THROWN = throwsAfterDescending(1)
+const DESCENDED = descendsToTheEnd(1)
+const CALLED_BACK = callsBothCallersBack(1)
 `
 
 // Each level calls the next twice, so a finder that reads a helper once per call reads the bottom one
@@ -340,6 +361,23 @@ export function startedOf(): string {
 }
 `
 
+export const A_HELPER_LOOKING_UP_AFTER_A_HELPER_IT_IMPORTS = `import { lookUp } from '../helpers.ts'
+import { LOOKED_UP_AT_THE_TOP } from './looked-up-at-the-top.ts'
+
+export const LOOKED_UP_AFTER_ANOTHER = lookUp(LOOKED_UP_AT_THE_TOP)
+`
+
+export const A_HELPER_IMPORTING_A_PRODUCTION_MODULE_THAT_LOOKS_UP = `import { LOOKED_UP_IN_PRODUCTION } from '../looked-up-in-production.ts'
+
+export const FROM_PRODUCTION = LOOKED_UP_IN_PRODUCTION
+`
+
+// A production module of ours, outside __tests__/: the check reads only test helpers' top levels.
+export const A_PRODUCTION_MODULE_LOOKING_UP_AT_ITS_TOP = `import { lookUp } from './helpers.ts'
+
+export const LOOKED_UP_IN_PRODUCTION = lookUp('k')
+`
+
 // Test files loading those helpers.
 export const A_TEST_FILE_LOADING_A_HELPER_THAT_LOOKS_UP_AT_ITS_TOP = `import { LOOKED_UP_AT_THE_TOP } from './__tests__/looked-up-at-the-top.ts'
 
@@ -387,4 +425,27 @@ export const A_TEST_FILE_LOOKING_UP_WITH_WHAT_A_HELPER_LOOKED_UP_AT_ITS_TOP = `i
 import { LOOKED_UP_AT_THE_TOP } from './__tests__/looked-up-at-the-top.ts'
 
 const LOOKED_UP_HERE = lookUp(LOOKED_UP_AT_THE_TOP)
+`
+
+export const A_TEST_FILE_LOADING_A_HELPER_THAT_LOOKS_UP_AFTER_ONE_IT_IMPORTS = `import { LOOKED_UP_AFTER_ANOTHER } from './__tests__/looks-up-after-another.ts'
+
+it('a case', () => LOOKED_UP_AFTER_ANOTHER)
+`
+
+// Imported in the reverse of their names' order, so the order found is the imports', not the paths'.
+export const A_TEST_FILE_LOADING_TWO_HELPERS_THAT_LOOK_UP_SIDE_BY_SIDE = `import { LOOKED_UP_FURTHER_DOWN } from './__tests__/looked-up-further-down.ts'
+import { LOOKED_UP_AT_THE_TOP } from './__tests__/looked-up-at-the-top.ts'
+
+it('a case', () => [LOOKED_UP_FURTHER_DOWN, LOOKED_UP_AT_THE_TOP])
+`
+
+export const A_TEST_FILE_LOADING_A_PRODUCTION_MODULE_AND_A_HELPER_THAT_BOTH_LOOK_UP = `import { LOOKED_UP_IN_PRODUCTION } from './looked-up-in-production.ts'
+import { LOOKED_UP_AT_THE_TOP } from './__tests__/looked-up-at-the-top.ts'
+
+it('a case', () => [LOOKED_UP_IN_PRODUCTION, LOOKED_UP_AT_THE_TOP])
+`
+
+export const A_TEST_FILE_LOADING_A_PRODUCTION_MODULE_THROUGH_A_HELPER = `import { FROM_PRODUCTION } from './__tests__/imports-production.ts'
+
+it('a case', () => FROM_PRODUCTION)
 `

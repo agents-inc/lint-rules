@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { PARALLEL_LOAD_TIMEOUT_MS } from '../src/__tests__/parallel-load.ts'
@@ -37,6 +38,8 @@ const DELETED_TEST_FILE = 'packages/eslint-plugin-house/src/rules/deleted-rule.t
 const HOUSE_GIT_IGNORE = 'packages/eslint-plugin-house/.gitignore'
 const IGNORED_FOLDER = 'coverage/'
 const IGNORED_TEST_FILE = 'packages/eslint-plugin-house/coverage/ignored-rule.test.ts'
+const LOCAL_FILES = '*.local.ts'
+const IGNORED_FILE = 'packages/eslint-plugin-house/src/rules/new-rule.local.ts'
 const LANE_TEST_FILE_FROM_THE_PACKAGE = 'src/rules/this-lanes-rule.test.ts'
 const LANE_TEST_FILE_FROM_THE_CURRENT_FOLDER = `./${LANE_TEST_FILE}`
 const HOUSE_TEST_FILES_GLOB = 'packages/eslint-plugin-house/src/**/*.test.ts'
@@ -113,9 +116,11 @@ describe('the round script, with Stryker replaced by a stand-in that records how
           project.write(UNTRACKED_FILE, moduleOfLines(NEW_RULE_LINES))
         },
       )
+      const houseConfigByItsAbsolutePath = repo.pathOf(HOUSE_CONFIG)
       return {
         noArguments: repo.runTheRound([]),
         configNamedWithoutOnly: repo.runTheRound([HOUSE_CONFIG, CONCURRENCY, TWO_WORKERS]),
+        configNamedByItsAbsolutePath: { config: houseConfigByItsAbsolutePath, ...repo.runTheRound([houseConfigByItsAbsolutePath]) },
         keptToThisLane: repo.runTheRound([ONLY, `${LANE_FILE}:11-40,${LANE_LINT_RULES_FILE}`, DRY_RUN_ONLY]),
         configNamedKeptToARange: repo.runTheRound([HOUSE_CONFIG, ONLY, `${UNTRACKED_FILE}:2-4`, TEST_FILES, LANE_TEST_FILE]),
         keptFromInsideAPackage: repo.runTheRound([ONLY, LANE_FILE, DRY_RUN_ONLY], HOUSE_PACKAGE_FOLDER),
@@ -149,6 +154,18 @@ describe('the round script, with Stryker replaced by a stand-in that records how
       strykerRuns: [
         [...RUN_MUTATION, HOUSE_CONFIG, '--mutate', `${OTHER_LANE_FILE}:5-5,${LANE_FILE}:10-12,${LANE_FILE}:30-30,${UNTRACKED_FILE}`, CONCURRENCY, TWO_WORKERS],
       ],
+    })
+  })
+
+  it('reads a config named first by its absolute path, and hands Stryker that config, as given, every changed line it mutates', () => {
+    const { config, exitCode, stdout, stderr, strykerRuns } = runs().configNamedByItsAbsolutePath
+
+    expect(isAbsolute(config)).toBe(true)
+    expect({ exitCode, stdout, stderr, strykerRuns }).toStrictEqual({
+      exitCode: SUCCEEDED,
+      stdout: '',
+      stderr: '',
+      strykerRuns: [[...RUN_MUTATION, config, '--mutate', `${OTHER_LANE_FILE}:5-5,${LANE_FILE}:10-12,${LANE_FILE}:30-30,${UNTRACKED_FILE}`]],
     })
   })
 
@@ -502,6 +519,35 @@ describe('the round script given --testFiles, with Stryker replaced by a stand-i
       expect(withoutTestFiles.stderr).not.toContain(LOAD_TIME_WARNING)
       expect(stderr).toContain(withoutTestFiles.stderr)
       expect(stderr).toContain(loadTimeWarningNaming([STATIC_SURVIVED_LINE]))
+    })
+  })
+})
+
+describe('the round script, where git ignores one of two untracked files a config mutates, with Stryker replaced by a stand-in that records how each run was started', () => {
+  const runs = setUpRunsBeforeTheSuite(
+    (tempProjects) => {
+      const repo = createRoundRepo(
+        tempProjects,
+        { [HOUSE_CONFIG]: strykerModuleConfig(HOUSE_PATTERNS), [HOUSE_GIT_IGNORE]: gitIgnoreOf([LOCAL_FILES]) },
+        (project) => {
+          project.write(UNTRACKED_FILE, moduleOfLines(NEW_RULE_LINES))
+          project.write(IGNORED_FILE, moduleOfLines(NEW_RULE_LINES))
+        },
+      )
+      return { ignoredFileOnDisk: existsSync(repo.pathOf(IGNORED_FILE)), ...repo.runTheRound([HOUSE_CONFIG]) }
+    },
+    { timeoutMs: PARALLEL_LOAD_TIMEOUT_MS, whatFailed: 'the round script could not be run in a scratch repo before the suite' },
+  )
+
+  it('hands Stryker the untracked file git does not ignore whole, and never the one it ignores', () => {
+    const { ignoredFileOnDisk, exitCode, stdout, stderr, strykerRuns } = runs()
+
+    expect(ignoredFileOnDisk).toBe(true)
+    expect({ exitCode, stdout, stderr, strykerRuns }).toStrictEqual({
+      exitCode: SUCCEEDED,
+      stdout: '',
+      stderr: '',
+      strykerRuns: [[...RUN_MUTATION, HOUSE_CONFIG, '--mutate', UNTRACKED_FILE]],
     })
   })
 })

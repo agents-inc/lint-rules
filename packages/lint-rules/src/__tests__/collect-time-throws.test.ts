@@ -4,25 +4,33 @@ import {
   A_CALL_DOWN_A_CHAIN_OF_SHARED_HELPERS_ENDING_IN_A_THROW,
   A_CALL_DOWN_A_CHAIN_OF_SHARED_HELPERS_NONE_THROWING,
   A_CALL_ROUND_A_LOOP_OF_SHARED_HELPERS,
+  A_FUNCTION_CALLING_BACK_INTO_BOTH_ITS_CALLERS_THE_OUTER_ONE_FIRST,
   A_FUNCTION_CALLING_ITSELF_AND_ITS_THROWING_CALLER,
   A_HELPER_CALLING_A_LIBRARY_AT_ITS_TOP,
   A_HELPER_DECLARING_AND_CALLING_NOTHING_THAT_THROWS,
   A_HELPER_ENDING_AN_IMPORT_CYCLE,
+  A_HELPER_IMPORTING_A_PRODUCTION_MODULE_THAT_LOOKS_UP,
   A_HELPER_IMPORTING_ONE_THAT_LOOKS_UP,
   A_HELPER_IMPORTING_ONE_THAT_ONLY_DECLARES,
   A_HELPER_IMPORTING_THE_ONE_THAT_LOOKS_UP,
+  A_HELPER_LOOKING_UP_AFTER_A_HELPER_IT_IMPORTS,
   A_HELPER_LOOKING_UP_AT_ITS_TOP,
   A_HELPER_LOOKING_UP_FURTHER_DOWN,
   A_HELPER_STARTING_AN_IMPORT_CYCLE,
   A_LOOP_OF_THREE_FROM_ITS_THROWING_MEMBER_THEN_ANOTHER,
+  A_PRODUCTION_MODULE_LOOKING_UP_AT_ITS_TOP,
   A_TEST_FILE_IMPORTING_ONLY_A_TYPE_FROM_A_HELPER_THAT_LOOKS_UP,
   A_TEST_FILE_LOADING_A_HELPER_THAT_CALLS_A_LIBRARY_AT_ITS_TOP,
+  A_TEST_FILE_LOADING_A_HELPER_THAT_LOOKS_UP_AFTER_ONE_IT_IMPORTS,
   A_TEST_FILE_LOADING_A_HELPER_THAT_LOOKS_UP_AT_ITS_TOP,
   A_TEST_FILE_LOADING_A_HELPER_THAT_ONLY_DECLARES,
   A_TEST_FILE_LOADING_A_HELPER_THAT_ONLY_DECLARES_THROUGH_ANOTHER,
   A_TEST_FILE_LOADING_A_HELPER_THROUGH_ANOTHER,
+  A_TEST_FILE_LOADING_A_PRODUCTION_MODULE_AND_A_HELPER_THAT_BOTH_LOOK_UP,
+  A_TEST_FILE_LOADING_A_PRODUCTION_MODULE_THROUGH_A_HELPER,
   A_TEST_FILE_LOADING_HELPERS_THAT_IMPORT_EACH_OTHER,
   A_TEST_FILE_LOADING_ONE_HELPER_DIRECTLY_AND_THROUGH_ANOTHER,
+  A_TEST_FILE_LOADING_TWO_HELPERS_THAT_LOOK_UP_SIDE_BY_SIDE,
   A_TEST_FILE_LOOKING_UP_WITH_WHAT_A_HELPER_LOOKED_UP_AT_ITS_TOP,
   A_THROWING_CALL_OUTSIDE_OUR_FILES,
   A_THROWING_FUNCTION_HANDED_OVER_THROUGH_A_NAMESPACE,
@@ -52,6 +60,7 @@ const HELPER_FOLDER = `${PROJECT}__tests__/`
 const LOOKED_UP_AT_THE_TOP_FILE = `${HELPER_FOLDER}looked-up-at-the-top.ts`
 const LOOKED_UP_FURTHER_DOWN_FILE = `${HELPER_FOLDER}looked-up-further-down.ts`
 const CYCLE_START_FILE = `${HELPER_FOLDER}cycle-start.ts`
+const LOOKS_UP_AFTER_ANOTHER_FILE = `${HELPER_FOLDER}looks-up-after-another.ts`
 
 function isOurs(file: string): boolean {
   return file.startsWith(PROJECT)
@@ -71,6 +80,9 @@ function collectTimeThrowsOfTestFile(text: string, isOursAsked: (file: string) =
     [`${HELPER_FOLDER}imports-the-looked-up-one-again.ts`]: A_HELPER_IMPORTING_THE_ONE_THAT_LOOKS_UP,
     [CYCLE_START_FILE]: A_HELPER_STARTING_AN_IMPORT_CYCLE,
     [`${HELPER_FOLDER}cycle-end.ts`]: A_HELPER_ENDING_AN_IMPORT_CYCLE,
+    [LOOKS_UP_AFTER_ANOTHER_FILE]: A_HELPER_LOOKING_UP_AFTER_A_HELPER_IT_IMPORTS,
+    [`${HELPER_FOLDER}imports-production.ts`]: A_HELPER_IMPORTING_A_PRODUCTION_MODULE_THAT_LOOKS_UP,
+    [`${PROJECT}looked-up-in-production.ts`]: A_PRODUCTION_MODULE_LOOKING_UP_AT_ITS_TOP,
     [TEST_FILE]: text,
   })
   const sourceFile = foundOr(program.getSourceFile(TEST_FILE), `the program holds no ${TEST_FILE}`)
@@ -165,6 +177,15 @@ describe('collectTimeThrowsIn, on functions that call back into a caller, read f
         { calls: 'reachesTheInnerLoop', where: 'top level' },
       ],
     },
+    {
+      shape: 'a function calling back into both its callers, the outer one first',
+      text: A_FUNCTION_CALLING_BACK_INTO_BOTH_ITS_CALLERS_THE_OUTER_ONE_FIRST,
+      found: [
+        { calls: 'throwsAfterDescending', where: 'top level' },
+        { calls: 'descendsToTheEnd', where: 'top level' },
+        { calls: 'callsBothCallersBack', where: 'top level' },
+      ],
+    },
   ])('finds each function that reaches the throw through $shape when called again', ({ text, found }) => {
     expect(collectTimeThrowsOfTestFile(text)).toStrictEqual(found)
   })
@@ -226,6 +247,16 @@ describe('collectTimeThrowsIn, on the helper modules a test file loads', () => {
     expect(collectTimeThrowsOfTestFile(A_TEST_FILE_LOADING_A_HELPER_THAT_CALLS_A_LIBRARY_AT_ITS_TOP)).toStrictEqual([])
   })
 
+  it("finds none at the top level of a production module the test file imports, and a helper's call beside it", () => {
+    expect(collectTimeThrowsOfTestFile(A_TEST_FILE_LOADING_A_PRODUCTION_MODULE_AND_A_HELPER_THAT_BOTH_LOOK_UP)).toStrictEqual([
+      { calls: 'lookUp', where: 'top level', module: LOOKED_UP_AT_THE_TOP_FILE },
+    ])
+  })
+
+  it('finds none at the top level of a production module a helper imports', () => {
+    expect(collectTimeThrowsOfTestFile(A_TEST_FILE_LOADING_A_PRODUCTION_MODULE_THROUGH_A_HELPER)).toStrictEqual([])
+  })
+
   it('finds none in a helper the test file imports only a type from', () => {
     expect(collectTimeThrowsOfTestFile(A_TEST_FILE_IMPORTING_ONLY_A_TYPE_FROM_A_HELPER_THAT_LOOKS_UP)).toStrictEqual([])
   })
@@ -246,6 +277,20 @@ describe('collectTimeThrowsIn, on the helper modules a test file loads', () => {
     expect(collectTimeThrowsOfTestFile(A_TEST_FILE_LOOKING_UP_WITH_WHAT_A_HELPER_LOOKED_UP_AT_ITS_TOP)).toStrictEqual([
       { calls: 'lookUp', where: 'top level', module: LOOKED_UP_AT_THE_TOP_FILE },
       { calls: 'lookUp', where: 'top level' },
+    ])
+  })
+
+  it("finds the call at the top level of a helper's import before the helper's own, as vitest runs them", () => {
+    expect(collectTimeThrowsOfTestFile(A_TEST_FILE_LOADING_A_HELPER_THAT_LOOKS_UP_AFTER_ONE_IT_IMPORTS)).toStrictEqual([
+      { calls: 'lookUp', where: 'top level', module: LOOKED_UP_AT_THE_TOP_FILE },
+      { calls: 'lookUp', where: 'top level', module: LOOKS_UP_AFTER_ANOTHER_FILE },
+    ])
+  })
+
+  it('finds the calls of two helpers the test file imports in the order it imports them', () => {
+    expect(collectTimeThrowsOfTestFile(A_TEST_FILE_LOADING_TWO_HELPERS_THAT_LOOK_UP_SIDE_BY_SIDE)).toStrictEqual([
+      { calls: 'lookUp', where: 'top level', module: LOOKED_UP_FURTHER_DOWN_FILE },
+      { calls: 'lookUp', where: 'top level', module: LOOKED_UP_AT_THE_TOP_FILE },
     ])
   })
 })
