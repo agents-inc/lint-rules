@@ -9,6 +9,7 @@ import { noControlledFieldWithoutChangeHandler } from './rules/no-controlled-fie
 import { noCreateContextInRender } from './rules/no-create-context-in-render.ts'
 import { noCreateObjectUrlInRender } from './rules/no-create-object-url-in-render.ts'
 import { noFocusableContentInAriaHidden } from './rules/no-focusable-content-in-aria-hidden.ts'
+import { noManualEffectErrorTag } from './rules/no-manual-effect-error-tag.ts'
 import { noNestedInteractive } from './rules/no-nested-interactive.ts'
 import { noPlaceholderOnlyField } from './rules/no-placeholder-only-field.ts'
 import { noSectionBanner } from './rules/no-section-banner.ts'
@@ -31,6 +32,7 @@ export const housePlugin = {
     'no-create-context-in-render': noCreateContextInRender,
     'no-create-object-url-in-render': noCreateObjectUrlInRender,
     'no-focusable-content-in-aria-hidden': noFocusableContentInAriaHidden,
+    'no-manual-effect-error-tag': noManualEffectErrorTag,
     'no-nested-interactive': noNestedInteractive,
     'no-placeholder-only-field': noPlaceholderOnlyField,
     'no-section-banner': noSectionBanner,

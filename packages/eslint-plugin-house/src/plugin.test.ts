@@ -13,6 +13,7 @@ const HOUSE_RULE_NAMES = [
   'no-create-context-in-render',
   'no-create-object-url-in-render',
   'no-focusable-content-in-aria-hidden',
+  'no-manual-effect-error-tag',
   'no-nested-interactive',
   'no-placeholder-only-field',
   'no-section-banner',
@@ -26,7 +27,7 @@ const HOUSE_RULE_NAMES = [
 const REPO_OWN_RULE_NAMES = ['no-throwing-default-in-exhaustive-switch']
 
 describe('housePlugin', () => {
-  it('registers the seventeen house rules and nothing else', () => {
+  it('registers the eighteen house rules and nothing else', () => {
     expect(Object.keys(housePlugin.rules).toSorted()).toStrictEqual(HOUSE_RULE_NAMES)
   })
 
