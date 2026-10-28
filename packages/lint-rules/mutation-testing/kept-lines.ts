@@ -54,11 +54,8 @@ export function changedLinesKeptTo(changed: readonly string[], keptTo: readonly 
 }
 
 /** Refuses a kept file that is not on disk, or that no config of the round mutates: either would keep the round to nothing. */
-export function refuseKeptFilesNoConfigMutates(
-  keptTo: readonly MutateEntry[],
-  patternsOfEachConfig: readonly PatternsOfAConfig[],
-  isAFile: (file: string) => boolean,
-): void {
+// eslint-disable-next-line functional/no-return-void -- a refusal: what it finds must stop the round script before Stryker starts, so it throws, and where it finds nothing it has nothing to give back
+export function refuseKeptFilesNoConfigMutates(keptTo: readonly MutateEntry[], patternsOfEachConfig: readonly PatternsOfAConfig[], isAFile: (file: string) => boolean): void {
   const files = keptTo.map(({ file }) => file)
   const notOnDisk = files.filter((file) => !isAFile(file))
   if (notOnDisk.length > 0) {

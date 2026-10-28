@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { extname, matchesGlob } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { isRecord } from '../src/core/is-record.ts'
 
 export const PACKAGE_STRYKER_CONFIGS: readonly string[] = [
   'stryker.config.json',
@@ -17,12 +18,12 @@ const NEGATION = '!'
 const STRYKER_SUCCEEDED = 0
 
 const OPTIONS_LOADERS: Readonly<Record<string, (configPath: string) => Promise<StrykerOptions | undefined>>> = {
-  // Parse boundary: a JSON config file.
-  '.json': async (configPath) => JSON.parse(await readFile(configPath, 'utf8')) as StrykerOptions,
-  '.mjs': async (configPath) => {
-    // Parse boundary: the options a JavaScript config file exports.
-    const configModule = (await import(pathToFileURL(configPath).href)) as { readonly default?: StrykerOptions }
-    return configModule.default
+  async '.json'(configPath) {
+    return strykerOptionsIn(JSON.parse(await readFile(configPath, 'utf8')))
+  },
+  async '.mjs'(configPath) {
+    const configModule: unknown = await import(pathToFileURL(configPath).href)
+    return isRecord(configModule) ? strykerOptionsIn(configModule['default']) : undefined
   },
 }
 
@@ -45,20 +46,26 @@ export async function mutatePatternsOf(configPath: string): Promise<readonly str
 
 export function mutatePatternsIn(options: StrykerOptions | undefined, configPath: string): readonly string[] {
   const mutate = options?.mutate
-  if (!Array.isArray(mutate) || !mutate.every((pattern) => typeof pattern === 'string')) {
-    throw new Error(`${configPath} lists no "mutate" patterns`)
-  }
+  if (!isListOfPatterns(mutate)) throw new Error(`${configPath} lists no "mutate" patterns`)
   return mutate
+}
+
+function isListOfPatterns(mutate: unknown): mutate is readonly string[] {
+  return Array.isArray(mutate) && mutate.every((pattern) => typeof pattern === 'string')
 }
 
 /** One pattern matches it and no `!` pattern does. */
 export function isMutated(file: string, patterns: readonly string[]): boolean {
-  const matches = (pattern: string): boolean => matchesGlob(file, pattern)
-  const included = patterns.filter((pattern) => !pattern.startsWith(NEGATION)).some(matches)
-  const excluded = patterns
+  const isIncluded = patterns.filter((pattern) => !pattern.startsWith(NEGATION)).some((pattern) => matchesGlob(file, pattern))
+  const isExcluded = patterns
     .filter((pattern) => pattern.startsWith(NEGATION))
-    .some((pattern) => matches(pattern.slice(NEGATION.length)))
-  return included && !excluded
+    .some((pattern) => matchesGlob(file, pattern.slice(NEGATION.length)))
+  return isIncluded && !isExcluded
+}
+
+/** Parse boundary: what a config file gives that is no object lists no `mutate` patterns, as an object without them. */
+function strykerOptionsIn(parsed: unknown): StrykerOptions | undefined {
+  return isRecord(parsed) ? parsed : undefined
 }
 
 /** The first failed run's exit code, else success. */

@@ -104,7 +104,7 @@ describe('mutatePatternsOf', () => {
   })
 
   it('refuses, naming it, a config file that is neither .json nor .mjs', async () => {
-    await expect(mutatePatternsOf(configPath(CONFIG_NO_ROUND_READS))).rejects.toThrowError(
+    await expect(mutatePatternsOf(configPath(CONFIG_NO_ROUND_READS))).rejects.toThrow(
       new Error(`${configPath(CONFIG_NO_ROUND_READS)} is no config file a round reads: give a .json or .mjs Stryker config`),
     )
   })
@@ -121,7 +121,7 @@ describe('mutatePatternsIn', () => {
     { refused: 'a single pattern rather than a list', options: strykerOptionsWithMutate(PATTERN) },
     { refused: 'a list holding something other than a pattern', options: strykerOptionsWithMutate([PATTERN, NOT_A_PATTERN]) },
   ])('refuses, naming the config, $refused', ({ options }) => {
-    expect(() => mutatePatternsIn(options, LINT_RULES_CONFIG)).toThrowError(new Error(`${LINT_RULES_CONFIG} lists no "mutate" patterns`))
+    expect(() => mutatePatternsIn(options, LINT_RULES_CONFIG)).toThrow(new Error(`${LINT_RULES_CONFIG} lists no "mutate" patterns`))
   })
 })
 

@@ -1,4 +1,5 @@
 // A Survived mutant that ran no test is no result: a test file failed to load, and Stryker doesn't say so.
+import { isRecord } from '../src/core/is-record.ts'
 
 export type ReportedMutant = {
   readonly mutatorName: string
@@ -15,9 +16,11 @@ export type MutationReport = {
 
 const SURVIVED = 'Survived'
 
+/** Parse boundary: the JSON report Stryker wrote, read as far as the round reads it. */
 export function parseMutationReport(json: string): MutationReport {
-  // Parse boundary: the JSON report Stryker wrote.
-  return JSON.parse(json) as MutationReport
+  const parsed: unknown = JSON.parse(json)
+  if (!isMutationReport(parsed)) throw new Error("Stryker's report is not one the round reads: it lists no file's mutants, each with its mutator, status and place")
+  return parsed
 }
 
 export function mutantsSurvivedWithoutATest(report: MutationReport): string[] {
@@ -41,4 +44,35 @@ function testsRunFor(file: string, mutant: ReportedMutant): number {
 
 export function describeMutant(file: string, { location: { start }, mutatorName }: ReportedMutant): string {
   return `${file}:${start.line}:${start.column} ${mutatorName}`
+}
+
+function isMutationReport(value: unknown): value is MutationReport {
+  return isRecord(value) && isRecord(value['files']) && Object.values(value['files']).every((file) => isFileOfMutants(file))
+}
+
+function isFileOfMutants(value: unknown): boolean {
+  return isRecord(value) && Array.isArray(value['mutants']) && value['mutants'].every((mutant) => isReportedMutant(mutant))
+}
+
+function isReportedMutant(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value['mutatorName'] === 'string' &&
+    typeof value['status'] === 'string' &&
+    isAbsentOrA(value['testsCompleted'], 'number') &&
+    isAbsentOrA(value['static'], 'boolean') &&
+    isLocationInAFile(value['location'])
+  )
+}
+
+function isLocationInAFile(value: unknown): boolean {
+  return isRecord(value) && isPlaceInAFile(value['start'])
+}
+
+function isPlaceInAFile(value: unknown): boolean {
+  return isRecord(value) && typeof value['line'] === 'number' && typeof value['column'] === 'number'
+}
+
+function isAbsentOrA(value: unknown, type: 'number' | 'boolean'): boolean {
+  return value === undefined || typeof value === type
 }
