@@ -28,6 +28,7 @@ export type LibsRulesets = {
   readonly "routing"?: readonly ("tanstack-router")[]
   readonly "validation"?: readonly ("zod")[]
   readonly "auth"?: readonly ("jsonwebtoken")[]
+  readonly "effect"?: readonly ("effect")[]
 }
 
 export type RuntimeRulesetName =

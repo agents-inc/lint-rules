@@ -6570,6 +6570,21 @@
     }
   },
   {
+    "id": "house/no-manual-effect-error-tag",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": {
+      "ruleset": "effect",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
+  },
+  {
     "id": "house/no-nested-interactive",
     "engine": "eslint",
     "oxlintName": null,
@@ -18563,7 +18578,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "tailwind",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "shadcn/no-restyle",

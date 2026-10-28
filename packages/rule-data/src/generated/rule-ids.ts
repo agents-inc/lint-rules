@@ -400,6 +400,7 @@ export type RuleId =
   | "house/no-create-context-in-render"
   | "house/no-create-object-url-in-render"
   | "house/no-focusable-content-in-aria-hidden"
+  | "house/no-manual-effect-error-tag"
   | "house/no-nested-interactive"
   | "house/no-placeholder-only-field"
   | "house/no-section-banner"

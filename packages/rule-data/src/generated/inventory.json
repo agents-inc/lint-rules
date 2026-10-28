@@ -4649,6 +4649,14 @@
       }
     },
     {
+      "id": "house/no-manual-effect-error-tag",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
       "id": "house/no-nested-interactive",
       "oxlint": null,
       "eslint": {
