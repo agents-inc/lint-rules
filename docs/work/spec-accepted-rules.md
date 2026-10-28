@@ -587,7 +587,7 @@ and `drizzle` were created empty on 2026-10-17 and `init` lists them by default.
 | comments (quality) | yes, but these run only where `allowSuppressions` is true, whatever is listed | `@eslint-community/eslint-comments/disable-enable-pair`, `no-duplicate-disable`, `require-description`; `rules` can no longer name them (a type error), as for the other rules `allowSuppressions` sets |
 | zod (libs.validation) | yes | the nine `zod/*` |
 | tanstack-query (libs.data), tanstack-router (libs.routing) | yes | the six `@tanstack/query/*`, the two `@tanstack/router/*` |
-| playwright (libs.testing) | yes | the eight `playwright/*` (four more per card P1) |
+| playwright (libs.testing) | yes | six of the eight `playwright/*`; `no-unnecessary-assertions` and `prefer-web-first-assertions` wait on cards q-lint-rc-unnecessary-assertions-measured and q-lint-rc-web-first-assertions-measured; the four that repeat a `vitest/*` rule are off by default (card P1), a team turns them on for its Playwright folder in `fileOverrides` |
 | jest-dom (libs.testing) | yes, or opt-in per card J1 | the seven `jest-dom/*` |
 | react-ssr (libs.ui) | yes, or opt-in per card H1 | the six `hydration-proof/*` |
 | node (runtimes) | yes | `e18e/prefer-throw-if-no-entry` |

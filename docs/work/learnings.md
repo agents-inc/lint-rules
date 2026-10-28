@@ -320,9 +320,11 @@ Nothing catches a recurrence of a fixed anti-pattern below unless its bullet nam
   comparison. TypeScript asserts its host never hands it a redirect (a package installed twice at one version), so the
   second program's host hands it the file the redirect stands for; without that, linting such a file threw.
 - Cost: where no part is never at the default (a case runs into it, or some cases are missing), TypeScript narrows the
-  switch again in the second program. The committed 6,000-case switch a case runs into lints in 2.5 s against 0.7 s
-  before (both rules in one process, load 8), and its spec in 4.4 to 5.3 s against 3.0 s, near vitest's 5 s; every other
-  committed case under 10 ms; this repo's own lint, 3.6 ms for the rule (round 6: 26.2 ms).
+  switch again in the second program (owner question). On this repo the rule took 3.6 ms in house round 7
+  (`npx eslint . -f json --stats` from the root, its `stats` times summed over the files).
+  Correction (house round 7 review): cut, as no command here repeats them: the 6,000-case switch's 2.5 s against 0.7 s,
+  its spec's 4.4 to 5.3 s against 3.0 s, and every other committed case under 10 ms (a script outside the repo and
+  loaded runs); and "(round 6: 26.2 ms)", another run's figure set beside this one.
   Correction (house round 7): this entry said the value asked about was `referenceTypeScriptNarrows`'s, and that a
   switch on a value it answered null for was read by ESLint's code path (cut at never calls; a case taken to run on
   where ESLint ends a path TypeScript keeps). Both copies are deleted, as the owner ruled: they reported in code

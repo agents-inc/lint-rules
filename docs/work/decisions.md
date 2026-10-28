@@ -473,6 +473,11 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   CLAUDE.md, Tests, and `test-collection.test.ts`, the calls already there pinned for the owner (plan.md Open).
   s-lint-rules-hand-split-guard: `rule-id-splits.test.ts`. s-lint-rules-parallel-load-timeouts: the allowance added to
   each test file running an engine without one.
+- Owner 2026-10-23, "accept" (board suggestion s-lint-rules-narrow-mutation-runs, "A committed way to mutation-test one
+  lane's lines with only the specs that reach them"): built as `--only <file>,<file>:<startLine>-<endLine>` on
+  `scripts/mutate-changed-lines.mts`, beside Stryker's own `--testFiles`, which the lane gives (mutation-testing.md).
+- Owner 2026-10-23, "accept" (board suggestion s-lint-rules-own-lint-gate, "Finish the repo's own lint clean-up so its
+  own ESLint and oxlint can run as a gate"): the clean-up's spec is `docs/work/spec-own-lint.md`.
 - Owner 2026-10-24, "The script re-checks Stryker's --testFiles" (board card q-lint-only-misspelt-spec), asked what the
   mutation round script does with a `--testFiles` entry matching no file, which Stryker drops, running every test when
   none match: before Stryker starts, `scripts/mutate-changed-lines.mts` refuses a list holding no entry and names each
@@ -485,6 +490,39 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   `test-collection.test.ts` also reads the top level of the modules a test file loads: it follows a test file's
   imports, and its helpers', into modules under `__tests__/` (not through `import type`) and reports each call at their
   top level reaching a throw of ours (`__tests__/collect-time-throws.ts`; learnings, Lint guards).
+- Owner 2026-10-24, "The lane names them (as built)" (board card q-lint-only-who-picks-specs), asked whether, in a
+  mutation round narrowed to a lane's lines, the lane names the specs to run or the script works them out: the lane
+  names them with Stryker's `--testFiles` (`scripts/mutate-changed-lines.mts`; mutation-testing.md). Nothing changed.
+- Owner 2026-10-24, "Keep --only" (board card q-lint-only-option-name), asked whether the mutation round script's
+  option narrowing a round to given files or line ranges keeps the name lane LB gave it: it stays `--only`
+  (`scripts/mutate-changed-lines.mts`; mutation-testing.md). Nothing changed.
+- Owner 2026-10-24, "Leave consumers as they are" (board card q-lint-ship-never-default-check), asked whether
+  consumers' code is also reported for a switch covering every case of a union that ends in `default: throw`: it is
+  not. `house-repo/no-throwing-default-in-exhaustive-switch` stays in `repoOwnPlugin` alone, and the shipped
+  `switch-exhaustiveness-check` keeps `considerDefaultExhaustiveForUnions: true` (`rule-data/data/rules.json`).
+  Nothing changed.
+- Owner 2026-10-24, "Move each into its test or a hook" (board card q-lint-collect-time-left), asked whether the calls
+  that can throw while vitest collects a test file, found when the check was written, move or stay pinned as a known
+  gap: each moved into its test or a hook, every test's title and verdict unchanged, so no known-gap list is left and
+  `test-collection.test.ts` asserts none is found (`__tests__/collect-time-throws.ts`).
+- Owner 2026-10-24, "Allow `let` for this pattern" (board card q-lint-no-let-it-fails), asked whether the `let` that
+  carries an `it.fails` suite's run from its `beforeAll` to the test, which this repo's own `functional/no-let`
+  refuses, is allowed there or replaced by another pattern: allowed. Not built yet: no disable or override for it
+  exists; `docs/work/spec-own-lint.md` requirement 4 gives each such `let` a disable carrying the proof.
+- Owner 2026-10-24, "Report them (as built)" (board card q-lint-never-default-forms), asked whether
+  `house-repo/no-throwing-default-in-exhaustive-switch` keeps reporting the two other defaults that keep a missing
+  case a type error, ``throw new Error(`${x satisfies never}`)`` and `throw unreachable(x)` with
+  `unreachable(value: never)`: it does. It reports any default ending in a throw that binds nothing to never
+  (`throwsInPlaceOfANeverDefault`, `rules/no-throwing-default-in-exhaustive-switch.ts`). Nothing changed.
+- Owner 2026-10-24, "Yes, the same override covers both" (board card q-lint-own-rule-file-overrides), asked whether
+  the override turning `functional/immutable-data` off in the house rule files also turns off
+  `functional/no-expression-statements` and `functional/no-return-void`, which ESLint's visitors and report helpers
+  draw: it does, in the one `fileOverrides` entry over the house plugin's rule files (not their tests), `src/shared/`
+  and `house-rule-tester.ts` (`agents-inc.lint.mts`).
+- Owner 2026-10-24, "Override it off for `**/*.test-d.ts` in this repo" (board card q-lint-own-type-test-files), asked
+  how to handle `unicorn/no-top-level-side-effects` reporting every call in the type test
+  `define-lint-rules.test-d.ts`: a `fileOverrides` entry turns it off for `**/*.test-d.ts` (`agents-inc.lint.mts`);
+  nothing shipped changes.
 - Owner 2026-10-24 (board https://claude.ai/artifact/4GpMMzy64wzXqSPZaghWTJ, the rule-candidate cards; a card is `rc-`
   and the rule ID with `@` dropped and `/` turned into `-`). Each verdict is in `rule-candidates.json`, the card named;
   nothing ships yet:
@@ -505,12 +543,13 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
     `playwright/require-to-pass-timeout`, `playwright/valid-test-tags`; security `drizzle-security/no-unsafe-query`;
     drizzle `drizzle-security/no-unscoped-mutation`; node `e18e/prefer-throw-if-no-entry`; tailwind (opt-in)
     `shadcn/no-raw-colors`.
-  - Accepted, `recommended`, each built only once its card is answered: `playwright/no-focused-test`,
-    `playwright/no-identical-title`, `playwright/prefer-hooks-on-top`, `playwright/require-to-throw-message`
-    (q-lint-playwright-vitest-twins: each reports the same line as a shipped `vitest/*` rule in Vitest and Jest test
-    files); jest-dom `jest-dom/prefer-checked`, `jest-dom/prefer-empty`, `jest-dom/prefer-in-document`,
-    `jest-dom/prefer-pressed`, `jest-dom/prefer-required`, `jest-dom/prefer-to-have-attribute`,
-    `jest-dom/prefer-to-have-class` (q-lint-jest-dom-without-jest-dom); react-ssr
+  - Accepted, `recommended`, off by default: `playwright/no-focused-test`, `playwright/no-identical-title`,
+    `playwright/prefer-hooks-on-top`, `playwright/require-to-throw-message`. Each reports the same line as a shipped
+    `vitest/*` rule in Vitest and Jest test files; owner, "Don't ship them by default" (q-lint-playwright-vitest-twins):
+    none ships, and a team turns them on for its Playwright folder with `fileOverrides`.
+  - Accepted, `recommended`, each built only once its card is answered: jest-dom `jest-dom/prefer-checked`,
+    `jest-dom/prefer-empty`, `jest-dom/prefer-in-document`, `jest-dom/prefer-pressed`, `jest-dom/prefer-required`,
+    `jest-dom/prefer-to-have-attribute`, `jest-dom/prefer-to-have-class` (q-lint-jest-dom-without-jest-dom); react-ssr
     `hydration-proof/no-browser-global-in-render`, `hydration-proof/no-locale-without-explicit-locale`,
     `hydration-proof/no-storage-in-initial-render`, `hydration-proof/no-timezone-without-explicit-timezone`,
     `hydration-proof/no-window-render-branch`, `hydration-proof/require-stable-server-snapshot`
@@ -555,6 +594,16 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   (`eslint-fallback.integration.test.ts`) and each merge differential's `SHAPE_NAMES` and `COVERAGE` are literal lists,
   each held to what the code computes by a test of its own, as `package-manifests.test.ts`'s `INLINED_NAMES` already
   was. `test-collection.test.ts` now asserts no call is left; CLAUDE.md, Tests, states the standard.
+- Owner 2026-10-24, "Suggest a const first" (board card q-lint-never-default-unnarrowable), asked what
+  `house-repo/no-throwing-default-in-exhaustive-switch` does at a `default: throw` in a switch on a value TypeScript
+  cannot narrow (a call, `x!`, a cast, `??`, `typeof`), where no never default compiles as written: it keeps
+  reporting, and its message says to hold the value in a const, switch on the const and bind the const, where that
+  rewrite compiles (`throwingDefaultOnAValueToHoldInAConst`, `rules/no-throwing-default-in-exhaustive-switch.ts`;
+  learnings, Lint guards).
+- Owner 2026-10-24, "Suggest the binding, then a throw" (board card q-lint-never-default-no-return), asked what the
+  same rule suggests at a file's top level, in a class static block and in a setter, where `return unhandled` does not
+  compile: `const unhandled: never = x` before the throw, and it accepts that form (`isWhereNothingReturns`,
+  `rules/no-throwing-default-in-exhaustive-switch.ts`).
 - Owner 2026-10-24, "Keep it to test helper modules" (board card q-lint-collect-time-production), asked whether
   `test-collection.test.ts` also reads the top level of production modules a test file loads: it does not. Nothing
   changed.
@@ -563,3 +612,18 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   to keep patching it, change the approach, or accept the dead-code-only differences. Built in house round 7: the rule
   always asks TypeScript which value a never default can bind, each part of the switch's value, then, where none is
   never there, a const holding it (`shared/program-with-a-file-rewritten.ts`); its own copy of the narrowing is gone.
+- Owner 2026-10-24, "Allow it, if nothing accepted before is refused" (board card q-lint-own-published-types), asked
+  whether, in the own-lint clean-up, a fix may change the published type declarations of `mergeEslintConfig`,
+  `mergeOxlintConfig` and `AtLeastOneFileGlob` (`functional/prefer-immutable-types`, `@typescript-eslint/array-type`)
+  if they still accept everything they accepted before: it may, the type-error tests showing nothing accepted before is
+  refused. Not built yet: `docs/work/spec-own-lint.md` (Q1) leaves those sites to its lane Z.
+- Owner 2026-10-24, "List them for review" (board card q-lint-own-calls), asked whether the calls the lint session made
+  itself (the entries here marked "mine" or "orchestrator") stand as made or go to the owner one card each: those no
+  owner answer covers are cards q-lint-own-1 to q-lint-own-10 on the board.
+- Owner 2026-10-27, "Only in test files" (board card q-lint-rc-pw-puppeteer-page), asked where
+  `playwright/no-element-handle` and `playwright/no-wait-for-selector` run, since they know Playwright's page by its
+  name, not its import, and so also report Puppeteer's `page.$` and `page.waitForSelector`, in source files as in tests
+  (measured, eslint-plugin-playwright 2.12.1): both ship in playwright with the test-file globs as their `files`, their
+  `rule-candidates.json` entries removed. The consequence the owner accepted: Puppeteer code outside the test files is
+  never reported, and neither is a Playwright helper, such as a page object, outside them. The Puppeteer source file in
+  `accepted-pw.ts` pins it.
