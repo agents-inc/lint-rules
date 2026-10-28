@@ -2,6 +2,7 @@ import {
   caseBlockFallingIntoAThrowingDefault,
   caseFallingIntoAThrowingDefault,
   caseFallingIntoAThrowingDefaultAfterThousandsOfCases,
+  caseFallingIntoAThrowingDefaultDeclaringTheNameItsSwitchTests,
   caseFallingIntoAThrowingDefaultFromACatch,
   caseFallingIntoAThrowingDefaultInACatchESLintReadsAsNeverRun,
   caseFallingIntoAThrowingDefaultInASetter,
@@ -53,6 +54,7 @@ import {
   caseFallingIntoAThrowingDefaultPastAWhileTestingAParenthesisedTrue,
   caseFallingIntoAThrowingDefaultPastAnIfWithoutAnElse,
   caseWithStatementsFallingIntoAThrowingDefault,
+  neverBindingAfterAnotherDeclaratorThenThrow,
   neverBindingThenThrow,
   neverBindingThenThrowAtTheTopLevelOfAFile,
   neverBindingThenThrowInAClassStaticBlock,
@@ -87,6 +89,8 @@ import {
   noDefaultAfterEveryCase,
   returningDefaultAfterEveryCase,
   throwingDefaultAfterACaseBlockThatReturns,
+  throwingDefaultAfterACaseDeclaringTheNameItsSwitchTests,
+  throwingDefaultAfterACaseDeclaringTheObjectOfThePropertyTheSwitchTests,
   throwingDefaultAfterACaseOfAWholeType,
   throwingDefaultAfterACaseThatBreaksAfterALoopTestingOne,
   throwingDefaultAfterACaseThatCallsAFunctionReturningNever,
@@ -134,14 +138,28 @@ import {
   throwingDefaultAfterSomeCasesOfABrandedUnion,
   throwingDefaultAfterTrueAndFalse,
   throwingDefaultAtTheTopLevelOfAFile,
+  throwingDefaultBeforeACaseDeclaringTheNameItsSwitchTests,
   throwingDefaultBeforeEveryCase,
+  throwingDefaultBlockDeclaringTheNameItsSwitchTests,
+  throwingDefaultDeclaringAClassOfTheNameItsSwitchTests,
+  throwingDefaultDeclaringAFunctionOfTheNameItsSwitchTests,
+  throwingDefaultDeclaringAnotherName,
+  throwingDefaultDeclaringTheNameItsSwitchTests,
+  throwingDefaultDeclaringTheNameItsSwitchTestsInASwitchAfterAReturn,
+  throwingDefaultDeclaringTheNameItsSwitchTestsWithALet,
+  throwingDefaultDeclaringTheObjectOfThePropertyItsSwitchTests,
   throwingDefaultInABlock,
   throwingDefaultInAClassStaticBlock,
   throwingDefaultInAFunctionInAClassStaticBlock,
   throwingDefaultInASetter,
+  throwingDefaultOfABlockThenAThrow,
   throwingDefaultOnACall,
   throwingDefaultOnACallAtTheTopLevelOfAFile,
+  throwingDefaultOnACallDeclaringANameTheCallReads,
   throwingDefaultOnACallInASwitchAfterAReturn,
+  throwingDefaultOnACallOfParametersNamedSwitchedOn,
+  throwingDefaultOnACallTakingAFunctionWithAParameter,
+  throwingDefaultOnACallTakingAnArrowWithAParameter,
   throwingDefaultOnACast,
   throwingDefaultOnACommaExpression,
   throwingDefaultOnACommaExpressionInASwitchAfterAReturn,
@@ -174,12 +192,18 @@ import {
   throwingDefaultOnANonNullAssertionOnAValueThatCannotBeNullInASwitchAfterAReturn,
   throwingDefaultOnANullishAssignment,
   throwingDefaultOnANullishCoalescing,
+  throwingDefaultOnAPropertyOfACallTakingAnArrow,
+  throwingDefaultOnAPropertyOfACallWithATypeArgument,
+  throwingDefaultOnAPropertyOfACallWithAnObjectLiteral,
   throwingDefaultOnAPropertyOfACommaExpression,
   throwingDefaultOnAPropertyOfACommaExpressionInASwitchAfterAReturn,
   throwingDefaultOnAPropertyOfAUnionItDoesNotTellApart,
   throwingDefaultOnAPropertyOfAUnionItPartlyTellsApart,
   throwingDefaultOnAPropertyOfAValueNarrowedBeforeTheSwitch,
+  throwingDefaultOnAPropertyOfAnInstanceOfAClassExpression,
+  throwingDefaultOnAPropertyOfAnInstanceOfAClassExpressionWithAParameterProperty,
   throwingDefaultOnAPropertyOfAnObject,
+  throwingDefaultOnAPropertyOfAnObjectLiteralWithAKey,
   throwingDefaultOnAPropertyOfSuper,
   throwingDefaultOnAPropertyOfSuperInASwitchAfterAReturn,
   throwingDefaultOnAPropertyOfThis,
@@ -228,6 +252,11 @@ import {
   throwingDefaultOpeningWithAnEmptyStatement,
   throwingDefaultOpeningWithAnEnumWhoseInitializerAssignsTheValue,
 } from '../__tests__/cases/no-throwing-default-in-exhaustive-switch.ts'
+import { throwingDefaultOnAGlobalConst } from '../__tests__/cases/no-throwing-default-in-exhaustive-switch-declaring-a-global.ts'
+import {
+  throwingDefaultOnACallInAFileWithATypeErrorElsewhere,
+  throwingDefaultOnAnOptionalChainWhereAConstHoldingItTradesOneTypeErrorForAnother,
+} from '../__tests__/cases/no-throwing-default-in-exhaustive-switch-with-type-errors.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
 import { houseRuleTester, houseTypedRuleTester } from '../__tests__/house-rule-tester.ts'
 import { repoOwnPlugin } from '../repo-own-plugin.ts'
@@ -577,6 +606,16 @@ houseTypedRuleTester.run('no-throwing-default-in-exhaustive-switch', rule, {
     buildValidCase("stays silent on a default at a file's top level that binds the value to never before it throws", neverBindingThenThrowAtTheTopLevelOfAFile),
     buildValidCase('stays silent on a default in a class static block that binds the value to never before it throws', neverBindingThenThrowInAClassStaticBlock),
     buildValidCase('stays silent on a default in a setter that binds the value to never before it throws', neverBindingThenThrowInASetter),
+    buildValidCase('stays silent on a default that binds the value to never in the second of two declarators before it throws', neverBindingAfterAnotherDeclaratorThenThrow),
+    buildValidCase(
+      'stays silent on a throwing default declaring the name its switch tests, in a switch after a return, where TypeScript takes the value at its declared type',
+      throwingDefaultDeclaringTheNameItsSwitchTestsInASwitchAfterAReturn,
+    ),
+    buildValidCase('stays silent on a throwing default declaring the name its switch tests, which a case falls into', caseFallingIntoAThrowingDefaultDeclaringTheNameItsSwitchTests),
+    buildValidCase(
+      'stays silent on a throwing default where holding the value in a const would trade a type error the file has for another',
+      throwingDefaultOnAnOptionalChainWhereAConstHoldingItTradesOneTypeErrorForAnother,
+    ),
     buildValidCase('stays silent on a throwing default a case falls into, in a setter', caseFallingIntoAThrowingDefaultInASetter),
   ],
   invalid: [
@@ -995,6 +1034,109 @@ houseTypedRuleTester.run('no-throwing-default-in-exhaustive-switch', rule, {
       "reports a throwing default on a call at a file's top level, naming the call to hold in a const and bind before the throw",
       throwingDefaultOnACallAtTheTopLevelOfAFile,
       { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConstWhereNothingReturns', line: 14, data: { value: 'readEngine()' } }] },
+    ),
+    buildInvalidCase('reports a default of a block and then a throw, naming the value to bind', throwingDefaultOfABlockThenAThrow, {
+      errors: [{ messageId: 'throwingDefault', line: 11, data: { discriminant: 'engine' } }],
+    }),
+    buildInvalidCase(
+      'reports a throwing default on a call reading parameters named as a const holding the value might be, naming the call to hold in a const',
+      throwingDefaultOnACallOfParametersNamedSwitchedOn,
+      { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 11, data: { value: 'engineAt(switchedOn0 + switchedOn1)' } }] },
+    ),
+    buildInvalidCase('reports a throwing default on a property of a call taking an arrow, naming the value to hold in a const', throwingDefaultOnAPropertyOfACallTakingAnArrow, {
+      errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 11, data: { value: 'pick(() => engine).engine' } }],
+    }),
+    buildInvalidCase(
+      'reports a throwing default on a property of a call taking an object literal, naming the value to hold in a const',
+      throwingDefaultOnAPropertyOfACallWithAnObjectLiteral,
+      { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 11, data: { value: 'wrap({ engine }).engine' } }] },
+    ),
+    buildInvalidCase(
+      'reports a throwing default on a property of a call given a type argument, naming the value to hold in a const',
+      throwingDefaultOnAPropertyOfACallWithATypeArgument,
+      { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 11, data: { value: 'wrap<{ engine: Engine }>(config).engine' } }] },
+    ),
+    buildInvalidCase(
+      'reports a throwing default on a call taking an arrow with a parameter, naming the call to hold in a const',
+      throwingDefaultOnACallTakingAnArrowWithAParameter,
+      { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 11, data: { value: 'apply((chosen: Engine) => chosen, engine)' } }] },
+    ),
+    buildInvalidCase(
+      'reports a throwing default on a call taking a function expression with a parameter, naming the call to hold in a const',
+      throwingDefaultOnACallTakingAFunctionWithAParameter,
+      { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 11, data: { value: 'apply(function (chosen: Engine) { return chosen }, engine)' } }] },
+    ),
+    buildInvalidCase(
+      'reports a throwing default on a property of an object literal with a key, naming the value to hold in a const',
+      throwingDefaultOnAPropertyOfAnObjectLiteralWithAKey,
+      { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 9, data: { value: '{ chosen: engine }.chosen' } }] },
+    ),
+    buildInvalidCase(
+      'reports a throwing default on a property of an instance of a class expression, naming the value to hold in a const',
+      throwingDefaultOnAPropertyOfAnInstanceOfAClassExpression,
+      { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 9, data: { value: "new (class { chosen: Engine = 'eslint' })().chosen" } }] },
+    ),
+    buildInvalidCase(
+      'reports a throwing default on a property of an instance of a class expression with a parameter property, naming the value to hold in a const',
+      throwingDefaultOnAPropertyOfAnInstanceOfAClassExpressionWithAParameterProperty,
+      { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 9, data: { value: 'new (class { constructor(public chosen: Engine) {} })(engine).chosen' } }] },
+    ),
+    buildInvalidCase(
+      'reports a throwing default declaring with a const the name its switch tests, naming the value to bind, which the never default would not declare',
+      throwingDefaultDeclaringTheNameItsSwitchTests,
+      { errors: [{ messageId: 'throwingDefault', line: 9, data: { discriminant: 'engine' } }] },
+    ),
+    buildInvalidCase(
+      'reports a throwing default declaring with a let the name its switch tests, naming the value to bind, which the never default would not declare',
+      throwingDefaultDeclaringTheNameItsSwitchTestsWithALet,
+      { errors: [{ messageId: 'throwingDefault', line: 9, data: { discriminant: 'engine' } }] },
+    ),
+    buildInvalidCase(
+      'reports a throwing default declaring a function of the name its switch tests, naming the value to bind, which the never default would not declare',
+      throwingDefaultDeclaringAFunctionOfTheNameItsSwitchTests,
+      { errors: [{ messageId: 'throwingDefault', line: 9, data: { discriminant: 'engine' } }] },
+    ),
+    buildInvalidCase(
+      'reports a throwing default declaring a class of the name its switch tests, naming the value to bind, which the never default would not declare',
+      throwingDefaultDeclaringAClassOfTheNameItsSwitchTests,
+      { errors: [{ messageId: 'throwingDefault', line: 9, data: { discriminant: 'engine' } }] },
+    ),
+    buildInvalidCase(
+      'reports a throwing default declaring the object its switch reads a property of, naming the property to bind, which the never default would not declare',
+      throwingDefaultDeclaringTheObjectOfThePropertyItsSwitchTests,
+      { errors: [{ messageId: 'throwingDefault', line: 9, data: { discriminant: 'config.engine' } }] },
+    ),
+    buildInvalidCase('reports a throwing default on a call declaring a name the call reads, naming the call to hold in a const', throwingDefaultOnACallDeclaringANameTheCallReads, {
+      errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 11, data: { value: 'engineOf(path)' } }],
+    }),
+    buildInvalidCase('reports a throwing default declaring another name, naming the value to bind', throwingDefaultDeclaringAnotherName, {
+      errors: [{ messageId: 'throwingDefault', line: 9, data: { discriminant: 'engine' } }],
+    }),
+    buildInvalidCase('reports a throwing default block declaring the name its switch tests, naming the value to bind', throwingDefaultBlockDeclaringTheNameItsSwitchTests, {
+      errors: [{ messageId: 'throwingDefault', line: 9, data: { discriminant: 'engine' } }],
+    }),
+    buildInvalidCase(
+      'reports a throwing default after a case declaring the name its switch tests, naming the value to hold in a const, as the name there is the one that case declares',
+      throwingDefaultAfterACaseDeclaringTheNameItsSwitchTests,
+      { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 10, data: { value: 'engine' } }] },
+    ),
+    buildInvalidCase(
+      'reports a throwing default before a case declaring the name its switch tests, naming the value to hold in a const, as the name there is the one that case declares',
+      throwingDefaultBeforeACaseDeclaringTheNameItsSwitchTests,
+      { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 7, data: { value: 'engine' } }] },
+    ),
+    buildInvalidCase(
+      'reports a throwing default after a case declaring the object its switch reads a property of, naming the value to hold in a const, as the object there is the one that case declares',
+      throwingDefaultAfterACaseDeclaringTheObjectOfThePropertyTheSwitchTests,
+      { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 10, data: { value: 'config.engine' } }] },
+    ),
+    buildInvalidCase('reports a throwing default on a global const, naming the global to bind', throwingDefaultOnAGlobalConst, {
+      errors: [{ messageId: 'throwingDefault', line: 11, data: { discriminant: 'hostEngine' } }],
+    }),
+    buildInvalidCase(
+      'reports a throwing default on a call in a file with a type error elsewhere, naming the call to hold in a const',
+      throwingDefaultOnACallInAFileWithATypeErrorElsewhere,
+      { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConst', line: 13, data: { value: 'engineOf(path)' } }] },
     ),
   ],
 })

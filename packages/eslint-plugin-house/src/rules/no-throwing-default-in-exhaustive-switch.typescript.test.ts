@@ -1,15 +1,31 @@
-import { join } from 'node:path'
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { isDeepStrictEqual } from 'node:util'
 import * as typescriptEslintParser from '@typescript-eslint/parser'
 import { TSESLint } from '@typescript-eslint/utils'
 import ts from 'typescript'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, onTestFinished } from 'vitest'
 
+import { projectHoldingAPackageInstalledTwice, projectReferencingABuiltProject } from '../__tests__/cases/no-throwing-default-in-exhaustive-switch-projects.ts'
 import * as cases from '../__tests__/cases/no-throwing-default-in-exhaustive-switch.ts'
 import { repoOwnPlugin } from '../repo-own-plugin.ts'
 
 type CaseName = keyof typeof cases
+
+// Each case's text by its name, for a test whose rows name the cases.
+const CASE_TEXTS: Readonly<Record<CaseName, string>> = cases
+
+type ProjectOnDisk = typeof projectHoldingAPackageInstalledTwice
+
+type Report = Pick<TSESLint.Linter.LintMessage, 'ruleId' | 'line' | 'message'>
+
+type CaseOnItsOwn = {
+  readonly program: ts.Program
+  readonly folder: string
+  readonly path: string
+}
 
 type NeverBinding = (discriminant: Readonly<ts.Expression>, sourceFile: Readonly<ts.SourceFile>) => string
 
@@ -39,6 +55,7 @@ const RULE_ID = 'house-repo/no-throwing-default-in-exhaustive-switch'
 // The rule asks nothing of a default that does not throw in place of a never default, so whether a never default
 // would compile there says nothing of the rule.
 const CASES_WITH_NO_DEFAULT_THROWING_IN_PLACE_OF_A_NEVER_DEFAULT: readonly CaseName[] = [
+  'neverBindingAfterAnotherDeclaratorThenThrow',
   'neverBindingThenThrow',
   'neverBindingThenThrowAtTheTopLevelOfAFile',
   'neverBindingThenThrowInAClassStaticBlock',
@@ -80,6 +97,36 @@ const CONST_HOLDING_THE_VALUE = 'switchedOn'
 // Typing and linting every case in each form, two of them of thousands of cases, takes seconds: too near vitest's
 // default 5 s on a loaded machine.
 const EVERY_CASE_TIMEOUT_MS = 60_000
+
+// Cases whose switch's value, whose default, or another of whose cases declares a name: where the never default would
+// stand, TypeScript finds no such name, finds it before its declaration, or finds that case's. Beside them, values
+// holding a function, an object literal or a type that declare no name of their own, and defaults declaring another
+// name, or the name in a block of their own.
+const CASES_DECLARING_A_NAME: readonly CaseName[] = [
+  'throwingDefaultOnACallTakingAnArrowWithAParameter',
+  'throwingDefaultOnACallTakingAFunctionWithAParameter',
+  'throwingDefaultOnAPropertyOfAnObjectLiteralWithAKey',
+  'throwingDefaultOnAPropertyOfAnInstanceOfAClassExpression',
+  'throwingDefaultOnAPropertyOfAnInstanceOfAClassExpressionWithAParameterProperty',
+  'throwingDefaultDeclaringTheNameItsSwitchTests',
+  'throwingDefaultDeclaringTheNameItsSwitchTestsWithALet',
+  'throwingDefaultDeclaringAFunctionOfTheNameItsSwitchTests',
+  'throwingDefaultDeclaringAClassOfTheNameItsSwitchTests',
+  'throwingDefaultDeclaringTheObjectOfThePropertyItsSwitchTests',
+  'throwingDefaultOnACallDeclaringANameTheCallReads',
+  'throwingDefaultDeclaringTheNameItsSwitchTestsInASwitchAfterAReturn',
+  'caseFallingIntoAThrowingDefaultDeclaringTheNameItsSwitchTests',
+  'throwingDefaultOnAPropertyOfACallTakingAnArrow',
+  'throwingDefaultOnAPropertyOfACallWithAnObjectLiteral',
+  'throwingDefaultOnAPropertyOfACallWithATypeArgument',
+  'throwingDefaultDeclaringAnotherName',
+  'throwingDefaultBlockDeclaringTheNameItsSwitchTests',
+  'throwingDefaultAfterACaseDeclaringTheNameItsSwitchTests',
+  'throwingDefaultBeforeACaseDeclaringTheNameItsSwitchTests',
+  'throwingDefaultAfterACaseDeclaringTheObjectOfThePropertyTheSwitchTests',
+]
+
+const TEMP_PROJECT_PREFIX = 'house-no-throwing-default-'
 
 const MESSAGE_OPENING =
   'This switch covers every case of its union, so this default runs only for a case added later, and the throw turns that into a runtime error.'
@@ -296,11 +343,17 @@ function programOf(files: ReadonlyMap<string, string>, options: Readonly<ts.Comp
   return ts.createProgram({ rootNames: files.keys().toArray(), options, host: inMemory })
 }
 
-function hasTypeErrors(program: ts.Program, path: string): boolean {
+// TypeScript reads a file's errors once, the first time it is asked, and answers the same after.
+function typeErrorsIn(program: ts.Program, path: string): readonly string[] {
   const sourceFile = program.getSourceFile(path)
   if (sourceFile === undefined) throw new Error(`the program holds no ${path}`)
-  const diagnostics = [...program.getSyntacticDiagnostics(sourceFile), ...program.getSemanticDiagnostics(sourceFile)]
-  return diagnostics.some(({ category }) => category === ts.DiagnosticCategory.Error)
+  return [...program.getSyntacticDiagnostics(sourceFile), ...program.getSemanticDiagnostics(sourceFile)]
+    .filter(({ category }) => category === ts.DiagnosticCategory.Error)
+    .map(({ code, messageText }) => `TS${code} ${ts.flattenDiagnosticMessageText(messageText, ' ')}`)
+}
+
+function hasTypeErrors(program: ts.Program, path: string): boolean {
+  return typeErrorsIn(program, path).length > 0
 }
 
 // The rule as this repo's own config runs it, typed by the program given rather than by a tsconfig.
@@ -315,12 +368,74 @@ function messagesOfTheRule(program: ts.Program, folder: string, path: string, te
   return linter.verify(text, [config], path)
 }
 
-// The rule's reports on one case, typed on its own.
-function reportsOn(text: string): ReadonlyArray<Pick<TSESLint.Linter.LintMessage, 'ruleId' | 'line' | 'message'>> {
+function reportsIn(messages: readonly TSESLint.Linter.LintMessage[]): readonly Report[] {
+  return messages.map(({ ruleId, line, message }) => ({ ruleId, line, message }))
+}
+
+// One case, typed on its own by a program of its own.
+function theCaseOnItsOwn(text: string): CaseOnItsOwn {
   const folder = join(typedProjectFolder(), 'the-message')
   const path = join(folder, 'case.ts')
-  const program = programOf(new Map([[path, text]]), compilerOptionsOfTheTypedProject(typedProjectFolder()))
-  return messagesOfTheRule(program, folder, path, text).map(({ ruleId, line, message }) => ({ ruleId, line, message }))
+  return { program: programOf(new Map([[path, text]]), compilerOptionsOfTheTypedProject(typedProjectFolder())), folder, path }
+}
+
+// The rule's reports on one case, typed on its own.
+function reportsOn(text: string): readonly Report[] {
+  const { program, folder, path } = theCaseOnItsOwn(text)
+  return reportsIn(messagesOfTheRule(program, folder, path, text))
+}
+
+// The type errors TypeScript gives one case, typed on its own, the rule never run.
+function typeErrorsOfTheCase(text: string): readonly string[] {
+  const { program, path } = theCaseOnItsOwn(text)
+  return typeErrorsIn(program, path)
+}
+
+// The type errors in the program the rule linted the case through, read for the first time after it did.
+function typeErrorsAfterTheRuleLints(text: string): readonly string[] {
+  const { program, folder, path } = theCaseOnItsOwn(text)
+  messagesOfTheRule(program, folder, path, text)
+  return typeErrorsIn(program, path)
+}
+
+// The project written to a folder of its own, removed once the test finishes.
+function folderHolding(project: ProjectOnDisk): string {
+  const folder = realpathSync(mkdtempSync(join(tmpdir(), TEMP_PROJECT_PREFIX)))
+  onTestFinished(() => {
+    rmSync(folder, { recursive: true, force: true })
+  })
+  for (const [path, text] of Object.entries(project.files)) {
+    mkdirSync(dirname(join(folder, path)), { recursive: true })
+    writeFileSync(join(folder, path), text)
+  }
+  return folder
+}
+
+// The program the project's tsconfig builds, as `tsc` builds it.
+function programOfTheProjectIn(folder: string, project: ProjectOnDisk): ts.Program {
+  const tsconfig = join(folder, project.configFolder, 'tsconfig.json')
+  const parsed = ts.getParsedCommandLineOfConfigFile(tsconfig, {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic: throwUnreadableConfig })
+  if (parsed === undefined) throw new Error(`${tsconfig} could not be read`)
+  const { fileNames, options, projectReferences } = parsed
+  return ts.createProgram({ rootNames: fileNames, options, ...(projectReferences !== undefined && { projectReferences }) })
+}
+
+function reportsOnTheProjectIn(folder: string, project: ProjectOnDisk, program: ts.Program): readonly Report[] {
+  const path = join(folder, project.linted)
+  return reportsIn(messagesOfTheRule(program, folder, path, readFileSync(path, 'utf8')))
+}
+
+// The files of the project the program holds, each by the name it holds it by, from the project's folder.
+function namesOfTheProjectsFilesIn(program: ts.Program, folder: string): readonly string[] {
+  return program
+    .getSourceFiles()
+    .map(({ fileName }) => relative(folder, fileName))
+    .filter((name) => !name.startsWith('..'))
+}
+
+// TypeScript keeps a redirect off its public types: it stands for a package installed again at one version.
+function holdsARedirect(program: ts.Program): boolean {
+  return program.getSourceFiles().some((sourceFile) => 'redirectInfo' in sourceFile && sourceFile.redirectInfo !== undefined)
 }
 
 // The rule names this never default at each default, and reports no other.
@@ -505,8 +620,40 @@ describe('no-throwing-default-in-exhaustive-switch, against TypeScript', () => {
     })
   })
 
+  // The rule shares its program with every other typed rule, so what it asks TypeScript must leave no error there.
+  describe('the program it lints with', () => {
+    it.each(CASES_DECLARING_A_NAME)('holds no type error after the rule lints %s, as before', (name) => {
+      const text = CASE_TEXTS[name]
+      expect({ asWritten: typeErrorsOfTheCase(text), afterTheRuleLints: typeErrorsAfterTheRuleLints(text) }).toStrictEqual({ asWritten: [], afterTheRuleLints: [] })
+    })
+  })
+
+  describe('a project on disk', () => {
+    it('reports, in a project holding one version of a package installed twice, the call to hold in a const', () => {
+      const folder = folderHolding(projectHoldingAPackageInstalledTwice)
+      const program = programOfTheProjectIn(folder, projectHoldingAPackageInstalledTwice)
+      expect({ holdsARedirect: holdsARedirect(program), reports: reportsOnTheProjectIn(folder, projectHoldingAPackageInstalledTwice, program) }).toStrictEqual({
+        holdsARedirect: true,
+        reports: [{ ruleId: RULE_ID, line: 10, message: messageSuggestingAConst('readEngine()') }],
+      })
+    })
+
+    it('leaves each file of the program under the name it held it by, in a composite project referencing a built one', () => {
+      const folder = folderHolding(projectReferencingABuiltProject)
+      const program = programOfTheProjectIn(folder, projectReferencingABuiltProject)
+      const before = namesOfTheProjectsFilesIn(program, folder)
+      const reports = reportsOnTheProjectIn(folder, projectReferencingABuiltProject, program)
+      expect({ before, reports, after: namesOfTheProjectsFilesIn(program, folder) }).toStrictEqual({
+        before: ['lib/dist/engine.d.ts', 'app/src/bin.ts'],
+        reports: [{ ruleId: RULE_ID, line: 9, message: messageSuggestingAConst('readEngine()') }],
+        after: ['lib/dist/engine.d.ts', 'app/src/bin.ts'],
+      })
+    })
+  })
+
   describe('every case, typed and linted', () => {
     // Made before the tests, so each fails only on its own assertion.
+    // eslint-disable-next-line functional/no-let -- TS2588 as a const: beforeAll makes the verdicts after the suite is collected, and theVerdicts reads them in each test; setUpRunsBeforeTheSuite, the helper that carries such a value, is in @agents-inc/lint-rules' tests, and that package builds this one in, so importing it here would be a cycle
     let made: CaseVerdicts | undefined
 
     beforeAll(() => {

@@ -7,7 +7,8 @@ type NeverBinding = {
 
 /**
  * The type TypeScript gives an expression bound by a never default at the start of `clause`, `const unhandled: never =
- * <expression>`, narrowed as it narrows a name there.
+ * <expression>`, narrowed as it narrows a name there. Its names are read as the switch's value reads them, so a name a
+ * case declares again is not read.
  */
 export function typeAtTheStartOf(checker: ts.TypeChecker, clause: Readonly<ts.CaseOrDefaultClause>, expressionText: string): ts.Type {
   const value = neverBindingStandingAt(expressionText, clause, firstRunningStatementOf(clause))
@@ -92,11 +93,11 @@ function takeFlowNode(node: ts.Node, flowNode: unknown): void {
   })
 }
 
-// The never binding, parsed apart and set where `start` stands: hung from the clause, so it reads names in the clause's
-// scope, at the start's place in the text and in the code's flow.
+// The never binding, parsed apart and set where `start` stands: hung from the clause's switch, so it reads names in the
+// scope the switch's value reads them in, at the start's place in the text and in the code's flow.
 function neverBindingStandingAt(text: string, clause: Readonly<ts.CaseOrDefaultClause>, start: Readonly<ts.Statement>): ts.Expression {
   const { statement, value } = parsedNeverBinding(text, clause.getSourceFile().languageVersion)
-  Object.assign(statement, { parent: clause })
+  Object.assign(statement, { parent: clause.parent.parent })
   takeRange(statement, { pos: start.getStart(), end: start.end })
   takeFlowNode(value, flowNodeAtTheStartOf(start))
   return value

@@ -4159,3 +4159,388 @@ export function binOf(engine: Engine, key: string): string {
   }
 }
 `
+
+// Two statements, the first a block: the default ends in the throw after the block, not in the block's last statement.
+export const throwingDefaultOfABlockThenAThrow = `type Engine = 'eslint' | 'oxlint'
+
+declare function note(message: string): void
+
+export function binOf(engine: Engine): string {
+  switch (engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      {
+        note('no such engine')
+      }
+      throw new Error('no such engine')
+  }
+}
+`
+
+export const neverBindingAfterAnotherDeclaratorThenThrow = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(engine: Engine): string {
+  switch (engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default: {
+      const message = 'no such engine',
+        unhandled: never = engine
+      throw new Error(\`\${message}: \${String(unhandled)}\`)
+    }
+  }
+}
+`
+
+export const throwingDefaultOnACallOfParametersNamedSwitchedOn = `type Engine = 'eslint' | 'oxlint'
+
+declare function engineAt(index: number): Engine
+
+export function binOf(switchedOn0: number, switchedOn1: number): string {
+  switch (engineAt(switchedOn0 + switchedOn1)) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      throw new Error('no such engine')
+  }
+}
+`
+
+export const throwingDefaultOnAPropertyOfACallTakingAnArrow = `type Engine = 'eslint' | 'oxlint'
+
+declare function pick(choose: () => Engine): { engine: Engine }
+
+export function binOf(engine: Engine): string {
+  switch (pick(() => engine).engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      throw new Error('no such engine')
+  }
+}
+`
+
+export const throwingDefaultOnAPropertyOfACallWithAnObjectLiteral = `type Engine = 'eslint' | 'oxlint'
+
+declare function wrap<T>(value: T): T
+
+export function binOf(engine: Engine): string {
+  switch (wrap({ engine }).engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      throw new Error('no such engine')
+  }
+}
+`
+
+export const throwingDefaultOnAPropertyOfACallWithATypeArgument = `type Engine = 'eslint' | 'oxlint'
+
+declare function wrap<T>(value: T): T
+
+export function binOf(config: { engine: Engine }): string {
+  switch (wrap<{ engine: Engine }>(config).engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      throw new Error('no such engine')
+  }
+}
+`
+
+// Each of these five values declares a name of its own, `chosen`, which nothing at the default declares.
+export const throwingDefaultOnACallTakingAnArrowWithAParameter = `type Engine = 'eslint' | 'oxlint'
+
+declare function apply<T>(make: (value: T) => T, value: T): T
+
+export function binOf(engine: Engine): string {
+  switch (apply((chosen: Engine) => chosen, engine)) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      throw new Error('no such engine')
+  }
+}
+`
+
+export const throwingDefaultOnACallTakingAFunctionWithAParameter = `type Engine = 'eslint' | 'oxlint'
+
+declare function apply<T>(make: (value: T) => T, value: T): T
+
+export function binOf(engine: Engine): string {
+  switch (apply(function (chosen: Engine) { return chosen }, engine)) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      throw new Error('no such engine')
+  }
+}
+`
+
+export const throwingDefaultOnAPropertyOfAnObjectLiteralWithAKey = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(engine: Engine): string {
+  switch ({ chosen: engine }.chosen) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      throw new Error('no such engine')
+  }
+}
+`
+
+export const throwingDefaultOnAPropertyOfAnInstanceOfAClassExpression = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(): string {
+  switch (new (class { chosen: Engine = 'eslint' })().chosen) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      throw new Error('no such engine')
+  }
+}
+`
+
+export const throwingDefaultOnAPropertyOfAnInstanceOfAClassExpressionWithAParameterProperty = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(engine: Engine): string {
+  switch (new (class { constructor(public chosen: Engine) {} })(engine).chosen) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      throw new Error('no such engine')
+  }
+}
+`
+
+// The default, unbraced, declares the name its switch tests in the switch's own scope. The never default written in its
+// place declares nothing, so there the name is the parameter, which TypeScript narrows to never.
+export const throwingDefaultDeclaringTheNameItsSwitchTests = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(engine: Engine): string {
+  switch (engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      const engine = 'no such engine'
+      throw new Error(engine)
+  }
+}
+`
+
+export const throwingDefaultDeclaringTheNameItsSwitchTestsWithALet = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(engine: Engine): string {
+  switch (engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      let engine = 'no such engine'
+      engine += '!'
+      throw new Error(engine)
+  }
+}
+`
+
+export const throwingDefaultDeclaringAFunctionOfTheNameItsSwitchTests = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(engine: Engine): string {
+  switch (engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      function engine(): string {
+        return 'no such engine'
+      }
+      throw new Error(engine())
+  }
+}
+`
+
+export const throwingDefaultDeclaringAClassOfTheNameItsSwitchTests = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(engine: Engine): string {
+  switch (engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      class engine {}
+      throw new Error(engine.name)
+  }
+}
+`
+
+export const throwingDefaultDeclaringTheObjectOfThePropertyItsSwitchTests = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(config: { engine: Engine }): string {
+  switch (config.engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      const config = 'no such engine'
+      throw new Error(config)
+  }
+}
+`
+
+export const throwingDefaultOnACallDeclaringANameTheCallReads = `type Engine = 'eslint' | 'oxlint'
+
+declare function engineOf(path: string): Engine
+
+export function binOf(path: string): string {
+  switch (engineOf(path)) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      const path = 'no such engine'
+      throw new Error(path)
+  }
+}
+`
+
+export const throwingDefaultDeclaringTheNameItsSwitchTestsInASwitchAfterAReturn = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(engine: Engine): string {
+  return 'eslint'
+  switch (engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      const engine = 'no such engine'
+      throw new Error(engine)
+  }
+}
+`
+
+export const caseFallingIntoAThrowingDefaultDeclaringTheNameItsSwitchTests = `type Engine = 'eslint' | 'oxlint'
+
+declare function note(message: string): void
+
+export function binOf(engine: Engine): string {
+  switch (engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      note('oxlint has no bin')
+    default:
+      const engine = 'no such engine'
+      throw new Error(engine)
+  }
+}
+`
+
+export const throwingDefaultDeclaringAnotherName = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(engine: Engine): string {
+  switch (engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      const reason = 'no such engine'
+      throw new Error(reason)
+  }
+}
+`
+
+// Braced, the default declares the name in a scope of its own, which the switch's value is not read in.
+export const throwingDefaultBlockDeclaringTheNameItsSwitchTests = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(engine: Engine): string {
+  switch (engine) {
+    case 'eslint':
+      return 'eslint'
+    case 'oxlint':
+      return 'oxlint'
+    default: {
+      const engine = 'no such engine'
+      throw new Error(engine)
+    }
+  }
+}
+`
+
+// Another case declares the name its switch reads, in the switch's own scope, so at the default the name is that
+// case's const rather than the value the switch narrowed: binding it does not compile, a const holding the value does.
+export const throwingDefaultAfterACaseDeclaringTheNameItsSwitchTests = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(engine: Engine): string {
+  switch (engine) {
+    case 'eslint':
+      const engine = 'eslint'
+      return engine
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      throw new Error('no such engine')
+  }
+}
+`
+
+export const throwingDefaultBeforeACaseDeclaringTheNameItsSwitchTests = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(engine: Engine): string {
+  switch (engine) {
+    case 'eslint':
+      return 'eslint'
+    default:
+      throw new Error('no such engine')
+    case 'oxlint':
+      const engine = 'oxlint'
+      return engine
+  }
+}
+`
+
+export const throwingDefaultAfterACaseDeclaringTheObjectOfThePropertyTheSwitchTests = `type Engine = 'eslint' | 'oxlint'
+
+export function binOf(config: { engine: Engine }): string {
+  switch (config.engine) {
+    case 'eslint':
+      const config = 'eslint'
+      return config
+    case 'oxlint':
+      return 'oxlint'
+    default:
+      throw new Error('no such engine')
+  }
+}
+`

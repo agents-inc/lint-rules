@@ -114,20 +114,47 @@ function objectsReadIn(node: Readonly<ts.Node>): readonly ts.Expression[] {
   return isARead ? [...below, node.expression] : below
 }
 
-// The first part of the switch's value that TypeScript reads as never at the default. A part reading a property of an
-// object TypeScript narrows there to never, or to null or undefined alone, does not compile, and is not asked about:
-// TypeScript would keep its error in the program the rule shares.
-function partNeverAtTheDefault(checker: ts.TypeChecker, defaultClause: Readonly<ts.CaseOrDefaultClause>, value: Readonly<ts.Expression>): ts.Expression | undefined {
+function namesIn(part: Readonly<ts.Expression>): readonly ts.Identifier[] {
+  return partsIn(part).filter(ts.isIdentifier)
+}
+
+function isDeclaredIn(node: Readonly<ts.Node>, symbol: Readonly<ts.Symbol>): boolean {
+  return ts.findAncestor(symbol.valueDeclaration, (ancestor) => ancestor === node) !== undefined
+}
+
+function symbolNamed(checker: ts.TypeChecker, name: Readonly<ts.Identifier>, where: Readonly<ts.Node>): ts.Symbol | undefined {
+  return checker.resolveName(name.text, where, ts.SymbolFlags.Value, false)
+}
+
+// What the never default in place of the default would read by the name: what the cases read, a case declaring it
+// again among them; but the never default declares nothing, so where the default declares the name, what the switch's
+// value reads.
+function symbolAtTheNeverDefault(checker: ts.TypeChecker, switchStatement: Readonly<ts.SwitchStatement>, defaultClause: Readonly<ts.CaseOrDefaultClause>, name: Readonly<ts.Identifier>): ts.Symbol | undefined {
+  const inTheCases = symbolNamed(checker, name, defaultClause)
+  return inTheCases !== undefined && isDeclaredIn(defaultClause, inTheCases) ? symbolNamed(checker, name, switchStatement) : inTheCases
+}
+
+// The first part of the switch's value that TypeScript reads as never at the default. A part is asked about only where
+// it compiles there and reads what the value reads: TypeScript would keep the error of any other in the program the
+// rule shares.
+function partNeverAtTheDefault(checker: ts.TypeChecker, switchStatement: Readonly<ts.SwitchStatement>, defaultClause: Readonly<ts.CaseOrDefaultClause>): ts.Expression | undefined {
+  // A name the value declares, a parameter or a key, is read nowhere else.
+  function readsWhatTheValueReads(name: Readonly<ts.Identifier>): boolean {
+    const inTheValue = symbolNamed(checker, name, switchStatement)
+    const atTheNeverDefault = symbolAtTheNeverDefault(checker, switchStatement, defaultClause, name)
+    return inTheValue !== undefined && atTheNeverDefault === inTheValue
+  }
   function typeAtTheDefault(node: Readonly<ts.Expression>): ts.Type {
     return typeAtTheStartOf(checker, defaultClause, node.getText())
   }
+  // Not a property of never, or of null or undefined alone.
   function canBeReadOf(object: Readonly<ts.Expression>): boolean {
     return !isNever(checker.getNonNullableType(typeAtTheDefault(object)))
   }
   function isNeverAtTheDefault(part: Readonly<ts.Expression>): boolean {
-    return isCheckedWhereItStands(part) && objectsReadIn(part).every(canBeReadOf) && isNever(typeAtTheDefault(part))
+    return isCheckedWhereItStands(part) && namesIn(part).every(readsWhatTheValueReads) && objectsReadIn(part).every(canBeReadOf) && isNever(typeAtTheDefault(part))
   }
-  return partsIn(value).find(isNeverAtTheDefault)
+  return partsIn(switchStatement.expression).find(isNeverAtTheDefault)
 }
 
 function nameUnusedIn(text: string, number = 1): string {
@@ -207,7 +234,7 @@ function endingOfANeverDefaultIn(switchStatement: Readonly<ts.SwitchStatement>):
 // the switch's value, then binding a const holding the value; none where neither compiles.
 function reportSuggestingANeverDefault(program: Readonly<ts.Program>, switchStatement: Readonly<ts.SwitchStatement>, defaultClause: Readonly<ts.CaseOrDefaultClause>): Report | null {
   const ending = endingOfANeverDefaultIn(switchStatement)
-  const part = partNeverAtTheDefault(program.getTypeChecker(), defaultClause, switchStatement.expression)
+  const part = partNeverAtTheDefault(program.getTypeChecker(), switchStatement, defaultClause)
   if (part !== undefined) return { messageId: MESSAGE_BINDING_A_PART[ending], data: { discriminant: part.getText() } }
   if (!doesANeverDefaultOnAConstCompile(program, switchStatement)) return null
   return { messageId: MESSAGE_BINDING_A_CONST[ending], data: { value: switchStatement.expression.getText() } }
