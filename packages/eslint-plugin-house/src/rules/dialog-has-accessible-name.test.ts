@@ -1,11 +1,15 @@
+import { describe, expect, it } from 'vitest'
+
 import {
   alertdialogNamedByTitle,
   alertdialogNamedByTranslatedLabel,
+  dialogNamedOnlyByBlanks,
   dynamicRole,
   intrinsicDialogWithDynamicLabelledby,
   intrinsicDialogWithoutName,
   intrinsicDialogWithPresentationRole,
   menuRole,
+  roleAlertdialogWithoutName,
   roleDialogLabelledBy,
   roleDialogNamedByAriaLabel,
   roleDialogNamedByAriaLabelledby,
@@ -16,6 +20,7 @@ import {
 } from '../__tests__/cases/dialog-has-accessible-name.ts'
 import { fixedTextAttributeForms, interpolatedTemplateAttribute } from '../__tests__/factories/attribute-factories.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
+import { lintWithHouseRule } from '../__tests__/house-linter.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
 
@@ -79,5 +84,23 @@ houseRuleTester.run('dialog-has-accessible-name', housePlugin.rules['dialog-has-
         },
       ),
     ),
+  buildInvalidCase('reports a role="alertdialog" with no accessible name', roleAlertdialogWithoutName, {
+    filename: 'dialog-has-accessible-name.jsx',
+    errors: [{ messageId: 'unnamed', line: 2, data: { what: 'role="alertdialog"' } }],
+  }),
+  buildInvalidCase('reports a <dialog> whose aria-label is only blanks, which names nothing', dialogNamedOnlyByBlanks, {
+    filename: 'dialog-has-accessible-name.jsx',
+    errors: [{ messageId: 'unnamed', line: 2, data: { what: '<dialog>' } }],
+  }),
   ],
+})
+
+describe('dialog-has-accessible-name messages, as a user reads them', () => {
+  it('names the dialog and the ways to name it', () => {
+    const messages = lintWithHouseRule('dialog-has-accessible-name', [], roleAlertdialogWithoutName, 'confirm.js')
+
+    expect(messages.map(({ message }) => message)).toStrictEqual([
+      'This role="alertdialog" has no accessible name. Add aria-labelledby pointing at the id of its heading, or aria-label="What the dialog is for" -- a screen reader announces an unnamed dialog as just "dialog".',
+    ])
+  })
 })

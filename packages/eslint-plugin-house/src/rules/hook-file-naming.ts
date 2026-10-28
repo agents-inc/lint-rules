@@ -14,6 +14,8 @@ type Options = [FileNaming]
 
 type FileName = { base: string; stem: string; extension: string }
 
+type Rename = { hooks: string; actual: string; expected: string }
+
 type FilenameConvention = {
   isHookFileStem: (stem: string) => boolean
   hookFileStemOf: (hookName: string) => string
@@ -22,17 +24,27 @@ type FilenameConvention = {
 const RULE_NAME = 'hook-file-naming'
 const DEFAULT_FILENAME_CASE: FilenameCase = 'kebab-case'
 // PascalCase means [A-Z][a-z]: SCREAMING_CASE constants are not components.
-const COMPONENT_NAME = /^[A-Z][a-z]/
-const KEBAB_CASE_HOOK_NAME = /^use-[a-z]/
+const COMPONENT_NAME = /^[A-Z][a-z]/u
+const KEBAB_CASE_HOOK_NAME = /^use-[a-z]/u
 // A capital starts a word after a lowercase letter or digit, and so does an acronym's last capital
 // before a lowercase letter: `useHTMLParser` is `use-html-parser`.
-const WORD_START_AFTER_LOWERCASE = /(?<=[a-z\d])(?=[A-Z])/g
-const WORD_START_AFTER_ACRONYM = /(?<=[A-Z])(?=[A-Z][a-z])/g
+const WORD_START_AFTER_LOWERCASE = /(?<=[a-z\d])(?=[A-Z])/gu
+const WORD_START_AFTER_ACRONYM = /(?<=[A-Z])(?=[A-Z][a-z])/gu
 const WORD_SEPARATOR = '-'
 const BARREL_STEM = 'index'
 const FILENAME_CONVENTIONS: Record<FilenameCase, FilenameConvention> = {
-  camelCase: { isHookFileStem: isHookName, hookFileStemOf: (hookName) => hookName },
-  'kebab-case': { isHookFileStem: (stem) => KEBAB_CASE_HOOK_NAME.test(stem), hookFileStemOf: kebabCaseOf },
+  camelCase: {
+    isHookFileStem: isHookName,
+    hookFileStemOf(hookName) {
+      return hookName
+    },
+  },
+  'kebab-case': {
+    isHookFileStem(stem) {
+      return KEBAB_CASE_HOOK_NAME.test(stem)
+    },
+    hookFileStemOf: kebabCaseOf,
+  },
 }
 
 function kebabCaseOf(camelCaseName: string): string {
@@ -65,7 +77,7 @@ function namesBoundBy(name: Readonly<TSESTree.EntityName | TSESTree.StringLitera
   return name.type === AST_NODE_TYPES.Identifier ? [name.name] : []
 }
 
-function declaredValueNames(declaration: TSESTree.NamedExportDeclarations | null): string[] {
+function declaredValueNames(declaration: Readonly<TSESTree.NamedExportDeclarations> | null): string[] {
   if (declaration === null) return []
   switch (declaration.type) {
     case AST_NODE_TYPES.FunctionDeclaration:
@@ -76,7 +88,7 @@ function declaredValueNames(declaration: TSESTree.NamedExportDeclarations | null
     }
     case AST_NODE_TYPES.VariableDeclaration: {
       return declaration.declarations.flatMap((declarator) =>
-        declarator.id.type === AST_NODE_TYPES.Identifier ? [declarator.id.name] : [],
+        declarator.id.type === AST_NODE_TYPES.Identifier ? declarator.id.name : [],
       )
     }
     default: {
@@ -85,17 +97,17 @@ function declaredValueNames(declaration: TSESTree.NamedExportDeclarations | null
   }
 }
 
-function identifierName(node: TSESTree.Identifier | TSESTree.StringLiteral): string | null {
+function identifierName(node: Readonly<TSESTree.Identifier | TSESTree.StringLiteral>): string | null {
   return node.type === AST_NODE_TYPES.Identifier ? node.name : null
 }
 
 // `export { useThing as 'use thing' }` has no identifier to export under, so it counts under its local name.
-function exportedName(specifier: TSESTree.ExportSpecifier): string | null {
+function exportedName(specifier: Readonly<TSESTree.ExportSpecifier>): string | null {
   return identifierName(specifier.exported) ?? identifierName(specifier.local)
 }
 
 // Types name nothing at runtime, so a type export never makes a module look mixed.
-function valueNamesExportedBy(node: TSESTree.ExportNamedDeclaration): string[] {
+function valueNamesExportedBy(node: Readonly<TSESTree.ExportNamedDeclaration>): string[] {
   if (node.exportKind === 'type') return []
   const specifierNames = node.specifiers
     .filter((specifier) => specifier.exportKind !== 'type')
@@ -104,7 +116,7 @@ function valueNamesExportedBy(node: TSESTree.ExportNamedDeclaration): string[] {
   return [...declaredValueNames(node.declaration), ...specifierNames]
 }
 
-function defaultExportName(declaration: TSESTree.ExportDefaultDeclaration['declaration']): string | null {
+function defaultExportName(declaration: Readonly<TSESTree.ExportDefaultDeclaration['declaration']>): string | null {
   if ('id' in declaration && declaration.id !== null && declaration.id.type === AST_NODE_TYPES.Identifier) {
     return declaration.id.name
   }
@@ -114,6 +126,14 @@ function defaultExportName(declaration: TSESTree.ExportDefaultDeclaration['decla
 // The composed hook the others feed. Only a hint for the message.
 function longestName(names: readonly string[]): string {
   return names.reduce((longest, name) => (name.length > longest.length ? name : longest))
+}
+
+// A module exporting hooks and no component is named for its hooks; any other module needs no rename.
+function renameOf(exportedValues: readonly string[], { base, extension }: Readonly<FileName>, convention: Readonly<FilenameConvention>): Rename | null {
+  const hooks = exportedValues.filter(isHookName)
+  if (hooks.length === 0) return null
+  if (exportedValues.some(isComponentName)) return null
+  return { hooks: hooks.join(', '), actual: base, expected: convention.hookFileStemOf(longestName(hooks)) + extension }
 }
 
 export const hookFileNaming = ESLintUtils.RuleCreator.withoutDocs<Options, 'rename'>({
@@ -138,9 +158,9 @@ export const hookFileNaming = ESLintUtils.RuleCreator.withoutDocs<Options, 'rena
   create(context, [options]) {
     if (isVirtualFile(context.filename)) return {}
     const convention = FILENAME_CONVENTIONS[defaultedOption(RULE_NAME, options.filenameCase)]
-    const { base, stem, extension } = fileNameOf(context.filename)
+    const fileName = fileNameOf(context.filename)
     // A barrel names nothing; unicorn/no-barrel-files owns that case.
-    if (stem === BARREL_STEM || convention.isHookFileStem(stem)) return {}
+    if (fileName.stem === BARREL_STEM || convention.isHookFileStem(fileName.stem)) return {}
 
     const exportedValues: string[] = []
 
@@ -153,18 +173,8 @@ export const hookFileNaming = ESLintUtils.RuleCreator.withoutDocs<Options, 'rena
         if (name !== null) exportedValues.push(name)
       },
       'Program:exit'(node) {
-        const hooks = exportedValues.filter(isHookName)
-        if (hooks.length === 0) return
-        if (exportedValues.some(isComponentName)) return
-        context.report({
-          node,
-          messageId: 'rename',
-          data: {
-            hooks: hooks.join(', '),
-            actual: base,
-            expected: convention.hookFileStemOf(longestName(hooks)) + extension,
-          },
-        })
+        const rename = renameOf(exportedValues, fileName, convention)
+        if (rename !== null) context.report({ node, messageId: 'rename', data: rename })
       },
     }
   },

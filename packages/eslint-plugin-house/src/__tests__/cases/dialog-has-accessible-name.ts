@@ -102,3 +102,13 @@ export function roleDialogLabelledBy(ariaLabelAttribute: string): string {
 )
 `
 }
+
+export const roleAlertdialogWithoutName = `export function Confirm() {
+  return <div role="alertdialog">Delete everything?</div>
+}
+`
+
+export const dialogNamedOnlyByBlanks = `export function Notice() {
+  return <dialog aria-label="   " open>Saved</dialog>
+}
+`

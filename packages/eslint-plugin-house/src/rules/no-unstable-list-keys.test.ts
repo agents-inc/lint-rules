@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  BARE_MINTER_CALLS,
   customMinter,
   customMinterKeyInMap,
   customMinterKeyInMapModule,
   derivedKeys,
   destructuredUuidField,
   keyedOnDataId,
+  HOSTED_MINTER_CALLS,
   keyedOnIndex,
+  listBuiltWith,
+  listKeyedBy,
   loneElementKeyedByMinter,
   methodReadingExistingId,
   mintedInsideHandler,
@@ -17,8 +21,13 @@ import {
   mintedOutsideListCallback,
   mintedWhileBuildingList,
   minterHandedToCachingHelperInKey,
+  minterInAMethodSignatureDefault,
+  minterKeyInANonListCall,
+  minterKeyInTheArrayAMapIsCalledOn,
   nameBasedUuid,
+  OTHER_LIST_ITERATORS,
   randomUuidKeyInMap,
+  versionNameOnAnotherHost,
 } from '../__tests__/cases/no-unstable-list-keys.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
 import { lintWithHouseRule } from '../__tests__/house-linter.ts'
@@ -45,6 +54,22 @@ houseRuleTester.run('no-unstable-list-keys', housePlugin.rules['no-unstable-list
       'stays silent on a minter wrapped in a function the key hands to a caching helper',
       minterHandedToCachingHelperInKey,
     ),
+    buildValidCase("stays silent on a list key minted by v4 on nanoid, which is uuid's version name", listKeyedBy(versionNameOnAnotherHost), {
+      filename: 'no-unstable-list-keys.tsx',
+    }),
+    buildValidCase('stays silent on a minted key in a callback handed to a call that builds no list', minterKeyInANonListCall, {
+      filename: 'no-unstable-list-keys.tsx',
+    }),
+    buildValidCase(
+      'stays silent on a minter in a parameter default of a method signature with no body, where a function boundary ends the search',
+      minterInAMethodSignatureDefault,
+      { filename: 'no-unstable-list-keys.tsx' },
+    ),
+  buildValidCase(
+    'stays silent on a minted key on an element of the array map is called on, outside the callback it runs per row',
+    minterKeyInTheArrayAMapIsCalledOn,
+    { filename: 'no-unstable-list-keys.tsx' },
+  ),
   ],
   invalid: [
     buildInvalidCase('reports a list key minted by crypto.randomUUID()', randomUuidKeyInMap, {
@@ -64,6 +89,27 @@ houseRuleTester.run('no-unstable-list-keys', housePlugin.rules['no-unstable-list
         options: [{}],
         errors: [{ messageId: 'unstable', line: 5 }],
       },
+    ),
+    // The array's type does not reach a case built inside .map, so those cases name their type arguments.
+    ...[...BARE_MINTER_CALLS, ...HOSTED_MINTER_CALLS].map(({ call, minter }) =>
+      buildInvalidCase<'unstable', [{ minters?: readonly string[] }]>(
+        `reports a list key minted by ${call}, naming ${minter}`,
+        listKeyedBy(call),
+        {
+          filename: 'no-unstable-list-keys.tsx',
+          errors: [{ messageId: 'unstable', line: 5, data: { minter } }],
+        },
+      ),
+    ),
+    ...OTHER_LIST_ITERATORS.map((iterator) =>
+      buildInvalidCase<'unstable', [{ minters?: readonly string[] }]>(
+        `reports a minted key on the rows ${iterator} builds`,
+        listBuiltWith(iterator),
+        {
+          filename: 'no-unstable-list-keys.tsx',
+          errors: [{ messageId: 'unstable', line: 5, data: { minter: 'crypto.randomUUID' } }],
+        },
+      ),
     ),
   ],
 })
@@ -88,6 +134,16 @@ describe('no-unstable-list-keys options, as ESLint checks them', () => {
         customMinterKeyInMapModule,
         'no-unstable-list-keys.js',
       ),
-    ).toThrowError(/Unexpected property "minter"/)
+    ).toThrow(/Unexpected property "minter"/u)
+  })
+})
+
+describe('no-unstable-list-keys messages, as a user reads them', () => {
+  it('names the minter and says what it costs', () => {
+    const messages = lintWithHouseRule('no-unstable-list-keys', [], listKeyedBy('crypto.randomUUID()'), 'no-unstable-list-keys.js')
+
+    expect(messages.map(({ message }) => message)).toStrictEqual([
+      'This key calls crypto.randomUUID(), so every render mints a new key and React unmounts and remounts the row -- losing focus, scroll position and anything typed into it. Key on something stable in the data (item.id, or a composite of the fields that identify the row), or mint the id once where the list is built.',
+    ])
   })
 })

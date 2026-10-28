@@ -162,3 +162,18 @@ export function inputWithValueWrittenAs(valueAttribute: string): string {
 }
 `
 }
+
+// The change handlers besides onChange and onInput: the same events, one phase earlier.
+export const CAPTURE_CHANGE_HANDLERS = ['onChangeCapture', 'onInputCapture']
+
+// Input types besides hidden, reset and submit whose value is not text the user edits.
+export const OTHER_NON_TEXT_INPUT_TYPES = ['button', 'image']
+
+export const fieldsUnderAFormWithClassAndOnChange = `export function OneHandlerForm({ draft, update }) {
+  return (
+    <form className="editor" onChange={update}>
+      <input name="title" value={draft.title} />
+    </form>
+  )
+}
+`

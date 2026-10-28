@@ -11,6 +11,8 @@ import {
   hookCalledFourTimesInNineHookComponent,
   ignoreListLeavingUseMemoCounted,
   pascalCaseProviderWithNineHooks,
+  sevenHooksBesideMemoHooks,
+  twoHooksModule,
 } from '../__tests__/cases/max-hooks-per-component.ts'
 import { caseBuildersFor } from '../__tests__/factories/rule-case-factories.ts'
 import { lintWithHouseRule } from '../__tests__/house-linter.ts'
@@ -38,6 +40,7 @@ houseRuleTester.run('max-hooks-per-component', housePlugin.rules['max-hooks-per-
       'stays silent on a function named in camelCase that calls nine hooks and renders JSX',
       camelCaseRenderHelperWithNineHooks,
     ),
+  validCase('stays silent on seven hooks beside useMemo and useCallback, which it leaves out by default', sevenHooksBesideMemoHooks),
   ],
   invalid: [
     invalidCase('reports a component calling nine hooks', componentWithNineHooks, {
@@ -78,6 +81,16 @@ describe('max-hooks-per-component options, as ESLint checks them', () => {
         componentWithAMemoHookModule,
         JAVASCRIPT_FILENAME,
       ),
-    ).toThrowError(/Unexpected property "ignores"/)
+    ).toThrow(/Unexpected property "ignores"/u)
+  })
+})
+
+describe('max-hooks-per-component messages, as a user reads them', () => {
+  it('names the component, its count and the limit', () => {
+    const messages = lintWithHouseRule('max-hooks-per-component', [{ max: 1, ignore: [] }], twoHooksModule, 'panel.js')
+
+    expect(messages.map(({ message }) => message)).toStrictEqual([
+      "'Panel' calls 2 hooks (1 is the limit). Extract a cohesive group into a custom hook named for what it does -- not a catch-all usePanelLogic.",
+    ])
   })
 })

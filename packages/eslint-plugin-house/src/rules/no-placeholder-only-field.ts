@@ -10,21 +10,21 @@ import { formFieldTagOf } from '../shared/jsx-elements.ts'
 
 // An id counts as a label: it is almost always there for a `<label htmlFor>` this rule cannot see.
 const FIELD_NAME_ATTRIBUTES: ReadonlySet<string> = new Set(['aria-label', 'aria-labelledby', 'title', 'id'])
-const LABEL_TAG = /label$/i
+const LABEL_TAG = /label$/iu
 
-function isNamingAttribute(attribute: TSESTree.JSXAttribute): boolean {
+function isNamingAttribute(attribute: Readonly<TSESTree.JSXAttribute>): boolean {
   return isJsxAttributeNamedIn(attribute, FIELD_NAME_ATTRIBUTES)
 }
 
 // The tag as written: `<Form.Label>` ends in the segment that matters.
-function tagNameOf(name: TSESTree.JSXTagNameExpression): string | null {
+function tagNameOf(name: Readonly<TSESTree.JSXTagNameExpression>): string | null {
   if (name.type === AST_NODE_TYPES.JSXMemberExpression) return name.property.name
   return name.type === AST_NODE_TYPES.JSXIdentifier ? name.name : null
 }
 
 // A field inside a `<label>` is labelled implicitly, and any wrapper whose name ends in "label" is
 // taken at its word.
-function isLabelElement(node: TSESTree.Node): boolean {
+function isLabelElement(node: Readonly<TSESTree.Node>): boolean {
   if (node.type !== AST_NODE_TYPES.JSXElement) return false
   const tagName = tagNameOf(node.openingElement.name)
   return tagName !== null && LABEL_TAG.test(tagName)

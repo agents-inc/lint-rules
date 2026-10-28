@@ -32,3 +32,13 @@ export function usePanelTitle() {
   })
 }
 `
+
+export const effectWithAnonymousFunctionExpression = `import { useEffect } from 'react'
+
+export function Clock() {
+  useEffect(function () {
+    document.title = 'tick'
+  }, [])
+  return null
+}
+`

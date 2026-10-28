@@ -221,6 +221,6 @@ describe('require-class-helper options, as ESLint checks them', () => {
   it('refuses an option key other than helpers', () => {
     expect(() =>
       lintWithHouseRule(RULE_NAME, [{ helper: [OTHER_HELPER] }], cnCallModule, JAVASCRIPT_FILENAME),
-    ).toThrowError(/Unexpected property "helper"/)
+    ).toThrow(/Unexpected property "helper"/u)
   })
 })

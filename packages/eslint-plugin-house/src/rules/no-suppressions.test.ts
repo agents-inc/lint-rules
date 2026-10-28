@@ -51,7 +51,7 @@ const FILENAME = 'no-suppressions.js'
 
 type CommentSpan = { line: number; column: number; endLine: number; endColumn: number }
 
-const SUPPRESSIONS: { form: string; code: string; comments: CommentSpan[] }[] = [
+const SUPPRESSIONS: Array<{ form: string; code: string; comments: CommentSpan[] }> = [
   { form: 'a file-level /* eslint-disable */', code: fileLevelDisable, comments: [{ line: 1, column: 1, endLine: 1, endColumn: 21 }] },
   {
     form: 'a /* eslint-disable */ naming rules',
@@ -159,7 +159,7 @@ const SUPPRESSIONS: { form: string; code: string; comments: CommentSpan[] }[] = 
 ]
 
 // Each was measured against ESLint 10.12 and oxlint 1.87: neither reads it as a suppression.
-const NOT_SUPPRESSIONS: { comment: string; code: string }[] = [
+const NOT_SUPPRESSIONS: Array<{ comment: string; code: string }> = [
   { comment: 'prose naming eslint-disable', code: proseNamingADirective },
   { comment: 'a note quoting eslint-disable after other words', code: noteQuotingADirective },
   { comment: 'prose opening with the word eslint-disabled', code: disabledAsAWord },
@@ -184,7 +184,7 @@ function reportsOn(code: string) {
   )
 }
 
-function suppressionReportOver(span: CommentSpan) {
+function suppressionReportOver(span: Readonly<CommentSpan>) {
   return { ruleId: RULE_ID, messageId: 'suppression', ...span }
 }
 
@@ -216,5 +216,15 @@ describe('house/no-suppressions', () => {
         offeringARemedy: [],
       })
     })
+  })
+})
+
+describe('no-suppressions messages, as a user reads them', () => {
+  it('says suppressions are banned and what to do instead', () => {
+    const messages = lintWithInlineConfigIgnored(RULE_NAME, nextLineDisable, FILENAME)
+
+    expect(messages.map(({ message }) => message)).toStrictEqual([
+      'Comments that disable or configure lint rules are banned. Fix the code, or set the rule in the lint config.',
+    ])
   })
 })

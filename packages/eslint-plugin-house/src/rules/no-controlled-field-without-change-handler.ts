@@ -26,11 +26,11 @@ const VALUE_IS_NOT_THE_CONTENT: ReadonlySet<string> = new Set([
 // Deliberately not typeable, or explicitly uncontrolled.
 const OPTS_OUT: ReadonlySet<string> = new Set(['readOnly', 'disabled', 'defaultValue'])
 
-function isChangeHandler(attribute: TSESTree.JSXAttribute | TSESTree.JSXSpreadAttribute): boolean {
+function isChangeHandler(attribute: Readonly<TSESTree.JSXAttribute | TSESTree.JSXSpreadAttribute>): boolean {
   return isJsxAttribute(attribute) && isJsxAttributeNamedIn(attribute, CHANGE_HANDLERS)
 }
 
-function exemptsTheField(attribute: TSESTree.JSXAttribute): boolean {
+function exemptsTheField(attribute: Readonly<TSESTree.JSXAttribute>): boolean {
   if (isJsxAttributeNamedIn(attribute, CHANGE_HANDLERS) || isJsxAttributeNamedIn(attribute, OPTS_OUT)) return true
   if (jsxAttributeName(attribute) !== 'type') return false
   // Only a fixed `type` can be judged; `type={x}` is assumed to need a handler.
@@ -39,7 +39,7 @@ function exemptsTheField(attribute: TSESTree.JSXAttribute): boolean {
 }
 
 // `value={undefined}` and `value={null}` are how a field opts back out of being controlled.
-function isUncontrolledValue(attribute: TSESTree.JSXAttribute): boolean {
+function isUncontrolledValue(attribute: Readonly<TSESTree.JSXAttribute>): boolean {
   const expression = bracedExpressionOf(attribute)
   if (expression === null) return false
   return (

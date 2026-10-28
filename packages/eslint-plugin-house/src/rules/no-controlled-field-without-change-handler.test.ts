@@ -1,9 +1,13 @@
+import { describe, expect, it } from 'vitest'
+
 import {
+  CAPTURE_CHANGE_HANDLERS,
   componentFieldUndefinedValueAndNoValue,
   defaultValueField,
   disabledFieldAndOnInputHandler,
   fieldInsideLabelWithoutHandler,
   fieldNamedLikeAnInputType,
+  fieldsUnderAFormWithClassAndOnChange,
   fieldsWithOnChange,
   fieldWithSpreadProps,
   formLevelOnChange,
@@ -11,6 +15,7 @@ import {
   hiddenResetAndSubmitInputs,
   inputWithValueTypedBy,
   inputWithValueWrittenAs,
+  OTHER_NON_TEXT_INPUT_TYPES,
   radioAndCheckboxValues,
   readOnlyField,
   textareaAndSelectWithoutHandler,
@@ -23,6 +28,7 @@ import {
   templateAttribute,
 } from '../__tests__/factories/attribute-factories.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
+import { lintWithHouseRule } from '../__tests__/house-linter.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
 
@@ -61,6 +67,15 @@ houseRuleTester.run(
         'stays silent on a template type spelling hidden with an escape, read as the text it renders',
         inputWithValueTypedBy(templateAttribute('type', HIDDEN_SPELLED_WITH_AN_ESCAPE)),
       ),
+    ...CAPTURE_CHANGE_HANDLERS.map((handler) =>
+      buildValidCase<[]>(`stays silent on a field driven by ${handler}`, inputWithValueWrittenAs(`value={draft} ${handler}={update}`)),
+    ),
+    ...OTHER_NON_TEXT_INPUT_TYPES.map((type) =>
+      buildValidCase<[]>(`stays silent on a ${type} input, whose value is not editable content`, inputWithValueTypedBy(`type="${type}"`)),
+    ),
+    buildValidCase('stays silent on a field with a value beside a defaultValue', inputWithValueWrittenAs('value={draft} defaultValue="draft"')),
+    buildValidCase('stays silent on value={null}, which opts the field out of being controlled', inputWithValueWrittenAs('value={null}')),
+    buildValidCase('stays silent on a field under a form whose attributes include onChange among others', fieldsUnderAFormWithClassAndOnChange),
     ],
     invalid: [
       buildInvalidCase('reports an input with a value and no change handler', valueWithoutHandler, {
@@ -122,6 +137,24 @@ houseRuleTester.run(
           errors: [{ messageId: 'frozen', line: 2, data: { element: 'input' } }],
         },
       ),
+    buildInvalidCase(
+      'reports an input whose value is a string in braces and that has no change handler',
+      inputWithValueWrittenAs("value={'Hello'}"),
+      {
+        filename: 'no-controlled-field-without-change-handler.tsx',
+        errors: [{ messageId: 'frozen', line: 2, data: { element: 'input' } }],
+      },
+    ),
     ],
   },
 )
+
+describe('no-controlled-field-without-change-handler messages, as a user reads them', () => {
+  it('names the element and the ways out', () => {
+    const messages = lintWithHouseRule('no-controlled-field-without-change-handler', [], inputWithValueWrittenAs('value="Hello"'), 'greeting.js')
+
+    expect(messages.map(({ message }) => message)).toStrictEqual([
+      '<input value={…}> has no onChange, so typing in it does nothing -- React resets the value on every render. Add onChange to drive the state, or use defaultValue if the field should be uncontrolled, or readOnly if it is display-only.',
+    ])
+  })
+})

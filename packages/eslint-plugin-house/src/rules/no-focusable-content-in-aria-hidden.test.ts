@@ -1,15 +1,28 @@
+import { describe, expect, it } from 'vitest'
+
 import {
+  ARIA_HIDDEN_FOCUSABLE_ELEMENTS,
+  ariaHiddenAroundAButtonModule,
   ariaHiddenAroundButton,
   ariaHiddenBesideSpreads,
   ariaHiddenButton,
+  ariaHiddenButtonModule,
   ariaHiddenControlsOutOfTabOrder,
+  ariaHiddenDivWithPlusZeroTabIndex,
+  ariaHiddenHiddenButton,
+  ariaHiddenInsideAnOrdinaryElement,
+  ariaHiddenInsideAriaHidden,
   ariaHiddenMemberTagInTabOrder,
+  buttonInAFragmentRenderedByAnExpressionInsideAriaHidden,
+  buttonInASpreadChildOfAFragmentInsideAriaHidden,
   buttonInFragmentInsideAriaHidden,
   buttonInSpanInsideAriaHidden,
   buttonInsideWrapperWith,
+  buttonRenderedByAnExpressionInsideAriaHidden,
   buttonWithTabIndexInsideAriaHidden,
   checkboxBesideAriaHiddenTrack,
   componentAndNonFocusableDescendants,
+  componentReturning,
   controlsParkedWithNegativeTabIndex,
   decorationOnly,
   decorativeListConditionalAndCall,
@@ -32,6 +45,7 @@ import {
   templateAttribute,
 } from '../__tests__/factories/attribute-factories.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
+import { lintWithHouseRule } from '../__tests__/house-linter.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
 
@@ -49,6 +63,8 @@ const LOWERCASE_TAB_INDEX = 'tabindex'
 houseRuleTester.run('no-focusable-content-in-aria-hidden', housePlugin.rules['no-focusable-content-in-aria-hidden'], {
   valid: [
     buildValidCase('stays silent on aria-hidden around decoration only', decorationOnly),
+    buildValidCase('stays silent on an aria-hidden button that is hidden too', ariaHiddenHiddenButton),
+    buildValidCase('stays silent on an aria-hidden div with tabIndex={+0}, a unary plus it does not read', ariaHiddenDivWithPlusZeroTabIndex),
     buildValidCase('stays silent on a focusable sibling of an aria-hidden element', focusableSibling),
     buildValidCase('stays silent on controls parked with tabIndex={-1}', controlsParkedWithNegativeTabIndex),
     buildValidCase(
@@ -103,6 +119,10 @@ houseRuleTester.run('no-focusable-content-in-aria-hidden', housePlugin.rules['no
       'stays silent on a button written tabindex="-1" inside aria-hidden',
       buttonWithTabIndexInsideAriaHidden(quotedAttribute(LOWERCASE_TAB_INDEX, '-1')),
     ),
+  buildValidCase(
+    'stays silent on a button in a spread child of a fragment inside aria-hidden, as it does not read spread children',
+    buttonInASpreadChildOfAFragmentInsideAriaHidden,
+  ),
   ],
   invalid: [
     buildInvalidCase('reports aria-hidden around a focusable button', ariaHiddenAroundButton, {
@@ -185,5 +205,62 @@ houseRuleTester.run('no-focusable-content-in-aria-hidden', housePlugin.rules['no
         errors: [{ messageId: 'focusable', line: 3, data: { descendant: 'button' } }],
       },
     ),
+    // The array's type does not reach a case built inside .map, so those cases name their type arguments.
+    ...ARIA_HIDDEN_FOCUSABLE_ELEMENTS.map(({ element, tag }) =>
+      buildInvalidCase<'focusable' | 'self', []>(`reports an aria-hidden <${tag}> that is itself focusable`, componentReturning(element), {
+        filename: 'no-focusable-content-in-aria-hidden.tsx',
+        errors: [{ messageId: 'self', line: 2, data: { tag } }],
+      }),
+    ),
+    buildInvalidCase(
+      'reports aria-hidden around a button inside an element that is neither aria-hidden nor inert',
+      ariaHiddenInsideAnOrdinaryElement,
+      {
+        filename: 'no-focusable-content-in-aria-hidden.tsx',
+        errors: [{ messageId: 'focusable', line: 4, data: { descendant: 'button' } }],
+      },
+    ),
+    buildInvalidCase(
+      'reports only the outer of two nested aria-hidden elements around a button, which already covers the inner one',
+      ariaHiddenInsideAriaHidden,
+      {
+        filename: 'no-focusable-content-in-aria-hidden.tsx',
+        errors: [{ messageId: 'focusable', line: 3, data: { descendant: 'button' } }],
+      },
+    ),
+    buildInvalidCase(
+      'reports aria-hidden around a button an expression renders',
+      buttonRenderedByAnExpressionInsideAriaHidden,
+      {
+        filename: 'no-focusable-content-in-aria-hidden.tsx',
+        errors: [{ messageId: 'focusable', line: 3, data: { descendant: 'button' } }],
+      },
+    ),
+    buildInvalidCase(
+      'reports aria-hidden around a button in a fragment an expression renders',
+      buttonInAFragmentRenderedByAnExpressionInsideAriaHidden,
+      {
+        filename: 'no-focusable-content-in-aria-hidden.tsx',
+        errors: [{ messageId: 'focusable', line: 3, data: { descendant: 'button' } }],
+      },
+    ),
   ],
+})
+
+describe('no-focusable-content-in-aria-hidden messages, as a user reads them', () => {
+  it('names the focusable element inside an aria-hidden one', () => {
+    const messages = lintWithHouseRule('no-focusable-content-in-aria-hidden', [], ariaHiddenAroundAButtonModule, 'toolbar.js')
+
+    expect(messages.map(({ message }) => message)).toStrictEqual([
+      'This element is aria-hidden but contains a focusable <button>. Keyboard users tab into something screen readers say is not there -- drop aria-hidden if the content is real, or add `inert` here (tabIndex={-1} on the descendant if you cannot).',
+    ])
+  })
+
+  it('names an aria-hidden element that is itself focusable', () => {
+    const messages = lintWithHouseRule('no-focusable-content-in-aria-hidden', [], ariaHiddenButtonModule, 'close.js')
+
+    expect(messages.map(({ message }) => message)).toStrictEqual([
+      'This <button> is aria-hidden but is itself focusable. Keyboard users tab into something screen readers say is not there -- drop aria-hidden if the control is real, or take it out of the tab order with tabIndex={-1}.',
+    ])
+  })
 })

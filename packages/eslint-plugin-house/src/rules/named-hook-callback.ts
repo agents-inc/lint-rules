@@ -11,7 +11,7 @@ type Options = [CallbackHooks]
 
 const RULE_NAME = 'named-hook-callback'
 
-function isAnonymousFunction(argument: TSESTree.CallExpressionArgument): boolean {
+function isAnonymousFunction(argument: Readonly<TSESTree.CallExpressionArgument>): boolean {
   return (
     argument.type === AST_NODE_TYPES.ArrowFunctionExpression ||
     (argument.type === AST_NODE_TYPES.FunctionExpression && argument.id === null)

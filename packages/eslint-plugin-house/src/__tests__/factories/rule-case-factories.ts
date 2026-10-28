@@ -44,7 +44,11 @@ export function buildInvalidCase<MessageIds extends string, Options extends read
 /** The case builders for a file whose cases all lint as one `filename`; a case's own still wins. */
 export function caseBuildersFor(filename: string): CaseBuilders {
   return {
-    validCase: (name, code, fields = {}) => buildValidCase(name, code, { filename, ...fields }),
-    invalidCase: (name, code, fields) => buildInvalidCase(name, code, { filename, ...fields }),
+    validCase(name, code, fields = {}) {
+      return buildValidCase(name, code, { filename, ...fields })
+    },
+    invalidCase(name, code, fields) {
+      return buildInvalidCase(name, code, { filename, ...fields })
+    },
   }
 }

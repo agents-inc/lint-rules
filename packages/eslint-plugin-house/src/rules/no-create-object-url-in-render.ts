@@ -2,7 +2,7 @@ import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/u
 
 import { callReceiving } from '../shared/call-arguments.ts'
 import { dottedPropertyNameOf } from '../shared/callee-name.ts'
-import { componentNameOf, type FunctionFrame, functionFrameVisitors } from '../shared/function-frames.ts'
+import { componentNameOf, type FunctionFrame, functionFramesOfTheWalk } from '../shared/function-frames.ts'
 import type { FunctionNode } from '../shared/function-name.ts'
 import { isHookName } from '../shared/hook-name.ts'
 import { jsxAttributeName } from '../shared/jsx-attributes.ts'
@@ -10,7 +10,7 @@ import { jsxAttributeName } from '../shared/jsx-attributes.ts'
 type PendingCall = { node: TSESTree.CallExpression; enclosingFunctions: readonly FunctionFrame[] }
 
 const RULE_NAME = 'no-create-object-url-in-render'
-const EVENT_PROP = /^on[A-Z]/
+const EVENT_PROP = /^on[A-Z]/u
 // Calls whose function argument runs later. Hooks count, which covers the lazy
 // `useState(() => URL.createObjectURL(b))` this rule's fix asks for.
 const DEFERRED_CALLS: ReadonlySet<string> = new Set([
@@ -26,12 +26,12 @@ const DEFERRED_CALLS: ReadonlySet<string> = new Set([
 ])
 
 // Stricter than the shared calleeNameOf: a computed `hooks[name](…)` names nothing here.
-function staticCalleeNameOf(callee: TSESTree.Expression): string | null {
+function staticCalleeNameOf(callee: Readonly<TSESTree.Expression>): string | null {
   return callee.type === AST_NODE_TYPES.Identifier ? callee.name : dottedPropertyNameOf(callee)
 }
 
 // `URL.createObjectURL`, and its `window.URL` / `globalThis.URL` / `self.URL` spellings.
-function isCreateObjectUrl(callee: TSESTree.Expression): boolean {
+function isCreateObjectUrl(callee: Readonly<TSESTree.Expression>): boolean {
   return (
     callee.type === AST_NODE_TYPES.MemberExpression &&
     dottedPropertyNameOf(callee) === 'createObjectURL' &&
@@ -39,7 +39,7 @@ function isCreateObjectUrl(callee: TSESTree.Expression): boolean {
   )
 }
 
-function isEventHandler(fn: FunctionNode): boolean {
+function isEventHandler(fn: Readonly<FunctionNode>): boolean {
   const { parent } = fn
   if (parent.type !== AST_NODE_TYPES.JSXExpressionContainer || parent.parent.type !== AST_NODE_TYPES.JSXAttribute) {
     return false
@@ -48,14 +48,14 @@ function isEventHandler(fn: FunctionNode): boolean {
   return name !== null && EVENT_PROP.test(name)
 }
 
-function isDeferredCallArgument(fn: FunctionNode): boolean {
+function isDeferredCallArgument(fn: Readonly<FunctionNode>): boolean {
   const call = callReceiving(fn, fn.parent)
   if (call === null) return false
   const name = staticCalleeNameOf(call.callee)
   return name !== null && (isHookName(name) || DEFERRED_CALLS.has(name))
 }
 
-function isDeferred(fn: FunctionNode): boolean {
+function isDeferred(fn: Readonly<FunctionNode>): boolean {
   return isEventHandler(fn) || isDeferredCallArgument(fn)
 }
 
@@ -68,6 +68,10 @@ function runsOnEveryRender(enclosingFunctions: readonly FunctionFrame[]): boolea
     if (!frame.rendersJsx) return false
   }
   return false
+}
+
+function frameOf(node: Readonly<FunctionNode>): FunctionFrame {
+  return { node, rendersJsx: false }
 }
 
 // Not fixable: where the cleanup revoking the URL belongs depends on the component. Unnamed
@@ -84,16 +88,16 @@ export const noCreateObjectUrlInRender = ESLintUtils.RuleCreator.withoutDocs<[],
     defaultOptions: [],
   },
   create(context) {
-    const stack: FunctionFrame[] = []
+    const { frames, visitors } = functionFramesOfTheWalk({ ruleName: RULE_NAME, frameFor: frameOf })
     // Decided at Program:exit: whether a function is a component depends on JSX not yet visited.
     const pending: PendingCall[] = []
 
     return {
-      ...functionFrameVisitors(stack, { ruleName: RULE_NAME, frameFor: (node) => ({ node, rendersJsx: false }) }),
+      ...visitors,
       CallExpression(node) {
         // At module scope it is a one-time setup, not a render.
-        if (!isCreateObjectUrl(node.callee) || stack.length === 0) return
-        pending.push({ node, enclosingFunctions: [...stack] })
+        if (!isCreateObjectUrl(node.callee) || frames.length === 0) return
+        pending.push({ node, enclosingFunctions: [...frames] })
       },
       'Program:exit'() {
         for (const { node, enclosingFunctions } of pending) {

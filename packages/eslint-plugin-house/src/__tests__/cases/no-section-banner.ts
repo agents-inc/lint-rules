@@ -308,3 +308,164 @@ export const titledLineAmongBlankLines = `export const x = 1
 */
 export const y = 2
 `
+
+// Every word the label list reads, in each form its optional `s` allows.
+export const LABEL_WORDS = [
+  'component',
+  'components',
+  'config',
+  'constant',
+  'constants',
+  'effect',
+  'effects',
+  'export',
+  'exports',
+  'handler',
+  'handlers',
+  'helper',
+  'helpers',
+  'hook',
+  'hooks',
+  'import',
+  'imports',
+  'interface',
+  'interfaces',
+  'internal',
+  'main',
+  'private',
+  'props',
+  'public api',
+  'render',
+  'setup',
+  'state',
+  'style',
+  'styles',
+  'type',
+  'types',
+  'util',
+  'utils',
+]
+
+// A label word as comments write it: in capitals, before a colon, with blanks around it.
+export const LABEL_SPELLINGS = ['Helpers', 'HOOKS', 'types:', 'Utils :', '  state  ', 'Public API:', 'Hooks: ']
+
+// Words beside the list that a looser reading of it would take for one of its words.
+export const WORDS_BESIDE_THE_LABEL_LIST = [
+  'configs',
+  'internals',
+  'mains',
+  'privates',
+  'prop',
+  'renders',
+  'setups',
+  'states',
+  'public',
+  'api',
+  'public  api',
+  'helper functions',
+  'utilities',
+  'my helpers',
+]
+
+export function lineCommentBetweenDeclarations(text: string): string {
+  return `export const x = 1
+// ${text}
+export const y = 2
+`
+}
+
+// A long s (U+017F) and a Kelvin sign (U+212A): case-insensitive matching folds them to s and k only under
+// the u flag.
+export const labelWordsSpelledWithLookalikeLetters = `export const x = 1
+// ſetup
+export const y = 2
+// hooKs
+export const z = 3
+`
+
+export const runBeforeText = `export const x = 1
+// ---- then some text
+export const y = 2
+`
+
+export const runAfterText = `export const x = 1
+// some text, then ----
+export const y = 2
+`
+
+export const textBeforeATitledBanner = `export const x = 1
+// note --- Setup ---
+export const y = 2
+`
+
+export const textAfterATitledBanner = `export const x = 1
+// --- Setup --- note
+export const y = 2
+`
+
+// The long run sits inside the title, not at either edge.
+export const twoCharacterFrameAroundALongRun = `export const x = 1
+// -- A --- B --
+export const y = 2
+`
+
+export const emptyBlockComment = `export const x = 1
+/*   */
+export const y = 2
+`
+
+export const runLineBesideProseInABlock = `export const x = 1
+/*
+ ----
+ Setup notes
+*/
+export const y = 2
+`
+
+export const titledBannerWithoutASpace = `export const x = 1
+//--- Setup ---
+export const y = 2
+`
+
+export const titledBannerSpacedTwice = `export const x = 1
+// ---  Setup  ---
+export const y = 2
+`
+
+export const titledBannerOfOneCharacter = `export const x = 1
+// --- A ---
+export const y = 2
+`
+
+export const titledBannerWithOnlyItsLeadingRunLong = `export const x = 1
+// --- Setup --
+export const y = 2
+`
+
+export const titledBannerWithOnlyItsLeadingRunLongAndNoSpace = `export const x = 1
+//--- Setup --
+export const y = 2
+`
+
+export const titledBannerWithBlanksAfterItsLongTrailingRun = 'export const x = 1\n// -- Setup ---   \nexport const y = 2\n'
+
+export const blockBannerBetweenBlankLines = `export const x = 1
+/*
+ ----
+*/
+export const y = 2
+`
+
+export const blockBannerAroundABlankLineOfSpaces = 'export const x = 1\n/*\n ----\n   \n ----\n*/\nexport const y = 2\n'
+
+export const blockLabelBesideALineOfSpaces = 'export const x = 1\n/*\n Helpers\n   \n*/\nexport const y = 2\n'
+
+export const bannerInACrlfFile = 'export const x = 1\r\n// ----\r\nexport const y = 2\r\n'
+
+export const crlfFileLeftWithABlankLine = 'export const x = 1\r\n\r\nexport const y = 2\r\n'
+
+// Its closing frame, `=--`, is no run of one character.
+export const titleClosedByMixedCharacters = `export const x = 1
+// --- Setup =--
+export const y = 2
+`

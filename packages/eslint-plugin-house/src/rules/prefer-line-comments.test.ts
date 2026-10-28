@@ -1,12 +1,22 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  allowPatternEscapingAHyphen,
+  allowPatternOfOneCharacter,
   blockComment,
+  blockCommentAfterCode,
+  blockCommentBeforeBlanks,
   blockCommentBeforeLastLineBrace,
+  blockCommentOfOneCharacterOutsideTheBasicPlane,
   blockCommentOnLastLine,
   blockCommentPattern,
+  blockCommentToKeep,
+  indentedLineComments,
+  indentedMultiLineBlockComment,
   jsdocComment,
   lineComment,
+  lineCommentBeforeBlanks,
+  lineCommentOfOneCharacterOutsideTheBasicPlane,
   lineCommentOnLastLine,
   toolingDirectiveBlockComment,
 } from '../__tests__/cases/prefer-line-comments.ts'
@@ -32,6 +42,13 @@ houseRuleTester.run('prefer-line-comments', housePlugin.rules['prefer-line-comme
       "stays silent on a block comment followed by code on the file's last line, with no line break after it",
       blockCommentBeforeLastLineBrace,
     ),
+    validCase(
+      'stays silent on a block comment matching an allowPattern that escapes a hyphen, which a pattern read without the u flag accepts',
+      blockCommentToKeep,
+      { options: [{ allowPatterns: [allowPatternEscapingAHyphen] }] },
+    ),
+    validCase('stays silent on a // line comment', lineComment),
+    validCase('stays silent on a block comment after code on its line', blockCommentAfterCode),
   ],
   invalid: [
     invalidCase('reports a /* */ block comment and rewrites it as a line comment', blockComment, {
@@ -46,6 +63,27 @@ houseRuleTester.run('prefer-line-comments', housePlugin.rules['prefer-line-comme
         output: lineCommentOnLastLine,
       },
     ),
+    invalidCase(
+      'reports a block comment of one character outside the basic plane that an allowPattern of one character does not match, as it reads the character as two',
+      blockCommentOfOneCharacterOutsideTheBasicPlane,
+      {
+        options: [{ allowPatterns: [allowPatternOfOneCharacter] }],
+        errors: [{ messageId: 'block', line: 1 }],
+        output: lineCommentOfOneCharacterOutsideTheBasicPlane,
+      },
+    ),
+    invalidCase(
+      'reports an indented block comment of starred lines and rewrites each as a line comment at its indent, a blank line between paragraphs kept',
+      indentedMultiLineBlockComment,
+      {
+        errors: [{ messageId: 'block', line: 2 }],
+        output: indentedLineComments,
+      },
+    ),
+    invalidCase('reports a block comment followed by blanks on its line and rewrites it', blockCommentBeforeBlanks, {
+      errors: [{ messageId: 'block', line: 2 }],
+      output: lineCommentBeforeBlanks,
+    }),
   ],
 })
 
@@ -69,6 +107,14 @@ describe('prefer-line-comments options, as ESLint checks them', () => {
         toolingDirectiveBlockComment,
         'prefer-line-comments.js',
       ),
-    ).toThrowError(/Unexpected property "allowPattern"/)
+    ).toThrow(/Unexpected property "allowPattern"/u)
+  })
+})
+
+describe('prefer-line-comments messages, as a user reads them', () => {
+  it('asks for line comments', () => {
+    const messages = lintWithHouseRule('prefer-line-comments', [], blockComment, 'prefer-line-comments.js')
+
+    expect(messages.map(({ message }) => message)).toStrictEqual(['Use // line comments, not a /* */ block.'])
   })
 })

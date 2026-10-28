@@ -4,6 +4,7 @@ import {
   customEffectHook,
   customEffectInHookModule,
   customEffectWithArrowCallback,
+  effectWithAnonymousFunctionExpression,
   effectWithArrowCallback,
   effectWithNamedCallback,
 } from '../__tests__/cases/named-hook-callback.ts'
@@ -35,6 +36,9 @@ houseRuleTester.run('named-hook-callback', housePlugin.rules['named-hook-callbac
         errors: [{ messageId: 'anonymous', line: 3 }],
       },
     ),
+  invalidCase('reports an anonymous function expression passed to useEffect', effectWithAnonymousFunctionExpression, {
+    errors: [{ messageId: 'anonymous', line: 4, data: { hook: 'useEffect' } }],
+  }),
   ],
 })
 
@@ -53,6 +57,16 @@ describe('named-hook-callback options, as ESLint checks them', () => {
   it('refuses an option key other than hooks', () => {
     expect(() =>
       lintWithHouseRule('named-hook-callback', [{ hook: [customEffectHook] }], customEffectInHookModule, 'use-panel-title.js'),
-    ).toThrowError(/Unexpected property "hook"/)
+    ).toThrow(/Unexpected property "hook"/u)
+  })
+})
+
+describe('named-hook-callback messages, as a user reads them', () => {
+  it('names the hook and shows a named callback', () => {
+    const messages = lintWithHouseRule('named-hook-callback', [], effectWithAnonymousFunctionExpression, 'clock.js')
+
+    expect(messages.map(({ message }) => message)).toStrictEqual([
+      "Give this useEffect callback a name: useEffect(function describesWhatItDoes() {…}). An anonymous callback shows as 'anonymous' in stack traces and React DevTools.",
+    ])
   })
 })

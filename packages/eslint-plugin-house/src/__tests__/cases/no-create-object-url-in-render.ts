@@ -1,4 +1,4 @@
-export const createObjectUrlInJsxAttribute = `export function AvatarPreview({ file }: { file: File }) {
+export const createdInJsxAttribute = `export function AvatarPreview({ file }: { file: File }) {
   return <img src={URL.createObjectURL(file)} alt={file.name} />
 }`
 
@@ -203,3 +203,23 @@ export function imageUrlMadeInCallbackProp(prop: string): string {
 }
 `
 }
+
+// Every call besides then and setTimeout whose function argument runs later.
+export const OTHER_DEFERRING_CALLS = [
+  'window.addEventListener',
+  'setInterval',
+  'queueMicrotask',
+  'requestAnimationFrame',
+  'requestIdleCallback',
+  'loaded.catch',
+  'loaded.finally',
+]
+
+// A function that renders JSX but is named like neither a component nor a hook.
+export const createdInModuleLevelRenderHelper = `export const renderPreview = (blob) => <img alt="" src={URL.createObjectURL(blob)} />
+`
+
+export const createdInRenderBody = `export function Preview({ blob }) {
+  return <img alt="" src={URL.createObjectURL(blob)} />
+}
+`

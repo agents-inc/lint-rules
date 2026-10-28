@@ -1,4 +1,4 @@
-export const createContextInComponent = `import { createContext } from 'react'
+export const contextMadeInComponent = `import { createContext } from 'react'
 
 export function ThemeProvider({ children }) {
   const ThemeContext = createContext('light')
@@ -151,7 +151,7 @@ export class ThemeStore {
 `
 
 // A custom hook runs on every render of the component calling it, and renders no JSX itself.
-export const createContextInCustomHook = `import { createContext, useContext } from 'react'
+export const contextMadeInCustomHook = `import { createContext, useContext } from 'react'
 
 export function useThemeContext() {
   const ThemeContext = createContext('light')
@@ -191,5 +191,107 @@ export function ThemeProvider({ children }) {
 export const contextFromAPropertyNamedReact = `export function ThemeProvider({ children, scope }) {
   const ThemeContext = scope.React.createContext('light')
   return <ThemeContext.Provider value="dark">{children}</ThemeContext.Provider>
+}
+`
+
+// useState keeps only its first argument, so a context made in a later one is made again on every render.
+export const contextPassedToUseStateAfterItsInitialValue = `import { createContext, useState } from 'react'
+
+export function ScopedPanel({ children }) {
+  const [theme] = useState('light', createContext(null))
+  return <div className={theme}>{children}</div>
+}
+`
+
+export function contextFromModule(module: string): string {
+  return `import { createContext } from '${module}'
+
+export function ThemeProvider({ children }) {
+  const ThemeContext = createContext('light')
+  return <ThemeContext.Provider value="dark">{children}</ThemeContext.Provider>
+}
+`
+}
+
+// Modules whose names hold react but are not React.
+export const MODULES_NAMED_LIKE_REACT = ['my-react', 'reactive-context']
+
+export const contextHandedToAnotherCall = `import { createContext } from 'react'
+
+export function ThemeProvider({ children }) {
+  const ThemeContext = track(createContext('light'))
+  return <ThemeContext.Provider value="dark">{children}</ThemeContext.Provider>
+}
+`
+
+// Both an import from React and a local declaration: the binding is not React's alone.
+export const bindingImportedFromReactAndDeclared = `import { createContext } from 'react'
+
+function createContext(pathname: string) {
+  return { pathname }
+}
+
+export function RouteBadge({ pathname }) {
+  const route = createContext(pathname)
+  return <span>{route.pathname}</span>
+}
+`
+
+export const contextMadeByAHelperInAComponent = `import { createContext } from 'react'
+
+export function ThemeProvider({ children }) {
+  const makeContext = () => createContext('light')
+  const ThemeContext = makeContext()
+  return <ThemeContext.Provider value="dark">{children}</ThemeContext.Provider>
+}
+`
+
+// The helper's call reaches the useMemo callback around it, which keeps it, not the component further out.
+export const contextInAHelperInsideALazyUseMemoDeepInAComponent = `import { createContext, useMemo } from 'react'
+
+export function makePanels() {
+  return function Panel({ children }) {
+    const renderScoped = () => {
+      const Scoped = useMemo(() => {
+        const make = () => createContext(null)
+        return make()
+      }, [])
+      return <Scoped.Provider value={1}>{children}</Scoped.Provider>
+    }
+    return <div>{renderScoped()}</div>
+  }
+}
+`
+
+export const contextMadeInArrowComponent = `import { createContext } from 'react'
+
+export const ThemeProvider = ({ children }) => {
+  const ThemeContext = createContext('light')
+  return <ThemeContext.Provider value="dark">{children}</ThemeContext.Provider>
+}
+`
+
+export const contextMadeInMemoisedComponent = `import { createContext, memo } from 'react'
+
+export const ThemeProvider = memo(({ children }) => {
+  const ThemeContext = createContext('light')
+  return <ThemeContext.Provider value="dark">{children}</ThemeContext.Provider>
+})
+`
+
+export const twoContextsMadeInComponent = `import { createContext } from 'react'
+
+export function ThemeProvider({ children }) {
+  const ThemeContext = createContext('light')
+  const SizeContext = createContext('medium')
+  return <ThemeContext.Provider value="dark"><SizeContext.Provider value="large">{children}</SizeContext.Provider></ThemeContext.Provider>
+}
+`
+
+export const contextMadeInComponentRenderingAFragment = `import { createContext } from 'react'
+
+export function Layout({ children }) {
+  const LayoutContext = createContext(null)
+  return <>{children}</>
 }
 `

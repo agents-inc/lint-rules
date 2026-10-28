@@ -2,9 +2,10 @@ import { ASTUtils, AST_NODE_TYPES, ESLintUtils, TSESLint, type TSESTree } from '
 
 import { callReceiving } from '../shared/call-arguments.ts'
 import { calleeNameOf, dottedPropertyNameOf } from '../shared/callee-name.ts'
-import { componentNameOf, type FunctionFrame, functionFrameVisitors } from '../shared/function-frames.ts'
+import { componentNameOf, type FunctionFrame, functionFramesOfTheWalk } from '../shared/function-frames.ts'
 import { type FunctionNode, functionNameOf } from '../shared/function-name.ts'
 import { isHookName } from '../shared/hook-name.ts'
+import { isSameNode } from '../shared/same-node.ts'
 
 // Reports wait for the frame's exit: the call is usually seen before the JSX that makes it a component.
 type Frame = FunctionFrame & { calls: TSESTree.CallExpression[] }
@@ -12,19 +13,19 @@ type Frame = FunctionFrame & { calls: TSESTree.CallExpression[] }
 const RULE_NAME = 'no-create-context-in-render'
 const CREATE_CONTEXT = 'createContext'
 // `node:vm` exports a createContext too, and a Solid component body runs only once.
-const REACT_MODULE = /^(preact(\/compat)?|react|use-context-selector)$/
+const REACT_MODULE = /^(?:preact(?:\/compat)?|react|use-context-selector)$/u
 // Hooks that keep their first argument for the component's life.
 const STABLE_HOOKS: ReadonlySet<string> = new Set(['useMemo', 'useState', 'useRef'])
 
-function isRetainedByStableHook(node: FunctionNode | TSESTree.CallExpression): boolean {
+function isRetainedByStableHook(node: Readonly<FunctionNode | TSESTree.CallExpression>): boolean {
   const call = callReceiving(node, node.parent)
-  if (call === null || call.arguments[0] !== node) return false
+  if (call === null || !isSameNode(call.arguments[0], node)) return false
   const name = calleeNameOf(call.callee)
   return name !== null && STABLE_HOOKS.has(name)
 }
 
 // The member form is pinned to `React`: `vm.createContext(sandbox)` is a real Node API.
-function createContextForm(callee: TSESTree.Expression): 'bare' | 'namespaced' | null {
+function createContextForm(callee: Readonly<TSESTree.Expression>): 'bare' | 'namespaced' | null {
   if (callee.type === AST_NODE_TYPES.Identifier) return callee.name === CREATE_CONTEXT ? 'bare' : null
   const isNamespaced =
     callee.type === AST_NODE_TYPES.MemberExpression &&
@@ -34,7 +35,7 @@ function createContextForm(callee: TSESTree.Expression): 'bare' | 'namespaced' |
   return isNamespaced ? 'namespaced' : null
 }
 
-function isReactImport(definition: TSESLint.Scope.Definition): boolean {
+function isReactImport(definition: Readonly<TSESLint.Scope.Definition>): boolean {
   return (
     definition.type === TSESLint.Scope.DefinitionType.ImportBinding &&
     definition.parent.type === AST_NODE_TYPES.ImportDeclaration &&
@@ -44,16 +45,56 @@ function isReactImport(definition: TSESLint.Scope.Definition): boolean {
 
 // A `createContext` the file declares or imports from elsewhere is someone else's; an unresolved
 // one is React's UMD global.
-function isReactCreateContextIn(scope: TSESLint.Scope.Scope): boolean {
-  const variable = ASTUtils.findVariable(scope, CREATE_CONTEXT)
+function isReactsCreateContext(variable: Readonly<TSESLint.Scope.Variable> | null): boolean {
   return variable === null || variable.defs.every(isReactImport)
 }
 
 // A PascalCase name alone also fits a factory, whose context genuinely cannot move.
-function rendererNameOf(frame: Frame): string | null {
+function rendererNameOf(frame: Readonly<Frame>): string | null {
   const name = functionNameOf(frame.node)
   if (name !== null && isHookName(name)) return name
   return componentNameOf(frame)
+}
+
+function callsReactCreateContext(call: Readonly<TSESTree.CallExpression>, sourceCode: Readonly<TSESLint.SourceCode>): boolean {
+  const form = createContextForm(call.callee)
+  switch (form) {
+    case 'namespaced': {
+      return true
+    }
+    case 'bare': {
+      return isReactsCreateContext(ASTUtils.findVariable(sourceCode.getScope(call), CREATE_CONTEXT))
+    }
+    case null: {
+      return false
+    }
+    default: {
+      const unhandled: never = form
+      return unhandled
+    }
+  }
+}
+
+function frameWithNoCalls(node: Readonly<FunctionNode>): Frame {
+  return { node, rendersJsx: false, calls: [] }
+}
+
+function reportOrPassToEnclosing(
+  context: Readonly<TSESLint.RuleContext<'inRender', []>>,
+  frame: Readonly<Frame>,
+  enclosing: Readonly<Frame> | undefined,
+): void {
+  if (frame.calls.length === 0) return
+  const renderer = rendererNameOf(frame)
+  if (renderer !== null) {
+    for (const call of frame.calls) {
+      context.report({ node: call.callee, messageId: 'inRender', data: { name: renderer } })
+    }
+    return
+  }
+  // Any other function runs with whatever encloses it: a helper inside a component, not one at module scope.
+  if (enclosing === undefined || isRetainedByStableHook(frame.node)) return
+  enclosing.calls.push(...frame.calls)
 }
 
 // Not fixable: hoisting is safe only when the default value closes over nothing in the component.
@@ -71,51 +112,19 @@ export const noCreateContextInRender = ESLintUtils.RuleCreator.withoutDocs<[], '
   },
   create(context) {
     const { sourceCode } = context
-    const stack: Frame[] = []
-
-    const callsReactCreateContext = (call: TSESTree.CallExpression): boolean => {
-      const form = createContextForm(call.callee)
-      switch (form) {
-        case 'namespaced': {
-          return true
-        }
-        case 'bare': {
-          return isReactCreateContextIn(sourceCode.getScope(call))
-        }
-        case null: {
-          return false
-        }
-        default: {
-          const unhandled: never = form
-          return unhandled
-        }
-      }
-    }
-
-    const reportOrPassToEnclosing = (frame: Frame): void => {
-      if (frame.calls.length === 0) return
-      const renderer = rendererNameOf(frame)
-      if (renderer !== null) {
-        for (const call of frame.calls) {
-          context.report({ node: call.callee, messageId: 'inRender', data: { name: renderer } })
-        }
-        return
-      }
-      // Any other function runs with whatever encloses it: a helper inside a component, not one at module scope.
-      const enclosing = stack.at(-1)
-      if (enclosing === undefined || isRetainedByStableHook(frame.node)) return
-      enclosing.calls.push(...frame.calls)
-    }
+    const { frames, visitors } = functionFramesOfTheWalk({
+      ruleName: RULE_NAME,
+      frameFor: frameWithNoCalls,
+      onLeave(frame, enclosing) {
+        reportOrPassToEnclosing(context, frame, enclosing)
+      },
+    })
 
     return {
-      ...functionFrameVisitors(stack, {
-        ruleName: RULE_NAME,
-        frameFor: (node) => ({ node, rendersJsx: false, calls: [] }),
-        onLeave: reportOrPassToEnclosing,
-      }),
+      ...visitors,
       CallExpression(node) {
-        if (!callsReactCreateContext(node) || isRetainedByStableHook(node)) return
-        const frame = stack.at(-1)
+        if (!callsReactCreateContext(node, sourceCode) || isRetainedByStableHook(node)) return
+        const frame = frames.at(-1)
         if (frame !== undefined) frame.calls.push(node)
       },
     }

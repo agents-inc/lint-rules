@@ -216,3 +216,27 @@ export function inputTypedByInsideButton(typeAttribute: string): string {
 }
 `
 }
+
+export const textareaInsideButton = `export function Composer() {
+  return (
+    <button type="button">
+      <textarea />
+    </button>
+  )
+}
+`
+
+export const linkInsideLinkModule = `export function Crumbs() {
+  return <a href="/a"><a href="/b">b</a></a>
+}
+`
+
+export const inputInsideButtonModule = `export function Composer() {
+  return <button type="button"><input /></button>
+}
+`
+
+export const clickHandlerInsideButtonModule = `export function Row({ open }) {
+  return <button type="button"><span onClick={open}>x</span></button>
+}
+`

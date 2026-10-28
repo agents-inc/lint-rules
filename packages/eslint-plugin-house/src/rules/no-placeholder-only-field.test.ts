@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest'
+
 import {
   componentField,
   inputWithPlaceholder,
@@ -7,6 +9,8 @@ import {
   namedByTemplateIdAndLabelFor,
   noPlaceholder,
   placeholderOnlyInput,
+  placeholderOnlyInputModule,
+  placeholderOnlyInsideLabelText,
   restSpreadAfterPlaceholder,
   spreadMayCarryName,
   wrappedInFormLabelComponent,
@@ -20,6 +24,7 @@ import {
   templateAttribute,
 } from '../__tests__/factories/attribute-factories.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
+import { lintWithHouseRule } from '../__tests__/house-linter.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
 
@@ -68,5 +73,23 @@ houseRuleTester.run('no-placeholder-only-field', housePlugin.rules['no-placehold
         errors: [{ messageId: 'placeholderOnly', line: 2, data: { tag: 'input' } }],
       },
     ),
+  buildInvalidCase(
+    'reports a placeholder-only input inside a wrapper whose name holds Label without ending in it',
+    placeholderOnlyInsideLabelText,
+    {
+      filename: 'no-placeholder-only-field.tsx',
+      errors: [{ messageId: 'placeholderOnly', line: 4, data: { tag: 'input' } }],
+    },
+  ),
   ],
+})
+
+describe('no-placeholder-only-field messages, as a user reads them', () => {
+  it('names the field and the ways to label it', () => {
+    const messages = lintWithHouseRule('no-placeholder-only-field', [], placeholderOnlyInputModule, 'search.js')
+
+    expect(messages.map(({ message }) => message)).toStrictEqual([
+      "The placeholder is this <input>'s only accessible name, and it disappears as soon as the user types. Give it an id and a <label htmlFor> beside it, or an aria-label where no visible label fits.",
+    ])
+  })
 })

@@ -85,3 +85,29 @@ export const componentWithAMemoHookModule = `export function Panel() {
 export const LIMIT_OF_THE_MEMO_MODULE = 2
 
 export const ignoreListLeavingUseMemoCounted: readonly string[] = ['useCallback']
+
+// Seven hooks counted, the limit by default, and the two memoisation hooks it leaves out.
+export const sevenHooksBesideMemoHooks = `import { useCallback, useEffect, useMemo, useState } from 'react'
+
+export function Panel() {
+  const [a] = useState(0)
+  const [b] = useState(0)
+  const [c] = useState(0)
+  const [d] = useState(0)
+  const [e] = useState(0)
+  const [f] = useState(0)
+  useEffect(function syncTitle() {}, [])
+  const total = useMemo(() => a + b + c + d + e + f, [a, b, c, d, e, f])
+  const reset = useCallback(() => total, [total])
+  return <p onClick={reset}>{total}</p>
+}
+`
+
+export const twoHooksModule = `import { useEffect, useState } from 'react'
+
+export function Panel() {
+  const [count] = useState(0)
+  useEffect(function syncTitle() {}, [count])
+  return <p>{count}</p>
+}
+`

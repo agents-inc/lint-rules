@@ -24,26 +24,26 @@ const FOCUSABLE_WITH_HREF_TAGS: ReadonlySet<string> = new Set(['a', 'area'])
 // What a message calls an element whose tag is not a plain name, such as `<Menu.Item>`.
 const UNNAMED_TAG = 'element'
 
-function isBracedTrue(attribute: TSESTree.JSXAttribute): boolean {
+function isBracedTrue(attribute: Readonly<TSESTree.JSXAttribute>): boolean {
   const expression = bracedExpressionOf(attribute)
   return expression?.type === AST_NODE_TYPES.Literal && expression.value === true
 }
 
 // Only `x`, `x={true}` and the text "true" render true. A dynamic value is unknowable, and unknown is silent.
-function rendersTrue(attribute: TSESTree.JSXAttribute): boolean {
+function rendersTrue(attribute: Readonly<TSESTree.JSXAttribute>): boolean {
   return attribute.value === null || fixedTextOf(attribute) === 'true' || isBracedTrue(attribute)
 }
 
-function ariaHiddenTrueOf(element: TSESTree.JSXOpeningElement): TSESTree.JSXAttribute | null {
+function ariaHiddenTrueOf(element: Readonly<TSESTree.JSXOpeningElement>): TSESTree.JSXAttribute | null {
   const ariaHidden = findJsxAttribute(element, 'aria-hidden')
   return ariaHidden !== null && rendersTrue(ariaHidden) ? ariaHidden : null
 }
 
-function isAriaHidden(element: TSESTree.JSXOpeningElement): boolean {
+function isAriaHidden(element: Readonly<TSESTree.JSXOpeningElement>): boolean {
   return ariaHiddenTrueOf(element) !== null
 }
 
-function isInert(element: TSESTree.JSXOpeningElement): boolean {
+function isInert(element: Readonly<TSESTree.JSXOpeningElement>): boolean {
   return findJsxAttribute(element, 'inert') !== null
 }
 
@@ -52,7 +52,7 @@ function finiteOr(value: number): TabIndex {
 }
 
 // `tabIndex={-1}` parses as a UnaryExpression, not a negative Literal.
-function tabIndexInBraces(expression: BracedExpression): TabIndex {
+function tabIndexInBraces(expression: Readonly<BracedExpression>): TabIndex {
   if (expression.type === AST_NODE_TYPES.Literal) return finiteOr(Number(expression.value))
   if (
     expression.type === AST_NODE_TYPES.UnaryExpression &&
@@ -64,7 +64,7 @@ function tabIndexInBraces(expression: BracedExpression): TabIndex {
   return 'unknown'
 }
 
-function tabIndexOf(element: TSESTree.JSXOpeningElement): TabIndex {
+function tabIndexOf(element: Readonly<TSESTree.JSXOpeningElement>): TabIndex {
   const attribute = findJsxAttribute(element, 'tabIndex', 'tabindex')
   if (attribute === null) return 'absent'
   const text = fixedTextOf(attribute)
@@ -73,11 +73,11 @@ function tabIndexOf(element: TSESTree.JSXOpeningElement): TabIndex {
   return expression === null ? 'unknown' : tabIndexInBraces(expression)
 }
 
-function displayedTagOf(element: TSESTree.JSXOpeningElement): string {
+function displayedTagOf(element: Readonly<TSESTree.JSXOpeningElement>): string {
   return unqualifiedTagOf(element) ?? UNNAMED_TAG
 }
 
-function isFocusableElement(element: TSESTree.JSXOpeningElement): boolean {
+function isFocusableElement(element: Readonly<TSESTree.JSXOpeningElement>): boolean {
   // Any form of these takes the element out of the tab order, `disabled={busy}` included.
   if (findJsxAttribute(element, 'disabled', 'hidden') !== null) return false
   // An explicit tabIndex overrides the element's default in both directions.
@@ -93,24 +93,24 @@ function isFocusableElement(element: TSESTree.JSXOpeningElement): boolean {
 
 // The JSX an expression renders as children, without descending into it. A JSX attribute's value
 // (`<Modal footer={<button />}>`) may render anywhere, so it does not count.
-function jsxRenderedBy(node: TSESTree.Node): RenderedJsx[] {
+function jsxRenderedBy(node: Readonly<TSESTree.Node>): RenderedJsx[] {
   if (node.type === AST_NODE_TYPES.JSXElement || node.type === AST_NODE_TYPES.JSXFragment) return [node]
   return childNodesOf(node).flatMap(jsxRenderedBy)
 }
 
-function renderedChildrenOf(child: TSESTree.JSXChild): RenderedJsx[] {
+function renderedChildrenOf(child: Readonly<TSESTree.JSXChild>): RenderedJsx[] {
   if (child.type === AST_NODE_TYPES.JSXElement || child.type === AST_NODE_TYPES.JSXFragment) return [child]
   if (child.type === AST_NODE_TYPES.JSXExpressionContainer) return jsxRenderedBy(child.expression)
   return []
 }
 
 // An inert or always-hidden ancestor already covers its subtree; a dynamic `aria-hidden={busy}` does not.
-function coversItsSubtree(node: TSESTree.Node): boolean {
+function coversItsSubtree(node: Readonly<TSESTree.Node>): boolean {
   return node.type === AST_NODE_TYPES.JSXElement && (isInert(node.openingElement) || isAriaHidden(node.openingElement))
 }
 
 // Inert is inherited, so an inert element prunes its subtree.
-function firstFocusableAtOrBelow(jsx: RenderedJsx): TSESTree.JSXOpeningElement | null {
+function firstFocusableAtOrBelow(jsx: Readonly<RenderedJsx>): TSESTree.JSXOpeningElement | null {
   if (jsx.type === AST_NODE_TYPES.JSXFragment) return firstFocusableDescendant(jsx)
   if (isInert(jsx.openingElement)) return null
   if (isFocusableElement(jsx.openingElement)) return jsx.openingElement
@@ -118,7 +118,7 @@ function firstFocusableAtOrBelow(jsx: RenderedJsx): TSESTree.JSXOpeningElement |
 }
 
 // Descendants only: a focusable sibling of a decorative aria-hidden wrapper is correct code.
-function firstFocusableDescendant(element: RenderedJsx): TSESTree.JSXOpeningElement | null {
+function firstFocusableDescendant(element: Readonly<RenderedJsx>): TSESTree.JSXOpeningElement | null {
   for (const candidate of element.children.flatMap(renderedChildrenOf)) {
     const focusable = firstFocusableAtOrBelow(candidate)
     if (focusable !== null) return focusable
@@ -126,7 +126,7 @@ function firstFocusableDescendant(element: RenderedJsx): TSESTree.JSXOpeningElem
   return null
 }
 
-function focusableFindingOf(element: TSESTree.JSXElement): Finding | null {
+function focusableFindingOf(element: Readonly<TSESTree.JSXElement>): Finding | null {
   if (isFocusableElement(element.openingElement)) {
     return { messageId: 'self', data: { tag: displayedTagOf(element.openingElement) } }
   }

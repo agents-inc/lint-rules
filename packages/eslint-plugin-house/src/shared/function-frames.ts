@@ -7,30 +7,23 @@ export type FunctionFrame = { node: FunctionNode; rendersJsx: boolean }
 
 type FrameHandlers<Frame extends FunctionFrame> = {
   ruleName: string
-  frameFor: (node: FunctionNode) => Frame
-  // Called with the frame just popped, so the stack's last frame is the function enclosing it.
-  onLeave?: (frame: Frame) => void
+  frameFor: (node: Readonly<FunctionNode>) => Frame
+  // Called with the frame just left, and the frame of the function enclosing it, or undefined at module scope.
+  onLeave?: (frame: Readonly<Frame>, enclosing: Readonly<Frame> | undefined) => void
 }
 
-const COMPONENT_NAME = /^[A-Z]/
+/** The frames of the functions the walk is inside, innermost last, and the visitors that keep them in step with it. */
+type FunctionFrames<Frame extends FunctionFrame> = { frames: readonly Frame[]; visitors: TSESLint.RuleListener }
 
-/** Keeps `stack` in step with the walk, innermost function last, handing each popped frame to `onLeave`. */
-export function functionFrameVisitors<Frame extends FunctionFrame>(
-  stack: Frame[],
-  { ruleName, frameFor, onLeave }: FrameHandlers<Frame>,
-): TSESLint.RuleListener {
-  const enter = (node: FunctionNode): void => {
-    stack.push(frameFor(node))
-  }
-  const leave = (): void => {
-    const frame = stack.pop()
-    if (frame === undefined) throw new Error(`${ruleName} left a function it never entered`)
-    onLeave?.(frame)
-  }
-  const markJsx = (): void => {
-    const frame = stack.at(-1)
-    if (frame !== undefined) frame.rendersJsx = true
-  }
+type WalkSteps = {
+  enter: (node: Readonly<FunctionNode>) => void
+  leave: () => void
+  markJsx: () => void
+}
+
+const COMPONENT_NAME = /^[A-Z]/u
+
+function visitorsTaking({ enter, leave, markJsx }: Readonly<WalkSteps>): TSESLint.RuleListener {
   return {
     FunctionDeclaration: enter,
     'FunctionDeclaration:exit': leave,
@@ -43,8 +36,26 @@ export function functionFrameVisitors<Frame extends FunctionFrame>(
   }
 }
 
+/** Frames kept in step with the walk, each handed to `onLeave` as the walk leaves its function. */
+export function functionFramesOfTheWalk<Frame extends FunctionFrame>({ ruleName, frameFor, onLeave }: Readonly<FrameHandlers<Frame>>): FunctionFrames<Frame> {
+  const frames: Frame[] = []
+  function enter(node: Readonly<FunctionNode>): void {
+    frames.push(frameFor(node))
+  }
+  function leave(): void {
+    const frame = frames.pop()
+    if (frame === undefined) throw new Error(`${ruleName} left a function it never entered`)
+    onLeave?.(frame, frames.at(-1))
+  }
+  function markJsx(): void {
+    const frame = frames.at(-1)
+    if (frame !== undefined) frame.rendersJsx = true
+  }
+  return { frames, visitors: visitorsTaking({ enter, leave, markJsx }) }
+}
+
 /** The name of a component: a function named in PascalCase that renders JSX itself. Null for anything else. */
-export function componentNameOf(frame: FunctionFrame): string | null {
+export function componentNameOf(frame: Readonly<FunctionFrame>): string | null {
   const name = functionNameOf(frame.node)
   return name !== null && COMPONENT_NAME.test(name) && frame.rendersJsx ? name : null
 }

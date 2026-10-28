@@ -19,12 +19,12 @@ const WORD_END = /\s|$/u
 
 // The engines read a directive's label as the comment's first word, so a ` -- reason` is irrelevant
 // and prose naming a directive (`// eslint-disabled until…`) is not one.
-function labelOf(comment: TSESTree.Comment): string {
+function labelOf(comment: Readonly<TSESTree.Comment>): string {
   const text = comment.value.trimStart()
   return text.slice(0, text.search(WORD_END))
 }
 
-function isSuppression(comment: TSESTree.Comment): boolean {
+function isSuppression(comment: Readonly<TSESTree.Comment>): boolean {
   const label = labelOf(comment)
   return SUPPRESSION_LABELS.has(label) || (comment.type === AST_TOKEN_TYPES.Block && label === RULE_CONFIG_LABEL)
 }
@@ -44,8 +44,8 @@ export const noSuppressions = ESLintUtils.RuleCreator.withoutDocs<[], 'suppressi
     const { sourceCode } = context
     return {
       Program() {
-        for (const comment of sourceCode.getAllComments().filter(isSuppression)) {
-          context.report({ node: comment, messageId: 'suppression' })
+        for (const comment of sourceCode.getAllComments()) {
+          if (isSuppression(comment)) context.report({ node: comment, messageId: 'suppression' })
         }
       },
     }

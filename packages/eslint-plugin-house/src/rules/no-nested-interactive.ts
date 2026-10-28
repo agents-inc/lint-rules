@@ -18,27 +18,27 @@ const FORBIDDEN_INSIDE: Readonly<Record<BoundaryTag, ReadonlySet<string>>> = {
 }
 // Inside these, any onClick is a second click target. A form is a submit boundary, not a click target.
 const CLICK_SWALLOWERS: ReadonlySet<BoundaryTag> = new Set(['button', 'a'])
-const INTRINSIC_TAG = /^[a-z]/
+const INTRINSIC_TAG = /^[a-z]/u
 
 // Intrinsic elements only: `<Button>` may render anything, and untyped lint cannot tell what.
-function intrinsicTagOf(element: TSESTree.JSXElement): string | null {
+function intrinsicTagOf(element: Readonly<TSESTree.JSXElement>): string | null {
   const tag = unqualifiedTagOf(element.openingElement)
   return tag !== null && INTRINSIC_TAG.test(tag) ? tag : null
 }
 
 // `type="hidden"` can take neither click nor focus, so it is legal inside a button.
-function isHiddenInput(tag: string, element: TSESTree.JSXElement): boolean {
+function isHiddenInput(tag: string, element: Readonly<TSESTree.JSXElement>): boolean {
   return tag === 'input' && hasHiddenType(element.openingElement)
 }
 
 // Without an href an `<a>` is a styled span. This misses `<a><a href/></a>`, which the parser also
 // re-emits, to stay off those spans.
-function boundaryOf(tag: string, element: TSESTree.JSXElement): BoundaryTag | null {
+function boundaryOf(tag: string, element: Readonly<TSESTree.JSXElement>): BoundaryTag | null {
   if (tag === 'a') return findJsxAttribute(element.openingElement, 'href') === null ? null : 'a'
   return tag === 'button' || tag === 'form' ? tag : null
 }
 
-function forbiddenNestingOf(tag: string, element: TSESTree.JSXElement, boundaries: readonly BoundaryTag[]): Finding | null {
+function forbiddenNestingOf(tag: string, element: Readonly<TSESTree.JSXElement>, boundaries: readonly BoundaryTag[]): Finding | null {
   const outer = boundaries.findLast((boundary) => FORBIDDEN_INSIDE[boundary].has(tag))
   if (outer === undefined) return null
   return {
@@ -48,14 +48,14 @@ function forbiddenNestingOf(tag: string, element: TSESTree.JSXElement, boundarie
   }
 }
 
-function secondClickTargetOf(tag: string, element: TSESTree.JSXElement, boundaries: readonly BoundaryTag[]): Finding | null {
+function secondClickTargetOf(tag: string, element: Readonly<TSESTree.JSXElement>, boundaries: readonly BoundaryTag[]): Finding | null {
   const swallower = boundaries.findLast((boundary) => CLICK_SWALLOWERS.has(boundary))
   if (swallower === undefined) return null
   const onClick = findJsxAttribute(element.openingElement, 'onClick')
   return onClick === null ? null : { node: onClick, messageId: 'handler', data: { inner: tag, outer: swallower } }
 }
 
-function nestingFindingOf(tag: string, element: TSESTree.JSXElement, boundaries: readonly BoundaryTag[]): Finding | null {
+function nestingFindingOf(tag: string, element: Readonly<TSESTree.JSXElement>, boundaries: readonly BoundaryTag[]): Finding | null {
   if (isHiddenInput(tag, element)) return null
   return forbiddenNestingOf(tag, element, boundaries) ?? secondClickTargetOf(tag, element, boundaries)
 }

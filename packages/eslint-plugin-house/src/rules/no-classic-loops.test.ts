@@ -5,6 +5,7 @@ import {
   classicForInsideForOf,
   classicIndexedFor,
   doWhileLoop,
+  everyClassicLoop,
   forAwaitOfLoop,
   forInOverRecord,
   forOfLoop,
@@ -75,5 +76,18 @@ describe('no-classic-loops message', () => {
         namesArrayMethod: message.includes('array method'),
       })),
     ).toStrictEqual([{ ruleId: 'house/no-classic-loops', namesForOf: true, namesArrayMethod: true }])
+  })
+})
+
+describe('no-classic-loops messages, as a user reads them', () => {
+  it('names each kind of loop', () => {
+    const messages = lintWithHouseRule('no-classic-loops', [], everyClassicLoop, 'drain.js')
+
+    expect(messages.map(({ message }) => message)).toStrictEqual([
+      'Use for…of, or an array method such as map, filter or reduce, instead of a do…while loop.',
+      'Use for…of, or an array method such as map, filter or reduce, instead of a for…in loop.',
+      'Use for…of, or an array method such as map, filter or reduce, instead of a for loop.',
+      'Use for…of, or an array method such as map, filter or reduce, instead of a while loop.',
+    ])
   })
 })

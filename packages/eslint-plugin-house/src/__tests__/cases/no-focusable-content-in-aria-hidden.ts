@@ -274,3 +274,83 @@ export const buttonInSpanInsideAriaHidden = `export function Toolbar() {
   )
 }
 `
+
+// Focusable as they stand, the a and area by their href, each aria-hidden itself.
+export const ARIA_HIDDEN_FOCUSABLE_ELEMENTS = [
+  { element: '<select aria-hidden="true" />', tag: 'select' },
+  { element: '<textarea aria-hidden="true" />', tag: 'textarea' },
+  { element: '<a href="/home" aria-hidden="true">Home</a>', tag: 'a' },
+  { element: '<area href="/home" aria-hidden="true" />', tag: 'area' },
+]
+
+export function componentReturning(element: string): string {
+  return `export function Corner() {
+  return ${element}
+}
+`
+}
+
+export const ariaHiddenHiddenButton = componentReturning('<button hidden aria-hidden="true">Close</button>')
+
+// A unary plus is not a tabIndex this rule reads.
+export const ariaHiddenDivWithPlusZeroTabIndex = componentReturning('<div aria-hidden="true" tabIndex={+0} />')
+
+export const ariaHiddenInsideAnOrdinaryElement = `export function Toolbar() {
+  return (
+    <div>
+      <span aria-hidden="true">
+        <button>Go</button>
+      </span>
+    </div>
+  )
+}
+`
+
+export const ariaHiddenInsideAriaHidden = `export function Track() {
+  return (
+    <div aria-hidden="true">
+      <span aria-hidden="true">
+        <button>Go</button>
+      </span>
+    </div>
+  )
+}
+`
+
+export const buttonRenderedByAnExpressionInsideAriaHidden = `export function Toolbar({ open }) {
+  return (
+    <div aria-hidden="true">
+      {open && <button>Go</button>}
+    </div>
+  )
+}
+`
+
+export const buttonInAFragmentRenderedByAnExpressionInsideAriaHidden = `export function Toolbar({ open }) {
+  return (
+    <div aria-hidden="true">
+      {open && <><button>Go</button></>}
+    </div>
+  )
+}
+`
+
+export const ariaHiddenAroundAButtonModule = `export function Toolbar() {
+  return <div aria-hidden="true"><button>Go</button></div>
+}
+`
+
+export const ariaHiddenButtonModule = `export function Close() {
+  return <button aria-hidden="true">Close</button>
+}
+`
+
+// A spread child is not read, inside a fragment as anywhere else.
+export const buttonInASpreadChildOfAFragmentInsideAriaHidden = `export function Toolbar({ open }) {
+  return (
+    <div aria-hidden="true">
+      {open && <>{...[<button>Go</button>]}</>}
+    </div>
+  )
+}
+`

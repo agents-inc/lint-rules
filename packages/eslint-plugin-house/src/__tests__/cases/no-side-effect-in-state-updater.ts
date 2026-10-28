@@ -329,3 +329,245 @@ export const privateFieldNamedCurrentWrittenInUpdater = `class Counter {
   }
 }
 `
+
+// `settle` starts with set but not set and a capital; `resetCount` holds setC without starting with it.
+export const effectsPassedToFunctionsNotNamedLikeSetters = `export function sync(
+  settle: (update: (value: number) => number) => void,
+  resetCount: (update: (value: number) => number) => void,
+) {
+  settle((value) => {
+    localStorage.setItem('settled', String(value))
+    return value
+  })
+  resetCount((value) => {
+    localStorage.setItem('reset', String(value))
+    return 0
+  })
+}
+`
+
+/** A component whose state updater runs `statement` before it returns, `statement` on line 9. */
+export function updaterRunning(statement: string): string {
+  return `import { useState } from 'react'
+
+const seen = []
+
+export function Seen() {
+  const [items, setItems] = useState([])
+  const mark = () =>
+    setItems((prev) => {
+      ${statement}
+      return prev
+    })
+  return <button onClick={mark}>{items.length}</button>
+}
+`
+}
+
+// The methods that run their callback inside the updater, before it returns.
+export const SYNC_CALLBACK_METHODS = [
+  'forEach',
+  'map',
+  'filter',
+  'reduce',
+  'reduceRight',
+  'flatMap',
+  'find',
+  'findIndex',
+  'findLast',
+  'findLastIndex',
+  'some',
+  'every',
+  'sort',
+  'flat',
+]
+
+/** An updater handing `method` a callback with a storage write on line 10. */
+export function effectInCallbackHandedTo(method: string): string {
+  return updaterRunning(`prev.${method}((item) => {
+        localStorage.setItem('seen', '1')
+        return item
+      })`)
+}
+
+export const MUTATING_METHODS = [
+  'push',
+  'pop',
+  'shift',
+  'unshift',
+  'splice',
+  'sort',
+  'reverse',
+  'fill',
+  'copyWithin',
+  'set',
+  'add',
+  'delete',
+  'clear',
+]
+
+export const GLOBAL_EFFECT_CALLS = [
+  'fetch',
+  'requestAnimationFrame',
+  'cancelAnimationFrame',
+  'requestIdleCallback',
+  'cancelIdleCallback',
+  'queueMicrotask',
+  'setTimeout',
+  'setInterval',
+  'clearTimeout',
+  'clearInterval',
+]
+
+// Each effect reached through a global, besides localStorage.setItem and URL.revokeObjectURL.
+export const MEMBER_EFFECT_CALLS = [
+  'localStorage.removeItem',
+  'localStorage.clear',
+  'sessionStorage.setItem',
+  'sessionStorage.removeItem',
+  'sessionStorage.clear',
+  'indexedDB.open',
+  'URL.createObjectURL',
+  'navigator.sendBeacon',
+  'navigator.clipboard.writeText',
+  'navigator.clipboard.write',
+  'history.pushState',
+  'history.replaceState',
+  'history.go',
+  'history.back',
+  'history.forward',
+  'axios.post',
+]
+
+// Named like setters and handed a function, but they schedule it.
+export const SCHEDULERS_NAMED_LIKE_SETTERS = ['setTimeout', 'setInterval', 'setImmediate']
+
+/** A component handing `scheduler` a callback with a storage write, outside any updater. */
+export function effectInCallbackScheduledBy(scheduler: string): string {
+  return `export function Ticker() {
+  ${scheduler}(() => {
+    localStorage.setItem('tick', '1')
+  }, 1000)
+  return null
+}
+`
+}
+
+export const effectInClassSetStateUpdater = `import { Component } from 'react'
+
+export class Counter extends Component {
+  bump = () => {
+    this.setState((prev) => {
+      localStorage.setItem('count', String(prev.count))
+      return { count: prev.count + 1 }
+    })
+  }
+
+  render() {
+    return <button onClick={this.bump}>{this.state.count}</button>
+  }
+}
+`
+
+export const effectInFunctionExpressionUpdater = `import { useState } from 'react'
+
+export function Seen() {
+  const [items, setItems] = useState([])
+  const mark = () =>
+    setItems(function next(prev) {
+      localStorage.setItem('seen', '1')
+      return prev
+    })
+  return <button onClick={mark}>{items.length}</button>
+}
+`
+
+// react-router's setSearchParams(init, options) shape: an updater and one more argument.
+export const effectInUpdaterBesideOptions = `export function Search({ setSearchParams }) {
+  const clear = () =>
+    setSearchParams((prev) => {
+      localStorage.setItem('query', '')
+      return prev
+    }, { replace: true })
+  return <button onClick={clear}>Clear</button>
+}
+`
+
+// A third argument means some other set* API.
+export const effectInSetterTakingThreeArguments = `export function Map({ setPosition }) {
+  const center = () =>
+    setPosition((prev) => {
+      localStorage.setItem('centered', '1')
+      return prev
+    }, 0, 0)
+  return <button onClick={center}>Center</button>
+}
+`
+
+// A setter call reached through a ternary, a logical and a comma in statement position is still discarded.
+export const settersDiscardedThroughConditionalLogicalAndSequence = updaterRunning(`prev.length > 0 ? setOther(prev.length) : null
+      prev.length > 0 && setOther(prev.length)
+      void 0, setOther(prev.length)`)
+
+export const writeToAPropertyOfACopy = updaterRunning(`const next = { ...prev }
+      next.count = 1`)
+
+export const writeToAPropertyOfAValueMadeOnTheSpot = updaterRunning('getDraft().count = 1')
+
+export const writeToAPropertyOfADeclaredFunction = updaterRunning(`function tally() {}
+      tally.count = prev.length`)
+
+// Every name bound anywhere in the updater counts as its own, a constructor parameter property's too.
+export const mutationOfANameAParameterPropertyBinds = updaterRunning(`class Bag {
+        constructor(public seen: string[]) {}
+      }
+      seen.push(prev.length)`)
+
+// And every form of pattern binds one: a destructured property, an object's rest, an array element, a default
+// value, a rest element, a caught error, and an element past a hole.
+export const mutationOfANameADestructuredPropertyBinds = updaterRunning(`const { items } = { items: prev.slice() }
+      items.push(prev.length)`)
+
+export const writeToTheRestOfADestructuredObject = updaterRunning(`const { ...draft } = prev
+      draft.count = prev.length`)
+
+export const mutationOfANameAnArrayPatternBinds = updaterRunning(`const [copy] = [prev.slice()]
+      copy.push(prev.length)`)
+
+export const mutationOfANameBoundWithADefaultValue = updaterRunning(`const { copy = [] } = { copy: prev.slice() }
+      copy.push(prev.length)`)
+
+export const mutationOfACopyARestElementCollects = updaterRunning(`const [...copy] = prev
+      copy.push(prev.length)`)
+
+export const writeToTheErrorACatchClauseBinds = updaterRunning(`try {
+        prev.at(0)
+      } catch (error) {
+        error.seen = prev.length
+      }`)
+
+export const mutationOfANameBoundPastAHole = updaterRunning(`const [, copy] = [prev, prev.slice()]
+      copy.push(prev.length)`)
+
+export const assignmentToAPlainVariable = updaterRunning('count = prev.length')
+
+export const setterCalledWithTwoArguments = updaterRunning("setOther(prev.length, 'extra')")
+
+export const bareCallNamedLikeAMutator = updaterRunning('push(prev.length)')
+
+export const mutationThroughANestedPath = updaterRunning('store.items.push(prev.length)')
+
+// One finding of each kind, in source order.
+export const everyFindingInOneUpdater = `export function Tray({ ref, seen, setOther, setItems }) {
+  const clear = () =>
+    setItems((prev) => {
+      localStorage.setItem('seen', '1')
+      setOther(prev.length)
+      ref.current = prev.length
+      ref.current.push(prev.length)
+      seen.push(prev.length)
+      return prev
+    })
+  return clear
+}
+`

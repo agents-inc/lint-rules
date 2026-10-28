@@ -18,7 +18,7 @@ const CVA_FUNCTION_SUFFIX = 'Variants'
 const HELPER_LIST_SEPARATOR = ', '
 
 // Unwraps what changes nothing rendered: `styles.card!`, `x as string`, `styles?.footer`, `cn?.(…)`.
-function unwrappedClassValueOf(expression: TSESTree.Expression): TSESTree.Expression {
+function unwrappedClassValueOf(expression: Readonly<TSESTree.Expression>): TSESTree.Expression {
   switch (expression.type) {
     case AST_NODE_TYPES.ChainExpression:
     case AST_NODE_TYPES.TSAsExpression:
@@ -33,7 +33,7 @@ function unwrappedClassValueOf(expression: TSESTree.Expression): TSESTree.Expres
 }
 
 // A template with nothing interpolated is a string in backticks.
-function isPlainClass(value: TSESTree.Expression): boolean {
+function isPlainClass(value: Readonly<TSESTree.Expression>): boolean {
   switch (value.type) {
     case AST_NODE_TYPES.Literal:
     case AST_NODE_TYPES.Identifier:
@@ -56,7 +56,7 @@ function isClassHelperName(calleeName: string, helperNames: ReadonlySet<string>)
 }
 
 // A helper's own arguments are its business: templates and ternaries inside `cn(…)` are not reported.
-function isHelperCall(value: TSESTree.Expression, helperNames: ReadonlySet<string>): boolean {
+function isHelperCall(value: Readonly<TSESTree.Expression>, helperNames: ReadonlySet<string>): boolean {
   if (value.type !== AST_NODE_TYPES.CallExpression) return false
   const name = calleeNameOf(value.callee)
   return name !== null && isClassHelperName(name, helperNames)

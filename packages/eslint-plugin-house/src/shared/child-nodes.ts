@@ -9,9 +9,9 @@ function valuesIn(value: unknown): readonly unknown[] {
 }
 
 /** Read from the node's own keys, not ESLint's visitor keys, so type annotations count as children. */
-export function childNodesOf(node: TSESTree.Node): TSESTree.Node[] {
+export function childNodesOf(node: Readonly<TSESTree.Node>): TSESTree.Node[] {
   return Object.entries(node)
     .filter(([key]) => key !== 'parent')
-    .flatMap(([, value]: [string, unknown]) => valuesIn(value))
+    .flatMap(([, value]: readonly [string, unknown]) => valuesIn(value))
     .filter(isNode)
 }

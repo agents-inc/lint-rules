@@ -122,3 +122,11 @@ export const arrayMethods = `export function totals(items: readonly number[]): n
   return items.map((item) => item * 2).reduce((total, item) => total + item, 0)
 }
 `
+
+export const everyClassicLoop = `export function drain(items, record) {
+  do { items.pop() } while (items.length > 0)
+  for (const key in record) { items.push(key) }
+  for (let index = 0; index < 1; index += 1) { items.push(index) }
+  while (items.length > 0) { items.pop() }
+}
+`

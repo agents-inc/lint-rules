@@ -3,14 +3,51 @@ import { ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 import { lineStartOf, restOfLine } from '../shared/line-bounds.ts'
 import type { Replacement } from '../shared/replacement.ts'
 
-const BANNER = /^\s*[-=*_#~]{4,}\s*$/
+const BANNER = /^\s*[-=*_#~]{4,}\s*$/u
 // A title between two runs of one banner character each: `--- Setup ---`, `=== Section ===`.
-const TITLED_BANNER = /^\s*([-=*_#~])\1+\s+\S(?:.*\S)?\s+([-=*_#~])\2+\s*$/
+const TITLED_BANNER = /^\s*(?<openingCharacter>[-=*_#~])\k<openingCharacter>+\s+\S(?:.*\S)?\s+(?<closingCharacter>[-=*_#~])\k<closingCharacter>+\s*$/u
 // At least one run is three long: `--` is a dash in prose, too weak a signal to delete on.
-const LONG_EDGE_RUN = /^\s*([-=*_#~])\1{2,}|([-=*_#~])\2{2,}\s*$/
-const LABEL =
-  /^\s*(component|components|config|constants?|effects?|exports?|handlers?|helpers?|hooks?|imports?|interfaces?|internal|main|private|props|public api|render|setup|state|styles?|types?|utils?)\s*(?::\s*)?$/i
-const TRAILING_BLANKS = /[ \t]+$/
+const LONG_EDGE_RUN = /^\s*(?<openingCharacter>[-=*_#~])\k<openingCharacter>{2,}|(?<closingCharacter>[-=*_#~])\k<closingCharacter>{2,}\s*$/u
+// The words a comment that only labels what follows may say, in any case: `// Helpers`, `// Public API:`.
+const LABEL_WORDS: ReadonlySet<string> = new Set([
+  'component',
+  'components',
+  'config',
+  'constant',
+  'constants',
+  'effect',
+  'effects',
+  'export',
+  'exports',
+  'handler',
+  'handlers',
+  'helper',
+  'helpers',
+  'hook',
+  'hooks',
+  'import',
+  'imports',
+  'interface',
+  'interfaces',
+  'internal',
+  'main',
+  'private',
+  'props',
+  'public api',
+  'render',
+  'setup',
+  'state',
+  'style',
+  'styles',
+  'type',
+  'types',
+  'util',
+  'utils',
+])
+// Only ASCII letters spell a label word: a letter outside ASCII may lowercase into one, as the Kelvin sign does into k.
+const ASCII_WORDS = /^[A-Za-z ]+$/u
+const LABEL_END = ':'
+const TRAILING_BLANKS = /[ \t]+$/u
 // What a name, keyword or number is made of, and the backslash of a `\u` escape starting a name.
 const WORD_CHARACTER = /[\p{ID_Continue}$\\]/u
 const DIGIT = /\d/u
@@ -42,12 +79,22 @@ function isTitledBanner(lines: readonly string[]): boolean {
   return onlyLine !== null && TITLED_BANNER.test(onlyLine) && LONG_EDGE_RUN.test(onlyLine)
 }
 
-function isLabel(lines: readonly string[]): boolean {
-  const onlyLine = onlyLineOf(lines.filter((line) => !isBlank(line)))
-  return onlyLine !== null && LABEL.test(onlyLine)
+// The line without the blanks around it, and without a colon ending it and the blanks before that.
+function labelWordsOf(line: string): string {
+  const trimmed = line.trim()
+  return trimmed.endsWith(LABEL_END) ? trimmed.slice(0, -LABEL_END.length).trimEnd() : trimmed
 }
 
-function findingOf(comment: TSESTree.Comment): 'banner' | 'label' | null {
+function isLabelWords(words: string): boolean {
+  return ASCII_WORDS.test(words) && LABEL_WORDS.has(words.toLowerCase())
+}
+
+function isLabel(lines: readonly string[]): boolean {
+  const onlyLine = onlyLineOf(lines.filter((line) => !isBlank(line)))
+  return onlyLine !== null && isLabelWords(labelWordsOf(onlyLine))
+}
+
+function findingOf(comment: Readonly<TSESTree.Comment>): 'banner' | 'label' | null {
   const lines = comment.value.split('\n')
   if (isBanner(lines) || isTitledBanner(lines)) return 'banner'
   if (isLabel(lines)) return 'label'
@@ -58,7 +105,7 @@ function indentationOf(line: string): string {
   return line.slice(0, line.length - line.trimStart().length)
 }
 
-function spansLines(comment: TSESTree.Comment): boolean {
+function spansLines(comment: Readonly<TSESTree.Comment>): boolean {
   return comment.loc.start.line !== comment.loc.end.line
 }
 
@@ -87,7 +134,7 @@ function separatorBetween(codeBefore: string, textAfter: string): string {
  * one inside a line is a separator to the lexer, so it becomes a space where the code either side would
  * otherwise run together.
  */
-function replacementOf(text: string, comment: TSESTree.Comment): Replacement {
+function replacementOf(text: string, comment: Readonly<TSESTree.Comment>): Replacement {
   const [commentStart, commentEnd] = comment.range
   const lineStart = lineStartOf(text, commentStart)
   const lineBefore = text.slice(lineStart, commentStart)
@@ -129,7 +176,9 @@ export const noSectionBanner = ESLintUtils.RuleCreator.withoutDocs<[], 'banner' 
           context.report({
             node: comment,
             messageId,
-            fix: (fixer) => fixer.replaceTextRange(replacement.range, replacement.text),
+            fix(fixer) {
+              return fixer.replaceTextRange(replacement.range, replacement.text)
+            },
           })
         }
       },

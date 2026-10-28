@@ -248,3 +248,76 @@ export function TagList({ tags }) {
   )
 }
 `
+
+// Each default minter called bare, and the name a report gives it.
+export const BARE_MINTER_CALLS = [
+  { call: 'uuid()', minter: 'uuid' },
+  { call: 'uuidv4()', minter: 'uuidv4' },
+  { call: 'nanoid()', minter: 'nanoid' },
+  { call: 'cuid()', minter: 'cuid' },
+  { call: 'ObjectId()', minter: 'ObjectId' },
+  { call: 'new ObjectId()', minter: 'ObjectId' },
+]
+
+// Each host a minter is reached through, uuid's random versions among them.
+export const HOSTED_MINTER_CALLS = [
+  { call: 'uuid.v1()', minter: 'uuid.v1' },
+  { call: 'uuid.v4()', minter: 'uuid.v4' },
+  { call: 'uuid.v6()', minter: 'uuid.v6' },
+  { call: 'uuid.v7()', minter: 'uuid.v7' },
+  { call: 'nanoid.nanoid()', minter: 'nanoid.nanoid' },
+  { call: 'cuid.cuid()', minter: 'cuid.cuid' },
+  { call: 'bson.ObjectId()', minter: 'bson.ObjectId' },
+  { call: 'Types.ObjectId()', minter: 'Types.ObjectId' },
+]
+
+// The iterators besides map that build a list of siblings.
+export const OTHER_LIST_ITERATORS = ['forEach', 'flatMap']
+
+export function listKeyedBy(keyExpression: string): string {
+  return `export function TagList({ tags }) {
+  return (
+    <ul>
+      {tags.map((tag) => (
+        <li key={${keyExpression}}>{tag}</li>
+      ))}
+    </ul>
+  )
+}
+`
+}
+
+export function listBuiltWith(iterator: string): string {
+  return `export function TagList({ tags }) {
+  return (
+    <ul>
+      {tags.${iterator}((tag) => (
+        <li key={crypto.randomUUID()}>{tag}</li>
+      ))}
+    </ul>
+  )
+}
+`
+}
+
+// v4 names one of uuid's random versions, but nanoid is no uuid.
+export const versionNameOnAnotherHost = 'nanoid.v4()'
+
+export const minterKeyInANonListCall = `export const row = wrap(() => <li key={uuid()}>row</li>)
+`
+
+// A method signature with no body is a function boundary like any other.
+export const minterInAMethodSignatureDefault = `export function TagList({ tags }) {
+  return (
+    <ul>
+      {tags.map((tag) => (
+        <li key={new (class { mint(id = crypto.randomUUID()): void })()}>{tag}</li>
+      ))}
+    </ul>
+  )
+}
+`
+
+// The key sits on an element of the array map is called on, not in the callback map runs per row.
+export const minterKeyInTheArrayAMapIsCalledOn = `export const rows = [<li key={uuid()}>row</li>].map((row) => row)
+`

@@ -9,13 +9,13 @@ type MessageId = 'effect' | 'nestedUpdate' | 'outerMutation' | 'refMutation' | '
 
 type Updater = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression
 
-type Link = { node: TSESTree.Node; up: Link | null }
+type Link = { readonly node: TSESTree.Node; readonly up: Link | null }
 
 type Finding = { node: TSESTree.Node; messageId: MessageId }
 
 type DottedPath = [root: string, ...properties: string[]]
 
-const SETTER_NAME = /^set[A-Z]/
+const SETTER_NAME = /^set[A-Z]/u
 // Named like setters and take a function first, but schedule it rather than update state.
 const NOT_SETTERS: ReadonlySet<string> = new Set(['setTimeout', 'setInterval', 'setImmediate'])
 
@@ -88,7 +88,7 @@ const REF_VALUE = 'current'
 const MAX_SETTER_ARGUMENTS = 2
 
 // A bare `setX(…)`, or `….setState(…)` for class components. `obj.setFoo(fn)` is a builder API.
-function isStateSetter(callee: TSESTree.Expression): boolean {
+function isStateSetter(callee: Readonly<TSESTree.Expression>): boolean {
   if (callee.type === AST_NODE_TYPES.Identifier) return SETTER_NAME.test(callee.name) && !NOT_SETTERS.has(callee.name)
   return callee.type === AST_NODE_TYPES.MemberExpression && !callee.computed && callee.property.name === 'setState'
 }
@@ -99,34 +99,28 @@ function isUpdater(argument: TSESTree.CallExpressionArgument | undefined): argum
   )
 }
 
-function updaterPassedTo(call: TSESTree.CallExpression): Updater | null {
+function updaterPassedTo(call: Readonly<TSESTree.CallExpression>): Updater | null {
   if (!isStateSetter(call.callee) || call.arguments.length > MAX_SETTER_ARGUMENTS) return null
   const [updater] = call.arguments
   return isUpdater(updater) ? updater : null
 }
 
-function patternNames(pattern: TSESTree.Node | null): string[] {
-  if (pattern === null) return []
+// `{ a: b }` binds through its value `b`; `{ ...rest }` binds through the rest element itself.
+function patternOfProperty(property: Readonly<TSESTree.Property | TSESTree.RestElement>): TSESTree.Node {
+  return property.type === AST_NODE_TYPES.Property ? property.value : property
+}
+
+// The one pattern `x = 1`, `...rest` and a parameter property `private x` each bind their name through.
+function wrappedPatternsOf(pattern: Readonly<TSESTree.Node>): readonly TSESTree.Node[] {
   switch (pattern.type) {
-    case AST_NODE_TYPES.Identifier: {
-      return [pattern.name]
-    }
-    case AST_NODE_TYPES.ArrayPattern: {
-      return pattern.elements.flatMap(patternNames)
-    }
     case AST_NODE_TYPES.AssignmentPattern: {
-      return patternNames(pattern.left)
-    }
-    case AST_NODE_TYPES.ObjectPattern: {
-      return pattern.properties.flatMap((property) =>
-        property.type === AST_NODE_TYPES.Property ? patternNames(property.value) : patternNames(property),
-      )
+      return [pattern.left]
     }
     case AST_NODE_TYPES.RestElement: {
-      return patternNames(pattern.argument)
+      return [pattern.argument]
     }
     case AST_NODE_TYPES.TSParameterProperty: {
-      return patternNames(pattern.parameter)
+      return [pattern.parameter]
     }
     default: {
       return []
@@ -134,7 +128,28 @@ function patternNames(pattern: TSESTree.Node | null): string[] {
   }
 }
 
-function declaredNamesAt(node: TSESTree.Node): string[] {
+// The patterns a pattern binds its names through: each element and property of a destructuring, or the one it wraps.
+function subPatternsOf(pattern: Readonly<TSESTree.Node>): ReadonlyArray<TSESTree.Node | null> {
+  switch (pattern.type) {
+    case AST_NODE_TYPES.ArrayPattern: {
+      return pattern.elements
+    }
+    case AST_NODE_TYPES.ObjectPattern: {
+      return pattern.properties.map(patternOfProperty)
+    }
+    default: {
+      return wrappedPatternsOf(pattern)
+    }
+  }
+}
+
+function patternNames(pattern: Readonly<TSESTree.Node> | null): string[] {
+  if (pattern === null) return []
+  if (pattern.type === AST_NODE_TYPES.Identifier) return [pattern.name]
+  return subPatternsOf(pattern).flatMap(patternNames)
+}
+
+function declaredNamesAt(node: Readonly<TSESTree.Node>): string[] {
   switch (node.type) {
     case AST_NODE_TYPES.CatchClause: {
       return patternNames(node.param)
@@ -152,21 +167,21 @@ function declaredNamesAt(node: TSESTree.Node): string[] {
   }
 }
 
-function parameterNamesAt(node: TSESTree.Node): string[] {
+function parameterNamesAt(node: Readonly<TSESTree.Node>): string[] {
   return 'params' in node ? node.params.flatMap(patternNames) : []
 }
 
-function namesBoundIn(node: TSESTree.Node): string[] {
+function namesBoundIn(node: Readonly<TSESTree.Node>): string[] {
   return [...declaredNamesAt(node), ...parameterNamesAt(node), ...childNodesOf(node).flatMap(namesBoundIn)]
 }
 
 // Null for a value made on the spot, such as `[...prev].sort()`, which nothing else holds.
-function rootNameOf(node: TSESTree.Node): string | null {
+function rootNameOf(node: Readonly<TSESTree.Node>): string | null {
   if (node.type === AST_NODE_TYPES.MemberExpression) return rootNameOf(node.object)
   return node.type === AST_NODE_TYPES.Identifier ? node.name : null
 }
 
-function dottedPathOf(node: TSESTree.Node): DottedPath | null {
+function dottedPathOf(node: Readonly<TSESTree.Node>): DottedPath | null {
   if (node.type === AST_NODE_TYPES.Identifier) return [node.name]
   if (node.type !== AST_NODE_TYPES.MemberExpression) return null
   const property = dottedPropertyNameOf(node)
@@ -176,7 +191,7 @@ function dottedPathOf(node: TSESTree.Node): DottedPath | null {
 }
 
 // The dotted path without a leading `window.`, or null when a hop is computed.
-function memberPathOf(node: TSESTree.Node): string[] | null {
+function memberPathOf(node: Readonly<TSESTree.Node>): string[] | null {
   const path = dottedPathOf(node)
   if (path === null) return null
   const [root, ...properties] = path
@@ -185,11 +200,12 @@ function memberPathOf(node: TSESTree.Node): string[] | null {
 
 function isKnownEffect(path: readonly string[]): boolean {
   const [object, ...members] = path
-  const method = members.at(-1)
   if (object === undefined) return false
+  const method = members.at(-1)
   if (method === undefined) return GLOBAL_EFFECTS.has(object)
   const methods = MEMBER_EFFECTS.get(object)
-  return methods === 'every-method' || (methods !== undefined && methods.has(method))
+  if (methods === undefined) return false
+  return methods === 'every-method' || methods.has(method)
 }
 
 function isMutatorCall(path: readonly string[]): boolean {
@@ -197,7 +213,7 @@ function isMutatorCall(path: readonly string[]): boolean {
   return method !== undefined && MUTATORS.has(method)
 }
 
-function isSyncIterationCallback(fn: TSESTree.Node, parent: TSESTree.Node): boolean {
+function isSyncIterationCallback(fn: Readonly<TSESTree.Node>, parent: Readonly<TSESTree.Node>): boolean {
   const call = callReceiving(fn, parent)
   if (call === null) return false
   const method = methodNameOf(call.callee)
@@ -217,14 +233,14 @@ function isDiscarded(link: Link | null): boolean {
   return link.node.type === AST_NODE_TYPES.ExpressionStatement
 }
 
-function writeFinding(target: TSESTree.Node, local: ReadonlySet<string>): Finding | null {
+function writeFinding(target: Readonly<TSESTree.Node>, local: ReadonlySet<string>): Finding | null {
   if (target.type !== AST_NODE_TYPES.MemberExpression) return null
   const root = rootNameOf(target)
   if (root === null || local.has(root)) return null
   return { node: target, messageId: dottedPropertyNameOf(target) === REF_VALUE ? 'refWrite' : 'outerMutation' }
 }
 
-function callFinding(call: TSESTree.CallExpression, link: Link, local: ReadonlySet<string>): Finding | null {
+function callFinding(call: Readonly<TSESTree.CallExpression>, link: Link, local: ReadonlySet<string>): Finding | null {
   const { callee } = call
   const root = rootNameOf(callee)
   if (root !== null && local.has(root)) return null
@@ -235,13 +251,13 @@ function callFinding(call: TSESTree.CallExpression, link: Link, local: ReadonlyS
   if (isStateSetter(callee) && call.arguments.length <= 1 && isDiscarded(link)) {
     return { node: callee, messageId: 'nestedUpdate' }
   }
-  if (callee.type !== AST_NODE_TYPES.MemberExpression || path === null || !isMutatorCall(path)) return null
+  if (path === null || callee.type !== AST_NODE_TYPES.MemberExpression || !isMutatorCall(path)) return null
   // `urlsRef.current.delete(url)`: the same hazard, but there is nothing to copy.
   return { node: callee, messageId: path.includes(REF_VALUE) ? 'refMutation' : 'outerMutation' }
 }
 
 // `link` is the node's parent: whether a call's result is discarded depends on it.
-function findingAt(node: TSESTree.Node, link: Link, local: ReadonlySet<string>): Finding | null {
+function findingAt(node: Readonly<TSESTree.Node>, link: Link, local: ReadonlySet<string>): Finding | null {
   switch (node.type) {
     case AST_NODE_TYPES.AssignmentExpression: {
       return writeFinding(node.left, local)
@@ -258,7 +274,7 @@ function findingAt(node: TSESTree.Node, link: Link, local: ReadonlySet<string>):
   }
 }
 
-function findingsUnder(node: TSESTree.Node, link: Link, local: ReadonlySet<string>): Finding[] {
+function findingsUnder(node: Readonly<TSESTree.Node>, link: Link, local: ReadonlySet<string>): Finding[] {
   if (isFunctionNode(node) && !isSyncIterationCallback(node, link.node)) return []
   const here: Link = { node, up: link }
   const finding = findingAt(node, link, local)
@@ -267,7 +283,7 @@ function findingsUnder(node: TSESTree.Node, link: Link, local: ReadonlySet<strin
 }
 
 // Mutating the updater's own argument, or a copy it built, is how a correct updater builds the next state.
-function sideEffectsIn(updater: Updater): Finding[] {
+function sideEffectsIn(updater: Readonly<Updater>): Finding[] {
   const local: ReadonlySet<string> = new Set(namesBoundIn(updater))
   return findingsUnder(updater.body, { node: updater, up: null }, local)
 }

@@ -31,7 +31,7 @@ describe('housePlugin', () => {
   })
 
   it("declares the 'house' namespace", () => {
-    expect(housePlugin.meta.namespace).toStrictEqual('house')
+    expect(housePlugin.meta.namespace).toBe('house')
   })
 
   // Of ESLint's own formatters, only `json-with-metadata` prints a rule's description.

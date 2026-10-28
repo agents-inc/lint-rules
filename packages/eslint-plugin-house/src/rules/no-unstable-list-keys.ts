@@ -5,6 +5,7 @@ import { calleeNameOf, methodNameOf } from '../shared/callee-name.ts'
 import { isFunctionNode } from '../shared/function-name.ts'
 import { jsxAttributeName } from '../shared/jsx-attributes.ts'
 import { defaultedOption, stringListOptionSchema } from '../shared/rule-options.ts'
+import { isSameNode } from '../shared/same-node.ts'
 
 // The schema does not require the key: ESLint fills it from meta.defaultOptions when a config omits it.
 type KeyMinters = { minters?: readonly string[] }
@@ -26,50 +27,50 @@ const UUID_FACTORIES: ReadonlySet<string> = new Set(['v1', 'v4', 'v6', 'v7'])
 // The iterators that build a list of siblings, the only place a key must be stable across renders.
 const LIST_ITERATORS: ReadonlySet<string> = new Set(['map', 'forEach', 'flatMap'])
 
-function isFunctionBoundary(node: TSESTree.Node): boolean {
+function isFunctionBoundary(node: Readonly<TSESTree.Node>): boolean {
   return isFunctionNode(node) || node.type === AST_NODE_TYPES.TSEmptyBodyFunctionExpression
 }
 
 // Nearest first. Stops at the Program, whose `parent` is null at runtime although typed undefined.
-function parentLinksOf(node: TSESTree.Node): ParentLink[] {
+function parentLinksOf(node: Readonly<TSESTree.Node>): ParentLink[] {
   if (node.type === AST_NODE_TYPES.Program) return []
   return [{ child: node, parent: node.parent }, ...parentLinksOf(node.parent)]
 }
 
 // A function boundary ends the search: `key={() => uuid()}` mints nothing during reconciliation.
-function keyAttributeAround(node: TSESTree.Node): TSESTree.JSXAttribute | null {
+function keyAttributeAround(node: Readonly<TSESTree.Node>): TSESTree.JSXAttribute | null {
   for (const { child, parent } of parentLinksOf(node)) {
     if (isFunctionBoundary(parent)) return null
     if (parent.type !== AST_NODE_TYPES.JSXAttribute) continue
-    return jsxAttributeName(parent) === 'key' && parent.value === child ? parent : null
+    return jsxAttributeName(parent) === 'key' && isSameNode(parent.value, child) ? parent : null
   }
   return null
 }
 
-function isListIteration(callee: TSESTree.Expression): boolean {
+function isListIteration(callee: Readonly<TSESTree.Expression>): boolean {
   const iterator = methodNameOf(callee)
   return iterator !== null && LIST_ITERATORS.has(iterator)
 }
 
-function isArgumentOfListIteration({ child, parent }: ParentLink): boolean {
+function isArgumentOfListIteration({ child, parent }: Readonly<ParentLink>): boolean {
   const call = callReceiving(child, parent)
   return call !== null && isListIteration(call.callee)
 }
 
 // A lone `key={uuid()}` has no siblings to reconcile against, so only list callbacks count.
-function isInsideListCallback(node: TSESTree.Node): boolean {
+function isInsideListCallback(node: Readonly<TSESTree.Node>): boolean {
   return parentLinksOf(node).some(isArgumentOfListIteration)
 }
 
 // Compared lowercased, as the minter names are.
 function isHostedMinter(host: string, method: string, minterNames: ReadonlySet<string>): boolean {
   const hostName = host.toLowerCase()
-  const methodName = method.toLowerCase()
   if (!MINTER_HOSTS.has(hostName)) return false
+  const methodName = method.toLowerCase()
   return minterNames.has(methodName) || (hostName === UUID_HOST && UUID_FACTORIES.has(methodName))
 }
 
-function minterNamedBy(callee: TSESTree.Expression, minterNames: ReadonlySet<string>): string | null {
+function minterNamedBy(callee: Readonly<TSESTree.Expression>, minterNames: ReadonlySet<string>): string | null {
   if (callee.type === AST_NODE_TYPES.Identifier) return minterNames.has(callee.name.toLowerCase()) ? callee.name : null
   if (callee.type !== AST_NODE_TYPES.MemberExpression || callee.property.type !== AST_NODE_TYPES.Identifier) return null
   // The nearest named object, read as a callee's name is: `window.crypto.randomUUID` is hosted by `crypto`.
@@ -94,7 +95,7 @@ export const noUnstableListKeys = ESLintUtils.RuleCreator.withoutDocs<Options, '
     const minters = defaultedOption(RULE_NAME, options.minters)
     const minterNames: ReadonlySet<string> = new Set(minters.map((minter) => minter.toLowerCase()))
 
-    const check = (node: TSESTree.CallExpression | TSESTree.NewExpression): void => {
+    function check(node: Readonly<TSESTree.CallExpression | TSESTree.NewExpression>): void {
       const minter = minterNamedBy(node.callee, minterNames)
       if (minter === null) return
       const attribute = keyAttributeAround(node)

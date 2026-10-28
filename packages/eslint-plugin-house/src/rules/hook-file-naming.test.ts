@@ -2,20 +2,30 @@ import { describe, expect, it } from 'vitest'
 
 import {
   acronymHookModule,
+  constantOnlyModule,
   defaultExportedHookFunctionModule,
   defaultExportedHookModule,
   floatingPanelHookModule,
+  functionNamedLikeAHookPastItsStartModule,
   hookBarrel,
   hookBesideClassModule,
   hookBesideDottedNamespaceModule,
+  hookBesideDestructuredConstModule,
   hookBesideDottedNamespaceUnderALowercaseNameModule,
   hookBesideEnumModule,
+  hookBesideImportAliasModule,
+  hookBesideInlineTypeSpecifierModule,
   hookBesideInterfaceModule,
   hookBesideNamespaceModule,
   hookBesideScreamingCaseEnumModule,
   hookBesideStringNamedModule,
+  hookBesideTypeOnlyReexportModule,
+  hookExportedAsAConstModule,
+  hookExportedBySpecifierModule,
+  hookExportedUnderAStringNameModule,
   hookOnlyModule,
   twoHookModule,
+  twoHooksOfOneLengthModule,
 } from '../__tests__/cases/hook-file-naming.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
@@ -91,6 +101,24 @@ houseRuleTester.run('hook-file-naming', housePlugin.rules['hook-file-naming'], {
       hookBesideDottedNamespaceModule,
       { filename: 'status.ts' },
     ),
+    buildValidCase('stays silent on code ESLint was handed without a path, which it names <input>', hookOnlyModule, {
+      filename: '<input>',
+    }),
+    buildValidCase('stays silent on code read from stdin, which ESLint names <text>', hookOnlyModule, { filename: '<text>' }),
+    buildValidCase('stays silent on a hooks-only module named for its hook inside folders', hookOnlyModule, {
+      filename: 'src/hooks/use-thing.ts',
+    }),
+    buildValidCase('stays silent on a hooks-only module named for its hook inside folders written with backslashes', hookOnlyModule, {
+      filename: 'src\\hooks\\use-thing.ts',
+    }),
+    buildValidCase('stays silent on a module that exports neither a hook nor a component', constantOnlyModule, {
+      filename: 'status.ts',
+    }),
+  buildValidCase(
+    'stays silent on a module exporting a function whose name holds use and a capital past its start, which is no hook',
+    functionNamedLikeAHookPastItsStartModule,
+    { filename: 'status.ts' },
+  ),
   ],
   invalid: [
     buildInvalidCase('reports a hooks-only module whose file is not named for a hook', hookOnlyModule, {
@@ -268,6 +296,74 @@ houseRuleTester.run('hook-file-naming', housePlugin.rules['hook-file-naming'], {
         ],
       },
     ),
+    buildInvalidCase('reports a hooks-only module whose name holds use- after its start', hookOnlyModule, {
+      filename: 'shared-use-thing.ts',
+      errors: [
+        { messageId: 'rename', line: 1, data: { hooks: 'useThing', actual: 'shared-use-thing.ts', expected: 'use-thing.ts' } },
+      ],
+    }),
+    buildInvalidCase('reports a hooks-only module whose file has no extension, naming a file with none', defaultExportedHookModule, {
+      filename: 'keyboard',
+      errors: [{ messageId: 'rename', line: 1, data: { hooks: 'useKeyPress', actual: 'keyboard', expected: 'use-key-press' } }],
+    }),
+    buildInvalidCase('reports a hooks-only module whose file stem is one character, keeping its extension', defaultExportedHookModule, {
+      filename: 'k.ts',
+      errors: [{ messageId: 'rename', line: 1, data: { hooks: 'useKeyPress', actual: 'k.ts', expected: 'use-key-press.ts' } }],
+    }),
+    buildInvalidCase('reports a module exporting a hook through an export list', hookExportedBySpecifierModule, {
+      filename: 'status.ts',
+      errors: [{ messageId: 'rename', line: 1, data: { hooks: 'useThing', actual: 'status.ts', expected: 'use-thing.ts' } }],
+    }),
+    buildInvalidCase(
+      'reports a module exporting a hook under a string name, counting it under its local name',
+      hookExportedUnderAStringNameModule,
+      {
+        filename: 'status.ts',
+        errors: [{ messageId: 'rename', line: 1, data: { hooks: 'useThing', actual: 'status.ts', expected: 'use-thing.ts' } }],
+      },
+    ),
+    buildInvalidCase('reports a module exporting a hook as a const', hookExportedAsAConstModule, {
+      filename: 'status.ts',
+      errors: [{ messageId: 'rename', line: 1, data: { hooks: 'useThing', actual: 'status.ts', expected: 'use-thing.ts' } }],
+    }),
+    buildInvalidCase(
+      'reports a module exporting a hook beside a destructured const, which names no export it reads',
+      hookBesideDestructuredConstModule,
+      {
+        filename: 'status.ts',
+        errors: [{ messageId: 'rename', line: 1, data: { hooks: 'useThing', actual: 'status.ts', expected: 'use-thing.ts' } }],
+      },
+    ),
+    buildInvalidCase(
+      'reports a module exporting a hook beside an inline type specifier named like a component',
+      hookBesideInlineTypeSpecifierModule,
+      {
+        filename: 'status.ts',
+        errors: [{ messageId: 'rename', line: 1, data: { hooks: 'useThing', actual: 'status.ts', expected: 'use-thing.ts' } }],
+      },
+    ),
+    buildInvalidCase(
+      'reports a module exporting a hook beside a type-only re-export named like a component',
+      hookBesideTypeOnlyReexportModule,
+      {
+        filename: 'status.ts',
+        errors: [{ messageId: 'rename', line: 1, data: { hooks: 'useThing', actual: 'status.ts', expected: 'use-thing.ts' } }],
+      },
+    ),
+    buildInvalidCase('reports a module exporting a hook beside an import alias', hookBesideImportAliasModule, {
+      filename: 'status.ts',
+      errors: [{ messageId: 'rename', line: 1, data: { hooks: 'useThing', actual: 'status.ts', expected: 'use-thing.ts' } }],
+    }),
+    buildInvalidCase(
+      'reports a module exporting two hooks of one length, naming the file for the first',
+      twoHooksOfOneLengthModule,
+      {
+        filename: 'status.ts',
+        errors: [
+          { messageId: 'rename', line: 1, data: { hooks: 'useAlpha, useOmega', actual: 'status.ts', expected: 'use-alpha.ts' } },
+        ],
+      },
+    ),
   ],
 })
 
@@ -287,12 +383,22 @@ describe('hook-file-naming options, as ESLint checks them', () => {
   it('refuses a filenameCase other than camelCase and kebab-case', () => {
     expect(() =>
       lintWithHouseRule('hook-file-naming', [{ filenameCase: 'snake_case' }], floatingPanelHookModule, 'use_floating_panel.js'),
-    ).toThrowError(/"house\/hook-file-naming":\s+Value "snake_case" should be equal to one of the allowed values/)
+    ).toThrow(/"house\/hook-file-naming":\s+Value "snake_case" should be equal to one of the allowed values/u)
   })
 
   it('refuses an option key other than filenameCase', () => {
     expect(() =>
       lintWithHouseRule('hook-file-naming', [{ fileCase: 'kebab-case' }], floatingPanelHookModule, 'use-floating-panel.js'),
-    ).toThrowError(/Unexpected property "fileCase"/)
+    ).toThrow(/Unexpected property "fileCase"/u)
+  })
+})
+
+describe('hook-file-naming messages, as a user reads them', () => {
+  it('names the hooks, the file and the file to rename it to', () => {
+    const messages = lintWithHouseRule('hook-file-naming', [], floatingPanelHookModule, 'floating-panel.js')
+
+    expect(messages.map(({ message }) => message)).toStrictEqual([
+      "This file exports hooks (useFloatingPanel) and no component, but is named 'floating-panel.js'. Name it for the hook it provides -- e.g. 'use-floating-panel.js' -- or a reader looking for that hook has no reason to open it.",
+    ])
   })
 })

@@ -97,3 +97,60 @@ export interface Status {
   on: boolean
 }
 `
+
+export const hookExportedBySpecifierModule = `function useThing() {
+  return 1
+}
+export { useThing }
+`
+
+// A string export name is not an identifier, so the hook counts under its local name.
+export const hookExportedUnderAStringNameModule = `function useThing() {
+  return 1
+}
+export { useThing as 'use thing' }
+`
+
+export const hookExportedAsAConstModule = `export const useThing = () => 1
+`
+
+export const hookBesideDestructuredConstModule = `export function useThing() {
+  return 1
+}
+export const { panel } = parts
+`
+
+export const hookBesideInlineTypeSpecifierModule = `function useThing() {
+  return 1
+}
+export { type Panel, useThing }
+`
+
+export const hookBesideTypeOnlyReexportModule = `export function useThing() {
+  return 1
+}
+export type { Panel } from './panel'
+`
+
+export const hookBesideImportAliasModule = `export function useThing() {
+  return 1
+}
+export import codes = Status.Codes
+`
+
+export const twoHooksOfOneLengthModule = `export function useAlpha() {
+  return 1
+}
+export function useOmega() {
+  return 2
+}
+`
+
+export const constantOnlyModule = `export const statusCodes = { ok: 200 }
+`
+
+// reuseThing holds use and a capital, but not at its start.
+export const functionNamedLikeAHookPastItsStartModule = `export function reuseThing() {
+  return 1
+}
+`

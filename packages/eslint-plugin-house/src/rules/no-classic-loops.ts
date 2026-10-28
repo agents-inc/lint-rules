@@ -21,7 +21,7 @@ export const noClassicLoops = ESLintUtils.RuleCreator.withoutDocs<[], 'classicLo
     defaultOptions: [],
   },
   create(context) {
-    const report = (node: ClassicLoop): void => {
+    function report(node: Readonly<ClassicLoop>): void {
       context.report({ node, messageId: 'classicLoop', data: { loop: LOOP_KEYWORDS[node.type] } })
     }
     return {

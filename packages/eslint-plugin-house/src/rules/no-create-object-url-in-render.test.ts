@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest'
+
 import {
   createdAtModuleScope,
   createdInAsyncArrowHelper,
@@ -8,17 +10,21 @@ import {
   createdInExternalStore,
   createdInFunctionDeclarationHandler,
   createdInHandlerAndInlineEventProp,
+  createdInJsxAttribute,
   createdInLazyStateInitialiser,
+  createdInModuleLevelRenderHelper,
   createdInNamedEffect,
   createdInPlainHelper,
+  createdInRenderBody,
   createdInUseMemo,
-  createObjectUrlInJsxAttribute,
   imageUrlMadeInCallbackHandedTo,
   imageUrlMadeInCallbackProp,
   imageUrlMadeInRenderBy,
   mockedInTestFile,
+  OTHER_DEFERRING_CALLS,
 } from '../__tests__/cases/no-create-object-url-in-render.ts'
 import { buildInvalidCase, buildValidCase } from '../__tests__/factories/rule-case-factories.ts'
+import { lintWithHouseRule } from '../__tests__/house-linter.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
 
@@ -28,6 +34,17 @@ houseRuleTester.run('no-create-object-url-in-render', housePlugin.rules['no-crea
     buildValidCase('stays silent on a URL created in useMemo', createdInUseMemo),
     buildValidCase('stays silent on a URL created in an event handler', createdInEventHandler),
     buildValidCase('stays silent on a URL created at module scope', createdAtModuleScope),
+    // The array's type does not reach a case built inside .map, so those cases name their type arguments.
+    ...OTHER_DEFERRING_CALLS.map((call) =>
+      buildValidCase<[]>(`stays silent on a URL created in a JSX callback handed to ${call}, which runs it later`, imageUrlMadeInCallbackHandedTo(call), {
+        filename: 'no-create-object-url-in-render.tsx',
+      }),
+    ),
+    buildValidCase(
+      'stays silent on a URL created in a module-level function that renders JSX but is named like no component',
+      createdInModuleLevelRenderHelper,
+      { filename: 'no-create-object-url-in-render.tsx' },
+    ),
     buildValidCase('stays silent on a URL created in a plain helper function', createdInPlainHelper),
     buildValidCase('stays silent on a URL created in an async arrow helper', createdInAsyncArrowHelper),
     buildValidCase('stays silent on a URL created in a lazy useState initialiser', createdInLazyStateInitialiser),
@@ -77,7 +94,7 @@ houseRuleTester.run('no-create-object-url-in-render', housePlugin.rules['no-crea
     ),
   ],
   invalid: [
-    buildInvalidCase('reports URL.createObjectURL inline in a JSX attribute', createObjectUrlInJsxAttribute, {
+    buildInvalidCase('reports URL.createObjectURL inline in a JSX attribute', createdInJsxAttribute, {
       filename: 'no-create-object-url-in-render.tsx',
       errors: [{ messageId: 'inRender', line: 2 }],
     }),
@@ -113,5 +130,31 @@ houseRuleTester.run('no-create-object-url-in-render', housePlugin.rules['no-crea
         errors: [{ messageId: 'inRender', line: 2 }],
       },
     ),
+    buildInvalidCase(
+      'reports a URL created in a JSX callback passed as a prop holding on and a capital past its start, which is not an on* event prop',
+      imageUrlMadeInCallbackProp('buttonLabel'),
+      {
+        filename: 'no-create-object-url-in-render.tsx',
+        errors: [{ messageId: 'inRender', line: 2 }],
+      },
+    ),
+    buildInvalidCase(
+      'reports a URL created in a JSX callback handed to a call that is neither a hook nor one that runs it later',
+      imageUrlMadeInCallbackHandedTo('wrap'),
+      {
+        filename: 'no-create-object-url-in-render.tsx',
+        errors: [{ messageId: 'inRender', line: 2 }],
+      },
+    ),
   ],
+})
+
+describe('no-create-object-url-in-render messages, as a user reads them', () => {
+  it('says what a blob URL made on every render costs', () => {
+    const messages = lintWithHouseRule('no-create-object-url-in-render', [], createdInRenderBody, 'no-create-object-url-in-render.js')
+
+    expect(messages.map(({ message }) => message)).toStrictEqual([
+      'URL.createObjectURL runs again on every render here, so each render leaks a blob URL and the browser refetches the image. Move it into a useEffect or useMemo keyed on the blob, and revoke the previous URL on cleanup.',
+    ])
+  })
 })

@@ -1,12 +1,17 @@
+import { describe, expect, it } from 'vitest'
+
 import {
   bannerAloneOnItsLine,
   bannerAndLabelBlock,
+  bannerInACrlfFile,
   bareReturnAboveUnreachableValue,
   blockBannerAfterASpacedKeyword,
+  blockBannerAroundABlankLineOfSpaces,
   blockBannerBeforeAMemberAccess,
   blockBannerBetweenADivisionAndARegularExpression,
   blockBannerBetweenANumberAndAParenthesis,
   blockBannerBetweenAParenthesisAndAName,
+  blockBannerBetweenBlankLines,
   blockBannerInsideEmptyParentheses,
   blockBannerJoiningAComparisonToANegation,
   blockBannerJoiningAComparisonToATypeAssertion,
@@ -24,17 +29,20 @@ import {
   blockBannerTrailingCode,
   blockCommentListingTwoLabels,
   blockLabel,
+  blockLabelBesideALineOfSpaces,
   callOnAName,
   callOnANumber,
   cliFlagComments,
   comparisonInProse,
   comparisonSpacedFromANegation,
   comparisonSpacedFromATypeAssertion,
+  crlfFileLeftWithABlankLine,
   dashNote,
   declarationsWithoutComment,
   divisionSpacedFromARegularExpression,
   docBlockWithMarkdownHeading,
   docBlockWithTitledHeading,
+  emptyBlockComment,
   emptyCall,
   explanatoryComment,
   functionWithoutComment,
@@ -43,8 +51,12 @@ import {
   keywordSpacedFromAName,
   keywordSpacedFromANameOutsideTheBasicPlane,
   keywordSpacedFromAnEscapedName,
+  LABEL_SPELLINGS,
+  LABEL_WORDS,
   labelLeftAfterFirstPass,
   labelTrailingCode,
+  labelWordsSpelledWithLookalikeLetters,
+  lineCommentBetweenDeclarations,
   lintDirectiveReason,
   markdownTableComments,
   memberAccessOnAName,
@@ -59,10 +71,22 @@ import {
   paragraphBetweenRuns,
   plusSpacedFromAUnaryPlus,
   regularExpressionSpacedFromAName,
+  runAfterText,
+  runBeforeText,
+  runLineBesideProseInABlock,
   spacedHyphens,
+  textAfterATitledBanner,
+  textBeforeATitledBanner,
+  titleClosedByMixedCharacters,
   titledAsteriskBanner,
   titledBannerFramingASentence,
+  titledBannerOfOneCharacter,
+  titledBannerSpacedTwice,
   titledBannerTrailingCode,
+  titledBannerWithBlanksAfterItsLongTrailingRun,
+  titledBannerWithOnlyItsLeadingRunLong,
+  titledBannerWithOnlyItsLeadingRunLongAndNoSpace,
+  titledBannerWithoutASpace,
   titledBannerWithShortLeadingRun,
   titledBlockBanner,
   titledBlockBannerTrailingCode,
@@ -72,9 +96,12 @@ import {
   todoWithDashes,
   totalDeclaration,
   twoCharacterFrame,
+  twoCharacterFrameAroundALongRun,
   unevenTitledBanner,
+  WORDS_BESIDE_THE_LABEL_LIST,
 } from '../__tests__/cases/no-section-banner.ts'
 import { caseBuildersFor } from '../__tests__/factories/rule-case-factories.ts'
+import { lintWithHouseRule } from '../__tests__/house-linter.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
 
@@ -103,6 +130,25 @@ houseRuleTester.run('no-section-banner', housePlugin.rules['no-section-banner'],
       'stays silent on a framed title among blank lines of a block comment, which is not a one-line banner',
       titledLineAmongBlankLines,
     ),
+    // The array's type does not reach a case built inside .map, so those cases name their type arguments.
+    ...WORDS_BESIDE_THE_LABEL_LIST.map((text) =>
+      validCase<[]>(`stays silent on a comment reading "${text}", which is not a label word`, lineCommentBetweenDeclarations(text)),
+    ),
+    validCase(
+      'stays silent on label words spelled with a long s and a Kelvin sign, which are not the letters s and k',
+      labelWordsSpelledWithLookalikeLetters,
+    ),
+    validCase('stays silent on a run of four followed by text on its line', runBeforeText),
+    validCase('stays silent on text followed by a run of four on its line', runAfterText),
+    validCase('stays silent on text before a framed title on its line', textBeforeATitledBanner),
+    validCase('stays silent on text after a framed title on its line', textAfterATitledBanner),
+    validCase(
+      'stays silent on a title framed by two-character runs with a longer run inside it, at neither edge',
+      twoCharacterFrameAroundALongRun,
+    ),
+    validCase('stays silent on a block comment holding only blanks', emptyBlockComment),
+    validCase('stays silent on a block comment holding a run on one line and prose on another', runLineBesideProseInABlock),
+    validCase('stays silent on a title whose closing frame mixes two characters, which is no run of one', titleClosedByMixedCharacters),
   ],
   invalid: [
     invalidCase('reports a banner-and-label block and deletes it line by line', bannerAndLabelBlock, {
@@ -350,5 +396,85 @@ houseRuleTester.run('no-section-banner', housePlugin.rules['no-section-banner'],
         output: callOnANumber,
       },
     ),
+    invalidCase('reports a title framed by runs with no space after the comment marker', titledBannerWithoutASpace, {
+      errors: [{ messageId: 'banner', line: 2 }],
+      output: declarationsWithoutComment,
+    }),
+    invalidCase('reports a title set two spaces from each of its runs', titledBannerSpacedTwice, {
+      errors: [{ messageId: 'banner', line: 2 }],
+      output: declarationsWithoutComment,
+    }),
+    invalidCase('reports a one-character title framed by runs', titledBannerOfOneCharacter, {
+      errors: [{ messageId: 'banner', line: 2 }],
+      output: declarationsWithoutComment,
+    }),
+    invalidCase(
+      'reports a title framed by a long run before it and a two-character run after it',
+      titledBannerWithOnlyItsLeadingRunLong,
+      {
+        errors: [{ messageId: 'banner', line: 2 }],
+        output: declarationsWithoutComment,
+      },
+    ),
+    invalidCase(
+      'reports a title framed by a long run straight after the comment marker and a two-character run after it',
+      titledBannerWithOnlyItsLeadingRunLongAndNoSpace,
+      {
+        errors: [{ messageId: 'banner', line: 2 }],
+        output: declarationsWithoutComment,
+      },
+    ),
+    invalidCase(
+      'reports a title whose long trailing run is followed by blanks',
+      titledBannerWithBlanksAfterItsLongTrailingRun,
+      {
+        errors: [{ messageId: 'banner', line: 2 }],
+        output: declarationsWithoutComment,
+      },
+    ),
+    invalidCase('reports a block comment holding a run between blank lines', blockBannerBetweenBlankLines, {
+      errors: [{ messageId: 'banner', line: 2 }],
+      output: declarationsWithoutComment,
+    }),
+    invalidCase('reports a block banner whose runs surround a line of spaces', blockBannerAroundABlankLineOfSpaces, {
+      errors: [{ messageId: 'banner', line: 2 }],
+      output: declarationsWithoutComment,
+    }),
+    invalidCase('reports a block label beside a line of spaces', blockLabelBesideALineOfSpaces, {
+      errors: [{ messageId: 'label', line: 2 }],
+      output: declarationsWithoutComment,
+    }),
+    invalidCase(
+      'deletes a banner in a CRLF file up to its carriage return, leaving its line blank',
+      bannerInACrlfFile,
+      {
+        errors: [{ messageId: 'banner', line: 2 }],
+        output: crlfFileLeftWithABlankLine,
+      },
+    ),
+    ...LABEL_WORDS.map((word) =>
+      invalidCase<'label', []>(`reports a comment reading only the label word "${word}" and deletes its line`, lineCommentBetweenDeclarations(word), {
+        errors: [{ messageId: 'label', line: 2 }],
+        output: declarationsWithoutComment,
+      }),
+    ),
+    ...LABEL_SPELLINGS.map((text) =>
+      invalidCase<'label', []>(`reports a label written "${text}" and deletes its line`, lineCommentBetweenDeclarations(text), {
+        errors: [{ messageId: 'label', line: 2 }],
+        output: declarationsWithoutComment,
+      }),
+    ),
   ],
+})
+
+describe('no-section-banner messages, as a user reads them', () => {
+  it('names a banner and a label for what they are', () => {
+    const messages = lintWithHouseRule('no-section-banner', [], bannerAndLabelBlock, 'no-section-banner.js')
+
+    expect(messages.map(({ message }) => message)).toStrictEqual([
+      'Section banner comments are noise. Delete it.',
+      'A comment that only labels the next declaration is noise. If the file needs these to be navigable, split the file.',
+      'Section banner comments are noise. Delete it.',
+    ])
+  })
 })

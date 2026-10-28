@@ -10,7 +10,7 @@ const DIALOG_NAME_ATTRIBUTES: ReadonlySet<string> = new Set(['aria-label', 'aria
 type Dialog = { node: TSESTree.JSXAttribute | TSESTree.JSXTagNameExpression; what: string }
 
 // An explicit role replaces the intrinsic one both ways; a dynamic role is not provably a dialog.
-function dialogOf(element: TSESTree.JSXOpeningElement): Dialog | null {
+function dialogOf(element: Readonly<TSESTree.JSXOpeningElement>): Dialog | null {
   const roleAttribute = findJsxAttribute(element, 'role')
   if (roleAttribute === null) {
     return unqualifiedTagOf(element) === 'dialog' ? { node: element.name, what: '<dialog>' } : null
@@ -20,10 +20,11 @@ function dialogOf(element: TSESTree.JSXOpeningElement): Dialog | null {
 }
 
 // `aria-label=""` names nothing. Any other value, dynamic ones included, is taken at its word.
-function isAccessibleName(attribute: TSESTree.JSXAttribute): boolean {
+function isAccessibleName(attribute: Readonly<TSESTree.JSXAttribute>): boolean {
   if (!isJsxAttributeNamedIn(attribute, DIALOG_NAME_ATTRIBUTES)) return false
   const value = fixedTextOf(attribute)
-  return value === null || value.trim() !== ''
+  if (value === null) return true
+  return value.trim() !== ''
 }
 
 // Not fixable: the name is content only the author has, and `aria-label="dialog"` helps nobody.

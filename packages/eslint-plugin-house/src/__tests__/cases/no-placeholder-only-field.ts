@@ -112,3 +112,18 @@ export function inputWithPlaceholder(placeholderAttribute: string): string {
 }
 `
 }
+
+// A wrapper whose name holds Label without ending in it is not taken for a label.
+export const placeholderOnlyInsideLabelText = `export function Signup() {
+  return (
+    <LabelText>
+      <input placeholder="Email" />
+    </LabelText>
+  )
+}
+`
+
+export const placeholderOnlyInputModule = `export function Search() {
+  return <input placeholder="Search" />
+}
+`
