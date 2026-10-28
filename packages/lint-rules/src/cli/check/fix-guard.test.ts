@@ -35,6 +35,18 @@ describe("the guard on an engine's fixes in one file", () => {
     ).toBe(false)
   })
 
+  it('refuses a fix that deletes one of two identical unchanged lines, as one collapsing blank lines does', () => {
+    expect(
+      keepsUnchangedLines(moduleText('export const a = 1', '', '', 'export let b = 2'), moduleText('export const a = 1', '', 'export const b = 2'), linesChanged(4)),
+    ).toBe(false)
+  })
+
+  it('passes the same fix where the blank line it deletes changed, beside that one', () => {
+    expect(
+      keepsUnchangedLines(moduleText('export const a = 1', '', '', 'export let b = 2'), moduleText('export const a = 1', '', 'export const b = 2'), linesChanged(3, 4)),
+    ).toBe(true)
+  })
+
   it('passes a fix that deletes a changed line', () => {
     expect(
       keepsUnchangedLines(moduleText('export const a = 1', 'debugger', 'export const c = 3'), moduleText('export const a = 1', 'export const c = 3'), linesChanged(2)),

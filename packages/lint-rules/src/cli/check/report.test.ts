@@ -235,6 +235,12 @@ describe('the cut', () => {
   })
 })
 
+/** A run that autofixed a file and left no finding. */
+function autofixOnlyReportWhereNotChecked(notChecked: Parameters<typeof checkReport>[0]['notChecked']): { readonly lines: string[]; readonly exitCode: number } {
+  const report = checkReport({ findings: [], changedFileCount: 2, autofixedFiles: ['src/a.ts'], notChecked })
+  return { lines: linesOf(report.stdout), exitCode: report.exitCode }
+}
+
 describe('what check could not check', () => {
   const GONE = buildNotCheckedEntry({ subject: 'src/b.ts', reason: 'it was deleted or replaced while check ran' })
   const OXLINT_CRASHED = 'it crashed'
@@ -258,8 +264,9 @@ describe('what check could not check', () => {
 
   it('does not call the list of errors complete where something was not checked, beside the list with nothing left unchecked, which it does', () => {
     const findings = [buildCheckFinding({ file: 'src/a.ts', line: 1 })]
-    const summaryWhereNotChecked = (notChecked: Parameters<typeof checkReport>[0]['notChecked']): string | undefined =>
-      stdoutLinesOf({ findings, changedFileCount: 2, autofixedFiles: [], notChecked }).at(-1)
+    function summaryWhereNotChecked(notChecked: Parameters<typeof checkReport>[0]['notChecked']): string | undefined {
+      return stdoutLinesOf({ findings, changedFileCount: 2, autofixedFiles: [], notChecked }).at(-1)
+    }
 
     expect({ notChecked: summaryWhereNotChecked([GONE]), allChecked: summaryWhereNotChecked([]) }).toStrictEqual({
       notChecked: `check: 1 error and 0 warnings in 1 of 2 changed files. ${ERRORS_SUMMARY_TAIL_AFTER_A_CUT}`,
@@ -269,7 +276,7 @@ describe('what check could not check', () => {
 
   it('exits 2 where only warnings are left, not calling the list complete, beside the same warnings with everything checked, which exit 0', () => {
     const findings = [buildCheckFinding({ file: 'src/a.ts', line: 1, severity: 'warning' })]
-    const reportWhereNotChecked = (notChecked: Parameters<typeof checkReport>[0]['notChecked']): { readonly summary: string | undefined; readonly exitCode: number } => {
+    function reportWhereNotChecked(notChecked: Parameters<typeof checkReport>[0]['notChecked']): { readonly summary: string | undefined; readonly exitCode: number } {
       const report = checkReport({ findings, changedFileCount: 2, autofixedFiles: [], notChecked })
       return { summary: linesOf(report.stdout).at(-1), exitCode: report.exitCode }
     }
@@ -281,12 +288,7 @@ describe('what check could not check', () => {
   })
 
   it('says not everything was checked and exits 2 where no finding is left, beside the run with everything checked, which exits 0', () => {
-    const reportWhereNotChecked = (notChecked: Parameters<typeof checkReport>[0]['notChecked']): { readonly lines: string[]; readonly exitCode: number } => {
-      const report = checkReport({ findings: [], changedFileCount: 2, autofixedFiles: ['src/a.ts'], notChecked })
-      return { lines: linesOf(report.stdout), exitCode: report.exitCode }
-    }
-
-    expect({ notChecked: reportWhereNotChecked([GONE, OXLINT_FAILED]), allChecked: reportWhereNotChecked([]) }).toStrictEqual({
+    expect({ notChecked: autofixOnlyReportWhereNotChecked([GONE, OXLINT_FAILED]), allChecked: autofixOnlyReportWhereNotChecked([]) }).toStrictEqual({
       notChecked: {
         lines: ['check: autofixed src/a.ts; read them again before editing them.', ...LISTED, NOT_EVERYTHING_CHECKED_SUMMARY],
         exitCode: EXIT.couldNotRun,

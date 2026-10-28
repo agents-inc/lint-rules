@@ -17,7 +17,7 @@ vi.mock('node:fs', async (importOriginal) => {
   const fs = await importOriginal<typeof import('node:fs')>()
   return {
     ...fs,
-    renameSync: (from: string, to: string): void => {
+    renameSync(from: string, to: string): void {
       if (to === renames.target) throw new Error(`EACCES: permission denied, rename '${from}' -> '${to}'`)
       fs.renameSync(from, to)
     },
@@ -27,6 +27,7 @@ vi.mock('node:fs', async (importOriginal) => {
 const tempProjects = setUpTempProjects()
 
 afterEach(() => {
+  // eslint-disable-next-line functional/immutable-data -- the mocked renameSync reads which path to fail from here: vi.mock's factory runs before any test and takes nothing a test passes
   renames.target = null
 })
 
@@ -43,11 +44,12 @@ describe('replacing the files init changes, each by its temporary file', () => {
 
   it('puts back the file it replaced first, as it was, where the second rename fails, and leaves no temporary file', () => {
     const projectDir = tempProjects.create({ files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_BEFORE_INIT } })
+    // eslint-disable-next-line functional/immutable-data -- as in afterEach
     renames.target = join(projectDir, CONFIG_FILE)
 
     expect(() =>
       writeAllOrNone(initWritesIn(projectDir, 'package.json first')),
-    ).toThrowError(`could not write ${join(projectDir, CONFIG_FILE)}: EACCES`)
+    ).toThrow(`could not write ${join(projectDir, CONFIG_FILE)}: EACCES`)
     expect(filesStateOf(projectDir)).toStrictEqual({
       entries: [PACKAGE_JSON_FILE],
       packageJson: PACKAGE_JSON_BEFORE_INIT,
@@ -56,11 +58,12 @@ describe('replacing the files init changes, each by its temporary file', () => {
 
   it('removes the file it created first where the second rename fails', () => {
     const projectDir = tempProjects.create({ files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_BEFORE_INIT } })
+    // eslint-disable-next-line functional/immutable-data -- as in afterEach
     renames.target = join(projectDir, PACKAGE_JSON_FILE)
 
     expect(() =>
       writeAllOrNone(initWritesIn(projectDir, 'config first')),
-    ).toThrowError(`could not write ${join(projectDir, PACKAGE_JSON_FILE)}: EACCES`)
+    ).toThrow(`could not write ${join(projectDir, PACKAGE_JSON_FILE)}: EACCES`)
     expect(filesStateOf(projectDir)).toStrictEqual({
       entries: [PACKAGE_JSON_FILE],
       packageJson: PACKAGE_JSON_BEFORE_INIT,

@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { exportedConstFixedFromLet, exportedLet, moduleText, oxlintFixRunWriting } from '../../__tests__/factories/check-factories.ts'
 import { setUpTempProjects, textsOf } from '../../__tests__/temp-projects.ts'
-import { fixInPlace, textOfFileAt, writeIfStillUnchanged } from './fix-writes.ts'
+import { fixInPlace, textOfFileAt, writesIfStillUnchanged } from './fix-writes.ts'
 
 const tempProjects = setUpTempProjects()
 
@@ -27,7 +27,7 @@ describe("writing ESLint's fixed text", () => {
     const projectDir = tempProjects.create({ files: BEFORE_FIXES })
     const path = join(projectDir, FIRST)
 
-    expect({ written: writeIfStillUnchanged(path, FIRST_BEFORE_FIXES, FIRST_AFTER_FIXES), text: readFileSync(path, 'utf8') }).toStrictEqual({
+    expect({ written: writesIfStillUnchanged(path, FIRST_BEFORE_FIXES, FIRST_AFTER_FIXES), text: readFileSync(path, 'utf8') }).toStrictEqual({
       written: true,
       text: FIRST_AFTER_FIXES,
     })
@@ -38,7 +38,7 @@ describe("writing ESLint's fixed text", () => {
     const path = join(projectDir, FIRST)
     writeFileSync(path, ANOTHER_WRITERS_TEXT)
 
-    expect({ written: writeIfStillUnchanged(path, FIRST_BEFORE_FIXES, FIRST_AFTER_FIXES), text: readFileSync(path, 'utf8') }).toStrictEqual({
+    expect({ written: writesIfStillUnchanged(path, FIRST_BEFORE_FIXES, FIRST_AFTER_FIXES), text: readFileSync(path, 'utf8') }).toStrictEqual({
       written: false,
       text: ANOTHER_WRITERS_TEXT,
     })
@@ -66,6 +66,6 @@ describe('the text of a file as a fix run left it', () => {
     chmodSync(unreadable, NO_PERMISSIONS)
 
     expect(textOfFileAt(join(projectDir, GONE))).toBeNull()
-    expect(() => textOfFileAt(unreadable)).toThrowError(expect.objectContaining({ code: 'EACCES' }))
+    expect(() => textOfFileAt(unreadable)).toThrow(expect.objectContaining({ code: 'EACCES' }))
   })
 })

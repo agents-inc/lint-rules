@@ -55,14 +55,20 @@ type PathHolds = 'a file' | 'a folder' | 'nothing'
 
 type FixStepEnding = { readonly settled: Settled<FixStepResult>; readonly rewritten: ReadonlySet<string> }
 
-/** `wrote` settles once the stand-in has written every file. */
-type OxlintRunningOn = { readonly fixer: InPlaceFixer; readonly wrote: Promise<void> }
+/** `wrote` settles, with the paths, once the stand-in has written every file. */
+type OxlintRunningOn = { readonly fixer: InPlaceFixer; readonly wrote: Promise<readonly string[]> }
 
 const NO_FILE_THERE: readonly NoFileThere[] = [
-  { how: 'deletes it', remove: (projectDir) => rmSync(join(projectDir, SECOND)), left: 'nothing' },
+  {
+    how: 'deletes it',
+    remove(projectDir) {
+      rmSync(join(projectDir, SECOND))
+    },
+    left: 'nothing',
+  },
   {
     how: 'puts a folder in its place',
-    remove: (projectDir) => {
+    remove(projectDir) {
       rmSync(join(projectDir, SECOND))
       mkdirSync(join(projectDir, SECOND))
     },
@@ -70,7 +76,7 @@ const NO_FILE_THERE: readonly NoFileThere[] = [
   },
   {
     how: 'puts a file in the place of its folder',
-    remove: (projectDir) => {
+    remove(projectDir) {
       rmSync(join(projectDir, SECOND_FOLDER), { recursive: true })
       writeFileSync(join(projectDir, SECOND_FOLDER), ANOTHER_WRITERS_TEXT)
     },
@@ -93,7 +99,8 @@ function wholeFilesIn(projectDir: string, files: readonly string[]): CheckedFile
 
 async function fixStepOver(files: readonly CheckedFile[], engines: FixStepEngines, signal = new AbortController().signal): Promise<FixStepEnding> {
   const rewritten = new Set<string>()
-  const record = (path: string): void => {
+  function record(path: string): void {
+    // eslint-disable-next-line functional/immutable-data -- the stand-in records each file the step names, which the test reads once the step settles
     rewritten.add(path)
   }
   const settled = await settledOf(applyFixes(files, snapshotsOf(files.map(({ path }) => path)), engines, { signal, rewritten: { record } }))
@@ -102,32 +109,39 @@ async function fixStepOver(files: readonly CheckedFile[], engines: FixStepEngine
 
 /** Writes its fixes, then runs on until the signal kills it. */
 function oxlintRunningOnUntilKilled(projectDir: string): OxlintRunningOn {
-  let hasWritten: () => void = () => undefined
-  const wrote = new Promise<void>((resolve) => {
-    hasWritten = resolve
-  })
+  const { promise: wrote, resolve: resolveWrote } = Promise.withResolvers<readonly string[]>()
   const fixer: InPlaceFixer = async (paths, signal) => {
     await oxlintFixRunWriting(projectDir, AFTER_OXLINT)(paths, signal)
-    hasWritten()
-    await new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason)))
+    resolveWrote(paths)
+    await new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason))
+    })
   }
   return { fixer, wrote }
 }
 
-const OXLINT_FIXING_NOTHING: InPlaceFixer = async () => undefined
+const oxlintFixingNothing: InPlaceFixer = async () => undefined
 
 const ESLINT_FINDING_NOTHING: EslintEngine = {
-  isIgnored: async () => false,
-  allowsSuppressionsIn: async () => true,
-  fixed: async (path) => buildLintResult(path),
-  linted: async (path) => buildLintResult(path),
+  async isIgnored() {
+    return false
+  },
+  async allowsSuppressionsIn() {
+    return true
+  },
+  async fixed(path) {
+    return buildLintResult(path)
+  },
+  async linted(path) {
+    return buildLintResult(path)
+  },
 }
 
 /** `whileFixing` runs as it fixes each file; it crashes on `crashesOn`, where one is given. */
 function eslintFixingLets({ whileFixing, crashesOn }: { readonly whileFixing: (path: string) => void; readonly crashesOn: string | null }): EslintEngine {
   return {
     ...ESLINT_FINDING_NOTHING,
-    fixed: async (path, text) => {
+    async fixed(path, text) {
       if (path === crashesOn) throw RULE_CRASH
       whileFixing(path)
       const output = text.replaceAll(EXPORTED_LET, EXPORTED_CONST)
@@ -168,7 +182,9 @@ describe("oxlint's fixes that fail the guard", () => {
   // write-back, while git is read.
   it('leaves the text another writer writes over a file it wrote back, while git is read, as that writer left it', async () => {
     const projectDir = tempProjects.create({ files: BEFORE_FIXES })
-    const anotherWriter = (): void => writeFileSync(join(projectDir, SECOND), ANOTHER_WRITERS_TEXT)
+    function anotherWriter(): void {
+      writeFileSync(join(projectDir, SECOND), ANOTHER_WRITERS_TEXT)
+    }
     await fixStepOver(filesIn(projectDir), { oxlint: oxlintFixRunWriting(projectDir, AFTER_OXLINT), eslint: ESLINT_FINDING_NOTHING, changedLinesNow: changedLinesAfter(anotherWriter) })
 
     expect(textsOf(projectDir, FIRST_AND_SECOND)).toStrictEqual({ [FIRST]: FIRST_AFTER_OXLINT, [SECOND]: ANOTHER_WRITERS_TEXT })
@@ -185,11 +201,11 @@ describe("oxlint's fixes that fail the guard", () => {
 describe("ESLint's fixes", () => {
   it('writes none over the text another writer wrote into the file while ESLint fixed it, and records not that file, beside a file nobody else wrote, whose fix it writes and records', async () => {
     const projectDir = tempProjects.create({ files: { [FIRST]: FIRST_BEFORE_FIXES, [THIRD]: THIRD_BEFORE_FIXES } })
-    const anotherWriterIntoTheFirstWhileFixingIt = (path: string): void => {
+    function anotherWriterIntoTheFirstWhileFixingIt(path: string): void {
       if (path === join(projectDir, FIRST)) writeFileSync(path, ANOTHER_WRITERS_TEXT)
     }
     const { settled, rewritten } = await fixStepOver(wholeFilesIn(projectDir, [FIRST, THIRD]), {
-      oxlint: OXLINT_FIXING_NOTHING,
+      oxlint: oxlintFixingNothing,
       eslint: eslintFixingLets({ whileFixing: anotherWriterIntoTheFirstWhileFixingIt, crashesOn: null }),
       changedLinesNow: GIT_READ_AS_IT_IS,
     })
@@ -205,7 +221,7 @@ describe("ESLint's fixes", () => {
 describe("a fix step git's failure stops after oxlint fixed", () => {
   it("keeps oxlint's fix the guard passes, writes back the one it fails before git is read, records the kept one, and passes the failure on", async () => {
     const projectDir = tempProjects.create({ files: BEFORE_FIXES })
-    const gitFailing = (): ChangedLines => {
+    function gitFailing(): ChangedLines {
       throw GIT_FAILED
     }
     const { settled, rewritten } = await fixStepOver(filesIn(projectDir), { oxlint: oxlintFixRunWriting(projectDir, AFTER_OXLINT), eslint: ESLINT_FINDING_NOTHING, changedLinesNow: gitFailing })
@@ -228,7 +244,13 @@ describe('a fix step past a failure that is no signal', () => {
       throw OXLINT_CRASH
     }
     const fixedByEslint: string[] = []
-    const eslint = eslintFixingLets({ whileFixing: (path) => fixedByEslint.push(path), crashesOn: null })
+    const eslint = eslintFixingLets({
+      whileFixing(path) {
+        // eslint-disable-next-line functional/immutable-data -- the stand-in records each file ESLint is given, which the test reads once the step settles
+        fixedByEslint.push(path)
+      },
+      crashesOn: null,
+    })
     const { settled, rewritten } = await fixStepOver(filesIn(projectDir), { oxlint: crashingAfterWriting, eslint, changedLinesNow: GIT_READ_AS_IT_IS })
 
     expect({ completed: 'gave' in settled, fixedByEslint, rewritten, contents: textsOf(projectDir, FIRST_AND_SECOND) }).toStrictEqual({
@@ -244,11 +266,11 @@ describe('a fix step past a failure that is no signal', () => {
   it("keeps ESLint's fix of the text another writer wrote before ESLint read it, that writer's line with it, records the file, and goes on past a later file ESLint fails on", async () => {
     const projectDir = tempProjects.create({ files: { [FIRST]: FIRST_BEFORE_FIXES, [SECOND]: moduleText(exportedLet('second')), [THIRD]: THIRD_BEFORE_FIXES } })
     const writersText = moduleText(exportedLet('second'), exportedConstant('writtenByAnotherWriter'))
-    const anotherWriterWhileFixingTheFirst = (path: string): void => {
+    function anotherWriterWhileFixingTheFirst(path: string): void {
       if (path === join(projectDir, FIRST)) writeFileSync(join(projectDir, SECOND), writersText)
     }
     const { settled, rewritten } = await fixStepOver(wholeFilesIn(projectDir, [FIRST, SECOND, THIRD]), {
-      oxlint: OXLINT_FIXING_NOTHING,
+      oxlint: oxlintFixingNothing,
       eslint: eslintFixingLets({ whileFixing: anotherWriterWhileFixingTheFirst, crashesOn: join(projectDir, THIRD) }),
       changedLinesNow: GIT_READ_AS_IT_IS,
     })
@@ -271,8 +293,14 @@ describe('the files a fix step gives ESLint', () => {
     const [first, second] = filesIn(projectDir)
     if (first === undefined || second === undefined) throw new Error('the project holds no two files')
     const givenToEslint: string[] = []
-    const eslint = eslintFixingLets({ whileFixing: (path) => givenToEslint.push(path), crashesOn: null })
-    await fixStepOver([first, { ...second, readByEslint: false }], { oxlint: OXLINT_FIXING_NOTHING, eslint, changedLinesNow: GIT_READ_AS_IT_IS })
+    const eslint = eslintFixingLets({
+      whileFixing(path) {
+        // eslint-disable-next-line functional/immutable-data -- the stand-in records each file ESLint is given, which the test reads once the step settles
+        givenToEslint.push(path)
+      },
+      crashesOn: null,
+    })
+    await fixStepOver([first, { ...second, readByEslint: false }], { oxlint: oxlintFixingNothing, eslint, changedLinesNow: GIT_READ_AS_IT_IS })
 
     expect(givenToEslint).toStrictEqual([first.path])
   })
@@ -284,14 +312,14 @@ describe('what a fix step lists as not checked', () => {
     const crashing: InPlaceFixer = async () => {
       throw OXLINT_CRASH
     }
-    const deletingTheSecondWhileFixingIt = (path: string): void => {
+    function deletingTheSecondWhileFixingIt(path: string): void {
       if (path === join(projectDir, SECOND)) rmSync(path)
     }
     const eslint = eslintFixingLets({ whileFixing: deletingTheSecondWhileFixingIt, crashesOn: join(projectDir, THIRD) })
     const { settled } = await fixStepOver(wholeFilesIn(projectDir, [FIRST, SECOND, THIRD]), { oxlint: crashing, eslint, changedLinesNow: GIT_READ_AS_IT_IS })
     if (!('gave' in settled)) throw new Error('the fix step stopped')
 
-    expect({ notChecked: settled.gave.notChecked, linted: [...settled.gave.eslintMessages.keys()] }).toStrictEqual({
+    expect({ notChecked: settled.gave.notChecked, linted: settled.gave.eslintMessages.keys().toArray() }).toStrictEqual({
       notChecked: [oxlintRulesFailed(OXLINT_CRASH), goneWhileCheckRan(join(projectDir, SECOND)), eslintFailedOn(join(projectDir, THIRD), RULE_CRASH)],
       linted: [join(projectDir, FIRST)],
     })
@@ -306,10 +334,11 @@ describe('a fix step a signal stops', () => {
     const ending = fixStepOver(filesIn(projectDir), { oxlint: oxlint.fixer, eslint: ESLINT_FINDING_NOTHING, changedLinesNow: GIT_READ_AS_IT_IS }, interruption.signal)
     await oxlint.wrote
     interruption.abort()
+    const signalled: unknown = interruption.signal.reason
     const { settled, rewritten } = await ending
 
     expect({ settled, rewritten, contents: textsOf(projectDir, FIRST_AND_SECOND) }).toStrictEqual({
-      settled: { threw: interruption.signal.reason },
+      settled: { threw: signalled },
       rewritten: recorded(projectDir, FIRST),
       contents: { [FIRST]: FIRST_AFTER_OXLINT, [SECOND]: SECOND_BEFORE_FIXES },
     })
@@ -324,24 +353,26 @@ describe('a fix step a signal stops', () => {
     const ending = fixStepOver(components, { oxlint: oxlint.fixer, eslint: ESLINT_FINDING_NOTHING, changedLinesNow: GIT_READ_AS_IT_IS }, interruption.signal)
     await oxlint.wrote
     interruption.abort()
+    const signalled: unknown = interruption.signal.reason
 
-    expect((await ending).settled).toStrictEqual({ threw: interruption.signal.reason })
+    expect((await ending).settled).toStrictEqual({ threw: signalled })
   })
 
   it("keeps ESLint's fix written before the signal, records the file, fixes no file after it, and throws the signal", async () => {
     const projectDir = tempProjects.create({ files: { [FIRST]: FIRST_BEFORE_FIXES, [THIRD]: THIRD_BEFORE_FIXES } })
     const interruption = new AbortController()
-    const signalWhileFixingTheFirst = (path: string): void => {
+    function signalWhileFixingTheFirst(path: string): void {
       if (path === join(projectDir, FIRST)) interruption.abort()
     }
     const { settled, rewritten } = await fixStepOver(
       wholeFilesIn(projectDir, [FIRST, THIRD]),
-      { oxlint: OXLINT_FIXING_NOTHING, eslint: eslintFixingLets({ whileFixing: signalWhileFixingTheFirst, crashesOn: null }), changedLinesNow: GIT_READ_AS_IT_IS },
+      { oxlint: oxlintFixingNothing, eslint: eslintFixingLets({ whileFixing: signalWhileFixingTheFirst, crashesOn: null }), changedLinesNow: GIT_READ_AS_IT_IS },
       interruption.signal,
     )
+    const signalled: unknown = interruption.signal.reason
 
     expect({ settled, rewritten, contents: textsOf(projectDir, [FIRST, THIRD]) }).toStrictEqual({
-      settled: { threw: interruption.signal.reason },
+      settled: { threw: signalled },
       rewritten: recorded(projectDir, FIRST),
       contents: { [FIRST]: FIRST_AFTER_ESLINT, [THIRD]: THIRD_BEFORE_FIXES },
     })

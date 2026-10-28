@@ -16,7 +16,7 @@ vi.mock('node:fs', async (importOriginal) => {
   const fs = await importOriginal<typeof import('node:fs')>()
   return {
     ...fs,
-    writeFileSync: (path: string, text: string): void => {
+    writeFileSync(path: string, text: string): void {
       if (partialWrites.target === null || !path.startsWith(`${partialWrites.target}.`)) {
         fs.writeFileSync(path, text)
         return
@@ -30,6 +30,7 @@ vi.mock('node:fs', async (importOriginal) => {
 const tempProjects = setUpTempProjects()
 
 afterEach(() => {
+  // eslint-disable-next-line functional/immutable-data -- the mocked writeFileSync reads which path to fail from here: vi.mock's factory runs before any test and takes nothing a test passes
   partialWrites.target = null
 })
 
@@ -39,9 +40,10 @@ describe('writing the temporary files of the files init changes', () => {
     { failing: 'the second', order: 'package.json first' },
   ])('leaves every file as it was, and no temporary file, where $failing write fails part way', ({ order }) => {
     const projectDir = tempProjects.create({ files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_BEFORE_INIT } })
+    // eslint-disable-next-line functional/immutable-data -- as in afterEach
     partialWrites.target = join(projectDir, CONFIG_FILE)
 
-    expect(() => writeAllOrNone(initWritesIn(projectDir, order))).toThrowError(`could not write ${join(projectDir, CONFIG_FILE)}: ENOSPC`)
+    expect(() => writeAllOrNone(initWritesIn(projectDir, order))).toThrow(`could not write ${join(projectDir, CONFIG_FILE)}: ENOSPC`)
     expect(filesStateOf(projectDir)).toStrictEqual({
       entries: [PACKAGE_JSON_FILE],
       packageJson: PACKAGE_JSON_BEFORE_INIT,

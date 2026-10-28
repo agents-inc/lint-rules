@@ -28,7 +28,7 @@ const TYPESCRIPT_SYNTAX_CODE = /^TS\(\d+\)$/u
  * oxlint's findings follow ESLint's parse error. ESLint's other messages that name no rule are its own
  * notes, and left out.
  */
-export function findingsIn(reports: FileReports, catalog: Catalog): CheckFinding[] {
+export function findingsIn(reports: FileReports, catalog: Readonly<Catalog>): CheckFinding[] {
   const eslintParseError = eslintParseErrorIn(reports)
   const oxlintParseError = oxlintParseErrorIn(reports)
   if (oxlintParseError !== null) return [eslintParseError ?? oxlintParseError]
@@ -36,7 +36,7 @@ export function findingsIn(reports: FileReports, catalog: Catalog): CheckFinding
   return eslintParseError === null ? findings : [eslintParseError, ...findings]
 }
 
-function findingsOnChangedLines(reports: FileReports, catalog: Catalog): CheckFinding[] {
+function findingsOnChangedLines(reports: FileReports, catalog: Readonly<Catalog>): CheckFinding[] {
   return [...ruleFindingsIn(reports, catalog), ...unusedSuppressionsIn(reports)].filter(({ line }) => isOnChangedLines(line, reports.changed))
 }
 
@@ -50,19 +50,19 @@ function oxlintParseErrorIn({ file, oxlintDiagnostics }: FileReports): CheckFind
   return parseError === undefined ? null : parseErrorFinding(file, lineOf(parseError), parseError.message)
 }
 
-function ruleFindingsIn({ file, changed, eslintMessages, oxlintDiagnostics }: FileReports, catalog: Catalog): CheckFinding[] {
+function ruleFindingsIn({ file, changed, eslintMessages, oxlintDiagnostics }: FileReports, catalog: Readonly<Catalog>): CheckFinding[] {
   return [
     ...eslintMessages.flatMap((message) => eslintRuleFindings(file, message)),
     ...oxlintDiagnostics.flatMap((diagnostic) => oxlintRuleFindings(file, diagnostic, changed, catalog)),
   ]
 }
 
-function eslintRuleFindings(file: string, { ruleId, line, severity, message }: Linter.LintMessage): CheckFinding[] {
+function eslintRuleFindings(file: string, { ruleId, line, severity, message }: Readonly<Linter.LintMessage>): CheckFinding[] {
   if (ruleId === null) return []
   return [{ file, line, label: ruleId, severity: severityOfEslint(severity), message }]
 }
 
-function oxlintRuleFindings(file: string, diagnostic: OxlintDiagnostic, changed: ChangedLines, catalog: Catalog): CheckFinding[] {
+function oxlintRuleFindings(file: string, diagnostic: OxlintDiagnostic, changed: ChangedLines, catalog: Readonly<Catalog>): CheckFinding[] {
   const { code, severity, message } = diagnostic
   if (code === null || isParseError(diagnostic)) return []
   return [{ file, line: lineOfTheChange(diagnostic, changed), label: labelOfOxlintCode(code, catalog), severity: severityOfOxlint(severity), message }]
@@ -93,7 +93,8 @@ function lineOfEslintsParseError({ line }: Pick<Partial<Linter.LintMessage>, 'li
   return line === undefined ? WHOLE_FILE_LINE : line
 }
 
-function lineOf({ spans: [first] }: OxlintDiagnostic): number {
+function lineOf({ spans }: OxlintDiagnostic): number {
+  const [first] = spans
   return first === undefined ? WHOLE_FILE_LINE : first.line
 }
 

@@ -55,11 +55,10 @@ const EXTENSION_DOT = '.'
  * in it and from the git top level for the rest. Throws where it could not run, with `ifStopped` naming
  * the files it fixed by then.
  */
-export async function checkIn(cwd: string, signal: AbortSignal, ifStopped: StdoutIfStopped): Promise<Outcome> {
+export async function checkIn(cwd: string, signal: Readonly<AbortSignal>, ifStopped: StdoutIfStopped): Promise<Outcome> {
   const gitTopLevel = gitTopLevelOf(cwd)
   if (gitTopLevel === null) throw new Error(notInGit(cwd))
-  const config = nearestConfig(cwd, gitTopLevel)
-  refuseAnotherCopy(config)
+  const config = refuseAnotherCopy(nearestConfig(cwd, gitTopLevel))
   const eslintPart = await eslintPartExportedBy(config)
   try {
     return await checkChanges(gitRepoAt(gitTopLevel), config, eslintPart, { signal, ifStopped })
@@ -142,7 +141,9 @@ function fixEnginesOf(run: CheckRun, oxlintConfig: TempOxlintConfig): FixStepEng
   return {
     oxlint: oxlintFixer({ config: oxlintConfig, fixRunConfig }),
     eslint: run.eslint,
-    changedLinesNow: (path) => changedLinesReadAgain(run, path),
+    changedLinesNow(path) {
+      return changedLinesReadAgain(run, path)
+    },
   }
 }
 
@@ -154,13 +155,13 @@ function nothingToCheck(): Outcome {
   return { stdout: textOfLines([NOTHING_TO_CHECK]), stderr: '', exitCode: EXIT_CLEAN }
 }
 
-/** JS and TS files go to both engines, Vue, Svelte and Astro files to oxlint alone, and none of any other kind to either. */
+/** JS and TS files go to both engines, Vue.js, Svelte and Astro files to oxlint alone, and none of any other kind to either. */
 function lintedFileOf(repo: GitRepo, config: FoundConfig, change: ChangedFile): FileInFolder[] {
   const extension = extname(change.path).slice(EXTENSION_DOT.length)
-  const readByEslint = JS_AND_TS_EXTENSIONS.has(extension)
-  if (!readByEslint && !isAComponentExtension(extension)) return []
+  const isReadByEslint = JS_AND_TS_EXTENSIONS.has(extension)
+  if (!isReadByEslint && !isAComponentExtension(extension)) return []
   const path = join(repo.topLevel, change.path)
-  return [{ change, path, file: slashSeparated(relative(config.folder, path)), readByEslint }]
+  return [{ change, path, file: slashSeparated(relative(config.folder, path)), readByEslint: isReadByEslint }]
 }
 
 /** The agent build, the component files' guard blocks first. */
@@ -203,9 +204,13 @@ function withChangedLines(repo: GitRepo, files: readonly FileInFolder[]): Scoped
 /** Each record updates `ifStopped`, so a stopped run still names every file it rewrote. */
 function autofixedFilesOf(files: readonly ScopedFile[], ifStopped: StdoutIfStopped): AutofixedFiles {
   const rewritten = new Set<string>()
-  const named = (): string[] => files.filter(({ path }) => rewritten.has(path)).map(({ file }) => file)
+  function named(): string[] {
+    return files.filter(({ path }) => rewritten.has(path)).map(({ file }) => file)
+  }
   return {
-    record: (path) => {
+    // eslint-disable-next-line functional/no-return-void -- the fix step records each file as its fix is kept, and a run stopped part way names them from this set: a value record returned would be lost with the throw
+    record(path) {
+      // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements -- as on record
       rewritten.add(path)
       ifStopped.update(autofixedStdout(named()))
     },

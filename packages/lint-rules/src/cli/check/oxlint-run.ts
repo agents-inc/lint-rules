@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
+import { once } from 'node:events'
 import { readdirSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
@@ -37,19 +38,22 @@ const NO_DIAGNOSTICS: OxlintReport = { diagnostics: [] }
 
 /** Removes the temp configs of ended check runs, keeps live ones', and reserves this run's name. */
 export function tempOxlintConfigIn(folder: string): TempOxlintConfig {
-  readdirSync(folder)
-    .filter(isLeftByAnEndedProcess)
-    .forEach((name) => removeLeftover(join(folder, name)))
+  const leftByEndedRuns = readdirSync(folder).filter(isLeftByAnEndedProcess)
+  for (const name of leftByEndedRuns) removeLeftover(join(folder, name))
   return { path: leftoverToRemove(join(folder, tempConfigNameOfThisRun())), folder }
 }
 
 /** Rules set to warn and withheld-fix rules are off, so oxlint's `--fix` applies neither: check fixes errors alone. */
-export function fixRunConfigOf(config: OxlintConfig, withheld: ReadonlyMap<string, string>, catalog: Catalog): OxlintConfig {
+export function fixRunConfigOf(config: Readonly<OxlintConfig>, withheld: ReadonlyMap<string, string>, catalog: Readonly<Catalog>): OxlintConfig {
   return withheldRulesOff(withWarnedRulesOff(config), withheld, catalog)
 }
 
-function withheldRulesOff(config: OxlintConfig, withheld: ReadonlyMap<string, string>, catalog: Catalog): OxlintConfig {
-  const withheldInOxlint = [...withheld.keys()].map((id) => routeOf(id, catalog)).filter(isOxlintRoute)
+function withheldRulesOff(config: Readonly<OxlintConfig>, withheld: ReadonlyMap<string, string>, catalog: Readonly<Catalog>): OxlintConfig {
+  const withheldInOxlint = withheld
+    .keys()
+    .map((id) => routeOf(id, catalog))
+    .filter(isOxlintRoute)
+    .toArray()
   if (withheldInOxlint.length === 0) return config
   const off = Object.fromEntries(withheldInOxlint.map(({ oxlintName }): [string, DummyRule] => [oxlintName, OFF]))
   // The last override wins, so the rule is off in every file whatever turned it on.
@@ -57,35 +61,35 @@ function withheldRulesOff(config: OxlintConfig, withheld: ReadonlyMap<string, st
 }
 
 /** At the top and in each override: where an override sets a rule to error, it is fixed in that override's files. */
-function withWarnedRulesOff(config: OxlintConfig): OxlintConfig {
+function withWarnedRulesOff(config: Readonly<OxlintConfig>): OxlintConfig {
   const { rules, overrides } = config
   return {
     ...config,
-    ...(rules === undefined ? {} : { rules: warnedRulesOff(rules) }),
-    ...(overrides === undefined ? {} : { overrides: overrides.map(overrideWithWarnedRulesOff) }),
+    ...(rules !== undefined && { rules: warnedRulesOff(rules) }),
+    ...(overrides !== undefined && { overrides: overrides.map(overrideWithWarnedRulesOff) }),
   }
 }
 
-function overrideWithWarnedRulesOff(override: OxlintOverride): OxlintOverride {
+function overrideWithWarnedRulesOff(override: Readonly<OxlintOverride>): OxlintOverride {
   const { rules } = override
   return rules === undefined ? override : { ...override, rules: warnedRulesOff(rules) }
 }
 
-function warnedRulesOff(rules: DummyRuleMap): DummyRuleMap {
+function warnedRulesOff(rules: Readonly<DummyRuleMap>): DummyRuleMap {
   return Object.fromEntries(Object.entries(rules).map(([name, rule]): [string, RuleEntry] => [name, isSetToWarn(rule) ? OFF : rule]))
 }
 
 /** The build writes a severity alone, or first before the options. */
-function isSetToWarn(rule: RuleEntry): boolean {
+function isSetToWarn(rule: Readonly<RuleEntry>): boolean {
   return (Array.isArray(rule) ? rule[0] : rule) === WARN
 }
 
-export function lintRunConfigOf(config: OxlintConfig): OxlintConfig {
+export function lintRunConfigOf(config: Readonly<OxlintConfig>): OxlintConfig {
   return { ...config, options: { ...config.options, reportUnusedDisableDirectives: REPORTED } }
 }
 
 /** A failure the signal caused stops check; any other leaves oxlint's rules unchecked. */
-export async function oxlintLintRun(config: TempOxlintConfig, lintRunConfig: OxlintConfig, paths: readonly string[], signal: AbortSignal): Promise<OxlintLintRun> {
+export async function oxlintLintRun(config: TempOxlintConfig, lintRunConfig: Readonly<OxlintConfig>, paths: readonly string[], signal: Readonly<AbortSignal>): Promise<OxlintLintRun> {
   try {
     return { report: await runOxlint(config, lintRunConfig, paths, { fix: false, signal }), notChecked: [] }
   } catch (error) {
@@ -97,22 +101,16 @@ export async function oxlintLintRun(config: TempOxlintConfig, lintRunConfig: Oxl
 /** The project's own oxlint configs are never read: `-c` names the only one. */
 export async function runOxlint(
   { path, folder }: TempOxlintConfig,
-  config: OxlintConfig,
+  config: Readonly<OxlintConfig>,
   files: readonly string[],
   { fix, signal }: { readonly fix: boolean; readonly signal: AbortSignal },
 ): Promise<OxlintReport> {
   writeFileSync(path, JSON.stringify(config))
   const args = [oxlintBin(), '-c', path, '-f', 'json', ...(fix ? ['--fix'] : []), ...files]
   const child = spawn(process.execPath, args, { cwd: folder, signal, stdio: ['ignore', 'pipe', 'pipe'] })
-  const [stdout, stderr] = await Promise.all([text(child.stdout), text(child.stderr), endOf(child)])
+  // `once` rejects where the child emits an error first, as it does when the signal stops it.
+  const [stdout, stderr] = await Promise.all([text(child.stdout), text(child.stderr), once(child, 'close')])
   return oxlintReportFrom({ stdout, stderr })
-}
-
-function endOf(child: ReturnType<typeof spawn>): Promise<void> {
-  return new Promise((resolve, reject) => {
-    child.once('error', reject)
-    child.once('close', () => resolve())
-  })
 }
 
 /** Names this run's process, so a later run can tell whether it has ended. */
@@ -132,10 +130,10 @@ function isLeftByAnEndedProcess(name: string): boolean {
   return !isRunning(pid)
 }
 
+/** Signal 0 sends nothing: kill answers true where the process exists, and throws where it does not or belongs to another user. */
 function isRunning(pid: number): boolean {
   try {
-    process.kill(pid, 0)
-    return true
+    return process.kill(pid, 0)
   } catch (error) {
     return hasErrorCode(error, NOT_PERMITTED)
   }

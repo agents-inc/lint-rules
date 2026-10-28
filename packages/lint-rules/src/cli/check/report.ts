@@ -1,5 +1,4 @@
 import { EXIT_CLEAN, EXIT_COULD_NOT_RUN, EXIT_FINDINGS } from '../exit-codes.ts'
-import { NOT_FOUND } from '../not-found.ts'
 import { printedLengthOf, textOfLines } from '../printed-lines.ts'
 import { autofixedLine, cutLine, type ListPrinted, MESSAGE_SEPARATOR, notCheckedLine, summaryLine, WARNING_MARK } from './texts.ts'
 
@@ -28,6 +27,9 @@ export type CheckReport = { readonly stdout: string; readonly exitCode: number }
 type Severity = CheckFinding['severity']
 
 type CutFindings = { readonly printed: readonly CheckFinding[]; readonly cut: readonly CheckFinding[] }
+
+/** What the finding lines printed so far take, and how many of them are within the cap. */
+type PrintedSoFar = { readonly length: number; readonly withinTheCap: number }
 
 // The finding lines printed, newlines counted, stay within this many characters.
 const PRINTED_FINDINGS_CAP = 8000
@@ -80,7 +82,7 @@ function exitCodeOf(errors: readonly CheckFinding[], notChecked: readonly NotChe
 
 /** Identical findings, from both engines or from two passes, print once. */
 function findingsOncePerLine(findings: readonly CheckFinding[]): CheckFinding[] {
-  return [...new Map(findings.map((finding) => [findingLine(finding), finding])).values()]
+  return new Map(findings.map((finding) => [findingLine(finding), finding])).values().toArray()
 }
 
 function inPrintOrder(findings: readonly CheckFinding[], severity: Severity): CheckFinding[] {
@@ -92,20 +94,16 @@ function cutAtTheCap(ordered: readonly CheckFinding[]): CutFindings {
   return { printed: ordered.slice(0, printedCount), cut: ordered.slice(printedCount) }
 }
 
-/** At least one line, however long. */
+/** At least one line, however long; of no lines, that one is none. */
 function countWithinTheCap(lines: readonly string[]): number {
-  const printedSoFar = runningTotalsOf(lines.map(printedLengthOf))
-  const firstPastTheCap = printedSoFar.findIndex((printed) => printed > PRINTED_FINDINGS_CAP)
-  if (firstPastTheCap === NOT_FOUND) return lines.length
-  return Math.max(firstPastTheCap, AT_LEAST_ONE)
+  const { withinTheCap } = lines.map(printedLengthOf).reduce<PrintedSoFar>(printedWith, { length: 0, withinTheCap: 0 })
+  return Math.max(withinTheCap, AT_LEAST_ONE)
 }
 
-function runningTotalsOf(sizes: readonly number[]): number[] {
-  let total = 0
-  return sizes.map((size) => {
-    total += size
-    return total
-  })
+/** A length only adds to the print, so once a line takes it past the cap, so does every line after it. */
+function printedWith({ length, withinTheCap }: PrintedSoFar, size: number): PrintedSoFar {
+  const printed = length + size
+  return { length: printed, withinTheCap: printed > PRINTED_FINDINGS_CAP ? withinTheCap : withinTheCap + 1 }
 }
 
 function autofixedLines(autofixedFiles: readonly string[]): string[] {

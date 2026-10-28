@@ -24,6 +24,26 @@ const LINTED_FILE = 'src/a.ts'
 // oxlint 1.87 printed its refusals on stdout alone; this stands in for anything it adds on stderr.
 const A_LINE_ON_STDERR = 'a line oxlint printed on stderr'
 const JSON_HOLDING_NO_REPORT = [JSON.stringify({ number_of_files: 1 }), JSON.stringify({ diagnostics: {} }), JSON.stringify([])]
+// oxlint's JSON leaves `code` out where a diagnostic names no rule, and its type lets `labels` be left out too.
+const A_DIAGNOSTIC_NAMING_NO_RULE_AND_NO_PLACE = { message: 'a diagnostic tied to no rule and no place', severity: 'error', filename: 'src/a.ts' }
+// A place as oxlint 1.87 writes it: offset and length in UTF-8 bytes, then the line and column.
+const A_SPAN = { offset: 0, length: 8, line: 1, column: 1 }
+const A_WELL_FORMED_DIAGNOSTIC = { code: 'eslint(no-debugger)', message: '`debugger` statement is not allowed', severity: 'error', filename: 'src/a.ts', labels: [{ span: A_SPAN }] }
+// Each is read beside the well-formed diagnostic, so a check that passes a report where one diagnostic is well formed fails.
+const DIAGNOSTICS_OXLINT_NEVER_WRITES = [
+  { shape: 'that is no object', diagnostic: 'src/a.ts' },
+  { shape: 'that is null', diagnostic: null },
+  { shape: 'with no message', diagnostic: { severity: 'error', filename: 'src/a.ts' } },
+  { shape: 'with no severity', diagnostic: { message: 'a message', filename: 'src/a.ts' } },
+  { shape: 'with no file name', diagnostic: { message: 'a message', severity: 'error' } },
+  { shape: 'whose code is no text', diagnostic: { code: 1, message: 'a message', severity: 'error', filename: 'src/a.ts' } },
+  { shape: 'whose labels are no list', diagnostic: { message: 'a message', severity: 'error', filename: 'src/a.ts', labels: {} } },
+  { shape: 'whose label is no object', diagnostic: { message: 'a message', severity: 'error', filename: 'src/a.ts', labels: ['a label'] } },
+  { shape: 'whose second label has no span', diagnostic: { message: 'a message', severity: 'error', filename: 'src/a.ts', labels: [{ span: A_SPAN }, {}] } },
+  { shape: 'whose span is null', diagnostic: { message: 'a message', severity: 'error', filename: 'src/a.ts', labels: [{ span: null }] } },
+  { shape: 'whose span has no line', diagnostic: { message: 'a message', severity: 'error', filename: 'src/a.ts', labels: [{ span: { offset: 0, length: 8 } }] } },
+  { shape: 'whose span gives its line as text', diagnostic: { message: 'a message', severity: 'error', filename: 'src/a.ts', labels: [{ span: { offset: 0, length: 8, line: '1' } }] } },
+]
 
 const tempProjects = setUpTempProjects()
 const PROJECT = tempProjects.create({
@@ -64,20 +84,42 @@ describe('oxlintReportFrom', () => {
     const output = rawOxlintOutput(PROJECT, config, [LINTED_FILE])
 
     expect(output.exitCode).toBe(1)
-    expect(() => oxlintReportFrom(output)).toThrowError(new Error(`oxlint failed: ${printed}`))
+    expect(() => oxlintReportFrom(output)).toThrow(new Error(`oxlint failed: ${printed}`))
   })
 
   it('quotes what oxlint printed on stdout first, then what it printed on stderr', () => {
-    expect(() => oxlintReportFrom({ stdout: OXLINT_REFUSAL_OF_A_RULE, stderr: A_LINE_ON_STDERR })).toThrowError(
+    expect(() => oxlintReportFrom({ stdout: OXLINT_REFUSAL_OF_A_RULE, stderr: A_LINE_ON_STDERR })).toThrow(
       new Error(`oxlint failed: ${OXLINT_REFUSAL_OF_A_RULE}\n${A_LINE_ON_STDERR}`),
     )
   })
 
   it.each(JSON_HOLDING_NO_REPORT)('refuses JSON that holds no list of diagnostics, quoting it: %s', (stdout) => {
-    expect(() => oxlintReportFrom({ stdout, stderr: '' })).toThrowError(new Error(`oxlint failed: ${stdout}`))
+    expect(() => oxlintReportFrom({ stdout, stderr: '' })).toThrow(new Error(`oxlint failed: ${stdout}`))
+  })
+
+  it('reads a diagnostic that leaves out its code and its places as one naming no rule and no place, not as a report it refuses', () => {
+    const { message, severity, filename } = A_DIAGNOSTIC_NAMING_NO_RULE_AND_NO_PLACE
+
+    expect(oxlintReportFrom({ stdout: JSON.stringify({ diagnostics: [A_DIAGNOSTIC_NAMING_NO_RULE_AND_NO_PLACE] }), stderr: '' })).toStrictEqual({
+      diagnostics: [{ code: null, message, severity, filename, spans: [] }],
+    })
+  })
+
+  it.each(DIAGNOSTICS_OXLINT_NEVER_WRITES)('refuses a report holding a diagnostic $shape, quoting it all, beside a well-formed one', ({ diagnostic }) => {
+    const stdout = JSON.stringify({ diagnostics: [A_WELL_FORMED_DIAGNOSTIC, diagnostic] })
+
+    expect(() => oxlintReportFrom({ stdout, stderr: '' })).toThrow(new Error(`oxlint failed: ${stdout}`))
+  })
+
+  it('reads a report of well-formed diagnostics alone, each place its span, beside those', () => {
+    const { code, message, severity, filename } = A_WELL_FORMED_DIAGNOSTIC
+
+    expect(oxlintReportFrom({ stdout: JSON.stringify({ diagnostics: [A_WELL_FORMED_DIAGNOSTIC] }), stderr: '' })).toStrictEqual({
+      diagnostics: [{ code, message, severity, filename, spans: [A_SPAN] }],
+    })
   })
 
   it('says oxlint printed nothing where it printed nothing', () => {
-    expect(() => oxlintReportFrom({ stdout: '', stderr: '' })).toThrowError(new Error('oxlint failed: it printed nothing'))
+    expect(() => oxlintReportFrom({ stdout: '', stderr: '' })).toThrow(new Error('oxlint failed: it printed nothing'))
   })
 })

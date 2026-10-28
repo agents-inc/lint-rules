@@ -90,7 +90,7 @@ describe("oxlint's lint run", () => {
   const ACCEPTED: OxlintConfig = { rules: { 'no-debugger': 'error' } }
   const REFUSED: OxlintConfig = { rules: { [RULE_OXLINT_DOES_NOT_HAVE]: 'error' } }
 
-  function lintedIn(folder: string, config: OxlintConfig, signal: AbortSignal): ReturnType<typeof oxlintLintRun> {
+  function lintedIn(folder: string, config: Readonly<OxlintConfig>, signal: Readonly<AbortSignal>): ReturnType<typeof oxlintLintRun> {
     return oxlintLintRun(tempOxlintConfigIn(folder), config, [join(folder, LINTED_FILE)], signal)
   }
 

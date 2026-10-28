@@ -60,7 +60,7 @@ const JUSTIFICATION = /--[\s\S]*$/u
 const NAME_SEPARATORS = /[\s,]+/u
 const LINE_FEED = '\n'
 
-const parseForEslint: ParseForEslint = tseslint.parser.parseForESLint
+const parseForEslint: ParseForEslint = tseslint.parser.parseForESLint.bind(tseslint.parser)
 
 /** `file` is the path, which says how to parse the text. The two engines' reports of a name are matched by its comment. */
 export function namesSuppressingNothing(
@@ -152,14 +152,21 @@ function formOfAnUnusedSuppression({ code, message }: OxlintDiagnostic): Suppres
 function namesEslintCallsUnusedIn(message: string): string[] {
   const unused = ESLINT_UNUSED.exec(message)
   if (unused === null) return []
-  return [...namedGroupOf(unused, 'names').matchAll(QUOTED_NAME)].map((quoted) => namedGroupOf(quoted, 'name'))
+  return namedGroupOf(unused, 'names')
+    .matchAll(QUOTED_NAME)
+    .map((quoted) => namedGroupOf(quoted, 'name'))
+    .toArray()
 }
 
 /** As typescript-eslint reads them, so comment-like text in a string is none. Null where it cannot parse what the engines did. */
 function commentsIn(file: string, text: string): readonly Comment[] | null {
   const parsed = parsedOrNull(file, text)
   if (parsed === null) return null
-  return parsedCommentsIn(parsed.ast).map(({ range: [start, end] }) => ({ text: text.slice(start, end), start, end }))
+  return parsedCommentsIn(parsed.ast).map(({ range }) => commentSpanning(text, range))
+}
+
+function commentSpanning(text: string, [start, end]: readonly [number, number]): Comment {
+  return { text: text.slice(start, end), start, end }
 }
 
 /** Null whatever the parser throws: reading the comments never refuses the run. */
@@ -189,10 +196,16 @@ function lineOfTheDisableComment({ text, comments }: ReadComments, enable: Comme
 
 /** oxlint spans a wholly unused comment whole, else the name inside it. Null where the text there is no comment now. */
 function commentNowAt(comments: readonly Comment[], spanned: Spanned): Comment | null {
-  const found = spansAWholeComment(spanned)
-    ? comments.find(({ start }) => start === spanned.start)
-    : comments.find(({ start, end }) => start <= spanned.start && spanned.end <= end)
+  const found = comments.find(spansAWholeComment(spanned) ? startingWhere(spanned) : holding(spanned))
   return found === undefined ? null : found
+}
+
+function startingWhere(spanned: Spanned): (comment: Comment) => boolean {
+  return ({ start }) => start === spanned.start
+}
+
+function holding(spanned: Spanned): (comment: Comment) => boolean {
+  return ({ start, end }) => start <= spanned.start && spanned.end <= end
 }
 
 function spansAWholeComment({ text }: Spanned): boolean {

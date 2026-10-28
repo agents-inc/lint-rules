@@ -27,12 +27,17 @@ vi.mock('node:child_process', async (importOriginal) => {
   const pathWithoutGit = ''
   return {
     ...childProcess,
-    spawnSync: (command: string, args: readonly string[], options: SpawnSyncOptions) => {
-      if (args[0] === unstartableGit.subcommand) return childProcess.spawnSync(command, args, { ...options, env: { ...options.env, PATH: pathWithoutGit } })
-      return args[0] === silentGit.subcommand ? silentFailure : childProcess.spawnSync(command, args, options)
+    spawnSync(command: string, args: readonly string[], options: Readonly<SpawnSyncOptions>) {
+      if (isFailedBy(unstartableGit, args)) return childProcess.spawnSync(command, args, { ...options, env: { ...options.env, PATH: pathWithoutGit } })
+      return isFailedBy(silentGit, args) ? silentFailure : childProcess.spawnSync(command, args, options)
     },
   }
 })
+
+/** Where a test names the git subcommand these args run. */
+function isFailedBy({ subcommand }: { readonly subcommand: string | null }, args: readonly string[]): boolean {
+  return subcommand !== null && subcommand === args[0]
+}
 
 const tempProjects = setUpTempProjects()
 
@@ -58,7 +63,9 @@ const IGNORING_COMMIT_MESSAGE = 'git leaves the generated folder out'
 const GIT_NOT_STARTED = 'git failed: spawnSync git ENOENT'
 
 afterEach(() => {
+  // eslint-disable-next-line functional/immutable-data -- the mocked spawnSync reads which git subcommand to fail from here: vi.mock's factory runs before any test and takes nothing a test passes
   silentGit.subcommand = null
+  // eslint-disable-next-line functional/immutable-data -- as on the line above
   unstartableGit.subcommand = null
 })
 
@@ -71,15 +78,17 @@ describe('the top level of the repository holding a folder', () => {
 
   it('is refused for check where git cannot be started, quoting why', () => {
     const project = createGitProject(tempProjects, { repo: 'committed', files: {}, linkedPackages: [] })
+    // eslint-disable-next-line functional/immutable-data -- as in afterEach
     unstartableGit.subcommand = 'rev-parse'
 
-    expect(() => gitTopLevelOf(project.dir)).toThrowError(new Error(GIT_NOT_STARTED))
+    expect(() => gitTopLevelOf(project.dir)).toThrow(new Error(GIT_NOT_STARTED))
   })
 
   it('is none for init where git cannot be started, which it tells apart from a folder outside any repo and from one inside a repo', () => {
     const inARepo = createGitProject(tempProjects, { repo: 'committed', files: {}, linkedPackages: [] })
     const outside = createGitProject(tempProjects, { repo: 'not a repo', files: {}, linkedPackages: [] })
     const answers = { inARepo: whereInitRuns(inARepo.dir), outside: whereInitRuns(outside.dir) }
+    // eslint-disable-next-line functional/immutable-data -- as in afterEach
     unstartableGit.subcommand = 'rev-parse'
 
     expect({ ...answers, gitCouldNotRun: whereInitRuns(inARepo.dir) }).toStrictEqual({
@@ -109,18 +118,20 @@ describe('the files git counts as changed', () => {
     const project = createGitProject(tempProjects, { repo: 'committed', files: {}, linkedPackages: [] })
     project.write(ADDED, moduleText(exportedConstant('added')))
     const repo = gitRepoAt(project.dir)
+    // eslint-disable-next-line functional/immutable-data -- as in afterEach
     silentGit.subcommand = 'diff'
 
-    expect(() => changedFilesIn(repo)).toThrowError(new Error('git failed: git diff --name-status -z --no-ext-diff --find-renames=1% --diff-filter=ACMR HEAD exited 128'))
+    expect(() => changedFilesIn(repo)).toThrow(new Error('git failed: git diff --name-status -z --no-ext-diff --find-renames=1% --diff-filter=ACMR HEAD exited 128'))
   })
 
   it('are refused where git cannot be started, quoting why', () => {
     const project = createGitProject(tempProjects, { repo: 'committed', files: {}, linkedPackages: [] })
     project.write(ADDED, moduleText(exportedConstant('added')))
     const repo = gitRepoAt(project.dir)
+    // eslint-disable-next-line functional/immutable-data -- as in afterEach
     unstartableGit.subcommand = 'diff'
 
-    expect(() => changedFilesIn(repo)).toThrowError(new Error(GIT_NOT_STARTED))
+    expect(() => changedFilesIn(repo)).toThrow(new Error(GIT_NOT_STARTED))
   })
 
   it('include a same-size edit made in the second git last wrote its index in, beside a file left as committed', () => {

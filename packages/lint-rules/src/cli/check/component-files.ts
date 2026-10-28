@@ -40,6 +40,6 @@ function componentFilesMatching(glob: string): string[] {
   return [normalizeGlob(glob), COMPONENT_FILES]
 }
 
-function guardBlock(name: string, files: NonNullable<Linter.Config['files']>, mode: SuppressionMode): Linter.Config {
-  return { name, files, linterOptions: agentLinterOptionsOf(mode) }
+function guardBlock(name: string, files: Readonly<NonNullable<Linter.Config['files']>>, mode: SuppressionMode): Linter.Config {
+  return { name, files: [...files], linterOptions: agentLinterOptionsOf(mode) }
 }

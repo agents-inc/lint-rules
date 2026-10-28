@@ -14,7 +14,7 @@ describe('the package.json edit init makes', () => {
   })
 
   it('refuses a devDependencies that is an array, naming the file', () => {
-    expect(() => withDevDependency(DEV_DEPENDENCIES_AS_AN_ARRAY, PACKAGE_JSON_FILE, OUR_PACKAGE, OUR_RANGE)).toThrowError(
+    expect(() => withDevDependency(DEV_DEPENDENCIES_AS_AN_ARRAY, PACKAGE_JSON_FILE, OUR_PACKAGE, OUR_RANGE)).toThrow(
       `${PACKAGE_JSON_FILE}: devDependencies is not a JSON object`,
     )
   })

@@ -32,7 +32,7 @@ describe('writing the files init changes', () => {
         { path: join(projectDir, PACKAGE_JSON_FILE), text: PACKAGE_JSON_AFTER_INIT },
         { path: failingPath, text: CONFIG_INIT_WRITES },
       ]),
-    ).toThrowError(failingPath)
+    ).toThrow(failingPath)
     expect(filesStateOf(projectDir)).toStrictEqual({
       packageJson: PACKAGE_JSON_BEFORE_INIT,
       entries: entriesBefore,
@@ -48,7 +48,7 @@ describe('writing the files init changes', () => {
         { path: join(projectDir, CONFIG_FILE), text: CONFIG_INIT_WRITES },
         { path: join(projectDir, MISSING_FOLDER, PACKAGE_JSON_FILE), text: PACKAGE_JSON_AFTER_INIT },
       ]),
-    ).toThrowError(MISSING_FOLDER)
+    ).toThrow(MISSING_FOLDER)
     expect({ configExists: existsSync(join(projectDir, CONFIG_FILE)), entries: entriesUnder(projectDir) }).toStrictEqual({
       configExists: false,
       entries: entriesBefore,
@@ -65,7 +65,7 @@ describe('writing the files init changes', () => {
         { path: join(projectDir, PACKAGE_JSON_FILE), text: PACKAGE_JSON_AFTER_INIT },
         { path: failingPath, text: CONFIG_INIT_WRITES },
       ]),
-    ).toThrowError(`could not write ${failingPath}: ENOENT`)
+    ).toThrow(`could not write ${failingPath}: ENOENT`)
   })
 
   it('overwrites a file that existed, when every write succeeds', () => {

@@ -20,22 +20,31 @@ export type OxlintReport = { readonly diagnostics: readonly OxlintDiagnostic[] }
 
 type OxlintOutput = { readonly stdout: string; readonly stderr: string }
 
+type RawOxlintLabel = { readonly span: OxlintSpan }
+
+/** oxlint leaves `code` out where a diagnostic names no rule (1.87); its type lets it leave `labels` out too. */
 type RawOxlintDiagnostic = {
   readonly code?: string
   readonly message: string
   readonly severity: string
   readonly filename: string
-  readonly labels?: readonly { readonly span: OxlintSpan }[]
+  readonly labels?: readonly RawOxlintLabel[]
 }
 
 type RawOxlintReport = { readonly diagnostics: readonly RawOxlintDiagnostic[] }
 
-type ReportRead = { readonly report: RawOxlintReport } | { readonly unreadable: unknown }
+type ReportRead = { readonly report: RawOxlintReport } | Unreadable
+
+type JsonRead = { readonly json: unknown } | Unreadable
+
+type Unreadable = { readonly unreadable: unknown }
+
+const SPAN_PLACES = ['line', 'offset', 'length'] as const satisfies ReadonlyArray<keyof OxlintSpan>
 
 const ruleIdsByCodeOf = new WeakMap<Catalog, ReadonlyMap<string, string>>()
 
 /** `eslint(no-debugger)` → its RuleId; a code the catalog does not record is printed as oxlint gives it. */
-export function labelOfOxlintCode(code: string, catalog: Catalog): string {
+export function labelOfOxlintCode(code: string, catalog: Readonly<Catalog>): string {
   const ruleId = ruleIdsByCode(catalog).get(code)
   return ruleId === undefined ? code : ruleId
 }
@@ -54,11 +63,11 @@ function oxlintCodeOfRule({ oxlintName, oxlintPlugin }: OxlintRule): string {
   return `${oxlintPlugin}(${ruleNameOf(oxlintName)})`
 }
 
-function ruleIdsByCode(catalog: Catalog): ReadonlyMap<string, string> {
+function ruleIdsByCode(catalog: Readonly<Catalog>): ReadonlyMap<string, string> {
   return readOnce(ruleIdsByCodeOf, catalog, ruleIdsByCodeIn)
 }
 
-function ruleIdsByCodeIn({ oxlintRules }: Catalog): ReadonlyMap<string, string> {
+function ruleIdsByCodeIn({ oxlintRules }: Readonly<Catalog>): ReadonlyMap<string, string> {
   return new Map(oxlintRules.map((rule) => [oxlintCodeOfRule(rule), rule.id]))
 }
 
@@ -68,15 +77,44 @@ function diagnosticOf({ code, message, severity, filename, labels = [] }: RawOxl
 
 /** Parse boundary: oxlint's `-f json` output. */
 function reportIn(stdout: string): ReportRead {
+  const read = jsonIn(stdout)
+  if ('unreadable' in read) return read
+  const diagnostics = isRecord(read.json) ? read.json['diagnostics'] : undefined
+  if (!isListOfDiagnostics(diagnostics)) return { unreadable: new Error('the JSON oxlint printed has no diagnostics') }
+  return { report: { diagnostics } }
+}
+
+function jsonIn(stdout: string): JsonRead {
   try {
-    const parsed: unknown = JSON.parse(stdout)
-    if (!hasDiagnostics(parsed)) return { unreadable: new Error('the JSON oxlint printed has no diagnostics') }
-    return { report: parsed as RawOxlintReport }
+    const json: unknown = JSON.parse(stdout)
+    return { json }
   } catch (error) {
     return { unreadable: error }
   }
 }
 
-function hasDiagnostics(parsed: unknown): boolean {
-  return isRecord(parsed) && Array.isArray(parsed['diagnostics'])
+function isListOfDiagnostics(diagnostics: unknown): diagnostics is readonly RawOxlintDiagnostic[] {
+  return Array.isArray(diagnostics) && diagnostics.every(isRawOxlintDiagnostic)
+}
+
+function isRawOxlintDiagnostic(diagnostic: unknown): diagnostic is RawOxlintDiagnostic {
+  if (!isRecord(diagnostic)) return false
+  const { code, message, severity, filename, labels } = diagnostic
+  return isOptional(code, isText) && [message, severity, filename].every(isText) && isOptional(labels, isListOfLabels)
+}
+
+function isOptional(value: unknown, isGiven: (given: unknown) => boolean): boolean {
+  return value === undefined || isGiven(value)
+}
+
+function isListOfLabels(labels: unknown): labels is readonly RawOxlintLabel[] {
+  return Array.isArray(labels) && labels.every((label) => isRecord(label) && isOxlintSpan(label['span']))
+}
+
+function isOxlintSpan(span: unknown): span is OxlintSpan {
+  return isRecord(span) && SPAN_PLACES.every((place) => typeof span[place] === 'number')
+}
+
+function isText(value: unknown): value is string {
+  return typeof value === 'string'
 }

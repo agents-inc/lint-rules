@@ -10,6 +10,9 @@ type Token = { readonly text: string; readonly start: number; readonly end: numb
 
 type Tokens = ArrayIterator<Token>
 
+/** `member` goes in before `before`, else last, at `depth`. */
+type MemberInsert = { readonly object: ObjectInText; readonly member: string; readonly before?: Member | undefined; readonly depth: number; readonly layout: Layout }
+
 const DEV_DEPENDENCIES = 'devDependencies'
 const DEFAULT_INDENT = '  '
 const CRLF = '\r\n'
@@ -23,6 +26,7 @@ const COMMA = ','
 const JSON_TOKEN = /"(?:[^"\\]|\\.)*"|[{}[\],:]|[^ \t\n\r{}[\],:"]+/gu
 const TOP_LEVEL_DEPTH = 1
 const DEPENDENCY_DEPTH = 2
+const THE_COLON = 1
 
 /**
  * Inserted before the first key that sorts after it, else last. The text is edited, never
@@ -35,15 +39,15 @@ export function withDevDependency(text: string, path: string, name: string, rang
   const devDependencies = top.members.find(({ key }) => key === DEV_DEPENDENCIES)
   if (devDependencies === undefined) {
     const field = memberText(DEV_DEPENDENCIES, objectHolding(entry, DEPENDENCY_DEPTH, layout))
-    return withMember(text, top, field, undefined, TOP_LEVEL_DEPTH, layout)
+    return withMember(text, { object: top, member: field, depth: TOP_LEVEL_DEPTH, layout })
   }
   if (text.charAt(devDependencies.valueStart) !== OPEN_OBJECT) throw new Error(notAnObject(path, DEV_DEPENDENCIES))
   const dependencies = objectAt(text, devDependencies.valueStart)
   const before = dependencies.members.find(({ key }) => key > name)
-  return withMember(text, dependencies, entry, before, DEPENDENCY_DEPTH, layout)
+  return withMember(text, { object: dependencies, member: entry, before, depth: DEPENDENCY_DEPTH, layout })
 }
 
-function withMember(text: string, object: ObjectInText, member: string, before: Member | undefined, depth: number, layout: Layout): string {
+function withMember(text: string, { object, member, before, depth, layout }: MemberInsert): string {
   const indent = indentAt(layout, depth)
   const last = object.members.at(-1)
   if (last === undefined) return spliced(text, object.open, object.close + 1, objectHolding(member, depth, layout))
@@ -103,6 +107,7 @@ function objectOpenedBy(open: Token, tokens: Tokens): ObjectInText {
   const members: Member[] = []
   for (const token of tokens) {
     if (token.text === CLOSE_OBJECT) return { open: open.start, close: token.start, members }
+    // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements -- the loop reads each member off the shared tokens and must stop at the closing brace itself, leaving the tokens after it to its caller; a call per member instead would grow the stack with the object's size
     if (token.text !== COMMA) members.push(memberKeyedBy(token, tokens))
   }
   throw new Error(`an object with no closing brace at ${String(open.start)}`)
@@ -115,8 +120,7 @@ function memberKeyedBy(key: Token, tokens: Tokens): Member {
 }
 
 function valueAfterTheColon(tokens: Tokens): Token {
-  nextTokenIn(tokens)
-  return nextTokenIn(tokens)
+  return nextTokenIn(tokens.drop(THE_COLON))
 }
 
 function readValueStartedBy(first: Token, tokens: Tokens): number {
@@ -128,12 +132,13 @@ function readValueStartedBy(first: Token, tokens: Tokens): number {
 function endOfArrayOpenedBy(open: Token, tokens: Tokens): number {
   for (const token of tokens) {
     if (token.text === CLOSE_ARRAY) return token.end
+    // eslint-disable-next-line functional/no-expression-statements -- it reads the value off the shared tokens to get past it; an array ends at its closing bracket, so where the value ends is not needed
     if (token.text !== COMMA) readValueStartedBy(token, tokens)
   }
   throw new Error(`an array with no closing bracket at ${String(open.start)}`)
 }
 
-function nextTokenIn(tokens: Tokens): Token {
+function nextTokenIn(tokens: Iterator<Token>): Token {
   const next = tokens.next()
   if (next.done === true) throw new Error('JSON text that ends part way through a value')
   return next.value

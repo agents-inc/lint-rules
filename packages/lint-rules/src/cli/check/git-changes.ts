@@ -55,15 +55,15 @@ export function whereInitRuns(cwd: string): WhereInitRuns {
  */
 export function gitRepoAt(topLevel: string): GitRepo {
   if (!hasCommits(topLevel)) return { topLevel, scratch: null }
-  const gitPath = (name: string): string => resolve(topLevel, git(topLevel, null, ['rev-parse', '--git-path', name]).trim())
   const folder = leftoverToRemove(mkdtempSync(join(tmpdir(), SCRATCH_PREFIX)))
   const scratch: ScratchGit = {
     GIT_INDEX_FILE: join(folder, INDEX),
     GIT_OBJECT_DIRECTORY: join(folder, OBJECTS),
-    GIT_ALTERNATE_OBJECT_DIRECTORIES: alternateObjectFolders(gitPath(OBJECTS)),
+    GIT_ALTERNATE_OBJECT_DIRECTORIES: alternateObjectFolders(gitPathIn(topLevel, OBJECTS)),
   }
-  copyKeepingItsTimes(gitPath(INDEX), scratch.GIT_INDEX_FILE)
+  copyKeepingItsTimes(gitPathIn(topLevel, INDEX), scratch.GIT_INDEX_FILE)
   mkdirSync(scratch.GIT_OBJECT_DIRECTORY)
+  // eslint-disable-next-line functional/no-expression-statements -- git add writes the scratch index, which the diffs of changedFilesIn and changedLinesOf read; what it prints, check never reads
   git(topLevel, scratch, ['add', '--intent-to-add', '-A', '.'])
   return { topLevel, scratch }
 }
@@ -88,9 +88,13 @@ function askGitForTheTopLevel(cwd: string): SpawnSyncReturns<string> {
   return askGit(cwd, null, ['rev-parse', '--show-toplevel'])
 }
 
-function topLevelFrom(answer: SpawnSyncReturns<string>): string | null {
-  throwWhereGitCouldNotStart(answer)
-  return answer.status === 0 ? answer.stdout.trim() : null
+function topLevelFrom(answer: Readonly<SpawnSyncReturns<string>>): string | null {
+  const { status, stdout } = startedGit(answer)
+  return status === 0 ? stdout.trim() : null
+}
+
+function gitPathIn(topLevel: string, name: string): string {
+  return resolve(topLevel, git(topLevel, null, ['rev-parse', '--git-path', name]).trim())
 }
 
 /** The repo's own objects, then any alternates git is already given. */
@@ -103,6 +107,7 @@ function alternateObjectFolders(repoObjects: string): string {
  * trust its stat data. Read first: an index written meanwhile gets an older time, so git only reads more files.
  * Where there is no index, as `git clone --no-checkout` leaves, there is no copy: git reads a missing index as empty.
  */
+// eslint-disable-next-line functional/no-return-void -- it writes the scratch index git reads: a value it returned would reach no git call
 function copyKeepingItsTimes(from: string, to: string): void {
   const times = statSync(from, { throwIfNoEntry: false })
   if (times === undefined) return
@@ -139,9 +144,7 @@ function entriesOf(nulSeparated: string): string[] {
 
 /** Throws quoting the first line git printed. */
 function git(topLevel: string, scratch: ScratchGit | null, args: readonly string[]): string {
-  const answer = askGit(topLevel, scratch, args)
-  throwWhereGitCouldNotStart(answer)
-  const { status, stdout, stderr } = answer
+  const { status, stdout, stderr } = startedGit(askGit(topLevel, scratch, args))
   if (status !== 0) throw new Error(gitFailed(firstPrintedLineOf([stderr], `git ${args.join(' ')} exited ${String(status)}`)))
   return stdout
 }
@@ -150,8 +153,10 @@ function askGit(cwd: string, scratch: ScratchGit | null, args: readonly string[]
   return spawnSync('git', args, { cwd, env: gitEnv(scratch), encoding: 'utf8', maxBuffer: GIT_OUTPUT_LIMIT })
 }
 
-function throwWhereGitCouldNotStart({ error }: SpawnSyncReturns<string>): void {
-  if (error !== undefined) throw new Error(gitFailed(error.message), { cause: error })
+/** Throws where git could not be started. */
+function startedGit(answer: Readonly<SpawnSyncReturns<string>>): Readonly<SpawnSyncReturns<string>> {
+  if (answer.error !== undefined) throw new Error(gitFailed(answer.error.message), { cause: answer.error })
+  return answer
 }
 
 function gitEnv(scratch: ScratchGit | null): NodeJS.ProcessEnv {

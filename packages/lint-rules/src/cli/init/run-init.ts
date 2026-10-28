@@ -18,10 +18,11 @@ const TYPES_NODE = '@types/node'
 const CARET = '^'
 
 /** Never installs. It names the files it writes as `cwd` sees them. */
-export function initIn(cwd: string, signal: AbortSignal): Outcome {
+export function initIn(cwd: string, signal: Readonly<AbortSignal>): Outcome {
   signal.throwIfAborted()
   const packageJsonPath = join(cwd, PACKAGE_JSON)
   if (!existsSync(packageJsonPath)) throw new Error(noPackageJson(cwd))
+  // eslint-disable-next-line unicorn/no-declarations-before-early-exit -- read before the config is looked for, so a package.json that is not valid JSON refuses the run whether or not the config is there (run-init.test.ts)
   const packageJson = readPackageJsonFile(packageJsonPath)
   if (existsSync(join(cwd, INIT_CONFIG_FILE))) return configExistsOutcome(cwd)
 
@@ -77,6 +78,7 @@ function packageJsonWithEntry(packageJsonPath: string, range: string): FileWrite
   return { path: PACKAGE_JSON, text: withDevDependency(readFileSync(packageJsonPath, 'utf8'), packageJsonPath, THIS_PACKAGE, range) }
 }
 
+// eslint-disable-next-line functional/no-return-void -- it writes the files on disk, where init's caller finds them, or throws saying none changed: a value it returned would write nothing
 function writeEveryFileOrSayNoneChanged(writes: readonly FileWrite[]): void {
   try {
     writeAllOrNone(writes)

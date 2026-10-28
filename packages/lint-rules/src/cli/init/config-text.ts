@@ -35,13 +35,17 @@ const BARE_KEY = /^[A-Za-z_$][\w$]*$/u
  * with the formatter warning. The editor set lists none.
  */
 export function initConfigText(definitions: readonly RulesetDefinition[]): string {
-  return textOfLines([
-    NODE_TYPES_REFERENCE,
-    `import { defineLintRules } from ${quoted(THIS_PACKAGE)}`,
-    '',
-    'const config = defineLintRules({',
-    '  tsconfigRootDir: import.meta.dirname,',
-    '',
+  return textOfLines([...openingLines(), ...agentRulesetsLines(definitions), '', ...editorRulesetsLines(), '', ...ignoresLines(), '', ...closingLines()])
+}
+
+export const INIT_CONFIG_FILE = consumerConfigFiles.lintRules
+
+function openingLines(): string[] {
+  return [NODE_TYPES_REFERENCE, `import { defineLintRules } from ${quoted(THIS_PACKAGE)}`, '', 'const config = defineLintRules({', '  tsconfigRootDir: import.meta.dirname,', '']
+}
+
+function agentRulesetsLines(definitions: readonly RulesetDefinition[]): string[] {
+  return [
     '  // What `check` runs on the lines sub-agents change.',
     '  agentRulesets: {',
     ...flatListLines('quality', definitions),
@@ -49,7 +53,11 @@ export function initConfigText(definitions: readonly RulesetDefinition[]): strin
     ...flatListLines('runtimes', definitions),
     ...flatListLines('languages', definitions),
     '  },',
-    '',
+  ]
+}
+
+function editorRulesetsLines(): string[] {
+  return [
     "  // What people's editors show once your team merges it into its own lint configs: add rulesets here.",
     '  editorRulesets: {',
     '    quality: [],',
@@ -57,21 +65,16 @@ export function initConfigText(definitions: readonly RulesetDefinition[]): strin
     '    runtimes: [],',
     '    languages: [],',
     '  },',
-    '',
-    '  ignores: [',
-    ...IGNORES.map((pattern) => `    ${quoted(pattern)},`),
-    '  ],',
-    '',
-    '  rules: {},',
-    '',
-    '  fileOverrides: [],',
-    '})',
-    '',
-    `export const { eslint, oxlint } = config.editorRulesets`,
-  ])
+  ]
 }
 
-export const INIT_CONFIG_FILE = consumerConfigFiles.lintRules
+function ignoresLines(): string[] {
+  return ['  ignores: [', ...IGNORES.map((pattern) => `    ${quoted(pattern)},`), '  ],']
+}
+
+function closingLines(): string[] {
+  return ['  rules: {},', '', '  fileOverrides: [],', '})', '', `export const { eslint, oxlint } = config.editorRulesets`]
+}
 
 function flatListLines(list: FlatList, definitions: readonly RulesetDefinition[]): string[] {
   const rulesets = listedRulesets(definitions.filter((definition) => definition.list === list))
@@ -123,7 +126,7 @@ function quotedList(names: readonly string[]): string {
   return names.map(quoted).join(', ')
 }
 
-function domainOf({ name, domain }: RulesetDefinition): string {
+function domainOf({ name, domain }: Readonly<RulesetDefinition>): string {
   if (domain === null) throw new Error(`the libs ruleset ${name} has no domain`)
   return domain
 }

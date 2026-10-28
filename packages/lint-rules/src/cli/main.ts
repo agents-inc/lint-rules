@@ -4,7 +4,7 @@ import { checkIn } from './check/run-check.ts'
 import { type Command, couldNotRunLine, interruptedLine } from './command-lines.ts'
 import { EXIT_COULD_NOT_RUN, EXIT_INTERRUPTED, EXIT_TERMINATED } from './exit-codes.ts'
 import { initIn } from './init/run-init.ts'
-import { type Outcome, type StdoutIfStopped, stdoutIfStopped } from './outcome.ts'
+import { endTheRunWith, type Outcome, type StdoutIfStopped, stdoutIfStopped } from './outcome.ts'
 import { textOfLines } from './printed-lines.ts'
 
 type Interruption = { readonly signal: AbortSignal; readonly exitCode: () => number }
@@ -14,6 +14,9 @@ type CommandRun = { readonly cwd: string; readonly signal: AbortSignal; readonly
 const SIGNALS = ['SIGINT', 'SIGTERM'] as const satisfies readonly NodeJS.Signals[]
 
 type HandledSignal = (typeof SIGNALS)[number]
+
+// Read as unknown, as an abort's reason is.
+const SIGNAL_NAMES: ReadonlySet<unknown> = new Set(SIGNALS)
 
 const EXIT_CODE_OF_SIGNAL = { SIGINT: EXIT_INTERRUPTED, SIGTERM: EXIT_TERMINATED } as const satisfies Record<HandledSignal, number>
 
@@ -26,11 +29,7 @@ const TYPE_STRIPPING = /^Type Stripping /u
  */
 export async function runCommand(command: Command): Promise<void> {
   printWarningsButTypeStripping()
-  const interruption = interruptionOnSignals()
-  const outcome = await outcomeOf(command, interruption)
-  process.stdout.write(outcome.stdout)
-  process.stderr.write(outcome.stderr)
-  process.exitCode = outcome.exitCode
+  endTheRunWith(await outcomeOf(command, interruptionOnSignals()))
 }
 
 async function outcomeOf(command: Command, { signal, exitCode }: Interruption): Promise<Outcome> {
@@ -66,40 +65,51 @@ function couldNotRunOutcome(command: Command, error: unknown, stdout: string): O
   return { stdout, stderr: textOfLines([couldNotRunLine(command, messageOf(error))]), exitCode: EXIT_COULD_NOT_RUN }
 }
 
+/** The first signal aborts the run, naming itself as the abort's reason; a second ends the run at once. */
 function interruptionOnSignals(): Interruption {
   const controller = new AbortController()
-  let firstSignal: HandledSignal | null = null
-  SIGNALS.forEach((name) =>
-    process.on(name, () => {
-      if (firstSignal !== null) {
-        removeLeftovers()
-        process.exit(EXIT_CODE_OF_SIGNAL[firstSignal])
-      }
-      firstSignal = name
-      controller.abort()
-    }),
-  )
+  for (const name of SIGNALS) {
+    // eslint-disable-next-line functional/no-expression-statements, functional/no-return-void -- Node hands a signal only to a listener on process, and reads nothing it returns: with none, SIGINT and SIGTERM end the process at once, with no leftovers removed
+    process.on(name, () => (controller.signal.aborted ? endAtOnce(controller.signal) : controller.abort(name)))
+  }
   return {
     signal: controller.signal,
-    exitCode: () => {
-      if (firstSignal === null) throw new Error('the run was aborted with no signal received')
-      return EXIT_CODE_OF_SIGNAL[firstSignal]
+    exitCode() {
+      return exitCodeOfTheFirstSignal(controller.signal)
     },
   }
 }
 
+/** Nothing after this runs, so the run's leftovers go first. */
+function endAtOnce(signal: Readonly<AbortSignal>): never {
+  removeLeftovers()
+  return process.exit(exitCodeOfTheFirstSignal(signal))
+}
+
+function exitCodeOfTheFirstSignal(signal: Readonly<AbortSignal>): number {
+  const firstSignal: unknown = signal.reason
+  if (!isHandledSignal(firstSignal)) throw new Error('the run was aborted with no signal received')
+  return EXIT_CODE_OF_SIGNAL[firstSignal]
+}
+
+function isHandledSignal(reason: unknown): reason is HandledSignal {
+  return SIGNAL_NAMES.has(reason)
+}
+
 /** Node 23.10 (not 22.23) warns on stderr that type stripping is experimental; agents read stderr, so it is dropped. */
+// eslint-disable-next-line functional/no-return-void -- it swaps the listener Node prints warnings with for one that drops this one: Node reads nothing either returns
 function printWarningsButTypeStripping(): void {
-  process.removeAllListeners('warning')
-  process.on('warning', (warning) => {
+  // eslint-disable-next-line functional/no-expression-statements, functional/no-return-void -- Node hands a warning only to a listener on process, and reads nothing it returns; its own listener, removed first, would print the type stripping warning too
+  process.removeAllListeners('warning').on('warning', (warning) => {
+    // eslint-disable-next-line functional/no-expression-statements -- stderr is where Node prints a warning; write returns whether Node buffered the text, which the process waits for before it ends either way
     if (!isTypeStrippingWarning(warning)) process.stderr.write(nodeWarningText(warning))
   })
 }
 
-function isTypeStrippingWarning({ name, message }: Error): boolean {
+function isTypeStrippingWarning({ name, message }: Readonly<Error>): boolean {
   return name === EXPERIMENTAL_WARNING && TYPE_STRIPPING.test(message)
 }
 
-function nodeWarningText({ name, message }: Error): string {
+function nodeWarningText({ name, message }: Readonly<Error>): string {
   return textOfLines([`(node:${String(process.pid)}) ${name}: ${message}`])
 }
