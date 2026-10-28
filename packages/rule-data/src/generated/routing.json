@@ -2443,7 +2443,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "tanstack-query",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@tanstack/query/infinite-query-property-order",
@@ -2473,7 +2478,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "tanstack-query",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@tanstack/query/no-unstable-deps",
@@ -2483,17 +2493,27 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "tanstack-query",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@tanstack/query/no-void-query-fn",
     "engine": "eslint",
     "oxlintName": null,
     "oxlintPlugin": null,
-    "typed": false,
+    "typed": true,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "tanstack-query",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@tanstack/query/prefer-query-options",
@@ -2533,7 +2553,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "tanstack-router",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@typescript-eslint/adjacent-overload-signatures",
@@ -5951,7 +5976,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "node",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "e18e/prefer-timer-args",
@@ -13910,7 +13940,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "playwright",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "playwright/no-element-handle",
@@ -13920,7 +13955,16 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "playwright",
+      "options": [],
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      ],
+      "ignores": null
+    }
   },
   {
     "id": "playwright/no-eval",
@@ -14020,7 +14064,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "playwright",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "playwright/no-nth-methods",
@@ -14200,7 +14249,16 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "playwright",
+      "options": [],
+      "files": [
+        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      ],
+      "ignores": null
+    }
   },
   {
     "id": "playwright/no-wait-for-timeout",
@@ -14400,7 +14458,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "playwright",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "playwright/require-to-throw-message",
@@ -14460,7 +14523,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "playwright",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "playwright/valid-title",
@@ -30513,7 +30581,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "zod",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "zod/no-conflicting-checks",
@@ -30523,7 +30596,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "zod",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "zod/no-duplicate-schema-methods",
@@ -30533,7 +30611,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "zod",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "zod/no-dynamic-schema-value",
@@ -30553,7 +30636,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "zod",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "zod/no-function-scoped-schema",
@@ -30643,7 +30731,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "zod",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "zod/no-promise-schema",
@@ -30683,7 +30776,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "zod",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "zod/no-transform-in-record-key",
@@ -30693,7 +30791,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "zod",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "zod/no-unknown-schema",
@@ -30853,7 +30956,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "zod",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "zod/require-error-message",
