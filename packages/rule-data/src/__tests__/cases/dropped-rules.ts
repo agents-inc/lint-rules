@@ -2,6 +2,7 @@
 // docs/work/spec-core.md 4.2; the owner's 2026-10-10 rule changes and 2026-10-24 rc-* cards: decisions.md).
 
 const OWNER_2026_10_10 = 'owner-2026-10-10'
+const OWNER_2026_10_11 = 'owner-2026-10-11'
 const OFF_FIVE = 'q-dogfood-off-five'
 const STAND_INS_WITHOUT_OXLINT = 'r2-d49-51'
 
@@ -21,6 +22,7 @@ export const DROPPED_RULES: Readonly<Record<string, string>> = {
   '@eslint-react/x-no-unstable-default-props': 'r2-d7',
   '@eslint-react/x-static-components': 'r2-d6',
   '@typescript-eslint/no-non-null-asserted-nullish-coalescing': 'r2-d36',
+  '@typescript-eslint/no-unsafe-enum-assignment': OWNER_2026_10_11,
   '@typescript-eslint/no-unsafe-unary-minus': 'r2-d43',
   '@typescript-eslint/no-use-before-define': OWNER_2026_10_10,
   '@typescript-eslint/prefer-for-of': 'r2-d35',
@@ -30,6 +32,9 @@ export const DROPPED_RULES: Readonly<Record<string, string>> = {
   'anti-slop-effect/no-manual-tagged-construction': 'rc-anti-slop-effect-no-manual-tagged-construction',
   'anti-slop-effect/no-service-constructor-imports': 'rc-anti-slop-effect-no-service-constructor-imports',
   'anti-slop-effect/prefer-effect-match': 'rc-anti-slop-effect-prefer-effect-match',
+  'anti-slop/no-runtime-typeof': OWNER_2026_10_11,
+  'anti-slop/no-unknown-parameters': OWNER_2026_10_11,
+  'anti-slop/no-unknown-returns': OWNER_2026_10_11,
   'anti-slop/require-safety-comment-for-type-assertion': 'rc-anti-slop-require-safety-comment-for-type-assertion',
   'drizzle-security/no-unsafe-query': 'q-lint-dep-drizzle-advisory',
   'drizzle-security/no-unscoped-mutation': 'q-lint-dep-drizzle-advisory',
@@ -38,6 +43,7 @@ export const DROPPED_RULES: Readonly<Record<string, string>> = {
   'functional/no-loop-statements': OWNER_2026_10_10,
   'import-x/no-rename-default': 'q-r4-no-rename-default',
   'jest-dom/prefer-to-have-style': 'rc-jest-dom-prefer-to-have-style',
+  'jsx-a11y/anchor-ambiguous-text': OWNER_2026_10_11,
   'jsx-a11y/anchor-has-content': 'r2-d28',
   'jsx-a11y/no-aria-hidden-on-focusable': 'r2-d26',
   'llm-core/no-redundant-comments': 'rc-llm-core-no-redundant-comments',

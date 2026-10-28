@@ -5,8 +5,10 @@ import type { AcceptedRule } from '../accepted-rules-out-of-place.ts'
 // on, where one does; or the later card that dropped it.
 
 const PLAYWRIGHT_VITEST_TWINS = 'q-lint-playwright-vitest-twins'
-const JEST_DOM_WITHOUT_JEST_DOM = 'q-lint-jest-dom-without-jest-dom'
-const REACT_SSR_IN_CLIENT_APPS = 'q-lint-react-ssr-in-client-apps'
+const JEST_DOM_FIXES_MEASURED = 'q-lint-rc-jest-dom-fixes-measured'
+const HYDRATION_FALSE_ALARMS_MEASURED = 'q-lint-rc-hydration-false-alarms-measured'
+const HYDRATION_TIMEZONE_HOLD = 'q-lint-hp-timezone-hold'
+const HYDRATION_SERVER_COMPONENTS_GAP = 'q-lint-hp-server-components-gap'
 const DRIZZLE_ADVISORY = 'q-lint-dep-drizzle-advisory'
 const COMMENT_RULES_IN_EDITORS = 'q-lint-cmt-editor-reach'
 
@@ -35,29 +37,28 @@ export const ACCEPTED_ON_2026_10_24: Readonly<Record<string, AcceptedRule>> = {
   '@tanstack/query/stable-query-client': { card: 'rc-tanstack-query-stable-query-client', waitsAs: 'recommended', heldBy: 'q-lint-rc-stable-query-client-fix-measured' },
   '@tanstack/router/create-route-property-order': { card: 'rc-tanstack-router-create-route-property-order', waitsAs: 'recommended', heldBy: 'q-lint-rc-tanstack-property-order-measured' },
   '@tanstack/router/route-param-names': { card: 'rc-tanstack-router-route-param-names', waitsAs: 'recommended' },
-  'anti-slop-effect/no-manual-effect-error-tag': { card: 'rc-anti-slop-effect-no-manual-effect-error-tag', waitsAs: 'recommended', heldBy: 'q-lint-effect-ruleset-name' },
-  'compat/compat': { card: 'rc-compat-compat', waitsAs: 'recommended', heldBy: 'q-lint-compat-default-target' },
+  // Waits on q-lint-compat-install-size and q-lint-compat-stale-data-warning as well, which its entry's why names; heldBy holds one card.
+  'compat/compat': { card: 'rc-compat-compat', waitsAs: 'recommended', heldBy: 'q-lint-compat-vite-target' },
   'drizzle-security/no-unsafe-query': { card: 'rc-drizzle-security-no-unsafe-query', droppedBy: DRIZZLE_ADVISORY },
   'drizzle-security/no-unscoped-mutation': { card: 'rc-drizzle-security-no-unscoped-mutation', droppedBy: DRIZZLE_ADVISORY },
   'e18e/prefer-get-or-insert': { card: 'rc-e18e-prefer-get-or-insert', waitsAs: 'parked' },
   'e18e/prefer-throw-if-no-entry': { card: 'rc-e18e-prefer-throw-if-no-entry', waitsAs: 'recommended' },
-  'hydration-proof/no-browser-global-in-render': { card: 'rc-hydration-proof-no-browser-global-in-render', waitsAs: 'recommended', heldBy: REACT_SSR_IN_CLIENT_APPS },
-  'hydration-proof/no-locale-without-explicit-locale': { card: 'rc-hydration-proof-no-locale-without-explicit-locale', waitsAs: 'recommended', heldBy: REACT_SSR_IN_CLIENT_APPS },
-  'hydration-proof/no-storage-in-initial-render': { card: 'rc-hydration-proof-no-storage-in-initial-render', waitsAs: 'recommended', heldBy: REACT_SSR_IN_CLIENT_APPS },
-  'hydration-proof/no-timezone-without-explicit-timezone': {
-    card: 'rc-hydration-proof-no-timezone-without-explicit-timezone',
-    waitsAs: 'recommended',
-    heldBy: REACT_SSR_IN_CLIENT_APPS,
-  },
-  'hydration-proof/no-window-render-branch': { card: 'rc-hydration-proof-no-window-render-branch', waitsAs: 'recommended', heldBy: REACT_SSR_IN_CLIENT_APPS },
-  'hydration-proof/require-stable-server-snapshot': { card: 'rc-hydration-proof-require-stable-server-snapshot', waitsAs: 'recommended', heldBy: REACT_SSR_IN_CLIENT_APPS },
-  'jest-dom/prefer-checked': { card: 'rc-jest-dom-prefer-checked', waitsAs: 'recommended', heldBy: JEST_DOM_WITHOUT_JEST_DOM },
-  'jest-dom/prefer-empty': { card: 'rc-jest-dom-prefer-empty', waitsAs: 'recommended', heldBy: JEST_DOM_WITHOUT_JEST_DOM },
-  'jest-dom/prefer-in-document': { card: 'rc-jest-dom-prefer-in-document', waitsAs: 'recommended', heldBy: JEST_DOM_WITHOUT_JEST_DOM },
-  'jest-dom/prefer-pressed': { card: 'rc-jest-dom-prefer-pressed', waitsAs: 'recommended', heldBy: JEST_DOM_WITHOUT_JEST_DOM },
-  'jest-dom/prefer-required': { card: 'rc-jest-dom-prefer-required', waitsAs: 'recommended', heldBy: JEST_DOM_WITHOUT_JEST_DOM },
-  'jest-dom/prefer-to-have-attribute': { card: 'rc-jest-dom-prefer-to-have-attribute', waitsAs: 'recommended', heldBy: JEST_DOM_WITHOUT_JEST_DOM },
-  'jest-dom/prefer-to-have-class': { card: 'rc-jest-dom-prefer-to-have-class', waitsAs: 'recommended', heldBy: JEST_DOM_WITHOUT_JEST_DOM },
+  // Accepted as anti-slop-effect/no-manual-effect-error-tag, to be ported as a house rule; card q-lint-effect-ruleset-name named its ruleset.
+  'house/no-manual-effect-error-tag': { card: 'rc-anti-slop-effect-no-manual-effect-error-tag', waitsAs: 'recommended' },
+  'hydration-proof/no-browser-global-in-render': { card: 'rc-hydration-proof-no-browser-global-in-render', waitsAs: 'recommended', heldBy: HYDRATION_FALSE_ALARMS_MEASURED },
+  'hydration-proof/no-locale-without-explicit-locale': { card: 'rc-hydration-proof-no-locale-without-explicit-locale', waitsAs: 'recommended', heldBy: HYDRATION_FALSE_ALARMS_MEASURED },
+  'hydration-proof/no-storage-in-initial-render': { card: 'rc-hydration-proof-no-storage-in-initial-render', waitsAs: 'recommended', heldBy: HYDRATION_SERVER_COMPONENTS_GAP },
+  // Waits on HYDRATION_SERVER_COMPONENTS_GAP as well, which its entry's why names; heldBy holds one card.
+  'hydration-proof/no-timezone-without-explicit-timezone': { card: 'rc-hydration-proof-no-timezone-without-explicit-timezone', waitsAs: 'recommended', heldBy: HYDRATION_TIMEZONE_HOLD },
+  'hydration-proof/no-window-render-branch': { card: 'rc-hydration-proof-no-window-render-branch', waitsAs: 'recommended', heldBy: HYDRATION_SERVER_COMPONENTS_GAP },
+  'hydration-proof/require-stable-server-snapshot': { card: 'rc-hydration-proof-require-stable-server-snapshot', waitsAs: 'recommended', heldBy: HYDRATION_SERVER_COMPONENTS_GAP },
+  'jest-dom/prefer-checked': { card: 'rc-jest-dom-prefer-checked', waitsAs: 'recommended', heldBy: JEST_DOM_FIXES_MEASURED },
+  'jest-dom/prefer-empty': { card: 'rc-jest-dom-prefer-empty', waitsAs: 'recommended', heldBy: JEST_DOM_FIXES_MEASURED },
+  'jest-dom/prefer-in-document': { card: 'rc-jest-dom-prefer-in-document', waitsAs: 'recommended', heldBy: JEST_DOM_FIXES_MEASURED },
+  'jest-dom/prefer-pressed': { card: 'rc-jest-dom-prefer-pressed', waitsAs: 'recommended', heldBy: 'q-lint-rc-pressed-fix-measured' },
+  'jest-dom/prefer-required': { card: 'rc-jest-dom-prefer-required', waitsAs: 'recommended', heldBy: JEST_DOM_FIXES_MEASURED },
+  'jest-dom/prefer-to-have-attribute': { card: 'rc-jest-dom-prefer-to-have-attribute', waitsAs: 'recommended', heldBy: JEST_DOM_FIXES_MEASURED },
+  'jest-dom/prefer-to-have-class': { card: 'rc-jest-dom-prefer-to-have-class', waitsAs: 'recommended', heldBy: JEST_DOM_FIXES_MEASURED },
   'playwright/no-duplicate-slow': { card: 'rc-playwright-no-duplicate-slow', waitsAs: 'recommended' },
   'playwright/no-element-handle': { card: 'rc-playwright-no-element-handle', waitsAs: 'recommended' },
   'playwright/no-focused-test': { card: 'rc-playwright-no-focused-test', waitsAs: 'recommended', heldBy: PLAYWRIGHT_VITEST_TWINS },

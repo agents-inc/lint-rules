@@ -1,0 +1,63 @@
+import type { AcceptedRule } from '../accepted-rules-out-of-place.ts'
+
+// Every rule the owner accepted on the old candidates page on 2026-10-11 (docs/work/decisions.md, "Owner
+// 2026-10-11 (old candidates page"): the decision that accepted it, and the state it waits in until it ships.
+
+const OWNER_2026_10_11 = 'owner-2026-10-11'
+
+/** Each accepted rule's ID, and where it waits until it ships. */
+export const ACCEPTED_ON_2026_10_11: Readonly<Record<string, AcceptedRule>> = {
+  '@typescript-eslint/consistent-type-exports': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  '@typescript-eslint/consistent-type-imports': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  '@typescript-eslint/dot-notation': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  '@typescript-eslint/no-namespace': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  '@typescript-eslint/no-unnecessary-qualifier': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  '@typescript-eslint/parameter-properties': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  '@typescript-eslint/prefer-readonly': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  '@typescript-eslint/prefer-string-starts-ends-with': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  '@typescript-eslint/use-unknown-in-catch-callback-variable': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'accessor-pairs': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  // To be ported as house/no-reduce-accumulator-copy, which this key becomes once the port ships.
+  'anti-slop/no-reduce-accumulator-copy': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'no-array-constructor': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'no-empty': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'no-new-wrappers': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'no-object-constructor': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'no-self-compare': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'no-sequences': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'no-useless-assignment': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'prefer-object-has-own': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'radix': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'sonarjs/composite-assertions': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'sonarjs/no-debounce-throttle-in-render': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'sonarjs/no-duplicate-parameterized-test-case': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'sonarjs/no-duplicated-branches': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'sonarjs/no-empty-parameterized-test-dataset': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'sonarjs/synchronous-exception-assertions': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'symbol-description': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-async-iterator-callback': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-conflicting-constraints': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-incomplete-accessor-override': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-ineffective-csp-directives': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-invalid-boolean-attribute-value': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-invalid-dom-token': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-invalid-integrity': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-invalid-intl-options': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-invalid-property-descriptor': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-invalid-response-options': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-invalid-style-set-property': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-invalid-temporal-arithmetic': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-invalid-url-protocol-comparison': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-prevent-default-in-passive-listener': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-unsafe-json-serialization': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-unused-builtin-method-return': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-unused-iterator-helper': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-url-in-search-params': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-useless-set-construction': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/no-using-resource-escape': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/prefer-at': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/prefer-literal-ascii': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/prefer-single-call': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/prefer-temporal-conversion': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'unicorn/require-text-decoder-streaming': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+}

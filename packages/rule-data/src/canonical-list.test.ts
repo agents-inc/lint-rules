@@ -43,6 +43,8 @@ const LIBS_RULESETS_BY_DOMAIN = {
   routing: ['tanstack-router'],
   validation: ['zod'],
   auth: ['jsonwebtoken'],
+  // The owner's answer on card q-lint-effect-ruleset-name: a domain named after the library, listed by init.
+  effect: ['effect'],
 }
 
 // browser-targets needs a browser target, so it sets no globals: browser does that.
@@ -53,7 +55,7 @@ const RUNTIME_RULESETS = [
 ]
 
 // Created empty, so a team can list each before its first rule arrives.
-const LIBRARY_RULESETS_CREATED_EMPTY = new Set(['nextjs', 'react-ssr', 'jest-dom', 'tailwind', 'drizzle', 'jsonwebtoken', 'browser-targets'])
+const LIBRARY_RULESETS_CREATED_EMPTY = new Set(['nextjs', 'react-ssr', 'jest-dom', 'drizzle', 'jsonwebtoken', 'browser-targets'])
 
 const definedRulesetNames = new Set(rulesetDefinitions.map((definition) => definition.name))
 const inventoryById = new Map(inventory.rules.map((rule) => [rule.id, rule]))
@@ -664,7 +666,7 @@ describe('the canonical list, data/rules.json', () => {
 
 describe('the ruleset definitions, data/ruleset-definitions.json', () => {
   // `init` reads `optIn`, and names each ruleset whose `sortsCode` is true in its formatter warning.
-  it("defines the owner's rulesets, in the owner's order, each in its list, domain and env, opt-in where it sorts code and on tailwind and browser-targets, sorting code exactly where it sorts code", () => {
+  it("defines the owner's rulesets, in the owner's order, each in its list, domain and env, opt-in where it sorts code and on tailwind, browser-targets, jest-dom and react-ssr, sorting code exactly where it sorts code", () => {
     expect(rulesetDefinitions).toStrictEqual([
       ...QUALITY_RULESETS.map((name) => ({ name, list: 'quality', domain: null, env: null, optIn: isOptInRuleset(name), sortsCode: isSortingRuleset(name) })),
       ...Object.entries(LIBS_RULESETS_BY_DOMAIN).flatMap(([domain, names]) =>

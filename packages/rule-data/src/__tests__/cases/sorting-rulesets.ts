@@ -37,15 +37,19 @@ export const RULES_THAT_SORT = {
   ],
 }
 
-/** The opt-in rulesets that sort nothing: strict design tokens, and the browser-support checks, which need a browser target. */
-const OPT_IN_RULESETS_THAT_SORT_NOTHING: ReadonlySet<string> = new Set(['tailwind', 'browser-targets'])
+/**
+ * The opt-in rulesets that sort nothing: strict design tokens; the browser-support checks, which need a browser target;
+ * jest-dom's, whose fixes call matchers only a project loading jest-dom has; and react-ssr's, which report in an app
+ * that never renders on a server.
+ */
+const OPT_IN_RULESETS_THAT_SORT_NOTHING: ReadonlySet<string> = new Set(['tailwind', 'browser-targets', 'jest-dom', 'react-ssr'])
 
 /** Whether the ruleset is one that sorts code, which gives its `sortsCode`. */
 export function isSortingRuleset(ruleset: string): boolean {
   return SORTING_RULESETS.includes(ruleset)
 }
 
-/** Whether `init` leaves the ruleset out of a new config: one that sorts code, or one of the two that sort nothing. */
+/** Whether `init` leaves the ruleset out of a new config: one that sorts code, or an opt-in one that sorts nothing. */
 export function isOptInRuleset(ruleset: string): boolean {
   return isSortingRuleset(ruleset) || OPT_IN_RULESETS_THAT_SORT_NOTHING.has(ruleset)
 }

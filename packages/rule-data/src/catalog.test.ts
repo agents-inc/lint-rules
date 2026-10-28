@@ -224,7 +224,7 @@ describe('the catalog, src/generated/routing.json', () => {
   })
 
   describe('the rulesets', () => {
-    it("carries each ruleset's optIn and sortsCode, both true on the rulesets that sort code, optIn alone on tailwind and browser-targets, and both false on every other", () => {
+    it("carries each ruleset's optIn and sortsCode, both true on the rulesets that sort code, optIn alone on tailwind, browser-targets, jest-dom and react-ssr, and both false on every other", () => {
       expect(catalog.rulesets.map(({ name, optIn, sortsCode }) => [name, optIn, sortsCode])).toStrictEqual(
         rulesetDefinitions.map(({ name }) => [name, isOptInRuleset(name), isSortingRuleset(name)]),
       )
