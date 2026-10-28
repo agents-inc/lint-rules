@@ -1,8 +1,8 @@
 import { type Breach, breachesOf } from './breaches.ts'
 
-/** A plugin left uninstalled while the card its install waits on is unanswered: its pin joins the installed ones once it is. */
+/** A plugin left uninstalled by the owner's answer to a card. */
 export type HeldPlugin = {
-  /** The card its install waits on. */
+  /** The card whose answer left it out. */
   readonly heldBy: string
   readonly prefix: string
   readonly packageName: string
@@ -15,7 +15,7 @@ export type PluginInstalls = {
   readonly dependencies: Readonly<Record<string, string>>
 }
 
-/** A card a build waits on: a question the owner answers, `q-` and lower-case words joined by hyphens. */
+/** A card: a question the owner answers, `q-` and lower-case words joined by hyphens. */
 const QUESTION_CARD = /^q-[\da-z]+(?:-[\da-z]+)*$/u
 
 /** `prefix: what is wrong` for each held plugin that is held for no card, or is installed anywhere rule-data installs a plugin. */
@@ -27,9 +27,9 @@ function wrongsOfAHeldPlugin(heldPlugin: HeldPlugin, { registry, packageNames, d
   const { heldBy, packageName } = heldPlugin
   const breaches: ReadonlyArray<Breach<HeldPlugin>> = [
     [`is held for "${heldBy}", which is no card`, () => !QUESTION_CARD.test(heldBy)],
-    [`is registered, though its install waits on card ${heldBy}`, ({ prefix }) => Object.hasOwn(registry, prefix)],
-    [`has its package named, though its install waits on card ${heldBy}`, ({ prefix }) => Object.hasOwn(packageNames, prefix)],
-    [`is a dependency of rule-data as ${packageName}, though its install waits on card ${heldBy}`, () => Object.hasOwn(dependencies, packageName)],
+    [`is registered, though card ${heldBy} left it out`, ({ prefix }) => Object.hasOwn(registry, prefix)],
+    [`has its package named, though card ${heldBy} left it out`, ({ prefix }) => Object.hasOwn(packageNames, prefix)],
+    [`is a dependency of rule-data as ${packageName}, though card ${heldBy} left it out`, () => Object.hasOwn(dependencies, packageName)],
   ]
   return breachesOf(heldPlugin, breaches)
 }

@@ -23,9 +23,9 @@ describe('heldPluginsOutOfPlace', () => {
     }
 
     expect(heldPluginsOutOfPlace([heldPluginOf('installed-nowhere', HELD_BY), registered, named, aDependency], installs)).toStrictEqual([
-      `registered: is registered, though its install waits on card ${HELD_BY}`,
-      `named: has its package named, though its install waits on card ${HELD_BY}`,
-      `a-dependency: is a dependency of rule-data as eslint-plugin-a-dependency, though its install waits on card ${HELD_BY}`,
+      `registered: is registered, though card ${HELD_BY} left it out`,
+      `named: has its package named, though card ${HELD_BY} left it out`,
+      `a-dependency: is a dependency of rule-data as eslint-plugin-a-dependency, though card ${HELD_BY} left it out`,
     ])
   })
 

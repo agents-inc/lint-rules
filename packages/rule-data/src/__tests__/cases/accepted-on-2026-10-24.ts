@@ -8,19 +8,32 @@ const PLAYWRIGHT_VITEST_TWINS = 'q-lint-playwright-vitest-twins'
 const JEST_DOM_WITHOUT_JEST_DOM = 'q-lint-jest-dom-without-jest-dom'
 const REACT_SSR_IN_CLIENT_APPS = 'q-lint-react-ssr-in-client-apps'
 const DRIZZLE_ADVISORY = 'q-lint-dep-drizzle-advisory'
+const COMMENT_RULES_IN_EDITORS = 'q-lint-cmt-editor-reach'
 
 /** Each accepted rule's ID, and where it waits until it ships, or the card that dropped it. */
 export const ACCEPTED_ON_2026_10_24: Readonly<Record<string, AcceptedRule>> = {
-  '@eslint-community/eslint-comments/disable-enable-pair': { card: 'rc-eslint-community-eslint-comments-disable-enable-pair', waitsAs: 'recommended' },
-  '@eslint-community/eslint-comments/no-duplicate-disable': { card: 'rc-eslint-community-eslint-comments-no-duplicate-disable', waitsAs: 'recommended' },
-  '@eslint-community/eslint-comments/require-description': { card: 'rc-eslint-community-eslint-comments-require-description', waitsAs: 'recommended' },
+  '@eslint-community/eslint-comments/disable-enable-pair': {
+    card: 'rc-eslint-community-eslint-comments-disable-enable-pair',
+    waitsAs: 'recommended',
+    heldBy: COMMENT_RULES_IN_EDITORS,
+  },
+  '@eslint-community/eslint-comments/no-duplicate-disable': {
+    card: 'rc-eslint-community-eslint-comments-no-duplicate-disable',
+    waitsAs: 'recommended',
+    heldBy: 'q-lint-rc-duplicate-disable-measured',
+  },
+  '@eslint-community/eslint-comments/require-description': {
+    card: 'rc-eslint-community-eslint-comments-require-description',
+    waitsAs: 'recommended',
+    heldBy: COMMENT_RULES_IN_EDITORS,
+  },
   '@tanstack/query/exhaustive-deps': { card: 'rc-tanstack-query-exhaustive-deps', waitsAs: 'recommended' },
-  '@tanstack/query/infinite-query-property-order': { card: 'rc-tanstack-query-infinite-query-property-order', waitsAs: 'recommended' },
+  '@tanstack/query/infinite-query-property-order': { card: 'rc-tanstack-query-infinite-query-property-order', waitsAs: 'recommended', heldBy: 'q-lint-rc-tanstack-property-order-measured' },
   '@tanstack/query/no-rest-destructuring': { card: 'rc-tanstack-query-no-rest-destructuring', waitsAs: 'recommended' },
   '@tanstack/query/no-unstable-deps': { card: 'rc-tanstack-query-no-unstable-deps', waitsAs: 'recommended' },
   '@tanstack/query/no-void-query-fn': { card: 'rc-tanstack-query-no-void-query-fn', waitsAs: 'recommended' },
-  '@tanstack/query/stable-query-client': { card: 'rc-tanstack-query-stable-query-client', waitsAs: 'recommended' },
-  '@tanstack/router/create-route-property-order': { card: 'rc-tanstack-router-create-route-property-order', waitsAs: 'recommended' },
+  '@tanstack/query/stable-query-client': { card: 'rc-tanstack-query-stable-query-client', waitsAs: 'recommended', heldBy: 'q-lint-rc-stable-query-client-fix-measured' },
+  '@tanstack/router/create-route-property-order': { card: 'rc-tanstack-router-create-route-property-order', waitsAs: 'recommended', heldBy: 'q-lint-rc-tanstack-property-order-measured' },
   '@tanstack/router/route-param-names': { card: 'rc-tanstack-router-route-param-names', waitsAs: 'recommended' },
   'anti-slop-effect/no-manual-effect-error-tag': { card: 'rc-anti-slop-effect-no-manual-effect-error-tag', waitsAs: 'recommended', heldBy: 'q-lint-effect-ruleset-name' },
   'compat/compat': { card: 'rc-compat-compat', waitsAs: 'recommended', heldBy: 'q-lint-compat-default-target' },
@@ -50,10 +63,10 @@ export const ACCEPTED_ON_2026_10_24: Readonly<Record<string, AcceptedRule>> = {
   'playwright/no-focused-test': { card: 'rc-playwright-no-focused-test', waitsAs: 'recommended', heldBy: PLAYWRIGHT_VITEST_TWINS },
   'playwright/no-identical-title': { card: 'rc-playwright-no-identical-title', waitsAs: 'recommended', heldBy: PLAYWRIGHT_VITEST_TWINS },
   'playwright/no-networkidle': { card: 'rc-playwright-no-networkidle', waitsAs: 'recommended' },
-  'playwright/no-unnecessary-assertions': { card: 'rc-playwright-no-unnecessary-assertions', waitsAs: 'recommended' },
+  'playwright/no-unnecessary-assertions': { card: 'rc-playwright-no-unnecessary-assertions', waitsAs: 'recommended', heldBy: 'q-lint-rc-unnecessary-assertions-measured' },
   'playwright/no-wait-for-selector': { card: 'rc-playwright-no-wait-for-selector', waitsAs: 'recommended' },
   'playwright/prefer-hooks-on-top': { card: 'rc-playwright-prefer-hooks-on-top', waitsAs: 'recommended', heldBy: PLAYWRIGHT_VITEST_TWINS },
-  'playwright/prefer-web-first-assertions': { card: 'rc-playwright-prefer-web-first-assertions', waitsAs: 'recommended' },
+  'playwright/prefer-web-first-assertions': { card: 'rc-playwright-prefer-web-first-assertions', waitsAs: 'recommended', heldBy: 'q-lint-rc-web-first-assertions-measured' },
   'playwright/require-to-pass-timeout': { card: 'rc-playwright-require-to-pass-timeout', waitsAs: 'recommended' },
   'playwright/require-to-throw-message': { card: 'rc-playwright-require-to-throw-message', waitsAs: 'recommended', heldBy: PLAYWRIGHT_VITEST_TWINS },
   'playwright/valid-test-tags': { card: 'rc-playwright-valid-test-tags', waitsAs: 'recommended' },
@@ -72,6 +85,6 @@ export const ACCEPTED_ON_2026_10_24: Readonly<Record<string, AcceptedRule>> = {
   'zod/no-optional-and-default-together': { card: 'rc-zod-no-optional-and-default-together', waitsAs: 'recommended' },
   'zod/no-throw-in-refine': { card: 'rc-zod-no-throw-in-refine', waitsAs: 'recommended' },
   'zod/no-transform-in-record-key': { card: 'rc-zod-no-transform-in-record-key', waitsAs: 'recommended' },
-  'zod/prefer-trim-before-string-length-checks': { card: 'rc-zod-prefer-trim-before-string-length-checks', waitsAs: 'recommended' },
+  'zod/prefer-trim-before-string-length-checks': { card: 'rc-zod-prefer-trim-before-string-length-checks', waitsAs: 'recommended', heldBy: 'q-lint-rc-zod-trim-fix-measured' },
   'zod/require-brand-type-parameter': { card: 'rc-zod-require-brand-type-parameter', waitsAs: 'recommended' },
 }

@@ -53,7 +53,7 @@ const RUNTIME_RULESETS = [
 ]
 
 // Created empty, so a team can list each before its first rule arrives.
-const LIBRARY_RULESETS_CREATED_EMPTY = ['nextjs', 'react-ssr', 'playwright', 'jest-dom', 'tailwind', 'tanstack-query', 'drizzle', 'tanstack-router', 'zod', 'jsonwebtoken', 'browser-targets']
+const LIBRARY_RULESETS_CREATED_EMPTY = new Set(['nextjs', 'react-ssr', 'jest-dom', 'tailwind', 'drizzle', 'jsonwebtoken', 'browser-targets'])
 
 const definedRulesetNames = new Set(rulesetDefinitions.map((definition) => definition.name))
 const inventoryById = new Map(inventory.rules.map((rule) => [rule.id, rule]))
@@ -65,8 +65,17 @@ function canonicalEntryFor(id: string) {
 }
 
 /** The reason ESLint runs a rule oxlint has, where rules.json gives one. */
-function eslintBecauseOf(rule: (typeof canonicalRules)[number]): unknown {
+function eslintBecauseOf(rule: Readonly<(typeof canonicalRules)[number]>): unknown {
   return 'eslintBecause' in rule ? rule.eslintBecause : undefined
+}
+
+/**
+ * Whether the entry records who assigned it and how sure they were. Typed wider than data/rules.json's
+ * inferred type, which requires the record of today's entries only: an entry written without one is
+ * what this reads.
+ */
+function hasAnAssignmentRecord({ assignment }: { readonly assignment?: { readonly by?: unknown; readonly confidence?: unknown } }): boolean {
+  return assignment !== undefined && typeof assignment.by === 'string' && typeof assignment.confidence === 'string'
 }
 
 /** The ruleset a rule ships in, or `null` for a rule the canonical list leaves out. */
@@ -78,7 +87,7 @@ function shippedRulesetOf(id: string): string | null {
 }
 
 /** Each rule recording the relation, and the rule it names. */
-function namedByRelation(relationOf: (rule: (typeof parsedCanonicalRules)[number]) => { readonly rule: string } | undefined): Readonly<Record<string, string>> {
+function namedByRelation(relationOf: (rule: Readonly<(typeof parsedCanonicalRules)[number]>) => { readonly rule: string } | undefined): Readonly<Record<string, string>> {
   return Object.fromEntries(
     parsedCanonicalRules.flatMap((rule) => {
       const relation = relationOf(rule)
@@ -104,7 +113,8 @@ describe('the canonical list, data/rules.json', () => {
         .filter((rule) => {
           const installed = inventoryById.get(rule.id)
           if (installed === undefined) return true
-          return rule.engine === 'oxlint' ? installed.oxlint === null : installed.eslint === null
+          const onItsEngine = rule.engine === 'oxlint' ? installed.oxlint : installed.eslint
+          return onItsEngine === null
         })
         .map((rule) => `${rule.id} (${rule.engine})`)
 
@@ -152,12 +162,7 @@ describe('the canonical list, data/rules.json', () => {
       const typeAwareOxlintRules = canonicalRules
         .filter((rule) => {
           const installed = inventoryById.get(rule.id)
-          return (
-            rule.engine === 'oxlint' &&
-            installed !== undefined &&
-            installed.oxlint !== null &&
-            installed.oxlint.typeAware
-          )
+          return rule.engine === 'oxlint' && installed?.oxlint?.typeAware === true
         })
         .map((rule) => rule.id)
 
@@ -176,14 +181,7 @@ describe('the canonical list, data/rules.json', () => {
     })
 
     it('has no rule without an assignment record', () => {
-      const unassigned = canonicalRules
-        .filter(
-          (rule) =>
-            rule.assignment === undefined ||
-            typeof rule.assignment.by !== 'string' ||
-            typeof rule.assignment.confidence !== 'string',
-        )
-        .map((rule) => rule.id)
+      const unassigned = canonicalRules.filter((rule) => !hasAnAssignmentRecord(rule)).map((rule) => rule.id)
 
       expect(unassigned).toStrictEqual([])
     })
@@ -252,9 +250,9 @@ describe('the canonical list, data/rules.json', () => {
     it('gives each relation a reason', () => {
       const unexplained = parsedCanonicalRules
         .flatMap(({ id, coveredBy, coveredInOxlintBy, splitByTypesWith }) => [
-          ...(coveredBy !== undefined && coveredBy.because.trim() === '' ? [`${id} covered by ${coveredBy.rule}`] : []),
-          ...(coveredInOxlintBy !== undefined && coveredInOxlintBy.because.trim() === '' ? [`${id} covered in oxlint by ${coveredInOxlintBy.rule}`] : []),
-          ...(splitByTypesWith !== undefined && splitByTypesWith.because.trim() === '' ? [`${id} split by types with ${splitByTypesWith.rule}`] : []),
+          ...(coveredBy?.because.trim() === '' ? [`${id} covered by ${coveredBy.rule}`] : []),
+          ...(coveredInOxlintBy?.because.trim() === '' ? [`${id} covered in oxlint by ${coveredInOxlintBy.rule}`] : []),
+          ...(splitByTypesWith?.because.trim() === '' ? [`${id} split by types with ${splitByTypesWith.rule}`] : []),
         ])
 
       expect(unexplained).toStrictEqual([])
@@ -294,7 +292,7 @@ describe('the canonical list, data/rules.json', () => {
         .filter((rule) => {
           if (eslintBecauseOf(rule) === undefined) return false
           const installed = inventoryById.get(rule.id)
-          return installed === undefined || installed.oxlint === null || installed.oxlint.typeAware
+          return !installed?.oxlint || installed.oxlint.typeAware
         })
         .map((rule) => rule.id)
 
@@ -677,7 +675,7 @@ describe('the ruleset definitions, data/ruleset-definitions.json', () => {
   })
 
   it('holds no rule yet in the library rulesets created empty', () => {
-    expect(canonicalRules.filter(({ ruleset }) => ruleset !== undefined && LIBRARY_RULESETS_CREATED_EMPTY.includes(ruleset)).map(({ id }) => id)).toStrictEqual([])
+    expect(canonicalRules.filter(({ ruleset }) => ruleset !== undefined && LIBRARY_RULESETS_CREATED_EMPTY.has(ruleset)).map(({ id }) => id)).toStrictEqual([])
   })
 
   // A rule that sorts nothing would leave the opt-in, and so every new repo, without it: import-x/first

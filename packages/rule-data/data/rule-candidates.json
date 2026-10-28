@@ -2,7 +2,7 @@
   {
     "id": "@eslint-community/eslint-comments/disable-enable-pair",
     "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-eslint-community-eslint-comments-disable-enable-pair); not built yet.",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-eslint-community-eslint-comments-disable-enable-pair); not built yet: waits on card q-lint-cmt-editor-reach (the editor parts always allow suppressions, so built as specified it would run in every team's editor too).",
     "evidence": "docs/work/decisions.md, owner 2026-10-24; docs/work/rule-candidates-r1.md §2: 104 hits",
     "recorded": "2026-10-24"
   },
@@ -16,7 +16,7 @@
   {
     "id": "@eslint-community/eslint-comments/no-duplicate-disable",
     "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-eslint-community-eslint-comments-no-duplicate-disable); not built yet.",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-eslint-community-eslint-comments-no-duplicate-disable); not built yet: waits on card q-lint-rc-duplicate-disable-measured (where suppressions are allowed, check already reports the second disable of a rule ESLint runs as unused; of a rule oxlint runs, nothing).",
     "evidence": "docs/work/decisions.md, owner 2026-10-24; docs/work/rule-candidates-r1.md §2: 1 hit",
     "recorded": "2026-10-24"
   },
@@ -51,7 +51,7 @@
   {
     "id": "@eslint-community/eslint-comments/require-description",
     "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-eslint-community-eslint-comments-require-description); not built yet.",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-eslint-community-eslint-comments-require-description); not built yet: waits on card q-lint-cmt-editor-reach (the editor parts always allow suppressions, so built as specified it would run in every team's editor too) and card q-lint-cmt-require-description-scope (at its defaults it also asks a reason of eslint-enable and /* global */ comments).",
     "evidence": "docs/work/decisions.md, owner 2026-10-24; docs/work/rule-candidates-r1.md §2: 600 hits",
     "recorded": "2026-10-24"
   },
@@ -804,16 +804,9 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "@tanstack/query/exhaustive-deps",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-query-exhaustive-deps); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "@tanstack/query/infinite-query-property-order",
     "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-query-infinite-query-property-order); not built yet.",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-query-infinite-query-property-order); not built yet: waits on card q-lint-rc-tanstack-property-order-measured (where the opt-in ordering ruleset is listed, perfectionist/sort-objects reports the order its fix writes, and sorting the object as that report asks makes the next check rewrite it again).",
     "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
@@ -822,27 +815,6 @@
     "status": "not-reviewed",
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "@tanstack/query/no-rest-destructuring",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-query-no-rest-destructuring); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "@tanstack/query/no-unstable-deps",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-query-no-unstable-deps); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "@tanstack/query/no-void-query-fn",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-query-no-void-query-fn); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
   {
@@ -855,21 +827,14 @@
   {
     "id": "@tanstack/query/stable-query-client",
     "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-query-stable-query-client); not built yet.",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-query-stable-query-client); not built yet: waits on card q-lint-rc-stable-query-client-fix-measured (check applies its fix, which writes React.useState(() => new QueryClient()) whether or not the file binds React, so a component file that does not bind React stops compiling: TS2686).",
     "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
   {
     "id": "@tanstack/router/create-route-property-order",
     "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-router-create-route-property-order); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "@tanstack/router/route-param-names",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-router-route-param-names); not built yet.",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-router-create-route-property-order); not built yet: waits on card q-lint-rc-tanstack-property-order-measured (where the opt-in ordering ruleset is listed, perfectionist/sort-objects reports the order its fix writes, and sorting the object as that report asks makes the next check rewrite it again).",
     "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
@@ -1710,13 +1675,6 @@
     "status": "not-reviewed",
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "e18e/prefer-throw-if-no-entry",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-e18e-prefer-throw-if-no-entry); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24; docs/work/rule-candidates-r1.md §2: 0 hits",
     "recorded": "2026-10-24"
   },
   {
@@ -3656,20 +3614,6 @@
     "recorded": "2026-10-10"
   },
   {
-    "id": "playwright/no-duplicate-slow",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-no-duplicate-slow); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "playwright/no-element-handle",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-no-element-handle); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "playwright/no-eval",
     "status": "considering",
     "why": "Not measured yet: eslint-plugin-playwright, which needs a Playwright libs ruleset the owner names.",
@@ -3686,7 +3630,7 @@
   {
     "id": "playwright/no-focused-test",
     "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-no-focused-test); not built yet: waits on card q-lint-playwright-vitest-twins.",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-no-focused-test); then \"Don't ship them by default\" (q-lint-playwright-vitest-twins): off by default, since it reports the same line as a shipped vitest rule in Vitest and Jest test files; a team turns it on for its Playwright folder in fileOverrides.",
     "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
@@ -3714,7 +3658,7 @@
   {
     "id": "playwright/no-identical-title",
     "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-no-identical-title); not built yet: waits on card q-lint-playwright-vitest-twins.",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-no-identical-title); then \"Don't ship them by default\" (q-lint-playwright-vitest-twins): off by default, since it reports the same line as a shipped vitest rule in Vitest and Jest test files; a team turns it on for its Playwright folder in fileOverrides.",
     "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
@@ -3731,13 +3675,6 @@
     "why": "Not measured yet: eslint-plugin-playwright, which needs a Playwright libs ruleset the owner names.",
     "evidence": "docs/work/rule-candidates-r1.md §4",
     "recorded": "2026-10-10"
-  },
-  {
-    "id": "playwright/no-networkidle",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-no-networkidle); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
   },
   {
     "id": "playwright/no-nth-methods",
@@ -3819,7 +3756,7 @@
   {
     "id": "playwright/no-unnecessary-assertions",
     "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-no-unnecessary-assertions); not built yet.",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-no-unnecessary-assertions); not built yet: waits on card q-lint-rc-unnecessary-assertions-measured (a Testing Library getBy* query reads as a locator, so it reports expect(screen.getByText(...)).toBeTruthy() in Vitest and Jest test files).",
     "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
@@ -3859,13 +3796,6 @@
     "recorded": "2026-10-10"
   },
   {
-    "id": "playwright/no-wait-for-selector",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-no-wait-for-selector); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "playwright/no-wait-for-timeout",
     "status": "considering",
     "why": "Not measured yet: eslint-plugin-playwright, which needs a Playwright libs ruleset the owner names.",
@@ -3903,7 +3833,7 @@
   {
     "id": "playwright/prefer-hooks-on-top",
     "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-prefer-hooks-on-top); not built yet: waits on card q-lint-playwright-vitest-twins.",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-prefer-hooks-on-top); then \"Don't ship them by default\" (q-lint-playwright-vitest-twins): off by default, since it reports the same line as a shipped vitest rule in Vitest and Jest test files; a team turns it on for its Playwright folder in fileOverrides.",
     "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
@@ -3966,7 +3896,7 @@
   {
     "id": "playwright/prefer-web-first-assertions",
     "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-prefer-web-first-assertions); not built yet.",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-prefer-web-first-assertions); not built yet: waits on card q-lint-rc-web-first-assertions-measured (it reports element.getAttribute(...) assertions in Vitest and Jest test files, and check applies its fix, which changes the verdict of several Playwright assertions).",
     "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
@@ -3999,16 +3929,9 @@
     "recorded": "2026-10-10"
   },
   {
-    "id": "playwright/require-to-pass-timeout",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-require-to-pass-timeout); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "playwright/require-to-throw-message",
     "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-require-to-throw-message); not built yet: waits on card q-lint-playwright-vitest-twins.",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-require-to-throw-message); then \"Don't ship them by default\" (q-lint-playwright-vitest-twins): off by default, since it reports the same line as a shipped vitest rule in Vitest and Jest test files; a team turns it on for its Playwright folder in fileOverrides.",
     "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
@@ -4039,13 +3962,6 @@
     "why": "Not measured yet: eslint-plugin-playwright, which needs a Playwright libs ruleset the owner names.",
     "evidence": "docs/work/rule-candidates-r1.md §4",
     "recorded": "2026-10-10"
-  },
-  {
-    "id": "playwright/valid-test-tags",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-valid-test-tags); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
   },
   {
     "id": "playwright/valid-title",
@@ -7902,38 +7818,10 @@
     "recorded": "2026-10-24"
   },
   {
-    "id": "zod/no-coerce-boolean",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-zod-no-coerce-boolean); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "zod/no-conflicting-checks",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-zod-no-conflicting-checks); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "zod/no-duplicate-schema-methods",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-zod-no-duplicate-schema-methods); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "zod/no-dynamic-schema-value",
     "status": "not-reviewed",
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "zod/no-empty-custom-schema",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-zod-no-empty-custom-schema); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
   {
@@ -7993,13 +7881,6 @@
     "recorded": "2026-10-24"
   },
   {
-    "id": "zod/no-optional-and-default-together",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-zod-no-optional-and-default-together); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "zod/no-promise-schema",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -8018,20 +7899,6 @@
     "status": "not-reviewed",
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "zod/no-throw-in-refine",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-zod-no-throw-in-refine); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "zod/no-transform-in-record-key",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-zod-no-transform-in-record-key); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
   {
@@ -8121,7 +7988,7 @@
   {
     "id": "zod/prefer-trim-before-string-length-checks",
     "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-zod-prefer-trim-before-string-length-checks); not built yet.",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-zod-prefer-trim-before-string-length-checks); not built yet: waits on card q-lint-rc-zod-trim-fix-measured (check applies its fix, which moves .trim() before the length checks and so changes what the schema accepts).",
     "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
@@ -8137,13 +8004,6 @@
     "status": "not-reviewed",
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "zod/require-brand-type-parameter",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-zod-require-brand-type-parameter); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
   {

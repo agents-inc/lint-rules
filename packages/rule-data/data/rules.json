@@ -620,6 +620,66 @@
     }
   },
   {
+    "id": "@tanstack/query/exhaustive-deps",
+    "ruleset": "tanstack-query",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-tanstack-query-exhaustive-deps",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "@tanstack/query/no-rest-destructuring",
+    "ruleset": "tanstack-query",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-tanstack-query-no-rest-destructuring",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "@tanstack/query/no-unstable-deps",
+    "ruleset": "tanstack-query",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-tanstack-query-no-unstable-deps",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "@tanstack/query/no-void-query-fn",
+    "ruleset": "tanstack-query",
+    "engine": "eslint",
+    "options": [],
+    "typed": true,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-tanstack-query-no-void-query-fn",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "@tanstack/router/route-param-names",
+    "ruleset": "tanstack-router",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-tanstack-router-route-param-names",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
     "id": "@typescript-eslint/array-type",
     "ruleset": "conventions",
     "engine": "eslint",
@@ -1921,6 +1981,19 @@
       "confidence": "low",
       "note": "API-shape preference, rarely a bug; needs \"consistency\"",
       "by": "critique-r1"
+    }
+  },
+  {
+    "id": "e18e/prefer-throw-if-no-entry",
+    "ruleset": "node",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "alternative": "correctness",
+      "note": "rc-e18e-prefer-throw-if-no-entry",
+      "by": "accepted-spec-2026-10-24"
     }
   },
   {
@@ -5025,6 +5098,88 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-D"
+    }
+  },
+  {
+    "id": "playwright/no-duplicate-slow",
+    "ruleset": "playwright",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-playwright-no-duplicate-slow",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "playwright/no-element-handle",
+    "ruleset": "playwright",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+    ],
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-playwright-no-element-handle",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "playwright/no-networkidle",
+    "ruleset": "playwright",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-playwright-no-networkidle",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "playwright/no-wait-for-selector",
+    "ruleset": "playwright",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "files": [
+      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+    ],
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-playwright-no-wait-for-selector",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "playwright/require-to-pass-timeout",
+    "ruleset": "playwright",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-playwright-require-to-pass-timeout",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "playwright/valid-test-tags",
+    "ruleset": "playwright",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-playwright-valid-test-tags",
+      "by": "owner-2026-10-24"
     }
   },
   {
@@ -12373,6 +12528,102 @@
     "assignment": {
       "confidence": "high",
       "by": "critique-r1"
+    }
+  },
+  {
+    "id": "zod/no-coerce-boolean",
+    "ruleset": "zod",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-zod-no-coerce-boolean",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "zod/no-conflicting-checks",
+    "ruleset": "zod",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-zod-no-conflicting-checks",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "zod/no-duplicate-schema-methods",
+    "ruleset": "zod",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-zod-no-duplicate-schema-methods",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "zod/no-empty-custom-schema",
+    "ruleset": "zod",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-zod-no-empty-custom-schema",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "zod/no-optional-and-default-together",
+    "ruleset": "zod",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-zod-no-optional-and-default-together",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "zod/no-throw-in-refine",
+    "ruleset": "zod",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-zod-no-throw-in-refine",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "zod/no-transform-in-record-key",
+    "ruleset": "zod",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-zod-no-transform-in-record-key",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "zod/require-brand-type-parameter",
+    "ruleset": "zod",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-zod-require-brand-type-parameter",
+      "by": "owner-2026-10-24"
     }
   }
 ]
