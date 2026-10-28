@@ -12,7 +12,7 @@ const NO_RULE_NAMES: ReadonlyMap<string, readonly string[]> = new Map()
 * Our ESLint part laid out as the agent build lays it out, without the merge: the oracle for the rules it states
 * with no team config.
 */
-export function eslintPartAlone(part: EslintPart, catalog: Catalog, registry: EslintPluginRegistry): Linter.Config[] {
+export function eslintPartAlone(part: EslintPart, catalog: Readonly<Catalog>, registry: EslintPluginRegistry): Linter.Config[] {
   const projectFacts = projectFactsOf(part.tsconfigRootDir)
   const { globalIgnores, base, afterTheBase } = eslintBlocksBeforeTheOffSwitch(
     {

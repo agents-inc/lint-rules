@@ -1,8 +1,8 @@
 import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { beforeAll, describe, expect, it } from 'vitest'
-import { setUpTempProjects } from './temp-projects.ts'
+import { describe, expect, it } from 'vitest'
+import { setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
 import { runVitestCli, type TestFileOutcome } from './vitest-cli.ts'
 
 // A temp project a test file makes is gone once the file finishes, however it ends: tests pass or fail, collection
@@ -23,33 +23,35 @@ const FIXTURE_RUNS = [
   { ending: 'filtered out by describe', fixture: 'filtered-out-describe.fixture.ts', args: [...NAME_FILTER_KEEPING_ONE_TEST, ...STRYKER_POOL] },
   { ending: 'filtered out whole', fixture: 'filtered-out-file.fixture.ts', args: [...NAME_FILTER_KEEPING_ONE_TEST, ...STRYKER_POOL] },
   { ending: 'skipped after a bail', fixture: 'skipped-after-bail.fixture.ts', args: [...BAIL_AT_THE_FIRST_FAILURE, ...STRYKER_POOL] },
-] as const satisfies readonly { readonly ending: string; readonly fixture: string; readonly args: readonly string[] }[]
+] as const satisfies ReadonlyArray<{ readonly ending: string; readonly fixture: string; readonly args: readonly string[] }>
 
 type Ending = (typeof FIXTURE_RUNS)[number]['ending']
 
 type FixtureRun = { readonly tempDir: string; readonly files: readonly TestFileOutcome[]; readonly leftInTempDir: readonly string[] }
 
-describe('a test file run under the package vitest config, once it finishes', () => {
-  const tempProjects = setUpTempProjects()
-  const runs = new Map<Ending, FixtureRun>()
+function namingAPathIn(tempDir: string): unknown {
+  return expect.stringContaining(` ${tempDir}/`)
+}
 
-  beforeAll(() => {
-    const reportsDir = tempProjects.create({})
-    FIXTURE_RUNS.forEach(({ ending, fixture, args }) => {
-      const tempDir = tempProjects.create({})
-      const files = runVitestCli({ configFile: FIXTURES_CONFIG, args: [fixture, ...args], tempDir, reportFile: join(reportsDir, `${fixture}.json`) })
-      runs.set(ending, { tempDir, files, leftInTempDir: readdirSync(tempDir) })
-    })
-  }, FIXTURE_RUNS_TIMEOUT_MS)
+describe('a test file run under the package vitest config, once it finishes', () => {
+  const runs = setUpRunsBeforeTheSuite(
+    (tempProjects) => {
+      const reportsDir = tempProjects.create({})
+      return new Map(
+        FIXTURE_RUNS.map(({ ending, fixture, args }): [Ending, FixtureRun] => {
+          const tempDir = tempProjects.create({})
+          const files = runVitestCli({ configFile: FIXTURES_CONFIG, args: [fixture, ...args], tempDir, reportFile: join(reportsDir, `${fixture}.json`) })
+          return [ending, { tempDir, files, leftInTempDir: readdirSync(tempDir) }]
+        }),
+      )
+    },
+    { timeoutMs: FIXTURE_RUNS_TIMEOUT_MS, whatFailed: 'the fixture test files could not be run before the suite' },
+  )
 
   function runOf(ending: Ending): FixtureRun {
-    const run = runs.get(ending)
+    const run = runs().get(ending)
     if (run === undefined) throw new Error(`the run whose file ends as "${ending}" was not made before the suite`)
     return run
-  }
-
-  function namingAPathIn(tempDir: string): unknown {
-    return expect.stringContaining(` ${tempDir}/`)
   }
 
   it('leaves nothing in its temp dir where its tests pass, having found the projects it made', () => {

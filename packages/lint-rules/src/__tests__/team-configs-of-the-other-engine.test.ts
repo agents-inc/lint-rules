@@ -22,7 +22,7 @@ describe('writeTeamOxlintConfigSettingNoRule, given an ESLint part beside oxlint
     const dir = rootedAt()
     const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {})).editorRulesets
 
-    expect(() => writeTeamOxlintConfigSettingNoRule({ ...eslint, tsconfigRootDir: dir })).toThrowError(
+    expect(() => writeTeamOxlintConfigSettingNoRule({ ...eslint, tsconfigRootDir: dir })).toThrow(
       new Error(`${dir} is no temp project, so no team oxlint config is written into it`),
     )
     expect(existsSync(join(dir, TEAM_OXLINT_CONFIG_SETTING_NO_RULE_FILE))).toBe(false)

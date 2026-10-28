@@ -65,7 +65,7 @@ export function rulesRunOn({ eslint, rootDir }: EslintRunsInItsOwnProcess, build
 }
 
 /** Null for ESLint's own messages, parse errors included. */
-export function ruleIdsOn({ eslint, rootDir }: EslintRunsInItsOwnProcess, build: EslintBuild, file: string): (string | null)[] {
+export function ruleIdsOn({ eslint, rootDir }: EslintRunsInItsOwnProcess, build: EslintBuild, file: string): Array<string | null> {
   return resultFor(eslint[build], rootDir, file).messages.map(({ ruleId }) => ruleId)
 }
 
@@ -75,7 +75,7 @@ function resultFor(results: readonly EslintProcessResult[], rootDir: string, fil
   return result
 }
 
-function eslintResultsInItsOwnProcess(rootDir: string, lintRules: LintRules, teamOxlintConfig: OxlintConfig | null): EslintResultsByBuild {
+function eslintResultsInItsOwnProcess(rootDir: string, lintRules: LintRules, teamOxlintConfig: Readonly<OxlintConfig | null>): EslintResultsByBuild {
   const stdout = runNodeScript(ESLINT_BUILD_PROCESS, [JSON.stringify(lintRules), ...teamOxlintConfigArgument(rootDir, teamOxlintConfig)], {
     cwd: rootDir,
     timeoutMs: PROCESS_TIMEOUT_MS,
@@ -86,7 +86,7 @@ function eslintResultsInItsOwnProcess(rootDir: string, lintRules: LintRules, tea
 }
 
 /** None where the project lists no oxlint. */
-function teamOxlintConfigArgument(rootDir: string, teamOxlintConfig: OxlintConfig | null): string[] {
+function teamOxlintConfigArgument(rootDir: string, teamOxlintConfig: Readonly<OxlintConfig | null>): string[] {
   if (teamOxlintConfig === null) return []
   writeOxlintConfigFile(rootDir, TEAM_OXLINT_CONFIG_FILE, teamOxlintConfig)
   return [TEAM_OXLINT_CONFIG_FILE]

@@ -24,7 +24,7 @@ describe('packagesNpmOverridesAPeerFor', () => {
   })
 
   it('refuses an override whose next line names no package resolved, rather than reading none', () => {
-    expect(() => packagesNpmOverridesAPeerFor(buildNpmPeerOverrideNamingNoPackage())).toThrowError(
+    expect(() => packagesNpmOverridesAPeerFor(buildNpmPeerOverrideNamingNoPackage())).toThrow(
       'npm opened a peer override without naming the package resolved: npm warn Found: eslint@10.12.0',
     )
   })

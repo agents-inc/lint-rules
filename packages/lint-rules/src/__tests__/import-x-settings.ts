@@ -8,6 +8,9 @@ const LEGACY_RESOLVER_KEYS = ['import-x/resolver-legacy', 'import-x/resolver'] a
 const NODE_RESOLVER_OPTIONS = 'import-x/resolve'
 const UNNAMED = 'unnamed'
 
+/** Whether import-x's `if (value)` and `||` take the value. */
+const holdsAnything: (value: unknown) => boolean = Boolean
+
 /** resolver-next's resolvers by name, or the legacy setting read instead, by its key and value. */
 export type ResolversImportXReads =
   | { readonly key: typeof RESOLVER_NEXT; readonly names: readonly string[] }
@@ -20,11 +23,6 @@ export function resolversImportXReads(settings: unknown): ResolversImportXReads 
   if (holdsAnything(next)) return { key: RESOLVER_NEXT, names: (Array.isArray(next) ? next : [next]).map(nameOfResolver) }
   const legacyKey = LEGACY_RESOLVER_KEYS.find((key) => holdsAnything(given[key]))
   return legacyKey === undefined ? { key: NODE_RESOLVER_OPTIONS, value: given[NODE_RESOLVER_OPTIONS] } : { key: legacyKey, value: given[legacyKey] }
-}
-
-/** Whether import-x's `if (value)` and `||` take the value. */
-function holdsAnything(value: unknown): boolean {
-  return Boolean(value)
 }
 
 function nameOfResolver(resolver: unknown): string {

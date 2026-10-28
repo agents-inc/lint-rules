@@ -19,7 +19,7 @@ const PROJECT = setUpTempProjects().create({ files: folderLayoutSourceFiles, lin
 
 allowEveryTestForParallelLoad()
 
-function filesOxlintReports(file: string, config: OxlintConfig, code: string): string[] {
+function filesOxlintReports(file: string, config: Readonly<OxlintConfig>, code: string): string[] {
   writeOxlintConfigFile(PROJECT, file, config)
   const findings = oxlintFindingsIn(runOxlintCli(PROJECT, file).report).filter(({ rule }) => rule === code)
   return [...new Set(findings.map((finding) => finding.file))].toSorted()
@@ -33,7 +33,7 @@ function overrideConfig(override: Omit<NonNullable<OxlintConfig['overrides']>[nu
   return buildTeamOxlintConfig({ categories: EVERY_CATEGORY_OFF, overrides: [{ ...override, rules: { [NO_DEBUGGER]: 'error' } }] })
 }
 
-function noUndefConfig(fields: OxlintConfig): OxlintConfig {
+function noUndefConfig(fields: Readonly<OxlintConfig>): OxlintConfig {
   return buildTeamOxlintConfig({ categories: EVERY_CATEGORY_OFF, rules: { 'no-undef': 'error' }, ...fields })
 }
 

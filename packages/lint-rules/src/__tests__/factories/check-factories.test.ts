@@ -30,9 +30,9 @@ import {
 
 const CONFIG = 'unused-reported.json'
 const COMMENT_LINE = 2
-const FORMS: readonly { readonly form: SuppressionForm }[] = [{ form: 'eslint' }, { form: 'oxlint' }]
+const FORMS: ReadonlyArray<{ readonly form: SuppressionForm }> = [{ form: 'eslint' }, { form: 'oxlint' }]
 
-const ENABLE_COMMENTS: readonly { readonly enable: EnableComment; readonly naming: string }[] = FORMS.flatMap(({ form }) => [
+const ENABLE_COMMENTS: ReadonlyArray<{ readonly enable: EnableComment; readonly naming: string }> = FORMS.flatMap(({ form }) => [
   { enable: { form, ruleName: 'no-debugger' }, naming: `${form} form, naming no-debugger` },
   { enable: { form, ruleName: null }, naming: `${form} form, naming no rule` },
 ])

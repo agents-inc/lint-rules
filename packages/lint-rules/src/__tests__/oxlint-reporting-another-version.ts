@@ -15,9 +15,9 @@ export function installOxlintReporting(projectDir: string, version: string, sche
   const installDir = join(projectDir, INSTALLED_OXLINT_DIR)
   mkdirSync(installDir, { recursive: true })
   const written = schemaText === undefined ? [PACKAGE_JSON] : [PACKAGE_JSON, OXLINT_SCHEMA_FILE]
-  readdirSync(INSTALLED_OXLINT.dir)
-    .filter((entry) => !written.includes(entry))
-    .forEach((entry) => symlinkSync(join(INSTALLED_OXLINT.dir, entry), join(installDir, entry)))
+  for (const entry of readdirSync(INSTALLED_OXLINT.dir)) {
+    if (!written.includes(entry)) symlinkSync(join(INSTALLED_OXLINT.dir, entry), join(installDir, entry))
+  }
   writeFileSync(join(installDir, PACKAGE_JSON), `${JSON.stringify({ ...installedOxlintManifest(), version }, null, 2)}\n`)
   if (schemaText !== undefined) writeFileSync(join(installDir, OXLINT_SCHEMA_FILE), schemaText)
 }

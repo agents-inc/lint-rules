@@ -26,33 +26,37 @@ const OXLINT_CATEGORY: OxlintCategory = 'correctness'
 
 const doNothingRule: Rule.RuleModule = {
   meta: { schema: false },
-  create: () => ({}),
+  create() {
+    return {}
+  },
 }
 
 /** Reports once per file, on the file's first token, whatever its options. */
 const reportEveryFileRule: Rule.RuleModule = {
   meta: { schema: false, messages: { reported: 'reported by a team rule' } },
-  create: (context) => ({
-    Program: (node) => {
-      context.report({ node, messageId: 'reported' })
-    },
-  }),
+  create(context) {
+    return {
+      Program(node) {
+        context.report({ node, messageId: 'reported' })
+      },
+    }
+  },
 }
 
 // The builds read neither flag (init does), so a small catalog's rulesets are neither opt-in nor sort code.
-const NOT_OPT_IN = false
-const SORTS_NO_CODE = false
+const IS_OPT_IN = false
+const DOES_SORT_CODE = false
 
 export function buildQualityRuleset(name: string): RulesetDefinition {
-  return { name, list: 'quality', domain: null, env: null, optIn: NOT_OPT_IN, sortsCode: SORTS_NO_CODE }
+  return { name, list: 'quality', domain: null, env: null, optIn: IS_OPT_IN, sortsCode: DOES_SORT_CODE }
 }
 
 export function buildLibsRuleset(name: string, domain: string): RulesetDefinition {
-  return { name, list: 'libs', domain, env: null, optIn: NOT_OPT_IN, sortsCode: SORTS_NO_CODE }
+  return { name, list: 'libs', domain, env: null, optIn: IS_OPT_IN, sortsCode: DOES_SORT_CODE }
 }
 
 export function buildRuntimeRuleset(name: string, env: string): RulesetDefinition {
-  return { name, list: 'runtimes', domain: null, env, optIn: NOT_OPT_IN, sortsCode: SORTS_NO_CODE }
+  return { name, list: 'runtimes', domain: null, env, optIn: IS_OPT_IN, sortsCode: DOES_SORT_CODE }
 }
 
 /** On where suppressions are banned, the default, and off where allowed, as `house/no-suppressions` ships. */
@@ -61,11 +65,11 @@ export function buildSuppressionModeShippedRule(fields: ShippedRuleFields = {}):
 }
 
 /** `shipped: null` is a rule that is available but in no ruleset: off until `rules` turns it on. */
-export function buildOxlintRoute(id: string, fields: OxlintRouteFields): RuleRoute {
+export function buildOxlintRoute(id: string, fields: Readonly<OxlintRouteFields>): RuleRoute {
   return { id, engine: 'oxlint', typed: false, eslintAliases: [], oxlintSpellings: [fields.oxlintName], ...fields }
 }
 
-export function buildEslintRoute(id: string, fields: EslintRouteFields): RuleRoute {
+export function buildEslintRoute(id: string, fields: Readonly<EslintRouteFields>): RuleRoute {
   return { id, engine: 'eslint', oxlintName: null, oxlintPlugin: null, eslintAliases: [], oxlintSpellings: [], ...fields }
 }
 
@@ -80,11 +84,11 @@ export function buildCatalog({
   coreRuleExtensions = new Map(),
   eslintStandIns = new Map(),
 }: {
-  rulesets: readonly RulesetDefinition[]
-  rules: readonly RuleRoute[]
-  eslintFallbackSkips?: ReadonlyMap<string, string>
-  coreRuleExtensions?: ReadonlyMap<string, readonly string[]>
-  eslintStandIns?: ReadonlyMap<string, string>
+  readonly rulesets: readonly RulesetDefinition[]
+  readonly rules: readonly RuleRoute[]
+  readonly eslintFallbackSkips?: ReadonlyMap<string, string>
+  readonly coreRuleExtensions?: ReadonlyMap<string, readonly string[]>
+  readonly eslintStandIns?: ReadonlyMap<string, string>
 }): Catalog {
   return {
     rulesets,
@@ -97,7 +101,7 @@ export function buildCatalog({
   }
 }
 
-function oxlintRuleOf({ id, oxlintName, oxlintPlugin }: RuleRoute): OxlintRule[] {
+function oxlintRuleOf({ id, oxlintName, oxlintPlugin }: Readonly<RuleRoute>): OxlintRule[] {
   return oxlintName === null ? [] : [{ id, oxlintName, oxlintPlugin, category: OXLINT_CATEGORY }]
 }
 

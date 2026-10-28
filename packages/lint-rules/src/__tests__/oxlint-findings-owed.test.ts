@@ -34,7 +34,7 @@ function ourParts(): EditorParts {
   ).editorRulesets
 }
 
-function teamConfigs(oxlint: TeamConfigsRead['oxlint'], eslintRuleKeys: readonly string[] = []): TeamConfigsRead {
+function teamConfigs(oxlint: Readonly<TeamConfigsRead['oxlint']>, eslintRuleKeys: readonly string[] = []): TeamConfigsRead {
   return { oxlint, eslintRuleKeys }
 }
 

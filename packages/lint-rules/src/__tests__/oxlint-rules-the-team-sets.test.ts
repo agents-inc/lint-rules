@@ -19,7 +19,7 @@ const NURSERY_RULE = 'import-x/named'
 const SONARJS_RULE = 'sonarjs/anchor-precedence'
 const PATH_BASE = './base.json'
 
-function setAmong(team: OxlintConfig, ruleIds: readonly string[]): string[] {
+function setAmong(team: Readonly<OxlintConfig>, ruleIds: readonly string[]): string[] {
   const set = new Set(ruleIdsTheTeamsOxlintConfigSets(team, catalog))
   return ruleIds.filter((id) => set.has(id))
 }
@@ -200,6 +200,6 @@ describe('ruleIdsTheTeamsOxlintConfigSets, given a config extended by path', () 
   })
 
   it('refuses a path it was not given the config of', () => {
-    expect(() => ruleIdsTheTeamsOxlintConfigSets(team, catalog)).toThrowError(`the team's config extends ${PATH_BASE}, which the model was not given`)
+    expect(() => ruleIdsTheTeamsOxlintConfigSets(team, catalog)).toThrow(`the team's config extends ${PATH_BASE}, which the model was not given`)
   })
 })

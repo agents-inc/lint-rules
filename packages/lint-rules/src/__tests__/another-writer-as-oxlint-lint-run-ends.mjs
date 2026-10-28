@@ -15,6 +15,6 @@ const [, script, ...args] = process.argv
 
 if (writes !== undefined && script !== undefined && script.endsWith(OXLINT_BIN) && !args.includes(FIX_FLAG)) {
   process.on('exit', () => {
-    JSON.parse(writes).forEach(({ path, text }) => writeFileSync(path, text))
+    for (const { path, text } of JSON.parse(writes)) writeFileSync(path, text)
   })
 }

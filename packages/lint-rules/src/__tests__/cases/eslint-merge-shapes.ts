@@ -118,9 +118,9 @@ const UNDER_ITS_BASE_PATH = buildEslintMergeShapeValue('in the files it names un
   team: { scope: { basePath: 'legacy', files: ['**/*.ts'] } },
 })
 
-const A_BARE_SEVERITY = buildEslintMergeShapeValue('a bare severity', { team: { entryOf: () => 'warn' } })
-const A_FULL_ENTRY = buildEslintMergeShapeValue('a full entry', { team: { entryOf: (options) => ['error', ...options] } })
-const OFF = buildEslintMergeShapeValue('off', { team: { entryOf: () => 'off' } })
+const A_BARE_SEVERITY = buildEslintMergeShapeValue('a bare severity', { team: { entryOf() { return 'warn' } } })
+const A_FULL_ENTRY = buildEslintMergeShapeValue('a full entry', { team: { entryOf(options) { return ['error', ...options] } } })
+const OFF = buildEslintMergeShapeValue('off', { team: { entryOf() { return 'off' } } })
 
 const OUR_RULES_LEAVE_IT_OUT = buildEslintMergeShapeValue('our top-level rules leave it out', { ours: {} })
 const OUR_RULES_TURN_IT_ON = buildEslintMergeShapeValue('our top-level rules turn it on', { ours: { topLevel: 'error' } })
@@ -149,7 +149,7 @@ const OUR_IGNORES_A_FOLDER_ENDING_IN_ITS_ONLY_SLASH = buildEslintMergeShapeValue
   ours: { ignores: ['vendor/'] },
 })
 
-export const ESLINT_MERGE_DIMENSIONS: readonly Dimension<EslintMergeShapeValue>[] = [
+export const ESLINT_MERGE_DIMENSIONS: ReadonlyArray<Dimension<EslintMergeShapeValue>> = [
   {
     name: 'the name the team states',
     values: [
@@ -182,7 +182,7 @@ export const ESLINT_MERGE_DIMENSIONS: readonly Dimension<EslintMergeShapeValue>[
 * 10.12); a twin the team states where ours runs; ours in a vendor folder only a bare folder ignore keeps it out
 * of; and a team alias of a rule our oxlint part runs, beside vendor ignores each engine reads differently.
 */
-export const ESLINT_MERGE_SEEDS: readonly (readonly EslintMergeShapeValue[])[] = [
+export const ESLINT_MERGE_SEEDS: ReadonlyArray<readonly EslintMergeShapeValue[]> = [
   [TEAM_STATES_ITS_OWN_ID, IN_EVERY_FILE, A_BARE_SEVERITY, OUR_RULES_TURN_IT_ON],
   [TEAM_STATES_ITS_OWN_ID, IN_THE_FILES_IT_NAMES, A_BARE_SEVERITY, AN_ENTRY_OF_OURS_TURNS_IT_ON],
   [TEAM_STATES_ITS_PREFIX_NAME, IN_EVERY_FILE, A_BARE_SEVERITY, OUR_RULES_TURN_IT_ON],

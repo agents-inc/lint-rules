@@ -1,5 +1,6 @@
 import type { OxlintConfig } from 'oxlint'
 import type { LintRules } from '../../index.ts'
+import { laidOver } from '../laid-over.ts'
 import type { Dimension } from '../pairwise-shapes.ts'
 import { buildConsumerLintRules, type LintRulesPiece } from './lint-rules-factories.ts'
 
@@ -17,7 +18,7 @@ export function buildDimension(name: string, values: readonly string[]): Dimensi
   return { name, values }
 }
 
-export function buildTeamShapeValue(name: string, team: OxlintConfig): OxlintMergeShapeValue {
+export function buildTeamShapeValue(name: string, team: Readonly<OxlintConfig>): OxlintMergeShapeValue {
   return { name, team, ours: {} }
 }
 
@@ -30,10 +31,10 @@ export function buildOurShapeValue(name: string, ours: OurShapePiece): OxlintMer
 * so the agent build states the editor set's rules, which the differentials read.
 */
 export function buildConsumerLintRulesFromShape(tsconfigRootDir: string, pieces: readonly OurShapePiece[]): LintRules {
-  const rules = pieces.reduce<NonNullable<LintRules['rules']>>((joined, { rules: pieceRules = {} }) => ({ ...joined, ...pieceRules }), {})
+  const rules = laidOver<NonNullable<LintRules['rules']>>({}, pieces.map(({ rules: pieceRules = {} }) => pieceRules))
   const fileOverrides = pieces.flatMap(({ fileOverrides: entries = [] }) => entries)
   const ignores = pieces.flatMap(({ ignores: globs = [] }) => globs)
-  return buildConsumerLintRules(tsconfigRootDir, {}, { rules, fileOverrides, allowSuppressions: true, ...(ignores.length === 0 ? {} : { ignores }) })
+  return buildConsumerLintRules(tsconfigRootDir, {}, { rules, fileOverrides, allowSuppressions: true, ...(ignores.length !== 0 && { ignores }) })
 }
 
 /** Only a JSON config extends by path: oxlint refuses a path in a TS config's `extends` (measured, 1.87). */

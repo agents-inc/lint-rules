@@ -181,7 +181,7 @@ describe('isIgnoredByOxlintConfig', () => {
   })
 
   it('refuses a negated pattern, which the oracle does not model', () => {
-    expect(() => isIgnoredByOxlintConfig({ ignorePatterns: ['dist/**', '!dist/keep.ts'] }, 'dist/a.ts')).toThrowError(
+    expect(() => isIgnoredByOxlintConfig({ ignorePatterns: ['dist/**', '!dist/keep.ts'] }, 'dist/a.ts')).toThrow(
       new Error('the oracle reads no negated ignore pattern, and was given !dist/keep.ts'),
     )
   })
@@ -197,7 +197,7 @@ describe('severityOfOxlintEntry', () => {
   })
 
   it('refuses an entry oxlint would not read as a severity', () => {
-    expect(() => severityOfOxlintEntry('warning')).toThrowError(
+    expect(() => severityOfOxlintEntry('warning')).toThrow(
       new Error('oxlint reads a rule entry as a severity or [severity, ...options], not "warning"'),
     )
   })

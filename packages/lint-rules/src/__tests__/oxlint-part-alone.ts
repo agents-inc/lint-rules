@@ -25,7 +25,7 @@ const EVERY_CATEGORY_OFF = {
 * Our oxlint part laid out as the agent build lays it out: the oracle for the rules it states with no team
 * config. The rules the ESLint part runs, oxlint does not run here.
 */
-export function oxlintPartAlone({ layers }: OxlintPart, catalog: Catalog): OxlintConfig {
+export function oxlintPartAlone({ layers }: OxlintPart, catalog: Readonly<Catalog>): OxlintConfig {
   return {
     categories: { ...EVERY_CATEGORY_OFF },
     plugins: oxlintPluginsOf(ruleSettingsOfEveryLayer(layers), catalog),

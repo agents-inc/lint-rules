@@ -304,7 +304,7 @@ export const A_RULE_NAME_IN_A_STRING_ABOVE_A_SUPPRESSION_OF_IT = [
   exportedConstant('after'),
 ]
 
-/** A Vue single-file component whose script holds the lines given, from line 5. */
+/** A Vue.js single-file component whose script holds the lines given, from line 5. */
 export function vueComponentScripting(lines: readonly string[]): string[] {
   return ['<template>', '  <p>hi</p>', '</template>', '<script lang="ts">', ...lines, '</script>']
 }

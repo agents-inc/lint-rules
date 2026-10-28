@@ -18,7 +18,7 @@ export function fileInPackage(packageName: string, file: string): string {
 }
 
 /** Paths given in the package, returned from the monorepo's root. */
-export function filesUnderPackage(packageName: string, files: ProjectFiles): [string, string][] {
+export function filesUnderPackage(packageName: string, files: ProjectFiles): Array<[string, string]> {
   return Object.entries(files).map(([file, text]) => [fileInPackage(packageName, file), text])
 }
 

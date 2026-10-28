@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -60,21 +61,19 @@ export const CONSUMER_INSTALL: readonly LinkedPackage[] = [THIS_PACKAGE, INSTALL
 * by walking up, while neither engine lints into them. Registers cleanup: call it in a test file or describe block.
 */
 export function setUpTempProjects(): TempProjects {
-  const roots: string[] = []
-
+  const rootPrefix = prefixOfThisSuite(TEMP_DIR_PREFIX)
   afterAll(() => {
-    roots.forEach((root) => rmSync(root, { recursive: true, force: true }))
+    removeEachStartingWith(rootPrefix)
   })
 
   return {
-    create: ({ fixturesDir, files = {}, linkedPackages = [] }) => {
-      const root = mkdtempSync(join(tmpdir(), TEMP_DIR_PREFIX))
-      roots.push(root)
+    create({ fixturesDir, files = {}, linkedPackages = [] }) {
+      const root = mkdtempSync(join(tmpdir(), rootPrefix))
       const projectDir = join(root, PROJECT_DIR_NAME)
       mkdirSync(projectDir)
       if (fixturesDir !== undefined) cpSync(fixturesDir, projectDir, { recursive: true })
-      Object.entries(files).forEach(([file, content]) => writeFileCreatingItsDir(join(projectDir, file), content))
-      linkedPackages.forEach((linked) => linkPackage(join(root, NODE_MODULES, linked.name), linked.dir))
+      for (const [file, content] of Object.entries(files)) writeFileCreatingItsDir(join(projectDir, file), content)
+      for (const linked of linkedPackages) linkPackage(join(root, NODE_MODULES, linked.name), linked.dir)
       return projectDir
     },
   }
@@ -85,15 +84,11 @@ export function setUpTempProjects(): TempProjects {
 * Registers cleanup: call it in a test file or describe block.
 */
 export function setUpEmptyFolders(): () => string {
-  const made: string[] = []
+  const folderPrefix = prefixOfThisSuite(EMPTY_FOLDER_PREFIX)
   afterAll(() => {
-    made.forEach((folder) => rmSync(folder, { recursive: true, force: true }))
+    removeEachStartingWith(folderPrefix)
   })
-  return () => {
-    const folder = realpathSync(mkdtempSync(join(tmpdir(), EMPTY_FOLDER_PREFIX)))
-    made.push(folder)
-    return folder
-  }
+  return () => realpathSync(mkdtempSync(join(tmpdir(), folderPrefix)))
 }
 
 export function entriesUnder(dir: string): string[] {
@@ -107,6 +102,17 @@ export function textsOf(dir: string, files: readonly string[]): Record<string, s
 export function writeFileCreatingItsDir(path: string, content: string): void {
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, content)
+}
+
+/** Names each folder one suite makes in the temp dir, so the suite finds what it made by name to remove it. */
+function prefixOfThisSuite(prefix: string): string {
+  return `${prefix}${randomUUID()}-`
+}
+
+function removeEachStartingWith(prefix: string): void {
+  for (const name of readdirSync(tmpdir())) {
+    if (name.startsWith(prefix)) rmSync(join(tmpdir(), name), { recursive: true, force: true })
+  }
 }
 
 function linkPackage(linkPath: string, target: string): void {

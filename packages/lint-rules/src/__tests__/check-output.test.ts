@@ -60,7 +60,7 @@ describe('autofixedFilesIn', () => {
   })
 
   it('refuses an autofixed line that ends otherwise than the spec says', () => {
-    expect(() => autofixedFilesIn(CHECK_STDOUT_WITH_A_MALFORMED_AUTOFIXED_LINE)).toThrowError(/does not end as the spec says/u)
+    expect(() => autofixedFilesIn(CHECK_STDOUT_WITH_A_MALFORMED_AUTOFIXED_LINE)).toThrow(/does not end as the spec says/u)
   })
 })
 
@@ -70,7 +70,7 @@ describe('lastLineOf', () => {
   })
 
   it('refuses an empty stdout', () => {
-    expect(() => lastLineOf('')).toThrowError(/printed nothing/u)
+    expect(() => lastLineOf('')).toThrow(/printed nothing/u)
   })
 })
 

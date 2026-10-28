@@ -34,7 +34,7 @@ export function rulesInPlayOf(
   ruleId: string,
   teamsPrefixes: ReadonlyMap<string, readonly string[]>,
   keysTheTeamStates: ReadonlySet<string>,
-  catalog: Catalog,
+  catalog: Readonly<Catalog>,
 ): RulesInPlay {
   const rules = [ruleId, ...typescriptEslintTwinsOf(ruleId)].map(
     (rule): RuleInPlay => ({
@@ -54,8 +54,13 @@ export function namesOnBeyondTheTeams(merged: CalculatedRules, teamAlone: Calcul
 export function calculatedEntryOf(rules: CalculatedRules, name: string): CalculatedEntry {
   const entry = rules[name]
   if (entry === undefined) return ABSENT
-  if (!Array.isArray(entry)) throw new Error(`ESLint calculates a rule entry as [severity, ...options], not ${JSON.stringify(entry)}`)
+  if (!isList(entry)) throw new TypeError(`ESLint calculates a rule entry as [severity, ...options], not ${JSON.stringify(entry)}`)
   return entry
+}
+
+// Array.isArray narrows to any[], whose members would read as anything.
+function isList(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value)
 }
 
 /** NOT_LINTED where ESLint lints no such file. */

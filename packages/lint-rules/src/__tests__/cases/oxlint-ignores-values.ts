@@ -39,7 +39,7 @@ export const OXLINT_READING_FILES: readonly string[] = [
 * The agent build's `**\/node_modules/**` matches every such file, so only a line matching the file itself takes
 * it back (measured, oxlint 1.87).
 */
-const IGNORES_TAKING_NODE_MODULES_FILES_BACK: readonly (readonly string[])[] = [['!node_modules/x/**'], ['!**/a.js']]
+const IGNORES_TAKING_NODE_MODULES_FILES_BACK: ReadonlyArray<readonly string[]> = [['!node_modules/x/**'], ['!**/a.js']]
 
 /**
 * Where a negated line takes back a folder, oxlint decides a file under a deeper folder of the left-out name by
@@ -79,7 +79,7 @@ export const OXLINT_READING_LIMITS: readonly OxlintReadingLimit[] = [
 const LIMITED = new Set(OXLINT_READING_LIMITS.map(({ ignores }) => JSON.stringify(ignores)))
 
 /** Lists the reading reads exactly as oxlint does (measured, oxlint 1.87). */
-export const IGNORES_READ_AS_OXLINT_READS_THEM: readonly (readonly string[])[] = [
+export const IGNORES_READ_AS_OXLINT_READS_THEM: ReadonlyArray<readonly string[]> = [
   ...IGNORES_READ_AS_ESLINT_READS_THEM,
   ...IGNORES_TAKING_FILES_BACK_FROM_ESLINT_DEFAULTS,
   ...ESLINT_READING_LIMITS.map(({ ignores }) => ignores),

@@ -48,7 +48,7 @@ export type OxlintHoldingOn = { readonly holding: string; readonly askedToStop: 
 
 export type RunSignalledTwice = BackgroundRun & { readonly oxlintHeldOnPastTheRun: boolean }
 
-type RunActedOn = { readonly pid: number; readonly acted: boolean; readonly run: CliRun }
+type RunActedOn = { readonly pid: number; readonly didAct: boolean; readonly run: CliRun }
 
 export type RunBesideAnotherWriter = { readonly wrote: boolean; readonly run: CliRun }
 
@@ -127,7 +127,13 @@ function startCli(cwd: string, args: readonly string[], { env = {}, node = proce
   const ended = Promise.all([text(child.stdout), text(child.stderr), once(child, 'close')]).then(
     ([stdout, stderr, [code, signal]]): CliRun => ({ exitCode: exitCodeOf(code), signal: signalOf(signal), stdout, stderr }),
   )
-  return { pid, send: (signal) => child.kill(signal), ended }
+  return {
+    pid,
+    send(signal) {
+      child.kill(signal)
+    },
+    ended,
+  }
 }
 
 function startCheck(cwd: string, options: CliOptions = {}): StartedCli {
@@ -148,9 +154,11 @@ export async function checkSignalledOnceItsConfigAppears(
   signal: NodeJS.Signals,
   options: CliOptions = {},
 ): Promise<BackgroundRun> {
-  const itsConfigAppearing = (started: StartedCli): Watch => appearanceIn(watched, tempConfigPatternOf(started.pid))
-  const { pid, acted, run } = await checkActingWhen(cwd, itsConfigAppearing, (started) => started.send(signal), options)
-  return { pid, signalled: acted, run }
+  function itsConfigAppearing(started: StartedCli): Watch {
+    return appearanceIn(watched, tempConfigPatternOf(started.pid))
+  }
+  const { pid, didAct, run } = await checkActingWhen(cwd, itsConfigAppearing, (started) => started.send(signal), options)
+  return { pid, signalled: didAct, run }
 }
 
 /** Signals once the file changes, as a fix check writes makes it; a run that ends first is not signalled. */
@@ -167,12 +175,12 @@ export async function checkSignalledAfterAnotherWriter(
   options: CliOptions = {},
 ): Promise<BackgroundRun> {
   const before = readFileSync(path, 'utf8')
-  const writingThenSignalling = (started: StartedCli): void => {
+  function writingThenSignalling(started: StartedCli): void {
     anotherWriter()
     started.send(signal)
   }
-  const { pid, acted, run } = await checkActingWhen(cwd, () => textChangeOf(path, before), writingThenSignalling, options)
-  return { pid, signalled: acted, run }
+  const { pid, didAct, run } = await checkActingWhen(cwd, () => textChangeOf(path, before), writingThenSignalling, options)
+  return { pid, signalled: didAct, run }
 }
 
 /** As checkSignalledAfterAnotherWriter, signalling once check has fixed what that writer wrote. */
@@ -186,16 +194,16 @@ export async function checkSignalledOnceItFixedAnotherWritersText(
 ): Promise<BackgroundRun> {
   const before = readFileSync(path, 'utf8')
   const started = startCheck(cwd, options)
-  await actOnceSeen(started, textChangeOf(path, before), anotherWriter)
-  const signalled = await actOnceSeen(started, textWatchOf(fixed.path, (now) => now === fixed.text), () => started.send(signal))
-  return { pid: started.pid, signalled, run: await started.ended }
+  await didActOnceSeen(started, textChangeOf(path, before), anotherWriter)
+  const didSignal = await didActOnceSeen(started, textWatchOf(fixed.path, (now) => now === fixed.text), () => started.send(signal))
+  return { pid: started.pid, signalled: didSignal, run: await started.ended }
 }
 
 /** Once the file changes, `anotherWriter` writes while check runs on, unsignalled. */
 export async function checkRunningOnBesideAnotherWriter(cwd: string, path: string, anotherWriter: () => void, options: CliOptions = {}): Promise<RunBesideAnotherWriter> {
   const before = readFileSync(path, 'utf8')
-  const { acted, run } = await checkActingWhen(cwd, () => textChangeOf(path, before), anotherWriter, options)
-  return { wrote: acted, run }
+  const { didAct, run } = await checkActingWhen(cwd, () => textChangeOf(path, before), anotherWriter, options)
+  return { wrote: didAct, run }
 }
 
 /** The writer writes after oxlint read each file, and before check reads it again to place what oxlint reported. */
@@ -211,11 +219,11 @@ export async function checkSignalledTwiceWhileOxlintHoldsOn(
   [first, second]: readonly [NodeJS.Signals, NodeJS.Signals],
 ): Promise<RunSignalledTwice> {
   const started = startCheck(cwd, oxlintHoldingOnAfterAStop(markers))
-  const holdingOn = await actOnceSeen(started, fileAppearingAt(markers.holding), () => started.send(first))
-  const askedToStop = holdingOn && (await actOnceSeen(started, fileAppearingAt(markers.askedToStop), () => started.send(second)))
+  const isHoldingOn = await didActOnceSeen(started, fileAppearingAt(markers.holding), () => started.send(first))
+  const wasAskedToStop = isHoldingOn && (await didActOnceSeen(started, fileAppearingAt(markers.askedToStop), () => started.send(second)))
   const run = await started.ended
-  const oxlintHeldOnPastTheRun = holdingOn && endIfStillRunning(Number(readFileSync(markers.holding, 'utf8')))
-  return { pid: started.pid, signalled: askedToStop, run, oxlintHeldOnPastTheRun }
+  const didOxlintHoldOnPastTheRun = isHoldingOn && wasRunningUntilEnded(Number(readFileSync(markers.holding, 'utf8')))
+  return { pid: started.pid, signalled: wasAskedToStop, run, oxlintHeldOnPastTheRun: didOxlintHoldOnPastTheRun }
 }
 
 function oxlintHoldingOnAfterAStop(markers: OxlintHoldingOn): CliOptions {
@@ -224,7 +232,7 @@ function oxlintHoldingOnAfterAStop(markers: OxlintHoldingOn): CliOptions {
 }
 
 /** Ends the process where it still runs: whether it did. */
-function endIfStillRunning(pid: number): boolean {
+function wasRunningUntilEnded(pid: number): boolean {
   try {
     process.kill(pid, 'SIGKILL')
     return true
@@ -235,13 +243,7 @@ function endIfStillRunning(pid: number): boolean {
 }
 
 function fileAppearingAt(path: string): Watch {
-  let poll: ReturnType<typeof setInterval> | undefined
-  const seen = new Promise<void>((resolve) => {
-    poll = setInterval(() => {
-      if (existsSync(path)) resolve()
-    }, TEXT_POLL_MS)
-  })
-  return { seen, stop: () => clearInterval(poll) }
+  return pollUntil(() => existsSync(path))
 }
 
 async function checkActingWhen(
@@ -251,14 +253,14 @@ async function checkActingWhen(
   options: CliOptions,
 ): Promise<RunActedOn> {
   const started = startCheck(cwd, options)
-  const acted = await actOnceSeen(started, watchOn(started), () => act(started))
-  return { pid: started.pid, acted, run: await started.ended }
+  const didAct = await didActOnceSeen(started, watchOn(started), () => act(started))
+  return { pid: started.pid, didAct, run: await started.ended }
 }
 
-async function actOnceSeen(started: StartedCli, watch: Watch, act: () => void): Promise<boolean> {
-  const seen = (await firstOf(watch, started.ended)) === 'seen'
-  if (seen) act()
-  return seen
+async function didActOnceSeen(started: StartedCli, watch: Watch, act: () => void): Promise<boolean> {
+  const wasSeen = (await firstOf(watch, started.ended)) === 'seen'
+  if (wasSeen) act()
+  return wasSeen
 }
 
 function firstOf(watch: Watch, ended: Promise<CliRun>): Promise<'seen' | 'ended'> {
@@ -269,8 +271,13 @@ function firstOf(watch: Watch, ended: Promise<CliRun>): Promise<'seen' | 'ended'
 type Watch = { readonly seen: Promise<unknown>; readonly stop: () => void }
 
 /** The folder's own watch stops it. */
-function appearanceIn(watched: FolderWatch, pattern: RegExp): Watch {
-  return { seen: watched.appeared(pattern), stop: () => undefined }
+function appearanceIn(watched: FolderWatch, pattern: Readonly<RegExp>): Watch {
+  return {
+    seen: watched.appeared(pattern),
+    stop() {
+      // Nothing to stop: the folder's watch is closed by whoever opened it.
+    },
+  }
 }
 
 function textChangeOf(path: string, before: string): Watch {
@@ -278,13 +285,21 @@ function textChangeOf(path: string, before: string): Watch {
 }
 
 function textWatchOf(path: string, isAwaited: (text: string) => boolean): Watch {
-  let poll: ReturnType<typeof setInterval> | undefined
-  const seen = new Promise<void>((resolve) => {
-    poll = setInterval(() => {
-      if (isAwaited(readFileSync(path, 'utf8'))) resolve()
-    }, TEXT_POLL_MS)
-  })
-  return { seen, stop: () => clearInterval(poll) }
+  return pollUntil(() => isAwaited(readFileSync(path, 'utf8')))
+}
+
+/** Seen once `isSeen` holds, read every TEXT_POLL_MS from now. */
+function pollUntil(isSeen: () => boolean): Watch {
+  const { promise: seen, resolve } = Promise.withResolvers<true>()
+  const poll = setInterval(() => {
+    if (isSeen()) resolve(true)
+  }, TEXT_POLL_MS)
+  return {
+    seen,
+    stop() {
+      clearInterval(poll)
+    },
+  }
 }
 
 export function tempConfigsIn(dir: string): string[] {
@@ -295,7 +310,8 @@ export function tempConfigsIn(dir: string): string[] {
 
 /** The name of a temporary oxlint config the process with this ID wrote: `.agents-inc-check-<pid>-<anything>.json`. */
 export function tempConfigPatternOf(pid: number): RegExp {
-  return new RegExp(`^${escapeForPattern(`${TEMP_CONFIG_PREFIX}${String(pid)}-`)}.+\\.json$`, 'u')
+  const namePrefix = `${TEMP_CONFIG_PREFIX}${String(pid)}-`
+  return new RegExp(`^${escapeForPattern(namePrefix)}.+\\.json$`, 'u')
 }
 
 /** A file name check's leftover sweep reads as written by the process with this ID. */

@@ -1,6 +1,6 @@
 import type { ESLint } from 'eslint'
 
-type Entries = readonly (readonly [string, unknown])[]
+type Entries = ReadonlyArray<readonly [string, unknown]>
 
 /** What a plugin object holds when snapshotted: its own keys and rules, each by identity, and its meta as text. */
 export type PluginSnapshot = {
@@ -10,7 +10,7 @@ export type PluginSnapshot = {
   readonly meta: string
 }
 
-export function snapshotOf(plugin: ESLint.Plugin): PluginSnapshot {
+export function snapshotOf(plugin: Readonly<ESLint.Plugin>): PluginSnapshot {
   return {
     plugin,
     keys: Object.entries(plugin),
@@ -34,9 +34,9 @@ function differencesBetween(label: string, before: Entries, after: Entries): str
   const beforeByKey = new Map(before)
   return [
     ...before.flatMap(([key, value]) => {
-      if (!afterByKey.has(key)) return [`${label} ${key} removed`]
-      return afterByKey.get(key) === value ? [] : [`${label} ${key} replaced`]
+      if (!afterByKey.has(key)) return `${label} ${key} removed`
+      return afterByKey.get(key) === value ? [] : `${label} ${key} replaced`
     }),
-    ...after.flatMap(([key]) => (beforeByKey.has(key) ? [] : [`${label} ${key} added`])),
+    ...after.flatMap(([key]) => (beforeByKey.has(key) ? [] : `${label} ${key} added`)),
   ]
 }

@@ -12,7 +12,7 @@ export function relativeImportSpecifiersIn(source: string, file: string): string
 }
 
 /** The module an import or re-export names: null for any other statement, and for a re-export naming none. */
-function moduleSpecifierOf(statement: ts.Statement): string | null {
+function moduleSpecifierOf(statement: Readonly<ts.Statement>): string | null {
   if (!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) return null
   const { moduleSpecifier } = statement
   return moduleSpecifier !== undefined && ts.isStringLiteral(moduleSpecifier) ? moduleSpecifier.text : null

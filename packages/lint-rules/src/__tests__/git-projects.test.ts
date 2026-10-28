@@ -22,7 +22,7 @@ describe('createGitProject', () => {
   it('makes no repo where none is asked for: git refuses the folder', () => {
     const project = createGitProject(tempProjects, { repo: 'not a repo', files: A_FILE })
 
-    expect(() => project.git('status')).toThrowError(/not a git repository/u)
+    expect(() => project.git('status')).toThrow(/not a git repository/u)
   })
 
   it('reads a file the run should have written as null where it is missing, and as its text where it is there', () => {
@@ -76,7 +76,7 @@ describe("the names of check's temporary configs", () => {
 
 describe('the processes the tests point check at', () => {
   it('gives the ID of a process that has ended: no signal reaches it', () => {
-    expect(() => process.kill(idOfAnEndedProcess(), 0)).toThrowError(/ESRCH/u)
+    expect(() => process.kill(idOfAnEndedProcess(), 0)).toThrow(/ESRCH/u)
   })
 
   it('finds, where PATH has one, a Node older than 22.18', () => {

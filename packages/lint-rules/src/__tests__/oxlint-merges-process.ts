@@ -16,13 +16,14 @@ if (distDir === undefined || lintRulesModule === undefined || teamConfigJson ===
   throw new Error(USAGE)
 }
 
-const oxlintEntry: typeof import('../oxlint.ts') = await import(pathToFileURL(join(distDir, 'oxlint.mjs')).href)
+// Parse boundary: the built entry, which a dynamic import types as any.
+const oxlintEntry = (await import(pathToFileURL(join(distDir, 'oxlint.mjs')).href)) as typeof import('../oxlint.ts')
 // Parse boundary: the project's own module, which exports the part as a team's oxlint.config.mts imports it.
 const { oxlint } = (await import(pathToFileURL(lintRulesModule).href)) as { readonly oxlint: OxlintPart | undefined }
 // Parse boundary: the team config the test serialised.
 const theirs = JSON.parse(teamConfigJson) as OxlintConfig
 const merges = Number(mergesText)
-if (!Number.isInteger(merges) || merges < 1) throw new Error(`${USAGE}: <merges> is a whole number from 1, and was ${mergesText}`)
+if (!Number.isSafeInteger(merges) || merges < 1) throw new Error(`${USAGE}: <merges> is a whole number from 1, and was ${mergesText}`)
 
 try {
   const merged = Array.from({ length: merges }, () => oxlintEntry.mergeOxlintConfig(theirs, oxlint, { eslintConfig }))

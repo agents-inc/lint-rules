@@ -12,11 +12,11 @@ export type PackageJsonEdit = {
 }
 
 const TWO_SPACES_LF: JsonLayout = { indent: '  ', eol: '\n', finalNewline: true }
-const FOUR_SPACES_LF: JsonLayout = { indent: '    ', eol: '\n', finalNewline: true }
+const FOUR_SPACES_LF: JsonLayout = { indent: ' '.repeat(4), eol: '\n', finalNewline: true }
 const TAB_LF: JsonLayout = { indent: '\t', eol: '\n', finalNewline: true }
 const TWO_SPACES_CRLF: JsonLayout = { indent: '  ', eol: '\r\n', finalNewline: true }
 const TWO_SPACES_LF_NO_FINAL_NEWLINE: JsonLayout = { indent: '  ', eol: '\n', finalNewline: false }
-const FOUR_SPACES_CRLF_NO_FINAL_NEWLINE: JsonLayout = { indent: '    ', eol: '\r\n', finalNewline: false }
+const FOUR_SPACES_CRLF_NO_FINAL_NEWLINE: JsonLayout = { indent: ' '.repeat(4), eol: '\r\n', finalNewline: false }
 const TAB_CRLF: JsonLayout = { indent: '\t', eol: '\r\n', finalNewline: true }
 
 const PACKAGE_FIELDS: PackageJsonObject = {
@@ -81,7 +81,7 @@ export const PACKAGE_JSON_EDITS: readonly PackageJsonEdit[] = [
 ]
 
 /** Entries init keeps as they are, and one it does not count. */
-export const PACKAGE_JSON_LISTING_US: readonly (PackageJsonEdit & { readonly entry: 'added' | 'kept' })[] = [
+export const PACKAGE_JSON_LISTING_US: ReadonlyArray<PackageJsonEdit & { readonly entry: 'added' | 'kept' }> = [
   {
     kind: 'listed under dependencies',
     entry: 'kept',

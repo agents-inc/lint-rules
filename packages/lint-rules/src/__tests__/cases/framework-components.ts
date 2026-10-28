@@ -1,12 +1,12 @@
 import type { OxlintConfig } from 'oxlint'
 import type { ProjectFiles } from '../temp-projects.ts'
 
-// Globals a framework's compiler gives its own component files alone: Vue 3.5.44's `<script setup>` macros
+// Globals a framework's compiler gives its own component files alone: Vue.js 3.5.44's `<script setup>` macros
 // (`MACROS`, @vue/compiler-sfc), Astro 7.3.8's `Astro` (astro/env.d.ts), and Svelte 5.57.2's legacy globals
 // (`RESERVED`, 2-analyze/index.js). Each component also uses one undeclared name, and a JS file beside it uses
 // the framework's global, which it does not have.
 
-/** Every `<script setup>` compiler macro of Vue 3.5.44, a global in a .vue file alone. */
+/** Every `<script setup>` compiler macro of Vue.js 3.5.44, a global in a .vue file alone. */
 export const VUE_SCRIPT_SETUP_MACROS = ['defineProps', 'defineEmits', 'defineExpose', 'defineOptions', 'defineSlots', 'defineModel', 'withDefaults'] as const
 
 /** Astro 7.3.8's one global, in a .astro file alone. */
@@ -125,7 +125,7 @@ export const JS_FILES_USING_A_FRAMEWORK_GLOBAL = [
   FRAMEWORK_FILES.svelteLegacyGlobalInARuneModule,
 ]
 
-/** What no-undef owes in oxlint: the undeclared name in Vue and Astro components, the global in each JS file. */
+/** What no-undef owes in oxlint: the undeclared name in Vue.js and Astro components, the global in each JS file. */
 export const OWED_BY_OXLINT_IN_FRAMEWORK_FILES = {
   [FRAMEWORK_FILES.vueComponent]: { 'no-undef': ['src/components/Greeting.vue:13 eslint(no-undef)'] },
   [FRAMEWORK_FILES.vueMacroInAJsFile]: { 'no-undef': ['src/components/use-greeting.js:2 eslint(no-undef)'] },

@@ -51,6 +51,6 @@ function outcomePrinted(printed: unknown): OxlintMergesOutcome {
   if (!isRecord(printed)) throw new Error(`the merges process printed ${JSON.stringify(printed)}, no object`)
   const { merged, refused } = printed
   if (typeof refused === 'string') return { refused }
-  if (Array.isArray(merged) && merged.every(isRecord)) return { merged: merged as OxlintConfig[] }
+  if (Array.isArray(merged) && merged.every(isRecord)) return { merged }
   throw new Error(`the merges process printed neither merged configs nor a refusal: ${JSON.stringify(printed)}`)
 }

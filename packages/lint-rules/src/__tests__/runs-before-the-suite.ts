@@ -24,6 +24,7 @@ export function setUpRunsBeforeTheSuite<Runs>(
   { timeoutMs, whatFailed }: RunsBeforeTheSuiteOptions = ENGINE_RUNS,
 ): () => Runs {
   const tempProjects = setUpTempProjects()
+  // eslint-disable-next-line functional/no-let -- TS2588 as a const: beforeAll makes the runs after this returns, and the getter returned reads them in each test; this is the helper every other suite carries such a value across with
   let runsBeforeTheSuite: RunsBeforeTheSuite<Runs> = { outcome: 'not made' }
 
   beforeAll(async () => {

@@ -83,7 +83,7 @@ describe('sameRuleNamesOf', () => {
   })
 
   it('throws on an ID the catalog lacks', () => {
-    expect(() => sameRuleNamesOf('nobody/rule', catalog)).toThrowError('nobody/rule')
+    expect(() => sameRuleNamesOf('nobody/rule', catalog)).toThrow('nobody/rule')
   })
 })
 

@@ -1,5 +1,6 @@
 import { matchesGlob } from 'node:path'
 import type { OxlintConfig, OxlintEnv, OxlintOverride } from 'oxlint'
+import { laidOver } from './laid-over.ts'
 
 type Severity = 'off' | 'warn' | 'error'
 
@@ -35,10 +36,10 @@ const ANY_FOLDERS = '**/'
 * later one winning. Globs are relative to the config. A config extended as an object merges in first, but for
 * its root env; one extended by path is out of sight. Measured in oxlint-config-oracle.integration.test.ts.
 */
-export function oxlintConfigForFile(config: OxlintConfig, file: string): OxlintFileConfig {
-  const { rules = {}, env = {}, overrides = [] } = withExtendedConfigsMergedIn(config)
+export function oxlintConfigForFile(config: Readonly<OxlintConfig>, file: string): OxlintFileConfig {
+  const { rules, env, overrides } = withExtendedConfigsMergedIn(config)
   return overrides
-    .filter((override) => overrideAppliesTo(override, file))
+    .filter((override) => doesOverrideApplyTo(override, file))
     .reduce<OxlintFileConfig>(
       (applied, override) => ({
         rules: { ...applied.rules, ...override.rules },
@@ -49,15 +50,15 @@ export function oxlintConfigForFile(config: OxlintConfig, file: string): OxlintF
 }
 
 /** The last statement of the rule under any spelling given, top level first; undefined where none applies. */
-export function oxlintEntryOfRuleFor(config: OxlintConfig, file: string, spellings: readonly string[]): unknown {
-  const { rules = {}, overrides = [] } = withExtendedConfigsMergedIn(config)
+export function oxlintEntryOfRuleFor(config: Readonly<OxlintConfig>, file: string, spellings: readonly string[]): unknown {
+  const { rules, overrides } = withExtendedConfigsMergedIn(config)
   // An override may switch only env, and state no rule.
-  const ruleMapsInOrder = [rules, ...overrides.filter((override) => overrideAppliesTo(override, file)).map(({ rules: overrideRules = {} }) => overrideRules)]
+  const ruleMapsInOrder = [rules, ...overrides.filter((override) => doesOverrideApplyTo(override, file)).map(({ rules: overrideRules = {} }) => overrideRules)]
   const lastStatement = ruleMapsInOrder.flatMap((ruleMap) => Object.entries(ruleMap).filter(([key]) => spellings.includes(key))).at(-1)
   return lastStatement === undefined ? undefined : lastStatement[1]
 }
 
-export function oxlintSeverityFor(config: OxlintConfig, file: string, oxlintName: string): Severity | undefined {
+export function oxlintSeverityFor(config: Readonly<OxlintConfig>, file: string, oxlintName: string): Severity | undefined {
   const entry = oxlintConfigForFile(config, file).rules[oxlintName]
   return entry === undefined ? undefined : severityOfOxlintEntry(entry)
 }
@@ -67,12 +68,12 @@ export function oxlintSeverityFor(config: OxlintConfig, file: string, oxlintName
 * matches that name in any folder, a trailing slash matches folders only, an earlier slash anchors it, and a
 * matched folder leaves out every file under it. Negated patterns are refused: the oracle does not model them.
 */
-export function isIgnoredByOxlintConfig({ ignorePatterns = [] }: OxlintConfig, file: string): boolean {
-  return ignorePatterns.map(ignoreLineOf).some((line) => ignoreLineMatches(line, file))
+export function isIgnoredByOxlintConfig({ ignorePatterns = [] }: Readonly<OxlintConfig>, file: string): boolean {
+  return ignorePatterns.map(ignoreLineOf).some((line) => doesIgnoreLineMatch(line, file))
 }
 
 /** A glob with no slash matches that file name in any folder; `./` starts at the config's folder. */
-function oxlintGlobMatches(glob: string, file: string): boolean {
+function doesOxlintGlobMatch(glob: string, file: string): boolean {
   const fromTheConfigFolder = glob.startsWith(FROM_THE_CONFIG_FOLDER) ? glob.slice(FROM_THE_CONFIG_FOLDER.length) : glob
   return matchesGlob(file, fromTheConfigFolder.includes(PATH_SEPARATOR) ? fromTheConfigFolder : `${ANY_FOLDERS}${fromTheConfigFolder}`)
 }
@@ -94,7 +95,7 @@ function ignoreLineOf(pattern: string): IgnoreLine {
   return { glob, isAnchored, matchesFoldersOnly }
 }
 
-function ignoreLineMatches({ glob, isAnchored, matchesFoldersOnly }: IgnoreLine, file: string): boolean {
+function doesIgnoreLineMatch({ glob, isAnchored, matchesFoldersOnly }: IgnoreLine, file: string): boolean {
   const candidates = matchesFoldersOnly ? foldersHolding(file) : [...foldersHolding(file), file]
   return candidates.some((path) => matchesGlob(path, isAnchored ? glob : `${ANY_FOLDERS}${glob}`))
 }
@@ -108,11 +109,11 @@ function foldersHolding(file: string): string[] {
 * Extended configs' rules sit under the config's own, a later one's over an earlier's; their overrides come
 * first, in order. Only the config's own root env stands.
 */
-function withExtendedConfigsMergedIn(config: OxlintConfig): ConfigReadForAFile {
+function withExtendedConfigsMergedIn(config: Readonly<OxlintConfig>): ConfigReadForAFile {
   const { rules = {}, env = {}, overrides = [], extends: extended = [] } = config
   const merged = extended.filter(isAnObject).map(withExtendedConfigsMergedIn)
   return {
-    rules: { ...merged.reduce<ConfigReadForAFile['rules']>((under, each) => ({ ...under, ...each.rules }), {}), ...rules },
+    rules: laidOver<ConfigReadForAFile['rules']>({}, [...merged.map((each) => each.rules), rules]),
     env,
     overrides: [...merged.flatMap((each) => each.overrides), ...overrides],
   }
@@ -123,6 +124,6 @@ function isAnObject(extended: OxlintConfig | string): extended is OxlintConfig {
   return typeof extended !== 'string'
 }
 
-function overrideAppliesTo({ files, excludeFiles = [] }: OxlintOverride, file: string): boolean {
-  return files.some((glob) => oxlintGlobMatches(glob, file)) && !excludeFiles.some((glob) => oxlintGlobMatches(glob, file))
+function doesOverrideApplyTo({ files, excludeFiles = [] }: Readonly<OxlintOverride>, file: string): boolean {
+  return files.some((glob) => doesOxlintGlobMatch(glob, file)) && excludeFiles.every((glob) => !doesOxlintGlobMatch(glob, file))
 }

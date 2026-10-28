@@ -3,8 +3,10 @@ import type { FindingsByFileAndRule, RuleByItsNames } from '../findings-beside-t
 
 const A_MESSAGE = 'a finding'
 
+type FindingDetails = { readonly line?: number; readonly message?: string }
+
 /** A finding as either engine reports it, under that engine's name for the rule, on line 1 unless given. */
-export function buildEngineFinding(engine: EngineFinding['engine'], file: string, rule: string, line = 1, message = A_MESSAGE): EngineFinding {
+export function buildEngineFinding(engine: EngineFinding['engine'], file: string, rule: string, { line = 1, message = A_MESSAGE }: FindingDetails = {}): EngineFinding {
   return { engine, file, rule, line, message }
 }
 

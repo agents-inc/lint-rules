@@ -21,13 +21,13 @@ const byBuild: EslintResultsByBuild = {
 }
 process.stdout.write(JSON.stringify(byBuild))
 
-async function resultsWith(config: Linter.Config[]): Promise<EslintProcessResult[]> {
+async function resultsWith(config: readonly Linter.Config[]): Promise<EslintProcessResult[]> {
   // Stats record which rules ran on each file.
-  const results = await new ESLint({ cwd: process.cwd(), overrideConfigFile: true, overrideConfig: config, stats: true }).lintFiles(['.'])
+  const results = await new ESLint({ cwd: process.cwd(), overrideConfigFile: true, overrideConfig: [...config], stats: true }).lintFiles(['.'])
   return results.map(printedResultOf)
 }
 
-function printedResultOf({ filePath, messages, stats }: ESLint.LintResult): EslintProcessResult {
+function printedResultOf({ filePath, messages, stats }: Readonly<ESLint.LintResult>): EslintProcessResult {
   if (stats === undefined) throw new Error(`ESLint ran without stats on ${filePath}`)
   return {
     filePath,

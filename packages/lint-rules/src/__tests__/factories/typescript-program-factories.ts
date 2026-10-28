@@ -7,18 +7,28 @@ const COMPILER_OPTIONS: ts.CompilerOptions = { module: ts.ModuleKind.NodeNext, m
 /** A program of the files given, by absolute path, and no other file: no default library. */
 export function programOfFiles(files: Readonly<Record<string, string>>): ts.Program {
   const host = ts.createCompilerHost(COMPILER_OPTIONS)
-  const sourceFileOf = (path: string, languageVersion: ts.ScriptTarget | ts.CreateSourceFileOptions): ts.SourceFile | undefined => {
+  function sourceFileOf(path: string, languageVersion: Readonly<ts.ScriptTarget | ts.CreateSourceFileOptions>): ts.SourceFile | undefined {
     const text = files[path]
     return text === undefined ? undefined : ts.createSourceFile(path, text, languageVersion)
   }
   const inMemory: ts.CompilerHost = {
     ...host,
-    fileExists: (path) => Object.hasOwn(files, path),
-    directoryExists: (path) => Object.keys(files).some((file) => file.startsWith(`${path}/`)),
-    readFile: (path) => files[path],
-    realpath: (path) => path,
+    fileExists(path) {
+      return Object.hasOwn(files, path)
+    },
+    directoryExists(path) {
+      return Object.keys(files).some((file) => file.startsWith(`${path}/`))
+    },
+    readFile(path) {
+      return files[path]
+    },
+    realpath(path) {
+      return path
+    },
     getSourceFile: sourceFileOf,
-    getDefaultLibFileName: () => 'no-default-library.d.ts',
+    getDefaultLibFileName() {
+      return 'no-default-library.d.ts'
+    },
   }
   return ts.createProgram({ rootNames: Object.keys(files), options: { ...COMPILER_OPTIONS, noLib: true }, host: inMemory })
 }

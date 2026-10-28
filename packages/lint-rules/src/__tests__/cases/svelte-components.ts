@@ -140,7 +140,7 @@ export const OWED_BY_ESLINT = {
   [SVELTE_SOURCE_FILES.tsFileWritingToARune]: { 'no-undef': [], 'no-global-assign': [] },
 }
 
-/** Every oxlint config of ours opens with these: Svelte, Vue and Astro globals in their own files. */
+/** Every oxlint config of ours opens with these: Svelte, Vue.js and Astro globals in their own files. */
 const FRAMEWORK_GLOBALS_OXLINT_OVERRIDES: readonly OxlintOverride[] = [
   { files: ['**/*.svelte', '**/*.svelte.js', '**/*.svelte.ts', '**/*.svelte.*.js', '**/*.svelte.*.ts'], env: { svelte: true } },
   { files: ['**/*.svelte'], globals: { $$props: 'readonly', $$restProps: 'readonly', $$slots: 'readonly' } },

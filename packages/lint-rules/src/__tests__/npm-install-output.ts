@@ -8,7 +8,7 @@ const PACKAGE_RESOLVED_LINE = /^npm warn While resolving: (?<packageName>@?[^@\s
 
 export function packagesNpmOverridesAPeerFor(installOutput: string): string[] {
   const lines = installOutput.split('\n')
-  const packageNames = lines.flatMap((line, index) => (line === PEER_OVERRIDE_OPENING ? [packageResolvedOn(lines[index + 1])] : []))
+  const packageNames = lines.flatMap((line, index) => (line === PEER_OVERRIDE_OPENING ? packageResolvedOn(lines[index + 1]) : []))
   return [...new Set(packageNames)].toSorted()
 }
 

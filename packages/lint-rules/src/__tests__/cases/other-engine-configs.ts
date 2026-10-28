@@ -101,7 +101,7 @@ export function filesOf(configFiles: readonly ConfigFile[]): ProjectFiles {
 }
 
 /** As JSON, `$schema` too; as a module, every key oxlint's type gives, which leaves `$schema` out. */
-export const OXLINT_CONFIGS_HOLDING_EVERY_KEY: readonly (ConfigFile & { readonly form: string })[] = [
+export const OXLINT_CONFIGS_HOLDING_EVERY_KEY: ReadonlyArray<ConfigFile & { readonly form: string }> = [
   { form: 'a JSON config with every schema key', file: 'team-every-key.oxlintrc.json', text: jsonFileText(buildTeamOxlintrcHoldingEveryKey(NO_VAR)) },
   { form: 'a module with every key its type gives', file: 'team-every-key.oxlint.config.mts', text: moduleExportingByDefaultText(buildTeamOxlintConfigHoldingEveryKey(NO_VAR)) },
 ]

@@ -31,7 +31,7 @@ export const FILES_ESLINT_DEFAULTS_LEAVE_OUT: readonly string[] = [
 export const ESLINT_READING_FILES: readonly string[] = [...FILES_IN_NAMED_FOLDERS, ...FILES_ESLINT_DEFAULTS_LEAVE_OUT]
 
 /** Lists the reading reads exactly as ESLint does in the editor (measured, ESLint 10.12); the first is ESLint's defaults alone. */
-export const IGNORES_READ_AS_ESLINT_READS_THEM: readonly (readonly string[])[] = [
+export const IGNORES_READ_AS_ESLINT_READS_THEM: ReadonlyArray<readonly string[]> = [
   [],
   ['**/generated'],
   ['legacy/'],
@@ -99,7 +99,7 @@ export const IGNORES_READ_AS_ESLINT_READS_THEM: readonly (readonly string[])[] =
 * Lists taking files back from ESLint's default ignores: the agent build, where our ignores are global, lints
 * them; the editor's does not. `!src/**` takes back src/node_modules (measured, ESLint 10.12).
 */
-export const IGNORES_TAKING_FILES_BACK_FROM_ESLINT_DEFAULTS: readonly (readonly string[])[] = [
+export const IGNORES_TAKING_FILES_BACK_FROM_ESLINT_DEFAULTS: ReadonlyArray<readonly string[]> = [
   ['!**/node_modules/'],
   ['!node_modules/'],
   ['!node_modules/', 'node_modules/*', '!node_modules/x/'],

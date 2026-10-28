@@ -12,7 +12,7 @@ export type TwinPair = { readonly ours: string; readonly theirs: string }
 * rule ID (a catalog rule ID, or under the rule's own plugin prefix, as a renamed rule's old name). A twin is not
 * one, though oxlint spells some twins as the rule itself: in ESLint it is another rule.
 */
-export function sameRuleNamesOf(id: string, catalog: Catalog): string[] {
+export function sameRuleNamesOf(id: string, catalog: Readonly<Catalog>): string[] {
   const { eslintAliases, oxlintSpellings } = routeIn(catalog, id)
   const prefix = pluginPrefixOf(id)
   const spellingsEslintKnows = oxlintSpellings.filter(
@@ -24,7 +24,7 @@ export function sameRuleNamesOf(id: string, catalog: Catalog): string[] {
     .toSorted()
 }
 
-export function sameRuleNamesOfEach(ids: readonly string[], catalog: Catalog): string[] {
+export function sameRuleNamesOfEach(ids: readonly string[], catalog: Readonly<Catalog>): string[] {
   return [...new Set(ids.flatMap((id) => sameRuleNamesOf(id, catalog)))].toSorted()
 }
 
@@ -63,7 +63,7 @@ export function twinPairsOf(ids: readonly string[]): TwinPair[] {
   return ids.flatMap((ours) => typescriptEslintTwinsOf(ours).map((theirs) => ({ ours, theirs })))
 }
 
-export function eslintNamesOf(id: string, catalog: Catalog): string[] {
+export function eslintNamesOf(id: string, catalog: Readonly<Catalog>): string[] {
   return [...new Set([id, ...sameRuleNamesOf(id, catalog), ...sameModuleNamesOf(id)])].toSorted()
 }
 
@@ -79,6 +79,7 @@ export function withTheTeamsPrefixes(names: readonly string[], teamsPrefixes: Re
 
 /** None where no plugin of ours is installed under the prefix. */
 function rulesUnder(prefix: string | null): ReadonlyMap<string, unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- ESLint 10.12 lists its core rules nowhere else: its package exports `.`, `./config`, `./rules` (types only), `./universal` and `./use-at-your-own-risk`, and only the last holds them
   if (prefix === null) return builtinRules
   const plugin = eslintPlugins[prefix]
   if (plugin === undefined) return new Map()
@@ -86,7 +87,7 @@ function rulesUnder(prefix: string | null): ReadonlyMap<string, unknown> {
   return new Map(Object.entries(plugin.rules))
 }
 
-function routeIn(catalog: Catalog, id: string): RuleRoute {
+function routeIn(catalog: Readonly<Catalog>, id: string): RuleRoute {
   const route = catalog.rules.get(id)
   if (route === undefined) throw new Error(`${id} is not in the catalog`)
   return route

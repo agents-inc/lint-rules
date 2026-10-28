@@ -31,7 +31,7 @@ const OFF = 'off'
 * - nobody's elsewhere for a rule our ESLint part runs, as the merge switches off oxlint's `correctness: warn` copy;
 * - the team's elsewhere, and for a code no rule of oxlint's has.
 */
-export function ownerOfOxlintFindings(parts: EditorParts, team: TeamConfigsRead, catalog: Catalog): OwnerOfFindings {
+export function ownerOfOxlintFindings(parts: EditorParts, team: TeamConfigsRead, catalog: Readonly<Catalog>): OwnerOfFindings {
   const ourPartAlone = oxlintPartAlone(oxlintPartOf(parts), catalog)
   const ruleByCode = new Map(catalog.oxlintRules.map((rule): [string, OxlintRule] => [oxlintCodeOfRule(rule), rule]))
   const namesTheTeamSets = eslintNamesSetBy(team, catalog)
@@ -47,7 +47,7 @@ export function ownerOfOxlintFindings(parts: EditorParts, team: TeamConfigsRead,
 /** Every rule a layer turns on, at the top level or in an entry, on TS files alone included. */
 function ruleIdsTurnedOnIn(layers: RuleLayers): ReadonlySet<string> {
   return new Set(
-    ruleSettingsOfEveryLayer(layers).flatMap((settings) => Object.entries(settings).flatMap(([id, { severity }]) => (severity === OFF ? [] : [id]))),
+    ruleSettingsOfEveryLayer(layers).flatMap((settings) => Object.entries(settings).flatMap(([id, { severity }]) => (severity === OFF ? [] : id))),
   )
 }
 
@@ -56,21 +56,21 @@ export function oxlintFindingsOwed({ teamAlone, oursAlone }: FindingsAlone, owne
 }
 
 /** Every ESLint name of each rule the team's configs set, and of each twin of it: the ESLint config's keys as written. */
-function eslintNamesSetBy({ oxlint, eslintRuleKeys }: TeamConfigsRead, catalog: Catalog): ReadonlySet<string> {
-  const setInOxlint = ruleIdsTheTeamsOxlintConfigSets(oxlint, catalog).flatMap((id) => eslintNamesOf(id, catalog))
-  const keys = [...setInOxlint, ...eslintRuleKeys]
+function eslintNamesSetBy({ oxlint, eslintRuleKeys }: TeamConfigsRead, catalog: Readonly<Catalog>): ReadonlySet<string> {
+  const namesTheOxlintConfigSets = ruleIdsTheTeamsOxlintConfigSets(oxlint, catalog).flatMap((id) => eslintNamesOf(id, catalog))
+  const keys = [...namesTheOxlintConfigSets, ...eslintRuleKeys]
   return new Set([...keys, ...keys.flatMap(typescriptEslintTwinsOf)])
 }
 
-function isSetByTheTeam(ruleId: string, namesTheTeamSets: ReadonlySet<string>, catalog: Catalog): boolean {
+function isSetByTheTeam(ruleId: string, namesTheTeamSets: ReadonlySet<string>, catalog: Readonly<Catalog>): boolean {
   return [ruleId, ...typescriptEslintTwinsOf(ruleId)].flatMap((id) => eslintNamesOfARuleOfOurs(id, catalog)).some((name) => namesTheTeamSets.has(name))
 }
 
 /** Every ESLint name of a rule the catalog routes; a twin it does not route goes by its ID alone. */
-function eslintNamesOfARuleOfOurs(ruleId: string, catalog: Catalog): string[] {
+function eslintNamesOfARuleOfOurs(ruleId: string, catalog: Readonly<Catalog>): string[] {
   return catalog.rules.has(ruleId) ? eslintNamesOf(ruleId, catalog) : [ruleId]
 }
 
-function runsIn(config: OxlintConfig, file: string, { oxlintName }: OxlintRule): boolean {
+function runsIn(config: Readonly<OxlintConfig>, file: string, { oxlintName }: OxlintRule): boolean {
   return !isIgnoredByOxlintConfig(config, file) && RUNNING_SEVERITIES.has(oxlintSeverityFor(config, file, oxlintName))
 }

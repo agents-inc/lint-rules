@@ -70,7 +70,7 @@ describe('oxlintPluginListedAs', () => {
   })
 
   it('refuses a name that names no plugin of oxlint', () => {
-    expect(() => oxlintPluginListedAs('local')).toThrowError('"local" names no plugin of oxlint\'s')
+    expect(() => oxlintPluginListedAs('local')).toThrow('"local" names no plugin of oxlint\'s')
   })
 })
 

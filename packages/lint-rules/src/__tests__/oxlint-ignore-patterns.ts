@@ -15,7 +15,7 @@ export function projectFilesOxlintReportsIn(files: readonly string[]): ProjectFi
 /** Each file given by its path, as an editor hands it one: the files no-debugger reports in. */
 export function filesOxlintLintsUnderIgnorePatterns(projectDir: string, ignorePatterns: readonly string[], files: readonly string[]): string[] {
   writeOxlintConfigFile(projectDir, CONFIG_FILE, { categories: { correctness: 'off' }, rules: { 'no-debugger': 'error' }, ignorePatterns: [...ignorePatterns] })
-  const reported = oxlintFindingsIn(runOxlintCli(projectDir, CONFIG_FILE, [...files, FILE_NO_LIST_IGNORES]).report).map(({ file }) => file)
-  if (!reported.includes(FILE_NO_LIST_IGNORES)) throw new Error(`${FILE_NO_LIST_IGNORES} is ignored by ${JSON.stringify(ignorePatterns)}: oxlint linted nothing it could be told apart from`)
-  return files.filter((file) => reported.includes(file))
+  const reported = new Set(oxlintFindingsIn(runOxlintCli(projectDir, CONFIG_FILE, [...files, FILE_NO_LIST_IGNORES]).report).map(({ file }) => file))
+  if (!reported.has(FILE_NO_LIST_IGNORES)) throw new Error(`${FILE_NO_LIST_IGNORES} is ignored by ${JSON.stringify(ignorePatterns)}: oxlint linted nothing it could be told apart from`)
+  return files.filter((file) => reported.has(file))
 }

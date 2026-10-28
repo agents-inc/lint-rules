@@ -31,7 +31,7 @@ const USES_BOTH = `import both from '@/both'
 export const all = [both]
 `
 
-function filesOfPackage(packageName: string): [string, string][] {
+function filesOfPackage(packageName: string): Array<[string, string]> {
   return filesUnderPackage(packageName, {
     'package.json': jsonFileText(buildPublishedPackageJson(packageName, ['src/both.json', USES_BOTH_MODULE])),
     'tsconfig.json': jsonFileText(TSCONFIG),

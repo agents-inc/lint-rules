@@ -20,17 +20,17 @@ const GLOB_KEY = 'glob '
 export function eslintBlocksMatchingNoFile(config: readonly Linter.Config[]): string[] {
   return config.flatMap((block, index) => {
     const { files, ignores = [] } = block
-    if (files === undefined || !files.map(globsOfEntry).every((entry) => eslintEntryMatchesNoFile(entry, ignores))) return []
-    return [`${blockName(block.name, index)}: ${JSON.stringify({ files, ignores })}`]
+    if (files === undefined || files.map(globsOfEntry).some((entry) => !isEslintEntryMatchingNoFile(entry, ignores))) return []
+    return `${blockName(block.name, index)}: ${JSON.stringify({ files, ignores })}`
   })
 }
 
 /** `files and excludeFiles` for each override of an oxlint config, or of a config it extends as an object, whose files no path can match. */
-export function oxlintOverridesMatchingNoFile(config: OxlintConfig): string[] {
+export function oxlintOverridesMatchingNoFile(config: Readonly<OxlintConfig>): string[] {
   const { overrides = [], extends: extended = [] } = config
   return [
     ...extended.flatMap((each) => (typeof each === 'string' ? [] : oxlintOverridesMatchingNoFile(each))),
-    ...overrides.filter(oxlintOverrideMatchesNoFile).map(({ files, excludeFiles = [] }) => JSON.stringify({ files, excludeFiles })),
+    ...overrides.filter(isOxlintOverrideMatchingNoFile).map(({ files, excludeFiles = [] }) => JSON.stringify({ files, excludeFiles })),
   ]
 }
 
@@ -45,7 +45,7 @@ function globsOfEntry(entry: string | readonly string[]): readonly string[] {
  * ESLint's reading: a file must match every glob of the entry, a negated one by missing it, and no
  * glob of the block's ignores but one a later negated ignore takes back.
  */
-function eslintEntryMatchesNoFile(globs: readonly string[], ignores: readonly string[]): boolean {
+function isEslintEntryMatchingNoFile(globs: readonly string[], ignores: readonly string[]): boolean {
   const asked = globs.filter((glob) => !isNegated(glob))
   return (
     asked.some((glob) => globs.includes(`${NEGATION}${glob}`)) ||
@@ -61,7 +61,7 @@ function isLeftOutWholeBy(key: string, ignores: readonly string[]): boolean {
 }
 
 /** oxlint's reading: a file matches an override where a glob of `files` matches it and none of `excludeFiles` does. */
-function oxlintOverrideMatchesNoFile({ files, excludeFiles = [] }: OxlintOverride): boolean {
+function isOxlintOverrideMatchingNoFile({ files, excludeFiles = [] }: Readonly<OxlintOverride>): boolean {
   const excluded = new Set(excludeFiles.map(oxlintKeyOf))
   return files.length > 0 && files.every((glob) => excluded.has(oxlintKeyOf(glob)))
 }

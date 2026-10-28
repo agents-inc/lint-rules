@@ -457,7 +457,7 @@ const OUR_RULES_ESLINT_RUNS_OFF_IN_AN_ENTRY = buildOurShapeValue(
   },
 )
 
-export const OXLINT_MERGE_DIMENSIONS: readonly Dimension<OxlintMergeShapeValue>[] = [
+export const OXLINT_MERGE_DIMENSIONS: ReadonlyArray<Dimension<OxlintMergeShapeValue>> = [
   { name: 'team root plugins', values: [ROOT_PLUGINS_OMITTED, ROOT_PLUGINS_EMPTY, ROOT_PLUGINS_LISTED, ROOT_PLUGINS_ESLINT_ONLY] },
   {
     name: 'team extends',
@@ -557,7 +557,7 @@ export const OXLINT_MERGE_DIMENSIONS: readonly Dimension<OxlintMergeShapeValue>[
 ]
 
 /** Values that must meet in one shape beyond a pair: each set pins a defect a review or this test found. */
-export const OXLINT_MERGE_SEEDS: readonly (readonly OxlintMergeShapeValue[])[] = [
+export const OXLINT_MERGE_SEEDS: ReadonlyArray<readonly OxlintMergeShapeValue[]> = [
   // oxlint adds its default plugins through an extended config that lists none.
   [ROOT_PLUGINS_LISTED, EXTENDS_LISTING_NONE, OUR_RULE_OF_A_DEFAULT_PLUGIN],
   [ROOT_PLUGINS_EMPTY, EXTENDS_LISTING_NONE, OUR_RULE_OF_A_DEFAULT_PLUGIN],

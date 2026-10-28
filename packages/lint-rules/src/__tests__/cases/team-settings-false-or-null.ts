@@ -27,7 +27,7 @@ const IMPORTS_B = `import { b } from './b'
 export const all = [b]
 `
 
-function filesOfPackage(packageName: string): [string, string][] {
+function filesOfPackage(packageName: string): Array<[string, string]> {
   return filesUnderPackage(packageName, {
     'package.json': jsonFileText(buildPublishedPackageJson(packageName)),
     'tsconfig.json': jsonFileText(buildBundlerTsconfig()),

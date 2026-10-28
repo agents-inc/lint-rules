@@ -48,6 +48,6 @@ export function writeTeamOxlintConfigSettingNoRule({ tsconfigRootDir, usesOxlint
   if (!isATempProject(tsconfigRootDir)) {
     throw new Error(`${tsconfigRootDir} is no temp project, so no team oxlint config is written into it`)
   }
-  Object.entries(teamOxlintConfigSettingNoRuleFiles).forEach(([file, text]) => writeFileSync(join(tsconfigRootDir, file), text))
+  for (const [file, text] of Object.entries(teamOxlintConfigSettingNoRuleFiles)) writeFileSync(join(tsconfigRootDir, file), text)
   return TEAM_OXLINT_CONFIG_SETTING_NO_RULE
 }

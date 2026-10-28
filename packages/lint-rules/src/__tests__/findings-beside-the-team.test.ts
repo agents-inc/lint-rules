@@ -7,7 +7,7 @@ const NO_VAR = buildRuleByItsNames('no-var', ['no-var', 'eslint(no-var)'])
 
 describe('findingsByFileAndRule', () => {
   it("puts each finding under its rule, by any of the rule's names, from either engine", () => {
-    const findings = [buildEngineFinding('eslint', 'a.ts', 'eqeqeq', 4), buildEngineFinding('oxlint', 'a.ts', 'eslint(eqeqeq)', 4)]
+    const findings = [buildEngineFinding('eslint', 'a.ts', 'eqeqeq', { line: 4 }), buildEngineFinding('oxlint', 'a.ts', 'eslint(eqeqeq)', { line: 4 })]
 
     expect(findingsByFileAndRule(findings, ['a.ts'], [EQEQEQ])).toStrictEqual({ 'a.ts': { eqeqeq: ['a.ts:4 eqeqeq', 'a.ts:4 eslint(eqeqeq)'] } })
   })
@@ -39,20 +39,20 @@ describe('owedBesideTheTeam', () => {
   it('refuses a file the team alone was not read in', () => {
     const oursAlone = buildFindingsOfAFile('a.ts', { eqeqeq: [] })
 
-    expect(() => owedBesideTheTeam(oursAlone, buildFindingsOfAFile('b.ts', { eqeqeq: [] }), [])).toThrowError(/the team alone was not read in a\.ts/u)
+    expect(() => owedBesideTheTeam(oursAlone, buildFindingsOfAFile('b.ts', { eqeqeq: [] }), [])).toThrow(/the team alone was not read in a\.ts/u)
   })
 
   it('refuses a rule the team sets that the team alone was not read for', () => {
     const oursAlone = buildFindingsOfAFile('a.ts', { eqeqeq: [] })
 
-    expect(() => owedBesideTheTeam(oursAlone, buildFindingsOfAFile('a.ts', { 'no-var': [] }), [EQEQEQ.rule])).toThrowError(/the team alone was not read for eqeqeq/u)
+    expect(() => owedBesideTheTeam(oursAlone, buildFindingsOfAFile('a.ts', { 'no-var': [] }), [EQEQEQ.rule])).toThrow(/the team alone was not read for eqeqeq/u)
   })
 
   // A misspelt rule would otherwise owe nothing of the team's, and pass beside a merge that ignores the team.
   it('refuses a rule the team sets that our part alone was not read for', () => {
     const oursAlone = buildFindingsOfAFile('a.ts', { eqeqeq: [] })
 
-    expect(() => owedBesideTheTeam(oursAlone, buildFindingsOfAFile('a.ts', { eqeqeq: [] }), ['eqeqqe'])).toThrowError(
+    expect(() => owedBesideTheTeam(oursAlone, buildFindingsOfAFile('a.ts', { eqeqeq: [] }), ['eqeqqe'])).toThrow(
       new Error('our part alone was not read for eqeqqe, which the team sets'),
     )
   })
@@ -61,9 +61,9 @@ describe('owedBesideTheTeam', () => {
 describe('messagesByFile', () => {
   it("gives each file the messages of the rule's findings under any of its names, and none of another rule's", () => {
     const findings = [
-      buildEngineFinding('oxlint', 'a.ts', 'eslint(eqeqeq)', 1, 'expected ==='),
-      buildEngineFinding('eslint', 'a.ts', 'eqeqeq', 1, "Expected '===' and instead saw '=='."),
-      buildEngineFinding('eslint', 'a.ts', 'no-var', 1, 'Unexpected var.'),
+      buildEngineFinding('oxlint', 'a.ts', 'eslint(eqeqeq)', { message: 'expected ===' }),
+      buildEngineFinding('eslint', 'a.ts', 'eqeqeq', { message: "Expected '===' and instead saw '=='." }),
+      buildEngineFinding('eslint', 'a.ts', 'no-var', { message: 'Unexpected var.' }),
     ]
 
     expect(messagesByFile(findings, ['a.ts', 'b.ts'], EQEQEQ.names)).toStrictEqual({

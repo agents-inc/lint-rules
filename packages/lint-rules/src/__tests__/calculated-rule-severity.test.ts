@@ -17,10 +17,10 @@ describe('severityOfCalculatedEntry', () => {
   })
 
   it('refuses an entry in a shape ESLint never calculates', () => {
-    expect(() => severityOfCalculatedEntry('error')).toThrowError(
+    expect(() => severityOfCalculatedEntry('error')).toThrow(
       new Error('ESLint calculates a rule entry as [0 | 1 | 2, ...options], not "error"'),
     )
-    expect(() => severityOfCalculatedEntry(['warn'])).toThrowError(
+    expect(() => severityOfCalculatedEntry(['warn'])).toThrow(
       new Error('ESLint calculates a rule entry as [0 | 1 | 2, ...options], not ["warn"]'),
     )
   })

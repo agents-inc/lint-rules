@@ -3,6 +3,7 @@ import type { OxlintConfig } from 'oxlint'
 import tseslint from 'typescript-eslint'
 import { ruleNamesByPrefix } from '../../core/build-eslint-config.ts'
 import type { mergeEslintConfig } from '../../eslint.ts'
+import { laidOver } from '../laid-over.ts'
 import { buildReportingPlugin } from './catalog-factories.ts'
 
 type TeamEslintConfig = Parameters<typeof mergeEslintConfig>[0]
@@ -48,7 +49,7 @@ export function buildTeamTypedEslintBlock(
 /** For a block switching type information off again (`projectService: false`) or leaving it on (`program: null`). */
 export function buildTeamEslintBlockSettingParserOptions(
   name: string,
-  parserOptions: Linter.ParserOptions,
+  parserOptions: Readonly<Linter.ParserOptions>,
   fields: Omit<Linter.Config, 'name' | 'languageOptions'> = {},
 ): Linter.Config {
   return buildTeamEslintBlock(name, { ...fields, languageOptions: { parserOptions } })
@@ -68,7 +69,7 @@ export function buildTeamBlockSwitchingTypesOffAsDisableTypeCheckedDoes(name: st
 export function buildTeamParser(name: string): Linter.Parser {
   return {
     meta: { name },
-    parseForESLint: () => {
+    parseForESLint() {
       throw new Error(`the team's parser ${name} parses nothing in these specs`)
     },
   }
@@ -124,14 +125,14 @@ export function buildTeamOxlintrcHoldingEveryKey(ruleTurnedOff: string): OxlintC
 
 /** Pieces in order: a later key replaces an earlier one's, but `extends`, `overrides` and `rules` join. */
 export function buildTeamOxlintConfigFrom(pieces: readonly OxlintConfig[]): OxlintConfig {
-  const joined = pieces.reduce<OxlintConfig>((config, piece) => ({ ...config, ...piece }), {})
+  const joined = laidOver<OxlintConfig>({}, pieces)
   const extended = pieces.flatMap(({ extends: extendedConfigs = [] }) => extendedConfigs)
   const overrides = pieces.flatMap(({ overrides: pieceOverrides = [] }) => pieceOverrides)
   const statements = pieces.flatMap(({ rules }) => (rules === undefined ? [] : Object.entries(rules)))
   return {
     ...joined,
-    ...(extended.length === 0 ? {} : { extends: extended }),
-    ...(overrides.length === 0 ? {} : { overrides }),
-    ...(statements.length === 0 ? {} : { rules: Object.fromEntries(statements) }),
+    ...(extended.length !== 0 && { extends: extended }),
+    ...(overrides.length !== 0 && { overrides }),
+    ...(statements.length !== 0 && { rules: Object.fromEntries(statements) }),
   }
 }

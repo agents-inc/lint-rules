@@ -44,7 +44,7 @@ export const MORE_IGNORES_AS_GITIGNORE_LINES: readonly IgnoresRow[] = [
 */
 export const ROOT_TAKE_BACKS_BESIDE_AN_ENTRY: {
   readonly files: readonly string[]
-  readonly ignoresLists: readonly (readonly string[])[]
+  readonly ignoresLists: ReadonlyArray<readonly string[]>
   readonly entryRunsIn: readonly string[]
 } = {
   files: ['a.js', 'legacy/a.js', 'legacy/b.js', 'legacy/x/a.js', 'src/legacy/a.js'],

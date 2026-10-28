@@ -12,7 +12,7 @@ export const NO_FLOATING_PROMISES = '@typescript-eslint/no-floating-promises'
 
 export type CategoryConfigFile = ConfigFile & { readonly writes: string }
 
-function configFile(file: string, writes: string, config: OxlintConfig | Readonly<Record<string, unknown>>): CategoryConfigFile {
+function configFile(file: string, writes: string, config: Readonly<OxlintConfig | Readonly<Record<string, unknown>>>): CategoryConfigFile {
   return { file, writes, text: jsonFileText(config) }
 }
 
@@ -40,7 +40,7 @@ export const CONFIGS_LEAVING_TYPE_AWARE_RULES_OUT: readonly CategoryConfigFile[]
 export const CONFIG_TURNING_TYPE_AWARE_RULES_ON = configFile('type-aware.oxlintrc.json', 'typeAware true', { ...CORRECTNESS_ERRORS_FOR_TYPESCRIPT, options: { typeAware: true } })
 
 /** Each other name oxlint takes for a plugin of its own in `plugins` (measured, oxlint 1.87 --print-config), and the plugin. */
-const PLUGIN_ALIASES: readonly (readonly [alias: string, plugin: string])[] = [
+const PLUGIN_ALIASES: ReadonlyArray<readonly [alias: string, plugin: string]> = [
   ['react-hooks', 'react'],
   ['react_hooks', 'react'],
   ['typescript-eslint', 'typescript'],

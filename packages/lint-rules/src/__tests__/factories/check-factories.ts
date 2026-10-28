@@ -215,9 +215,9 @@ export function exportedConstFixedFromLet(name: string): string {
 /** A stand-in oxlint fix run: rewrites each file given, leaving others alone as oxlint leaves a file with nothing to fix. */
 export function oxlintFixRunWriting(projectDir: string, afterFixes: ProjectFiles): InPlaceFixer {
   return async (paths) => {
-    Object.entries(afterFixes).forEach(([file, fixed]) => {
+    for (const [file, fixed] of Object.entries(afterFixes)) {
       if (paths.includes(join(projectDir, file))) writeFileSync(join(projectDir, file), fixed)
-    })
+    }
   }
 }
 
@@ -264,15 +264,23 @@ export type EslintEngineCall = { readonly engine: string; readonly method: keyof
 
 /** A stand-in that finds nothing and records each call under its name. */
 export function eslintEngineRecording(engine: string, calls: EslintEngineCall[]): EslintEngine {
-  const recorded = <Answer>(method: keyof EslintEngine, path: string, answer: Answer): Promise<Answer> => {
+  function recorded<Answer>(method: keyof EslintEngine, path: string, answer: Answer): Promise<Answer> {
     calls.push({ engine, method, path })
     return Promise.resolve(answer)
   }
   return {
-    isIgnored: (path) => recorded('isIgnored', path, false),
-    allowsSuppressionsIn: (path) => recorded('allowsSuppressionsIn', path, true),
-    fixed: (path) => recorded('fixed', path, buildLintResult(path)),
-    linted: (path) => recorded('linted', path, buildLintResult(path)),
+    isIgnored(path) {
+      return recorded('isIgnored', path, false)
+    },
+    allowsSuppressionsIn(path) {
+      return recorded('allowsSuppressionsIn', path, true)
+    },
+    fixed(path) {
+      return recorded('fixed', path, buildLintResult(path))
+    },
+    linted(path) {
+      return recorded('linted', path, buildLintResult(path))
+    },
   }
 }
 
@@ -468,28 +476,36 @@ export const GLOB_PLACES: readonly GlobPlace[] = [
     place: "an ESLint block's files",
     engine: 'eslint',
     key: 'files',
-    holding: (globs) => ({ eslint: [{ name: A_BLOCK_NAME, files: [...globs], rules: AN_ESLINT_RULE }], oxlint: NO_OXLINT_CONFIG }),
+    holding(globs) {
+      return { eslint: [{ name: A_BLOCK_NAME, files: [...globs], rules: AN_ESLINT_RULE }], oxlint: NO_OXLINT_CONFIG }
+    },
   },
   {
     place: "an ESLint block's files, each beside another glob a file must also match",
     engine: 'eslint',
     key: 'files',
-    holding: (globs) => ({ eslint: [{ name: A_BLOCK_NAME, files: globs.map((glob) => [UNDER_TESTS_FOLDERS, glob]), rules: AN_ESLINT_RULE }], oxlint: NO_OXLINT_CONFIG }),
+    holding(globs) {
+      return { eslint: [{ name: A_BLOCK_NAME, files: globs.map((glob) => [UNDER_TESTS_FOLDERS, glob]), rules: AN_ESLINT_RULE }], oxlint: NO_OXLINT_CONFIG }
+    },
   },
   {
     place: "an ESLint block's ignores",
     engine: 'eslint',
     key: 'ignores',
-    holding: (globs) => ({ eslint: [{ name: A_BLOCK_NAME, files: [ON_TS_FILES], ignores: [...globs], rules: AN_ESLINT_RULE }], oxlint: NO_OXLINT_CONFIG }),
+    holding(globs) {
+      return { eslint: [{ name: A_BLOCK_NAME, files: [ON_TS_FILES], ignores: [...globs], rules: AN_ESLINT_RULE }], oxlint: NO_OXLINT_CONFIG }
+    },
   },
-  { place: "ESLint's global ignores", engine: 'eslint', key: 'ignores', holding: (globs) => ({ eslint: [{ name: A_BLOCK_NAME, ignores: [...globs] }], oxlint: NO_OXLINT_CONFIG }) },
-  { place: "oxlint's ignorePatterns", engine: 'oxlint', key: 'ignores', holding: (globs) => ({ eslint: [], oxlint: { ignorePatterns: [...globs], rules: AN_OXLINT_RULE } }) },
-  { place: "an oxlint override's files", engine: 'oxlint', key: 'files', holding: (globs) => ({ eslint: [], oxlint: { overrides: [{ files: [...globs], rules: AN_OXLINT_RULE }] } }) },
+  { place: "ESLint's global ignores", engine: 'eslint', key: 'ignores', holding(globs) { return { eslint: [{ name: A_BLOCK_NAME, ignores: [...globs] }], oxlint: NO_OXLINT_CONFIG } } },
+  { place: "oxlint's ignorePatterns", engine: 'oxlint', key: 'ignores', holding(globs) { return { eslint: [], oxlint: { ignorePatterns: [...globs], rules: AN_OXLINT_RULE } } } },
+  { place: "an oxlint override's files", engine: 'oxlint', key: 'files', holding(globs) { return { eslint: [], oxlint: { overrides: [{ files: [...globs], rules: AN_OXLINT_RULE }] } } } },
   {
     place: "an oxlint override's excludeFiles",
     engine: 'oxlint',
     key: 'files',
-    holding: (globs) => ({ eslint: [], oxlint: { overrides: [{ files: [ON_TS_FILES], excludeFiles: [...globs], rules: AN_OXLINT_RULE }] } }),
+    holding(globs) {
+      return { eslint: [], oxlint: { overrides: [{ files: [ON_TS_FILES], excludeFiles: [...globs], rules: AN_OXLINT_RULE }] } }
+    },
   },
 ]
 

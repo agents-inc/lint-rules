@@ -66,7 +66,7 @@ export const OXLINT_PLUGINS_IN_RULE_ORDER: readonly string[] = [
 const rulesBySpellingOfEachCatalog = new WeakMap<Catalog, ReadonlyMap<string, OxlintRule>>()
 
 /** Undefined where the prefix names no plugin of oxlint's (a JS plugin's rule), or oxlint has no rule so keyed. */
-export function oxlintRuleKeyedBy(key: string, catalog: Catalog): OxlintRule | undefined {
+export function oxlintRuleKeyedBy(key: string, catalog: Readonly<Catalog>): OxlintRule | undefined {
   const bySpelling = oxlintRulesBySpelling(catalog)
   const cut = cutWhereOxlintCuts(key)
   if (cut === undefined) return firstRuleNamed(key, bySpelling)
@@ -81,15 +81,15 @@ export function oxlintPluginListedAs(name: string): string {
   return plugin
 }
 
-function oxlintRulesBySpelling(catalog: Catalog): ReadonlyMap<string, OxlintRule> {
+function oxlintRulesBySpelling(catalog: Readonly<Catalog>): ReadonlyMap<string, OxlintRule> {
   return readOnce(rulesBySpellingOfEachCatalog, catalog, oxlintRulesBySpellingIn)
 }
 
-function oxlintRulesBySpellingIn(catalog: Catalog): ReadonlyMap<string, OxlintRule> {
+function oxlintRulesBySpellingIn(catalog: Readonly<Catalog>): ReadonlyMap<string, OxlintRule> {
   return new Map(catalog.oxlintRules.flatMap((rule) => spellingsOf(rule, catalog).map((spelling): [string, OxlintRule] => [spelling, rule])))
 }
 
-function spellingsOf({ id }: OxlintRule, catalog: Catalog): readonly string[] {
+function spellingsOf({ id }: OxlintRule, catalog: Readonly<Catalog>): readonly string[] {
   const route = catalog.rules.get(id)
   if (route === undefined) throw new Error(`${id}: oxlint has it, so the catalog routes it`)
   return route.oxlintSpellings

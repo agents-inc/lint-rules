@@ -25,6 +25,6 @@ describe('importedTeamConfig', () => {
   it('throws on a module that exports no teamConfig array, naming the file', async () => {
     const projectDir = tempProjects.create({ files: { [MODULE_FILE]: 'export const teamConfig = {}\n' } })
 
-    await expect(importedTeamConfig(projectDir, MODULE_FILE)).rejects.toThrowError(MODULE_FILE)
+    await expect(importedTeamConfig(projectDir, MODULE_FILE)).rejects.toThrow(MODULE_FILE)
   })
 })

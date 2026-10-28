@@ -6,11 +6,11 @@ import { ESLint } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { projectPathOf } from './project-paths.ts'
 
-const NOT_FOUND_BY_THE_PROJECT_SERVICE = 'was not found by the project service'
-const TS_FILES = '**/*.{ts,mts,cts,tsx}'
-
 const [tsconfigRootDir, ...files] = process.argv.slice(2)
 if (tsconfigRootDir === undefined) throw new Error('usage: project-service-verdicts-process.ts <tsconfigRootDir> <file>...')
+
+const NOT_FOUND_BY_THE_PROJECT_SERVICE = 'was not found by the project service'
+const TS_FILES = '**/*.{ts,mts,cts,tsx}'
 
 // No directive is read, so a fixture's `/* eslint-env */` comment is no fatal message of its own.
 const eslint = new ESLint({

@@ -46,18 +46,28 @@ describe('pairwiseShapes', () => {
     expect(first).toStrictEqual(['flat', 'small', 'blue'])
   })
 
+  // Taken alone, the second seed would be completed with small, the first of equals, and red.
+  it('completes a later seed with the values meeting the most pairs the shapes of the earlier seeds left unmet', () => {
+    const [first, second] = pairwiseShapes([SHAPE, SIZE, COLOUR], [['flat', 'blue'], ['flat']])
+
+    expect([first, second]).toStrictEqual([
+      ['flat', 'small', 'blue'],
+      ['flat', 'large', 'red'],
+    ])
+  })
+
   it('refuses a seed giving two values of one dimension', () => {
-    expect(() => pairwiseShapes([SIZE, COLOUR], [['small', 'large']])).toThrowError(/two values of one dimension: size, size/u)
+    expect(() => pairwiseShapes([SIZE, COLOUR], [['small', 'large']])).toThrow(/two values of one dimension: size, size/u)
   })
 
   it('refuses a seed value no dimension has', () => {
-    expect(() => pairwiseShapes([SIZE, COLOUR], [['green']])).toThrowError(/exactly one dimension, and is one of 0/u)
+    expect(() => pairwiseShapes([SIZE, COLOUR], [['green']])).toThrow(/exactly one dimension, and is one of 0/u)
   })
 
   it('refuses a seed value two dimensions share, as it cannot tell which is meant', () => {
     const tint = buildDimension('tint', ['red', 'pale'])
 
-    expect(() => pairwiseShapes([COLOUR, tint], [['red']])).toThrowError(/exactly one dimension, and is one of 2/u)
+    expect(() => pairwiseShapes([COLOUR, tint], [['red']])).toThrow(/exactly one dimension, and is one of 2/u)
   })
 })
 

@@ -31,7 +31,7 @@ export type OxlintCliDiagnostic = {
   /** `warning` or `error`. */
   readonly severity: string
   readonly message: string
-  readonly labels: readonly { readonly span: { readonly line: number } }[]
+  readonly labels: ReadonlyArray<{ readonly span: { readonly line: number } }>
 }
 
 export type OxlintCliReport = { readonly diagnostics: readonly OxlintCliDiagnostic[] }
@@ -147,7 +147,7 @@ export function describeOxlintFindings(findings: readonly OxlintFinding[]): stri
 }
 
 /** As a TypeScript module, whose `extends` holds configs, or JSON, whose `extends` holds paths, as the name gives. */
-export function writeOxlintConfigFile(projectDir: string, file: string, config: OxlintConfig): void {
+export function writeOxlintConfigFile(projectDir: string, file: string, config: Readonly<OxlintConfig>): void {
   const json = JSON.stringify(config, null, 2)
   writeFileSync(join(projectDir, file), file.endsWith(JSON_EXTENSION) ? `${json}\n` : `export default ${json}\n`)
 }
@@ -156,8 +156,14 @@ export function describeFinding({ file, rule, line }: Finding): string {
   return `${file}:${String(line)} ${rule}`
 }
 
-function findingOf({ code, filename, labels: [firstLabel] }: OxlintCliDiagnostic): Finding {
-  return { file: filename, rule: code, line: firstLabel === undefined ? null : firstLabel.span.line }
+function findingOf(diagnostic: OxlintCliDiagnostic): Finding {
+  return { file: diagnostic.filename, rule: diagnostic.code, line: lineOfDiagnostic(diagnostic) }
+}
+
+/** The line of its first label: null for a diagnostic about the whole file, which has none. */
+export function lineOfDiagnostic({ labels }: OxlintCliDiagnostic): number | null {
+  const [firstLabel] = labels
+  return firstLabel === undefined ? null : firstLabel.span.line
 }
 
 function byFileLineThenRule(first: Finding, second: Finding): number {

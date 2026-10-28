@@ -26,7 +26,7 @@ export function buildDrawnTerms(draw: Draw, globs: readonly string[]): FilesTerm
 }
 
 function buildDrawnTerm(draw: Draw, globs: readonly string[]): FilesTerm {
-  const pick = (): string => {
+  function pick(): string {
     const glob = globs[draw(globs.length)]
     if (glob === undefined) throw new Error('a draw falls within the globs given')
     return glob

@@ -28,7 +28,7 @@ export type GitProject = {
   readonly remove: (file: string) => void
   /** A plain `mv`, which git does not record. */
   readonly move: (from: string, to: string) => void
-  readonly git: (...args: string[]) => string
+  readonly git: (...args: readonly string[]) => string
   /** Writes a file in the folder above the project, which holds its linked packages and is in no repo. */
   readonly writeAbove: (file: string, content: string) => void
   /** Links a path in that folder to the target given, as an install links a package's bin there. */
@@ -37,7 +37,7 @@ export type GitProject = {
 
 const FIRST_COMMIT_MESSAGE = 'the project before the agent changed it'
 // Variables that point git at another repository or index than the folder's own.
-const GIT_REPOSITORY_VARIABLES = ['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_COMMON_DIR']
+const GIT_REPOSITORY_VARIABLES = new Set(['GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_OBJECT_DIRECTORY', 'GIT_COMMON_DIR'])
 // The same git for every developer: no system or global config, and an identity to commit with.
 const GIT_ISOLATION = {
   GIT_CONFIG_NOSYSTEM: '1',
@@ -57,24 +57,44 @@ export function createGitProject(tempProjects: TempProjects, { files, repo, link
     gitIn(dir, ['add', '--all'])
     gitIn(dir, ['commit', '--quiet', '--allow-empty', '--message', FIRST_COMMIT_MESSAGE])
   }
-  const pathOf = (file: string): string => join(dir, file)
+  function pathOf(file: string): string {
+    return join(dir, file)
+  }
   return {
     dir,
     pathOf,
-    read: (file) => readFileSync(pathOf(file), 'utf8'),
-    readIfWritten: (file) => (existsSync(pathOf(file)) ? readFileSync(pathOf(file), 'utf8') : null),
-    readBytes: (file) => readFileSync(pathOf(file)),
-    exists: (file) => existsSync(pathOf(file)),
-    write: (file, content) => writeFileCreatingItsDir(pathOf(file), content),
-    append: (file, content) => writeFileSync(pathOf(file), `${readFileSync(pathOf(file), 'utf8')}${content}`),
-    remove: (file) => rmSync(pathOf(file)),
-    move: (from, to) => {
+    read(file) {
+      return readFileSync(pathOf(file), 'utf8')
+    },
+    readIfWritten(file) {
+      return existsSync(pathOf(file)) ? readFileSync(pathOf(file), 'utf8') : null
+    },
+    readBytes(file) {
+      return readFileSync(pathOf(file))
+    },
+    exists(file) {
+      return existsSync(pathOf(file))
+    },
+    write(file, content) {
+      return writeFileCreatingItsDir(pathOf(file), content)
+    },
+    append(file, content) {
+      return writeFileSync(pathOf(file), `${readFileSync(pathOf(file), 'utf8')}${content}`)
+    },
+    remove(file) {
+      return rmSync(pathOf(file))
+    },
+    move(from, to) {
       mkdirSync(dirname(pathOf(to)), { recursive: true })
       renameSync(pathOf(from), pathOf(to))
     },
-    git: (...args) => gitIn(dir, args),
-    writeAbove: (file, content) => writeFileCreatingItsDir(join(dir, '..', file), content),
-    linkAbove: (file, target) => {
+    git(...args) {
+      return gitIn(dir, args)
+    },
+    writeAbove(file, content) {
+      return writeFileCreatingItsDir(join(dir, '..', file), content)
+    },
+    linkAbove(file, target) {
       const path = join(dir, '..', file)
       mkdirSync(dirname(path), { recursive: true })
       symlinkSync(target, path)
@@ -100,6 +120,6 @@ export function gitStatusOf(project: GitProject): string[] {
 
 /** git kept to the folder it runs in, the variables given over it. */
 export function testEnv(variables: Readonly<Record<string, string>>): NodeJS.ProcessEnv {
-  const inherited = Object.fromEntries(Object.entries(process.env).filter(([name]) => !GIT_REPOSITORY_VARIABLES.includes(name)))
+  const inherited = Object.fromEntries(Object.entries(process.env).filter(([name]) => !GIT_REPOSITORY_VARIABLES.has(name)))
   return { ...inherited, ...GIT_ISOLATION, ...variables }
 }

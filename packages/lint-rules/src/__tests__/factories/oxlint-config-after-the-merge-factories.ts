@@ -7,9 +7,9 @@ import type { TeamEslintConfigPath } from '../team-configs-of-the-other-engine.t
 /** As mergedOxlintConfigText, then adds the rule statements given to the merged config's root. */
 export function oxlintConfigAddingRulesAfterTheMergeText(
   lintRulesModule: string,
-  teamConfig: OxlintConfig,
+  teamConfig: Readonly<OxlintConfig>,
   teamEslintConfig: TeamEslintConfigPath,
-  rulesAdded: DummyRuleMap,
+  rulesAdded: Readonly<DummyRuleMap>,
 ): string {
   return `import { mergeOxlintConfig } from '@agents-inc/lint-rules/oxlint'
 import { oxlint } from './${lintRulesModule}'

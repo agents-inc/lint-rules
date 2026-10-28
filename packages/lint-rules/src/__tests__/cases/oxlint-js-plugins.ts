@@ -14,7 +14,7 @@ export const NO_PLUGIN_OF_OXLINTS = 'foo'
 
 export type JsPluginConfigFile = ConfigFile & { readonly listing: string }
 
-function turningSonarjsRuleOffBeside(fields: OxlintConfig): OxlintConfig {
+function turningSonarjsRuleOffBeside(fields: Readonly<OxlintConfig>): OxlintConfig {
   return buildTeamOxlintConfig({ ...EMPTY_TEAM_OXLINT_CONFIG, ...fields, rules: { [SONARJS_RULE]: 'off' } })
 }
 

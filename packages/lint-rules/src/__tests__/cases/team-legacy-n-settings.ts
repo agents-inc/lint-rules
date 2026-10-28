@@ -40,7 +40,7 @@ export const all = [Comp]
 /** eslint-plugin-n resolves tsconfigPath against the process's folder, so this is relative to the project root. */
 export const PRESERVING_TSCONFIG_PATH = fileInPackage(PACKAGES.teamSetsLegacyTsconfigPath, PRESERVING_TSCONFIG)
 
-function filesOfPackage(packageName: string): [string, string][] {
+function filesOfPackage(packageName: string): Array<[string, string]> {
   return filesUnderPackage(packageName, {
     'package.json': jsonFileText(buildPublishedPackageJson(packageName)),
     'tsconfig.json': jsonFileText(buildBundlerTsconfig({ jsx: 'react-jsx' })),

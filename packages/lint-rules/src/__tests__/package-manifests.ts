@@ -42,7 +42,7 @@ export type LockDisagreement = {
 type BunLock = { readonly workspaces: LockedWorkspaces }
 
 /** npm's JSON report of a dry-run pack: one entry for the one package packed. */
-type NpmPackReport = readonly { readonly files: readonly { readonly path: string }[] }[]
+type NpmPackReport = ReadonlyArray<{ readonly files: ReadonlyArray<{ readonly path: string }> }>
 
 const PACKAGE_JSON = 'package.json'
 const NODE_MODULES = 'node_modules'
@@ -79,23 +79,26 @@ function nearestInstalledManifestPath(dir: string, name: string): string | null 
 
 /** Sorted, each install once; a dependency's own peers and optional dependencies are left out. */
 export function packagesInstalledFor(packageDir: string): InstalledPackage[] {
-  const found = new Map<string, InstalledPackage>()
-  const visit = (fromDir: string, names: readonly string[]): void => {
-    names.forEach((name) => {
-      const manifestPath = installedManifestPath(fromDir, name)
-      if (found.has(manifestPath)) return
-      const manifest = readManifest(manifestPath)
-      found.set(manifestPath, installedPackageOf(manifest))
-      visit(dirname(manifestPath), namesListedUnder(manifest, ['dependencies']))
-    })
-  }
-  visit(packageDir, namesListedUnder(readManifest(join(packageDir, PACKAGE_JSON)), ['dependencies', 'peerDependencies']))
-  return [...found.values()].toSorted((first, second) => first.name.localeCompare(second.name) || first.version.localeCompare(second.version))
+  const listed = namesListedUnder(readManifest(join(packageDir, PACKAGE_JSON)), ['dependencies', 'peerDependencies'])
+  return installsReachedFrom(packageDir, listed, new Map())
+    .values()
+    .toArray()
+    .toSorted((first, second) => first.name.localeCompare(second.name) || first.version.localeCompare(second.version))
+}
+
+/** Those found so far, then each install the names reach from the directory and its own dependencies reach, by manifest path. */
+function installsReachedFrom(fromDir: string, [name, ...rest]: readonly string[], found: ReadonlyMap<string, InstalledPackage>): ReadonlyMap<string, InstalledPackage> {
+  if (name === undefined) return found
+  const manifestPath = installedManifestPath(fromDir, name)
+  if (found.has(manifestPath)) return installsReachedFrom(fromDir, rest, found)
+  const manifest = readManifest(manifestPath)
+  const withIt = new Map([...found, [manifestPath, installedPackageOf(manifest)]])
+  return installsReachedFrom(fromDir, rest, installsReachedFrom(dirname(manifestPath), namesListedUnder(manifest, ['dependencies']), withIt))
 }
 
 /** As `name: its engines.node range`; a package stating no Node range admits every Node. */
 export function packagesAdmittingLessNodeThan(nodeRange: string, packages: readonly InstalledPackage[]): string[] {
-  return packages.flatMap(({ name, nodeRange: theirs }) => (theirs === null || subset(nodeRange, theirs) ? [] : [`${name}: ${theirs}`]))
+  return packages.flatMap(({ name, nodeRange: theirs }) => (theirs === null || subset(nodeRange, theirs) ? [] : `${name}: ${theirs}`))
 }
 
 export function nodeVersionsAdmittedBy(nodeRange: string, versions: readonly string[]): string[] {
@@ -111,7 +114,7 @@ export function listingDisagreements(shipped: Manifest, inlined: Manifest): List
   const shippedListings = listingsOf(shipped)
   return [...listingsOf(inlined)].flatMap(([name, inlinedVersion]) => {
     const shippedVersion = shippedListings.get(name)
-    return shippedVersion === undefined || shippedVersion === inlinedVersion ? [] : [{ name, shipped: shippedVersion, inlined: inlinedVersion }]
+    return shippedVersion === undefined || shippedVersion === inlinedVersion ? [] : { name, shipped: shippedVersion, inlined: inlinedVersion }
   })
 }
 
@@ -151,9 +154,9 @@ export function workspaceDirsOf(rootDir: string): string[] {
 
 /** Parse boundary: bun.lock, JSON with trailing commas, read by TypeScript's JSON reader, which takes them. */
 export function readLockedWorkspaces(lockPath: string): LockedWorkspaces {
-  const { config, error } = ts.parseConfigFileTextToJson(lockPath, readFileSync(lockPath, 'utf8'))
-  if (error !== undefined) throw new Error(`${lockPath}: ${ts.flattenDiagnosticMessageText(error.messageText, LINE_BREAK)}`)
-  const { workspaces } = config as BunLock
+  const parsed = ts.parseConfigFileTextToJson(lockPath, readFileSync(lockPath, 'utf8'))
+  if (parsed.error !== undefined) throw new Error(`${lockPath}: ${ts.flattenDiagnosticMessageText(parsed.error.messageText, LINE_BREAK)}`)
+  const { workspaces } = parsed.config as BunLock
   return workspaces
 }
 
@@ -181,7 +184,7 @@ function disagreementsUnder(
   return names.flatMap((name) => {
     const lockedVersion = versionOrNull(locked, name)
     const listedVersion = versionOrNull(listed, name)
-    return lockedVersion === listedVersion ? [] : [{ field, name, locked: lockedVersion, listed: listedVersion }]
+    return lockedVersion === listedVersion ? [] : { field, name, locked: lockedVersion, listed: listedVersion }
   })
 }
 

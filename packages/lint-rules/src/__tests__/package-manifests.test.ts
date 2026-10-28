@@ -45,7 +45,7 @@ describe('installedManifestPath', () => {
   })
 
   it('throws, naming the package, when nothing up from the directory installs it', () => {
-    expect(() => installedManifestPath(projectDir, '@nowhere/not-installed')).toThrowError(
+    expect(() => installedManifestPath(projectDir, '@nowhere/not-installed')).toThrow(
       new Error(`@nowhere/not-installed is not installed where ${projectDir} can resolve it`),
     )
   })
@@ -242,7 +242,7 @@ describe('pathsNpmPacks', () => {
   it('throws, naming the folder, where npm cannot pack it', () => {
     const notAPackageDir = tempProjects.create({ files: { 'package.json': '{ "name": ' } })
 
-    expect(() => pathsNpmPacks(notAPackageDir)).toThrowError(`npm pack --dry-run failed in ${notAPackageDir}`)
+    expect(() => pathsNpmPacks(notAPackageDir)).toThrow(`npm pack --dry-run failed in ${notAPackageDir}`)
   })
 })
 
@@ -256,7 +256,7 @@ describe('readLockedWorkspaces', () => {
   it('throws, naming the file, for text that is not JSON', () => {
     const projectDir = tempProjects.create({ files: { 'bun.lock': '{ "workspaces": ' } })
 
-    expect(() => readLockedWorkspaces(join(projectDir, 'bun.lock'))).toThrowError(join(projectDir, 'bun.lock'))
+    expect(() => readLockedWorkspaces(join(projectDir, 'bun.lock'))).toThrow(join(projectDir, 'bun.lock'))
   })
 })
 

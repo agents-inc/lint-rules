@@ -24,12 +24,12 @@ export type VitestCliRun = {
 }
 
 type VitestJsonReport = {
-  readonly testResults: readonly {
+  readonly testResults: ReadonlyArray<{
     readonly name: string
     readonly status: string
     readonly message: string
     readonly assertionResults: readonly TestOutcome[]
-  }[]
+  }>
 }
 
 const VITEST_BIN = join(dirname(createRequire(import.meta.url).resolve('vitest/package.json')), 'vitest.mjs')

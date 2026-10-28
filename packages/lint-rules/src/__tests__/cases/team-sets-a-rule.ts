@@ -128,19 +128,19 @@ export const TEAMS_OXLINT_ARRAY_TYPE_IN_A_LINE_IT_SKIPS: OxlintConfig = {
   rules: { 'typescript/array-type': 'error' },
 }
 
-export function teamsOxlintStyleCategoryListing(plugins: NonNullable<OxlintConfig['plugins']>): OxlintConfig {
-  return { plugins, categories: { correctness: 'off', style: 'warn' } }
+export function teamsOxlintStyleCategoryListing(plugins: Readonly<NonNullable<OxlintConfig['plugins']>>): OxlintConfig {
+  return { plugins: [...plugins], categories: { correctness: 'off', style: 'warn' } }
 }
 
 /**
 * Under a root listing some plugin, the override runs typescript's rules of each category on in legacy/,
 * oxlint's own correctness: warn included; under a root listing none, in no file (measured, oxlint 1.87).
 */
-export function teamsOxlintListingTypescriptForLegacyBeside(rootPlugins: NonNullable<OxlintConfig['plugins']>): OxlintConfig {
-  return { plugins: rootPlugins, overrides: [{ files: ['legacy/**'], plugins: ['typescript'] }] }
+export function teamsOxlintListingTypescriptForLegacyBeside(rootPlugins: Readonly<NonNullable<OxlintConfig['plugins']>>): OxlintConfig {
+  return { plugins: [...rootPlugins], overrides: [{ files: ['legacy/**'], plugins: ['typescript'] }] }
 }
 
-export function teamsOxlintStyleCategoryListingTypescriptForLegacyBeside(rootPlugins: NonNullable<OxlintConfig['plugins']>): OxlintConfig {
+export function teamsOxlintStyleCategoryListingTypescriptForLegacyBeside(rootPlugins: Readonly<NonNullable<OxlintConfig['plugins']>>): OxlintConfig {
   return { ...teamsOxlintListingTypescriptForLegacyBeside(rootPlugins), categories: { correctness: 'off', style: 'warn' } }
 }
 
@@ -202,9 +202,9 @@ export const TEAMS_ESLINT_ESLINT_REACT_UNDER_REACT =
 
 export const OURS_FLOATING_PROMISES: OurRules = { '@typescript-eslint/no-floating-promises': 'error' }
 
-export function teamsOxlintCorrectnessErrors(typeAware: boolean): OxlintConfig {
+export function teamsOxlintCorrectnessErrors(isTypeAware: boolean): OxlintConfig {
   const correctness: OxlintConfig = { plugins: ['typescript'], categories: { correctness: 'error' } }
-  return typeAware ? { ...correctness, options: { typeAware: true } } : correctness
+  return isTypeAware ? { ...correctness, options: { typeAware: true } } : correctness
 }
 
 /** No merge of ours can write into it. */
@@ -217,11 +217,16 @@ export function teamsJsonOxlintConfigExtendingByPathFiles(base: 'present' | 'mis
   const extended = base === 'present' ? BASE_JSON_OXLINT_CONFIG : MISSING_JSON_OXLINT_CONFIG
   const { lintRules, teamEslintModule, eslint, teamAloneEslint } = CONSUMER_CONFIG_FILES
   return {
-    [TEAMS_JSON_OXLINT_CONFIG]: `${JSON.stringify({ ...EMPTY_TEAM_OXLINT_CONFIG, extends: [`./${extended}`] })}\n`,
+    [TEAMS_JSON_OXLINT_CONFIG]: `${JSON.stringify({ ...EMPTY_TEAM_OXLINT_CONFIG, extends: [pathFromTheConfigFolder(extended)] })}\n`,
     [BASE_JSON_OXLINT_CONFIG]: `${JSON.stringify({ rules: { 'no-var': 'warn' } })}\n`,
     [eslint]: mergedEslintConfigText(lintRules, teamEslintModule, { oxlintConfig: TEAMS_JSON_OXLINT_CONFIG }),
     [teamAloneEslint]: teamAloneEslintConfigText(teamEslintModule),
   }
+}
+
+/** As `extends` names a config in the folder of the one extending it. */
+function pathFromTheConfigFolder(file: string): string {
+  return `./${file}`
 }
 
 /** A team adds it after our merge rather than handing it to the merge. */

@@ -30,6 +30,6 @@ function filesUnder(root: string, fromRoot: string): string[] {
   return readdirSync(join(root, fromRoot), { withFileTypes: true }).flatMap((entry) => {
     const path = fromRoot === '' ? entry.name : `${fromRoot}${GLOB_SEPARATOR}${entry.name}`
     if (entry.isDirectory()) return DIRECTORIES_NEVER_WALKED.has(entry.name) ? [] : filesUnder(root, path)
-    return entry.isFile() ? [path] : []
+    return entry.isFile() ? path : []
   })
 }

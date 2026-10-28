@@ -30,7 +30,7 @@ export function ourOxlintPartIn(projectDir: string, rules: OurRules = {}): Oxlin
 }
 
 /** Under any spelling oxlint takes it by: NOT_STATED where none applies there. */
-export function severityStatedFor(merged: OxlintConfig, file: string, ruleId: string): string {
+export function severityStatedFor(merged: Readonly<OxlintConfig>, file: string, ruleId: string): string {
   const route = catalog.rules.get(ruleId)
   if (route === undefined) throw new Error(`${ruleId} is no rule of ours`)
   const entry = oxlintEntryOfRuleFor(merged, file, route.oxlintSpellings)

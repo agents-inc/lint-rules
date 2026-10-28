@@ -64,7 +64,7 @@ describe('owedEntry, for a rule the team sets nowhere', () => {
 
 describe('owedEntry, given a name of no rule in play', () => {
   it('throws, naming it', () => {
-    expect(() => owedEntry('eqeqeq', buildSidesOfAFile(), SET_BY_THE_TEAM)).toThrowError('eqeqeq')
+    expect(() => owedEntry('eqeqeq', buildSidesOfAFile(), SET_BY_THE_TEAM)).toThrow('eqeqeq')
   })
 })
 
@@ -80,7 +80,7 @@ describe('namesOnBeyondTheTeams', () => {
 describe('calculatedEntryOf', () => {
   it('gives the entry, ABSENT where no block sets the rule, and throws on an entry ESLint never calculates', () => {
     expect({ given: calculatedEntryOf({ [RULE]: OURS_ON }, RULE), absent: calculatedEntryOf({}, RULE) }).toStrictEqual({ given: OURS_ON, absent: ABSENT })
-    expect(() => calculatedEntryOf({ [RULE]: 'error' }, RULE)).toThrowError('"error"')
+    expect(() => calculatedEntryOf({ [RULE]: 'error' }, RULE)).toThrow('"error"')
   })
 })
 

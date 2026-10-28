@@ -5,6 +5,6 @@ type MessageWithRule = { readonly ruleId: string | null; readonly message: strin
 const RULE_NOT_FOUND = /^Definition for rule '.+' was not found\.$/u
 
 /** The rule IDs among the messages that ESLint reports it has no definition of. */
-export function rulesNotFoundAmong(messages: readonly MessageWithRule[]): (string | null)[] {
+export function rulesNotFoundAmong(messages: readonly MessageWithRule[]): Array<string | null> {
   return messages.filter((message) => RULE_NOT_FOUND.test(message.message)).map((message) => message.ruleId)
 }

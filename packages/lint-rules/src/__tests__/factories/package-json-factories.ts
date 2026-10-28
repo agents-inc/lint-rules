@@ -62,7 +62,7 @@ export function buildPackageJson(fields: Pick<PackageJson, DependencyField> = {}
 
 export function buildPackageJsonListingOxlint(field: DependencyField = 'devDependencies'): PackageJson {
   const oxlint = { [OXLINT]: OXLINT_RANGE_THE_MERGE_ADVISES }
-  return field === 'dependencies' ? buildPackageJson({ dependencies: oxlint }) : buildPackageJson({ devDependencies: oxlint })
+  return buildPackageJson(field === 'dependencies' ? { dependencies: oxlint } : { devDependencies: oxlint })
 }
 
 /** One that uses oxlint, as our parts read it. */
@@ -100,7 +100,7 @@ export function buildInstalledOxlintFiles(
       exports: { '.': './dist/index.js', './package.json': './package.json' },
     })}\n`,
     [`${INSTALLED_OXLINT_DIR}/dist/index.js`]: 'export {}\n',
-    ...(schemaText === null ? {} : { [`${INSTALLED_OXLINT_DIR}/${OXLINT_SCHEMA_FILE}`]: schemaText }),
+    ...(schemaText !== null && { [`${INSTALLED_OXLINT_DIR}/${OXLINT_SCHEMA_FILE}`]: schemaText }),
   }
 }
 

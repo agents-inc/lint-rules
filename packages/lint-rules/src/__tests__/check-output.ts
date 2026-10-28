@@ -55,7 +55,7 @@ export function lastLineOf(stdout: string): string {
 /** Each `check: not checked: …` entry, in the order printed, one quoting text over several lines kept whole. */
 export function notCheckedIn(stdout: string): string[] {
   const lines = linesOf(stdout)
-  return lines.flatMap((line, index) => (line.startsWith(NOT_CHECKED_PREFIX) ? [entryStartingAt(lines, index)] : []))
+  return lines.flatMap((line, index) => (line.startsWith(NOT_CHECKED_PREFIX) ? entryStartingAt(lines, index) : []))
 }
 
 /** Up to the next line check starts itself. */

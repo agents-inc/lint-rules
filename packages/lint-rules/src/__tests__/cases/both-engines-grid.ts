@@ -81,7 +81,7 @@ export const gridSourceFiles: Readonly<Record<string, string>> = Object.fromEntr
 
 export const GRID_FILES = Object.keys(GRID_SOURCES)
 
-const FILES_IN_NODE_MODULES: readonly string[] = ['node_modules/x/a.js', 'packages/p/node_modules/y/a.js']
+const FILES_IN_NODE_MODULES: ReadonlySet<string> = new Set(['node_modules/x/a.js', 'packages/p/node_modules/y/a.js'])
 
 /** Files oxlint lints, and ESLint lints only through a team's parser of its own: no JS or TS file. */
 export const COMPONENT_FILES: readonly string[] = ['src/c.vue', 'src/c.svelte', 'src/c.astro']
@@ -253,7 +253,7 @@ export const TEAM_OXLINT_CONFIG_TURNING_NO_VAR_ON: OxlintConfig = { categories: 
 
 /** ESLint lints no file in node_modules. */
 function lintsTheFile(engine: GridRule['teamsEngine'], file: string): boolean {
-  return engine === 'oxlint' || !FILES_IN_NODE_MODULES.includes(file)
+  return engine === 'oxlint' || !FILES_IN_NODE_MODULES.has(file)
 }
 
 /** None where the line is null. */

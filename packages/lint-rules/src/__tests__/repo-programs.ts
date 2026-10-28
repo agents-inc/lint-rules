@@ -45,7 +45,7 @@ export function isRepoSource(file: string): boolean {
   return !relative(REPO_ROOT, file).startsWith('..') && !file.includes('/node_modules/')
 }
 
-function isOurs(program: ts.Program, sourceFile: ts.SourceFile): boolean {
+function isOurs(program: ts.Program, sourceFile: Readonly<ts.SourceFile>): boolean {
   return !sourceFile.isDeclarationFile && !program.isSourceFileFromExternalLibrary(sourceFile) && isRepoSource(sourceFile.fileName)
 }
 
@@ -53,6 +53,7 @@ function isOurs(program: ts.Program, sourceFile: ts.SourceFile): boolean {
 export function childNodesOf(node: ts.Node): ts.Node[] {
   const children: ts.Node[] = []
   ts.forEachChild(node, (child) => {
+    // eslint-disable-next-line functional/immutable-data -- ts.forEachChild hands each child to the callback and returns only the first truthy value it gives back, and TypeScript has no public call listing a node's children without its tokens: the list is gathered here
     children.push(child)
   })
   return children

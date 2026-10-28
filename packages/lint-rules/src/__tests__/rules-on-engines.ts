@@ -21,7 +21,7 @@ function isOn(entry: unknown): entry is readonly [unknown, ...unknown[]] {
 }
 
 /** Once per place it is turned on. */
-export function rulesOnInOxlint({ rules = {}, overrides = [] }: OxlintConfig): RuleOnEngine[] {
+export function rulesOnInOxlint({ rules = {}, overrides = [] }: Readonly<OxlintConfig>): RuleOnEngine[] {
   // An override may switch only env, with no rules.
   const ruleMaps = [rules, ...overrides.map((override) => override.rules ?? {})]
   return ruleMaps.flatMap((ruleMap) =>
@@ -56,7 +56,7 @@ export function onEslint(id: string, options: readonly unknown[]): RuleOnEngine 
 }
 
 export function uniqueById(rules: readonly RuleOnEngine[]): RuleOnEngine[] {
-  return sortedById([...new Map(rules.map((rule) => [rule.id, rule])).values()])
+  return sortedById(new Map(rules.map((rule) => [rule.id, rule])).values().toArray())
 }
 
 export function sortedById(rules: readonly RuleOnEngine[]): RuleOnEngine[] {

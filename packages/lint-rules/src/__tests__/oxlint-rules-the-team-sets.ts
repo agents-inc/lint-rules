@@ -1,6 +1,7 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
 import inventory from '@workspace/rule-data/generated/inventory.json' with { type: 'json' }
 import type { OxlintConfig } from 'oxlint'
+import { laidOver } from './laid-over.ts'
 import { oxlintPluginListedAs, oxlintRuleKeyedBy } from './oxlint-rule-keys.ts'
 
 // When the team's oxlint config sets a rule: anywhere, in any files, at any severity. A model of oxlint 1.87's
@@ -35,12 +36,12 @@ const PACKAGE_NAME_JOINER = '-'
 const NO_SLASH = -1
 
 const TYPE_AWARE_RULE_IDS: ReadonlySet<string> = new Set(
-  inventory.rules.flatMap(({ id, oxlint }) => (oxlint !== null && oxlint.typeAware ? [id] : [])),
+  inventory.rules.filter(({ oxlint }) => oxlint?.typeAware === true).map(({ id }) => id),
 )
 
 export function ruleIdsTheTeamsOxlintConfigSets(
-  team: OxlintConfig,
-  catalog: Catalog,
+  team: Readonly<OxlintConfig>,
+  catalog: Readonly<Catalog>,
   extendedByPath: ConfigsExtendedByPath = NO_CONFIG_EXTENDED_BY_PATH,
 ): string[] {
   const configs = configsInOxlintsOrder(team, extendedByPath)
@@ -48,17 +49,17 @@ export function ruleIdsTheTeamsOxlintConfigSets(
   const overrides = configs.flatMap(({ overrides: ofTheConfig = [] }) => ofTheConfig)
   const byStatement = [...configs, ...overrides].flatMap(({ rules = {} }) => rulesKeyed(Object.keys(rules), catalog))
   const pluginsListedAnywhere = new Set([...rootPlugins, ...overrides.flatMap(({ plugins = [] }) => plugins.map(oxlintPluginListedAs))])
-  const byCategory = rulesItsCategoriesRun(resolvedCategoriesOf(team, extendedByPath), pluginsListedAnywhere, typeAwareRulesRun(team), catalog)
+  const byCategory = rulesItsCategoriesRun(resolvedCategoriesOf(team, extendedByPath), pluginsListedAnywhere, areTypeAwareRulesOn(team), catalog)
   const byJsPlugin = ruleIdsKeyedUnderJsPlugins(configs, catalog)
   return [...new Set([...byStatement, ...byCategory].map(({ id }) => id).concat(byJsPlugin))].toSorted()
 }
 
 /** Each config the config extends, at any depth and in the order listed, before the config itself. */
-function configsInOxlintsOrder(config: OxlintConfig, extendedByPath: ConfigsExtendedByPath): OxlintConfig[] {
+function configsInOxlintsOrder(config: Readonly<OxlintConfig>, extendedByPath: ConfigsExtendedByPath): OxlintConfig[] {
   return [...extendedConfigsOf(config, extendedByPath).flatMap((extended) => configsInOxlintsOrder(extended, extendedByPath)), config]
 }
 
-function extendedConfigsOf({ extends: extended = [] }: OxlintConfig, extendedByPath: ConfigsExtendedByPath): OxlintConfig[] {
+function extendedConfigsOf({ extends: extended = [] }: Readonly<OxlintConfig>, extendedByPath: ConfigsExtendedByPath): OxlintConfig[] {
   return extended.map((each) => (typeof each === 'string' ? configExtendedBy(each, extendedByPath) : each))
 }
 
@@ -69,13 +70,13 @@ function configExtendedBy(path: string, extendedByPath: ConfigsExtendedByPath): 
 }
 
 /** The plugins the config's root runs, every config it extends merged in, eslint aside. */
-function resolvedRootPluginsOf(config: OxlintConfig, extendedByPath: ConfigsExtendedByPath): readonly string[] {
+function resolvedRootPluginsOf(config: Readonly<OxlintConfig>, extendedByPath: ConfigsExtendedByPath): readonly string[] {
   const listed = pluginsListedAtTheRootOf(config, extendedByPath)
   return listed === undefined ? OXLINT_DEFAULT_PLUGINS : listed
 }
 
 /** The plugins listed at the config's root with each config it extends: undefined where none of them lists any. */
-function pluginsListedAtTheRootOf(config: OxlintConfig, extendedByPath: ConfigsExtendedByPath): readonly string[] | undefined {
+function pluginsListedAtTheRootOf(config: Readonly<OxlintConfig>, extendedByPath: ConfigsExtendedByPath): readonly string[] | undefined {
   const own = config.plugins === undefined ? undefined : config.plugins.map(oxlintPluginListedAs)
   return extendedConfigsOf(config, extendedByPath)
     .map((extended) => pluginsListedAtTheRootOf(extended, extendedByPath))
@@ -92,15 +93,16 @@ function listedOrTheDefaults(plugins: readonly string[] | undefined): readonly s
 }
 
 /** The categories each config the config extends writes, in order, under the config's own: none oxlint runs unwritten. */
-function resolvedCategoriesOf(config: OxlintConfig, extendedByPath: ConfigsExtendedByPath): CategorySeverities {
-  return configsInOxlintsOrder(config, extendedByPath).reduce<CategorySeverities>(
-    (merged, { categories = {} }) => ({ ...merged, ...categories }),
+function resolvedCategoriesOf(config: Readonly<OxlintConfig>, extendedByPath: ConfigsExtendedByPath): CategorySeverities {
+  return laidOver(
     NO_CATEGORY_WRITTEN,
+    // A copy, as oxlint types a config's categories as an interface, which no string can index.
+    configsInOxlintsOrder(config, extendedByPath).map(({ categories = {} }): CategorySeverities => ({ ...categories })),
   )
 }
 
-function typeAwareRulesRun({ options }: OxlintConfig): boolean {
-  return options !== undefined && options.typeAware === true
+function areTypeAwareRulesOn({ options }: Readonly<OxlintConfig>): boolean {
+  return options?.typeAware === true
 }
 
 /** The rules of oxlint's the keys name: a JS plugin's key names none. */
@@ -115,18 +117,18 @@ function rulesKeyed(keys: readonly string[], catalog: Readonly<Catalog>): Oxlint
 function rulesItsCategoriesRun(
   categories: CategorySeverities,
   pluginsListed: ReadonlySet<string>,
-  typeAwareRun: boolean,
-  catalog: Catalog,
+  areTypeAwareRulesRun: boolean,
+  catalog: Readonly<Catalog>,
 ): OxlintRule[] {
   return catalog.oxlintRules.filter(
     (rule) =>
       RUNNING_SEVERITIES.has(categories[rule.category]) &&
       pluginsListed.has(rule.oxlintPlugin) &&
-      (typeAwareRun || !TYPE_AWARE_RULE_IDS.has(rule.id)),
+      (areTypeAwareRulesRun || !TYPE_AWARE_RULE_IDS.has(rule.id)),
   )
 }
 
-function ruleIdsKeyedUnderJsPlugins(configs: readonly OxlintConfig[], catalog: Catalog): string[] {
+function ruleIdsKeyedUnderJsPlugins(configs: readonly OxlintConfig[], catalog: Readonly<Catalog>): string[] {
   const prefixes: ReadonlySet<string | null> = new Set(configs.flatMap(jsPluginsNamedBy).flatMap(prefixOfJsPlugin))
   const keys = configs.flatMap(({ rules = {}, overrides = [] }) => [
     ...Object.keys(rules),
@@ -136,12 +138,12 @@ function ruleIdsKeyedUnderJsPlugins(configs: readonly OxlintConfig[], catalog: C
 }
 
 /** The JS plugins a config names: none where it leaves them out, or gives null. */
-function jsPluginsNamedBy({ jsPlugins }: OxlintConfig): readonly JsPluginEntry[] {
+function jsPluginsNamedBy({ jsPlugins }: Readonly<OxlintConfig>): readonly JsPluginEntry[] {
   return jsPlugins === undefined || jsPlugins === null ? [] : jsPlugins
 }
 
 /** The prefix a JS plugin's rules take, where the config gives it: its `name`, or its package's name cut down. A path's plugin names itself. */
-function prefixOfJsPlugin(entry: JsPluginEntry): string[] {
+function prefixOfJsPlugin(entry: Readonly<JsPluginEntry>): string[] {
   if (typeof entry !== 'string') return [entry.name]
   if (entry.startsWith(RELATIVE_PATH_START) || entry.startsWith(PREFIX_SEPARATOR)) return []
   return [packageNameCut(entry)]
@@ -164,6 +166,10 @@ function prefixOfKey(key: string): string | null {
 }
 
 /** The rule of ours the key is the ID or an ESLint alias of: none where it names no rule of ours. */
-function ruleIdsNamed(key: string, catalog: Catalog): string[] {
-  return [...catalog.rules.values()].filter(({ id, eslintAliases }) => id === key || eslintAliases.includes(key)).map(({ id }) => id)
+function ruleIdsNamed(key: string, catalog: Readonly<Catalog>): string[] {
+  return catalog.rules
+    .values()
+    .filter(({ id, eslintAliases }) => id === key || eslintAliases.includes(key))
+    .map(({ id }) => id)
+    .toArray()
 }

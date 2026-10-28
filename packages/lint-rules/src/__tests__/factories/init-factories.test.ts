@@ -27,7 +27,7 @@ describe('initConfigTextListing', () => {
 describe('packageJsonTextIn', () => {
   it.each([
     { indent: '  ', stringifyIndent: 2 },
-    { indent: '    ', stringifyIndent: 4 },
+    { indent: ' '.repeat(4), stringifyIndent: 4 },
     { indent: '\t', stringifyIndent: '\t' },
   ])('lays out JSON as JSON.stringify does with an indent of $stringifyIndent, an empty object as {}', ({ indent, stringifyIndent }) => {
     expect(packageJsonTextIn(A_PACKAGE_JSON, { indent, eol: '\n', finalNewline: true })).toBe(

@@ -17,8 +17,9 @@ const step = parseStep(stepArgument)
 
 const resolvedUrls: string[] = []
 registerHooks({
-  resolve: (specifier, context, nextResolve) => {
+  resolve(specifier, context, nextResolve) {
     const resolved = nextResolve(specifier, context)
+    // eslint-disable-next-line functional/immutable-data -- Node hands each module it resolves to this hook one at a time, and dist-loading.test.ts reads the whole list as one JSON array written at exit: the list is gathered here
     resolvedUrls.push(resolved.url)
     return resolved
   },
@@ -33,16 +34,15 @@ else await import(builtEntry(distDir, 'eslint.mjs'))
 /** As a team's oxlint config does, naming no ESLint config, so no module of ESLint's side loads to read one. */
 async function loadTheOxlintSide(dist: string, lintRules: string | undefined): Promise<void> {
   if (lintRules === undefined) throw new Error('the oxlint side needs the lint rules, as JSON')
-  const index: typeof import('../index.ts') = await import(builtEntry(dist, 'index.mjs'))
-  // Parse boundary: the lint rules the test serialised.
-  const { eslint, oxlint } = index.defineLintRules(JSON.parse(lintRules)).editorRulesets
-  if (eslint === undefined) throw new Error('defineLintRules returned no ESLint part')
-  const oxlintEntry: typeof import('../oxlint.ts') = await import(builtEntry(dist, 'oxlint.mjs'))
+  // Parse boundary: the built entries, which a dynamic import types as any, and the lint rules the test serialised.
+  const index = (await import(builtEntry(dist, 'index.mjs'))) as typeof import('../index.ts')
+  const { oxlint } = index.defineLintRules(JSON.parse(lintRules) as Parameters<typeof index.defineLintRules>[0]).editorRulesets
+  const oxlintEntry = (await import(builtEntry(dist, 'oxlint.mjs'))) as typeof import('../oxlint.ts')
   oxlintEntry.mergeOxlintConfig({}, oxlint, { eslintConfig: null })
 }
 
 function parseStep(argument: string | undefined): Step {
-  const step = STEPS.find((candidate) => candidate === argument)
-  if (step === undefined) throw new Error(`the step is one of ${STEPS.join(', ')}, not ${String(argument)}`)
-  return step
+  const named = STEPS.find((candidate) => candidate === argument)
+  if (named === undefined) throw new Error(`the step is one of ${STEPS.join(', ')}, not ${String(argument)}`)
+  return named
 }

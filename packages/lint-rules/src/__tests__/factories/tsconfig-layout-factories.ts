@@ -8,7 +8,7 @@ export type ConfigFile = {
   readonly include?: readonly string[]
   readonly exclude?: readonly string[]
   readonly files?: readonly string[]
-  readonly references?: readonly { readonly path: string }[]
+  readonly references?: ReadonlyArray<{ readonly path: string }>
 }
 
 const STANDALONE_SOURCE = 'export const value = 1\n'

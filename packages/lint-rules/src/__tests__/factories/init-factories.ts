@@ -63,9 +63,9 @@ const INIT_IGNORES = [
 ]
 
 /** Opt-in, so init names them in quality's comment, with the formatter warning. */
-const SORTING_RULESETS: readonly string[] = ['import-order', 'ordering']
+const SORTING_RULESETS: ReadonlySet<string> = new Set(['import-order', 'ordering'])
 /** init names each in its own list's comment. */
-const OPT_IN_RULESETS: readonly string[] = [...SORTING_RULESETS, 'tailwind', 'browser-targets']
+const OPT_IN_RULESETS: ReadonlySet<string> = new Set([...SORTING_RULESETS, 'tailwind', 'browser-targets'])
 
 const NO_OPT_IN: readonly string[] = []
 /** What init's comment says after the opt-in rulesets that sort code. */
@@ -75,7 +75,7 @@ const INIT_PROJECT_NAME = 'consumer-project'
 const INIT_PROJECT_VERSION = '1.0.0'
 const TWO_SPACES = '  '
 
-export function buildRulesetDefinition(fields: Pick<InitRulesetDefinition, 'name' | 'list'> & Partial<InitRulesetDefinition>): InitRulesetDefinition {
+export function buildRulesetDefinition(fields: Readonly<Pick<InitRulesetDefinition, 'name' | 'list'> & Partial<InitRulesetDefinition>>): InitRulesetDefinition {
   return { domain: null, env: null, optIn: false, sortsCode: false, ...fields }
 }
 
@@ -84,7 +84,7 @@ export function initListsOf(rulesets: LintRules['agentRulesets']): InitLists {
   const { quality = [], libs = {}, runtimes = [], languages = [] } = rulesets
   return {
     quality: { listed: quality, optIn: NO_OPT_IN },
-    libs: Object.entries(libs).flatMap(([domain, listed]): InitDomainList[] => (listed === undefined ? [] : [{ domain, listed, optIn: NO_OPT_IN }])),
+    libs: Object.entries(libs).map(([domain, listed]): InitDomainList => ({ domain, listed, optIn: NO_OPT_IN })),
     runtimes: { listed: runtimes, optIn: NO_OPT_IN },
     languages: { listed: languages, optIn: NO_OPT_IN },
   }
@@ -149,9 +149,9 @@ export function packageJsonTextIn(fields: PackageJsonObject, layout: JsonLayout)
 
 function withTheOptInNamedApart({ listed }: InitList): InitList {
   return {
-    listed: listed.filter((name) => !OPT_IN_RULESETS.includes(name)),
-    optIn: listed.filter((name) => OPT_IN_RULESETS.includes(name)),
-    sortsCode: listed.filter((name) => SORTING_RULESETS.includes(name)),
+    listed: listed.filter((name) => !OPT_IN_RULESETS.has(name)),
+    optIn: listed.filter((name) => OPT_IN_RULESETS.has(name)),
+    sortsCode: listed.filter((name) => SORTING_RULESETS.has(name)),
   }
 }
 
@@ -186,7 +186,8 @@ function objectText(object: PackageJsonObject, depth: number, layout: JsonLayout
   if (entries.length === 0) return '{}'
   const { indent, eol } = layout
   const members = entries.map(([key, value]) => `${indent.repeat(depth + 1)}${JSON.stringify(key)}: ${valueText(value, depth + 1, layout)}`)
-  return `{${eol}${members.join(`,${eol}`)}${eol}${indent.repeat(depth)}}`
+  const memberSeparator = `,${eol}`
+  return `{${eol}${members.join(memberSeparator)}${eol}${indent.repeat(depth)}}`
 }
 
 function valueText(value: PackageJsonValue, depth: number, layout: JsonLayout): string {
@@ -255,7 +256,7 @@ export type InitPackageJsonFields = {
 
 /** In the order npm writes them: private unless published. */
 export function buildInitPackageJson({ published = false, ...dependencyLists }: InitPackageJsonFields = {}): PackageJsonObject {
-  return { name: INIT_PROJECT_NAME, version: INIT_PROJECT_VERSION, ...(published ? {} : { private: true }), type: 'module', ...dependencyLists }
+  return { name: INIT_PROJECT_NAME, version: INIT_PROJECT_VERSION, ...(!published && { private: true }), type: 'module', ...dependencyLists }
 }
 
 /** A package.json a merge left its conflict markers in: not valid JSON. */

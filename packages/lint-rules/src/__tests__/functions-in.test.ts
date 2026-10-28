@@ -5,7 +5,7 @@ import { pathsOfFunctionsIn } from './functions-in.ts'
 // The walk the "parts are data" spec reads: one that missed a function would pass a part holding a plugin.
 describe('pathsOfFunctionsIn', () => {
   it('finds a function nested in objects and arrays, by its path', () => {
-    expect(pathsOfFunctionsIn({ a: 1, b: [{ c: () => 1 }, 'x'], d: { e: null } })).toStrictEqual(['$.b[0].c'])
+    expect(pathsOfFunctionsIn({ a: 1, b: [{ c() { return 1 } }, 'x'], d: { e: null } })).toStrictEqual(['$.b[0].c'])
   })
 
   it('finds every rule of a plugin object, which is what a part must not hold', () => {
@@ -21,7 +21,7 @@ describe('pathsOfFunctionsIn', () => {
   })
 
   it('walks a value met twice once', () => {
-    const shared = { run: () => 1 }
+    const shared = { run() { return 1 } }
 
     expect(pathsOfFunctionsIn({ first: shared, second: shared })).toStrictEqual(['$.first.run'])
   })

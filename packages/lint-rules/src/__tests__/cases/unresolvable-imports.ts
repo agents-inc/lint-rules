@@ -54,7 +54,7 @@ export const all = [registerSW]
 `
 
 // tsconfig.json's alias to the published src (1), a relative path to the unpublished scripts folder (2), the devDependency (3).
-const REQUIRES_THROUGH_THE_ALIAS = `const { util } = require('@/util.cjs')
+const CALLS_REQUIRE_THROUGH_THE_ALIAS = `const { util } = require('@/util.cjs')
 const { build } = require('../scripts/build.cjs')
 const { mocks } = require('@repo/api-mocks')
 
@@ -113,7 +113,7 @@ export const unresolvableImportFiles: ProjectFiles = {
   'packages/cjs-in-ts/tsconfig.json': jsonFileText(buildBundlerTsconfig({ allowJs: true, paths: { '@/*': ['./src/*'] } }, ['src', 'scripts'])),
   'packages/cjs-in-ts/src/util.cjs': 'module.exports = { util: 1 }\n',
   'packages/cjs-in-ts/scripts/build.cjs': 'module.exports = { build: 1 }\n',
-  [UNRESOLVABLE_IMPORTERS.cjsFileThroughTsconfigAlias]: REQUIRES_THROUGH_THE_ALIAS,
+  [UNRESOLVABLE_IMPORTERS.cjsFileThroughTsconfigAlias]: CALLS_REQUIRE_THROUGH_THE_ALIAS,
   'packages/js-tilde/package.json': manifestText('js-tilde'),
   'packages/js-tilde/tsconfig.json': jsonFileText(
     buildBundlerTsconfig({ allowJs: true, paths: { '~/*': ['./src/*'], 'components/*': ['./src/components/*'] } }),

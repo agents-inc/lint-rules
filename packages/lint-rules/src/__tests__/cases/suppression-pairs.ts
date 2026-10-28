@@ -33,7 +33,7 @@ const NO_CONSOLE = 'no-console'
 const A_LONG_NAME = 'no-unused-private-class-members'
 const ENABLE_NO_DEBUGGER = blockEnable({ form: 'eslint', ruleName: NO_DEBUGGER })
 // oxlint spans a line comment that silenced nothing up to the line's end, its trailing spaces included (measured, 1.87).
-const TRAILING_SPACES = '   '
+const TRAILING_SPACES = ' '.repeat(3)
 
 // Comment-like text in a string or template is no comment to the engines (measured, oxlint 1.87, ESLint 10.12).
 // Each pair below silenced nothing.
@@ -59,7 +59,9 @@ export const SUPPRESSION_PAIR_CASES: readonly SuppressionPairCase[] = [
   {
     shape: 'a block pair whose second rule silenced nothing, which oxlint spans in the enable comment',
     lines: ['/* eslint-disable no-debugger, no-console */', DEBUGGER_STATEMENT, '/* eslint-enable no-debugger, no-console */'],
-    oxlintReport: (text) => [oxlintPartlyUnusedSuppression('eslint', NO_CONSOLE, spanOfTextOnLine(text, 3, NO_CONSOLE))],
+    oxlintReport(text) {
+      return [oxlintPartlyUnusedSuppression('eslint', NO_CONSOLE, spanOfTextOnLine(text, 3, NO_CONSOLE))]
+    },
     unusedInEslint: [
       { line: 1, ruleName: NO_DEBUGGER },
       { line: 1, ruleName: NO_CONSOLE },
@@ -69,21 +71,27 @@ export const SUPPRESSION_PAIR_CASES: readonly SuppressionPairCase[] = [
   {
     shape: "a line-comment pair in oxlint's form whose second rule silenced nothing",
     lines: ['// oxlint-disable no-debugger, no-console', DEBUGGER_STATEMENT, '// oxlint-enable no-debugger, no-console'],
-    oxlintReport: (text) => [oxlintPartlyUnusedSuppression('oxlint', NO_CONSOLE, spanOfTextOnLine(text, 3, NO_CONSOLE))],
+    oxlintReport(text) {
+      return [oxlintPartlyUnusedSuppression('oxlint', NO_CONSOLE, spanOfTextOnLine(text, 3, NO_CONSOLE))]
+    },
     unusedInEslint: [],
     reported: [{ line: 1, ruleName: NO_CONSOLE }],
   },
   {
     shape: 'an `eslint-disable` comment closed by an `oxlint-enable` one, which oxlint reports in the form of the disable comment',
     lines: [blockDisable('eslint', NO_DEBUGGER), exportedConstant('between'), blockEnable({ form: 'oxlint', ruleName: NO_DEBUGGER })],
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfLine(text, 3))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfLine(text, 3))]
+    },
     unusedInEslint: [{ line: 1, ruleName: NO_DEBUGGER }],
     reported: [{ line: 1, ruleName: NO_DEBUGGER }],
   },
   {
     shape: 'two disable comments, then an enable comment of the rule of the first',
     lines: [blockDisable('eslint', NO_DEBUGGER), blockDisable('eslint', NO_CONSOLE), exportedConstant('between'), blockEnable({ form: 'eslint', ruleName: NO_DEBUGGER })],
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfLine(text, 4)), oxlintUnusedSuppression('eslint', spanOfLine(text, 2))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfLine(text, 4)), oxlintUnusedSuppression('eslint', spanOfLine(text, 2))]
+    },
     unusedInEslint: [
       { line: 1, ruleName: NO_DEBUGGER },
       { line: 2, ruleName: NO_CONSOLE },
@@ -102,7 +110,9 @@ export const SUPPRESSION_PAIR_CASES: readonly SuppressionPairCase[] = [
       exportedConstant('second'),
       blockEnable({ form: 'eslint', ruleName: NO_DEBUGGER }),
     ],
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfLine(text, 5))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfLine(text, 5))]
+    },
     unusedInEslint: [
       { line: 1, ruleName: NO_DEBUGGER },
       { line: 3, ruleName: NO_DEBUGGER },
@@ -120,7 +130,9 @@ export const SUPPRESSION_PAIR_CASES: readonly SuppressionPairCase[] = [
       exportedConstant('third'),
       blockEnable({ form: 'eslint', ruleName: NO_DEBUGGER }),
     ],
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfLine(text, 1)), oxlintUnusedSuppression('eslint', spanOfLine(text, 3)), oxlintUnusedSuppression('eslint', spanOfLine(text, 7))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfLine(text, 1)), oxlintUnusedSuppression('eslint', spanOfLine(text, 3)), oxlintUnusedSuppression('eslint', spanOfLine(text, 7))]
+    },
     unusedInEslint: [
       { line: 1, ruleName: NO_DEBUGGER },
       { line: 3, ruleName: NO_DEBUGGER },
@@ -135,56 +147,72 @@ export const SUPPRESSION_PAIR_CASES: readonly SuppressionPairCase[] = [
   {
     shape: 'a pair whose disable comment runs over three lines',
     lines: ['/* eslint-disable', '   no-debugger', '*/', exportedConstant('between'), blockEnable({ form: 'eslint', ruleName: NO_DEBUGGER })],
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfLine(text, 5))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfLine(text, 5))]
+    },
     unusedInEslint: [{ line: 1, ruleName: NO_DEBUGGER }],
     reported: [{ line: 1, ruleName: NO_DEBUGGER }],
   },
   {
     shape: 'a pair below a line holding a letter of two UTF-8 bytes',
     lines: [exportedConstant('é'), blockDisable('eslint', NO_DEBUGGER), exportedConstant('between'), blockEnable({ form: 'eslint', ruleName: NO_DEBUGGER })],
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfLine(text, 4))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfLine(text, 4))]
+    },
     unusedInEslint: [{ line: 2, ruleName: NO_DEBUGGER }],
     reported: [{ line: 2, ruleName: NO_DEBUGGER }],
   },
   {
     shape: 'a pair around a string holding the text of an enable comment',
     lines: A_PAIR_AROUND_A_STRING_HOLDING_AN_ENABLE,
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfLine(text, 3))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfLine(text, 3))]
+    },
     unusedInEslint: [{ line: 1, ruleName: NO_DEBUGGER }],
     reported: [{ line: 1, ruleName: NO_DEBUGGER }],
   },
   {
     shape: 'a pair around a template literal holding the text of an enable comment on a line of its own',
     lines: A_PAIR_AROUND_A_TEMPLATE_HOLDING_AN_ENABLE,
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfLine(text, 5))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfLine(text, 5))]
+    },
     unusedInEslint: [{ line: 1, ruleName: NO_DEBUGGER }],
     reported: [{ line: 1, ruleName: NO_DEBUGGER }],
   },
   {
     shape: 'a pair below a string holding the text of a disable comment',
     lines: A_PAIR_BELOW_A_STRING_HOLDING_A_DISABLE,
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfLine(text, 4))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfLine(text, 4))]
+    },
     unusedInEslint: [{ line: 2, ruleName: NO_DEBUGGER }],
     reported: [{ line: 2, ruleName: NO_DEBUGGER }],
   },
   {
     shape: "a pair in oxlint's form below a string holding the text of a disable comment in that form",
     lines: [exportedString('above', blockDisable('oxlint', NO_DEBUGGER)), blockDisable('oxlint', NO_DEBUGGER), exportedConstant('between'), blockEnable({ form: 'oxlint', ruleName: NO_DEBUGGER })],
-    oxlintReport: (text) => [oxlintUnusedSuppression('oxlint', spanOfLine(text, 4))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('oxlint', spanOfLine(text, 4))]
+    },
     unusedInEslint: [],
     reported: [{ line: 2, ruleName: NO_DEBUGGER }],
   },
   {
     shape: 'a pair written with no space inside its delimiters',
     lines: ['/*eslint-disable no-debugger*/', exportedConstant('between'), '/*eslint-enable no-debugger*/'],
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfLine(text, 3))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfLine(text, 3))]
+    },
     unusedInEslint: [{ line: 1, ruleName: NO_DEBUGGER }],
     reported: [{ line: 1, ruleName: NO_DEBUGGER }],
   },
   {
     shape: 'a pair whose disable comment gives a reason quoting an enable comment',
     lines: ['/* eslint-disable no-debugger -- until the // eslint-enable below */', exportedConstant('between'), ENABLE_NO_DEBUGGER],
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfLine(text, 3))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfLine(text, 3))]
+    },
     unusedInEslint: [{ line: 1, ruleName: NO_DEBUGGER }],
     reported: [{ line: 1, ruleName: NO_DEBUGGER }],
   },
@@ -197,7 +225,9 @@ export const SUPPRESSION_PAIR_CASES: readonly SuppressionPairCase[] = [
       exportedConstant('between'),
       ENABLE_NO_DEBUGGER,
     ],
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfLine(text, 1)), oxlintUnusedSuppression('eslint', spanOfLine(text, 5))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfLine(text, 1)), oxlintUnusedSuppression('eslint', spanOfLine(text, 5))]
+    },
     unusedInEslint: [
       { line: 1, ruleName: NO_DEBUGGER },
       { line: 3, ruleName: NO_DEBUGGER },
@@ -210,14 +240,18 @@ export const SUPPRESSION_PAIR_CASES: readonly SuppressionPairCase[] = [
   {
     shape: 'a pair whose disable comment, starting a line above, ends where its enable comment starts',
     lines: ['/* eslint-disable', '   no-debugger *//* eslint-enable no-debugger */', exportedConstant('after')],
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfTextOnLine(text, 2, ENABLE_NO_DEBUGGER))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfTextOnLine(text, 2, ENABLE_NO_DEBUGGER))]
+    },
     unusedInEslint: [{ line: 1, ruleName: NO_DEBUGGER }],
     reported: [{ line: 1, ruleName: NO_DEBUGGER }],
   },
   {
     shape: 'a block pair whose rule of a long name silenced nothing, which oxlint spans first in the enable comment',
     lines: [`/* eslint-disable no-debugger, ${A_LONG_NAME} */`, DEBUGGER_STATEMENT, `/* eslint-enable ${A_LONG_NAME}, no-debugger */`],
-    oxlintReport: (text) => [oxlintPartlyUnusedSuppression('eslint', A_LONG_NAME, spanOfTextOnLine(text, 3, A_LONG_NAME))],
+    oxlintReport(text) {
+      return [oxlintPartlyUnusedSuppression('eslint', A_LONG_NAME, spanOfTextOnLine(text, 3, A_LONG_NAME))]
+    },
     unusedInEslint: [
       { line: 1, ruleName: NO_DEBUGGER },
       { line: 1, ruleName: A_LONG_NAME },
@@ -227,7 +261,9 @@ export const SUPPRESSION_PAIR_CASES: readonly SuppressionPairCase[] = [
   {
     shape: 'a pair below a string holding no comment text',
     lines: A_PAIR_BELOW_A_STRING_HOLDING_NO_COMMENT,
-    oxlintReport: (text) => [oxlintUnusedSuppression('eslint', spanOfLine(text, 4))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('eslint', spanOfLine(text, 4))]
+    },
     unusedInEslint: [{ line: 2, ruleName: NO_DEBUGGER }],
     reported: [{ line: 2, ruleName: NO_DEBUGGER }],
   },
@@ -240,7 +276,9 @@ export const SUPPRESSION_PAIR_CASES: readonly SuppressionPairCase[] = [
       exportedConstant('between'),
       blockEnable({ form: 'oxlint', ruleName: NO_DEBUGGER }),
     ],
-    oxlintReport: (text) => [oxlintUnusedSuppression('oxlint', spanOfLine(text, 1)), oxlintUnusedSuppression('oxlint', spanOfLine(text, 5))],
+    oxlintReport(text) {
+      return [oxlintUnusedSuppression('oxlint', spanOfLine(text, 1)), oxlintUnusedSuppression('oxlint', spanOfLine(text, 5))]
+    },
     unusedInEslint: [],
     // oxlint reads the `*/` closing no block as a name too (1.87).
     reported: [

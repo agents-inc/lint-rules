@@ -13,6 +13,6 @@ describe('oxlintCodeOf', () => {
   })
 
   it('refuses a rule oxlint has no version of', () => {
-    expect(() => oxlintCodeOf('perfectionist/sort-objects', catalog)).toThrowError(/oxlint has no version of perfectionist\/sort-objects/u)
+    expect(() => oxlintCodeOf('perfectionist/sort-objects', catalog)).toThrow(/oxlint has no version of perfectionist\/sort-objects/u)
   })
 })

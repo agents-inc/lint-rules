@@ -20,7 +20,7 @@ export type TeamEslintRules = Readonly<Record<string, string>>
 export type TeamIgnoresFunction = { readonly functionSource: string }
 
 /** Read from its basePath where it gives one. */
-export type TeamGlobalIgnoresBlock = { readonly basePath?: string; readonly ignores: readonly (string | TeamIgnoresFunction)[] }
+export type TeamGlobalIgnoresBlock = { readonly basePath?: string; readonly ignores: ReadonlyArray<string | TeamIgnoresFunction> }
 
 const BUILT_PACKAGE = '@agents-inc/lint-rules'
 const TYPESCRIPT_ESLINT_IMPORT = "import tseslint from 'typescript-eslint'"
@@ -107,7 +107,7 @@ ${blockSources.map((source) => `  ${source},`).join('\n')}
 `
 }
 
-export function teamBlockSourceOf(block: Linter.Config): string {
+export function teamBlockSourceOf(block: Readonly<Linter.Config>): string {
   return JSON.stringify(block)
 }
 
@@ -167,7 +167,7 @@ export default teamConfig
 }
 
 /** Names the team's ESLint config as the merge's third argument. */
-export function mergedOxlintConfigText(lintRulesModule: string, teamConfig: OxlintConfig, teamEslintConfig: TeamEslintConfigPath): string {
+export function mergedOxlintConfigText(lintRulesModule: string, teamConfig: Readonly<OxlintConfig>, teamEslintConfig: TeamEslintConfigPath): string {
   return `import { mergeOxlintConfig } from '${BUILT_PACKAGE}/oxlint'
 import { oxlint } from './${lintRulesModule}'
 

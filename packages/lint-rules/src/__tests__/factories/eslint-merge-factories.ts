@@ -3,6 +3,7 @@ import type { ESLint, Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
 import type { Severity, TwoSetLintRulesInput } from '../../core/lint-rules-input.ts'
 import type { RuleInPlay, RulesInPlay, SidesOfAFile } from '../eslint-entries-owed.ts'
+import { laidOver } from '../laid-over.ts'
 import { buildFakePlugin } from './catalog-factories.ts'
 import { buildTwoSetLintRules } from './lint-rules-factories.ts'
 import { buildTeamEslintBlock, buildTeamEslintBlockTurningOn } from './team-config-factories.ts'
@@ -66,8 +67,8 @@ export function buildRuleInPlay(rule: string, { names = [rule], twins = [] }: Pa
   return { rule, names, twins }
 }
 
-export function buildRulesInPlay(rules: readonly RuleInPlay[], { setByTheTeam = false }: Partial<Pick<RulesInPlay, 'setByTheTeam'>> = {}): RulesInPlay {
-  return { rules, setByTheTeam }
+export function buildRulesInPlay(rules: readonly RuleInPlay[], { setByTheTeam: isSetByTheTeam = false }: Partial<Pick<RulesInPlay, 'setByTheTeam'>> = {}): RulesInPlay {
+  return { rules, setByTheTeam: isSetByTheTeam }
 }
 
 export function buildSidesOfAFile({ team = {}, ours = {} }: Partial<SidesOfAFile> = {}): SidesOfAFile {
@@ -82,6 +83,7 @@ export function installedEslintPlugin(prefix: string): ESLint.Plugin {
 }
 
 /** Made to lint every JS and TS file, as it does merged beside our base block; the first block names files only. */
+// eslint-disable-next-line functional/prefer-immutable-types -- TS2345 as Readonly: defineConfig takes a mutable InfiniteArray<ConfigWithExtends>
 export function buildTeamConfigAloneLintingEveryJsAndTsFile(teamConfig: TeamEslintConfig): Linter.Config[] {
   return [{ name: 'lints every JS and TS file', files: [EVERY_JS_AND_TS_FILE] }, ...defineConfig(teamConfig)]
 }
@@ -92,8 +94,8 @@ export function buildEslintMergeShapeValue(name: string, { team = {}, ours = {} 
 
 /** A later value's key replaces an earlier one's. Every shape gives the team's name for the rule, the scope and the entry. */
 export function buildEslintMergeShape(tsconfigRootDir: string, values: readonly EslintMergeShapeValue[]): EslintMergeShape {
-  const team = values.reduce<TeamBlockPiece>((joined, value) => ({ ...joined, ...value.team }), {})
-  const ours = values.reduce<OurSettingsPiece>((joined, value) => ({ ...joined, ...value.ours }), {})
+  const team = laidOver<TeamBlockPiece>({}, values.map((value) => value.team))
+  const ours = laidOver<OurSettingsPiece>({}, values.map((value) => value.ours))
   const { stating, scope, entryOf } = team
   if (stating === undefined || scope === undefined || entryOf === undefined) {
     throw new Error("a shape gives the name the team states, where the team's block applies, and its entry")
@@ -104,8 +106,8 @@ export function buildEslintMergeShape(tsconfigRootDir: string, values: readonly 
 
 function ourSettingsOf(ruleId: string, { topLevel, entry, ignores }: OurSettingsPiece): Partial<TwoSetLintRulesInput> {
   return {
-    ...(topLevel === undefined ? {} : { rules: { [ruleId]: topLevel } }),
-    ...(entry === undefined ? {} : { fileOverrides: [{ files: entry.files, rules: { [ruleId]: entry.severity } }] }),
-    ...(ignores === undefined ? {} : { ignores }),
+    ...(topLevel !== undefined && { rules: { [ruleId]: topLevel } }),
+    ...(entry !== undefined && { fileOverrides: [{ files: entry.files, rules: { [ruleId]: entry.severity } }] }),
+    ...(ignores !== undefined && { ignores }),
   }
 }

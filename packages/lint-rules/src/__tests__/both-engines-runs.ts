@@ -169,7 +169,7 @@ function writeConsumerFiles(
     }),
     [TEAM_ALONE.eslint]: teamAloneEslintConfigText(TEAM_ESLINT_MODULE),
   }
-  Object.entries(files).forEach(([file, text]) => writeFileSync(join(projectDir, file), text))
+  for (const [file, text] of Object.entries(files)) writeFileSync(join(projectDir, file), text)
   writeOxlintConfigFile(projectDir, TEAM_ALONE.oxlintConfigFile, teamOxlintConfig)
 }
 
@@ -186,8 +186,8 @@ async function runOf(projectDir: string, { name, eslint, oxlintConfigFile }: Bui
   }
 }
 
-function eslintFor(projectDir: string, eslint: string | Linter.Config[]): ESLint {
+function eslintFor(projectDir: string, eslint: string | readonly Linter.Config[]): ESLint {
   if (typeof eslint === 'string') return new ESLint({ cwd: projectDir, overrideConfigFile: join(projectDir, eslint) })
-  return new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: eslint })
+  return new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: [...eslint] })
 }
 

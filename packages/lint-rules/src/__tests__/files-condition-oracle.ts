@@ -14,9 +14,9 @@ export function filesTheConditionMatches(condition: FilesCondition, files: reado
 }
 
 function meetsTerm(file: string, { all, none }: FilesTerm): boolean {
-  return all.every((glob) => (glob.startsWith(NEGATION) ? !matches(file, glob.slice(NEGATION.length)) : matches(file, glob))) && !none.some((glob) => matches(file, glob))
+  return all.every((glob) => (glob.startsWith(NEGATION) ? !doesMatch(file, glob.slice(NEGATION.length)) : doesMatch(file, glob))) && none.every((glob) => !doesMatch(file, glob))
 }
 
-function matches(file: string, glob: string): boolean {
+function doesMatch(file: string, glob: string): boolean {
   return matchesGlob(file, glob.startsWith(LEADING_DOT_SLASH) ? glob.slice(LEADING_DOT_SLASH.length) : glob)
 }
