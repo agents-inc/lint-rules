@@ -13,7 +13,7 @@
       "cache": false
     },
     "//#typecheck-scripts": {
-      "dependsOn": ["//#unused-exports"],
+      "dependsOn": ["//#unused-exports", "@agents-inc/lint-rules#build"],
       "cache": false
     },
     "test": {

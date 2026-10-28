@@ -13,6 +13,9 @@ const TURBO_CONFIG = JSON.parse(readFileSync(join(REPO_ROOT, 'turbo.json'), 'utf
 const UNUSED_EXPORTS_SCRIPT = 'unused-exports'
 // turbo names a script of the root package.json `//#<script>`.
 const UNUSED_EXPORTS_TASK = `//#${UNUSED_EXPORTS_SCRIPT}`
+const TYPECHECK_SCRIPTS_TASK = '//#typecheck-scripts'
+// The root's lint configs, which typecheck-scripts checks, read @agents-inc/lint-rules' types from its dist.
+const LINT_RULES_BUILD_TASK = '@agents-inc/lint-rules#build'
 
 describe('the check for exports nothing imports', () => {
   it('is knip, run as the root script unused-exports', () => {
@@ -21,6 +24,10 @@ describe('the check for exports nothing imports', () => {
 
   it("runs before each package's typecheck, so a finding fails it", () => {
     expect(TURBO_CONFIG.tasks['typecheck']).toStrictEqual({ dependsOn: ['^typecheck', '^build', UNUSED_EXPORTS_TASK] })
+  })
+
+  it("runs before the typecheck of scripts/ and the root's lint configs, which also waits for lint-rules' build", () => {
+    expect(TURBO_CONFIG.tasks[TYPECHECK_SCRIPTS_TASK]).toStrictEqual({ dependsOn: [UNUSED_EXPORTS_TASK, LINT_RULES_BUILD_TASK], cache: false })
   })
 
   it("runs every time, never replayed from turbo's cache", () => {

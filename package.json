@@ -15,7 +15,7 @@
     "typecheck": "turbo typecheck typecheck-scripts",
     "//unused-exports": "Fails on an export or file nothing imports; every typecheck runs it first (turbo.json). What counts, and each exemption with its reason: knip.jsonc.",
     "unused-exports": "knip",
-    "//typecheck-scripts": "scripts/ belongs to no package, so no package's typecheck reaches it; typecheck runs this beside theirs.",
+    "//typecheck-scripts": "scripts/ and the root's .mts lint configs belong to no package, so no package's typecheck reaches them; typecheck runs this beside theirs. The lint configs read @agents-inc/lint-rules from its dist, so this waits for its build (turbo.json).",
     "typecheck-scripts": "tsc -p scripts",
     "mutation": "stryker run"
   },
