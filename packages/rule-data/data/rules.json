@@ -2321,6 +2321,18 @@
     }
   },
   {
+    "id": "house/no-manual-effect-error-tag",
+    "ruleset": "effect",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-anti-slop-effect-no-manual-effect-error-tag",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
     "id": "house/no-nested-interactive",
     "ruleset": "accessibility",
     "engine": "eslint",
@@ -6854,6 +6866,18 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-C"
+    }
+  },
+  {
+    "id": "shadcn/no-raw-colors",
+    "ruleset": "tailwind",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-shadcn-no-raw-colors",
+      "by": "owner-2026-10-24"
     }
   },
   {

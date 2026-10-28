@@ -156,7 +156,7 @@
     "list": "libs",
     "domain": "ui",
     "env": null,
-    "optIn": false,
+    "optIn": true,
     "sortsCode": false
   },
   {
@@ -196,7 +196,7 @@
     "list": "libs",
     "domain": "testing",
     "env": null,
-    "optIn": false,
+    "optIn": true,
     "sortsCode": false
   },
   {
@@ -267,6 +267,14 @@
     "name": "jsonwebtoken",
     "list": "libs",
     "domain": "auth",
+    "env": null,
+    "optIn": false,
+    "sortsCode": false
+  },
+  {
+    "name": "effect",
+    "list": "libs",
+    "domain": "effect",
     "env": null,
     "optIn": false,
     "sortsCode": false
