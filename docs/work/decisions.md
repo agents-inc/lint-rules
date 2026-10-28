@@ -627,3 +627,101 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   `rule-candidates.json` entries removed. The consequence the owner accepted: Puppeteer code outside the test files is
   never reported, and neither is a Playwright helper, such as a page object, outside them. The Puppeteer source file in
   `accepted-pw.ts` pins it.
+- Owner 2026-10-24, "Make react-ssr opt-in" (board card q-lint-react-ssr-in-client-apps), asked whether `init` keeps
+  listing `react-ssr` in every new config, since the accepted hydration-proof rules fire in React apps that never render
+  on a server: `react-ssr` is opt-in (`optIn: true`, `ruleset-definitions.json`; lane HP). `init` names it in a comment
+  and a team that renders on a server adds it.
+- Owner 2026-10-24, "Make jest-dom opt-in" (board card q-lint-jest-dom-without-jest-dom), asked whether `init` keeps
+  listing `jest-dom`, since the accepted jest-dom rules fire, and their fixes break tests, in projects without jest-dom:
+  `jest-dom` is opt-in (`optIn: true`; lane JD). `init` names it in a comment; configs that already list it keep it.
+- Owner 2026-10-24, "Major browsers as Vite targets them, set as the rule's option" (board card
+  q-lint-compat-default-target), asked which browsers `compat/compat` checks by default: the `browser-targets` ruleset
+  gives the rule a browserslist query as its option. Which list that means was asked again on 2026-10-28
+  (q-lint-compat-vite-target, below).
+- Owner 2026-10-28 (workboard; each card's text and the choice verbatim in the session's answers bundle). The lanes are in
+  `docs/work/spec-answers-4.md`; nothing below is built yet unless it says so:
+  - "Vite's fixed list" (q-lint-compat-vite-target), asked whether compat checks exactly what Vite builds for or
+    browserslist's "widely available" list: Vite 8's fixed build target, as the query
+    `chrome >= 111, edge >= 111, firefox >= 114, safari >= 16.4, ios_saf >= 16.4`. It changes only when lint-rules moves
+    to a new Vite major; a test compares it with the target Vite resolves. Lane CPT-SHIP.
+  - "Add it" (q-lint-compat-install-size), asked whether to add the plugin though every install grows about 52 MB:
+    `eslint-plugin-compat` becomes a dependency and `compat/compat` ships in `browser-targets`. Lane CPT-SHIP.
+  - "Silence it inside check" (q-lint-compat-stale-data-warning), asked whether `check` silences browserslist's "browsers
+    data is N months old" message: `check` sets `BROWSERSLIST_IGNORE_OLD_DATA` in its own process; `init`, editors and
+    `npx eslint` unchanged. The message already printed before compat (through `unicorn/no-unnecessary-polyfills` in a
+    project naming its browsers), and the same switch hides baseline-browser-mapping's old-data warning. Lane CPT-SILENCE.
+  - "Ship it" (q-lint-hp-timezone-hold), asked whether the time-zone rule ships or waits with the two held react-ssr
+    rules: `hydration-proof/no-timezone-without-explicit-timezone` ships in `react-ssr` with three others. Lane HP-SHIP.
+  - "Ship now, add the setting later" (q-lint-hp-server-components-gap), asked whether to accept that a Next.js page only
+    the server renders still gets reports, or hold the rules until the plugin's Next.js setting can be passed: the four
+    ship, the false report is a written limit, and lane HP-SETTINGS passes `serverComponents: 'next-app'`. How the config
+    knows a project is a Next.js app went back to the owner (proposed card q-lint-hp-next-setting-where); nothing is
+    built for it until answered.
+  - "Leave them off" (q-lint-rc-hydration-false-alarms-measured), asked whether two react-ssr rules that raised only false
+    alarms ship: `hydration-proof/no-browser-global-in-render` and `hydration-proof/no-locale-without-explicit-locale` do
+    not ship and stay in `rule-candidates.json`. "Stay listed as candidates" fits no recorded state (`recommended` is
+    queued to build, `dropped` is decided against), so they stay `recommended` and held, and how to record them went to
+    the owner (proposed card q-lint-hp-left-off-record). Lane HP-SHIP.
+  - "Report only, no auto-fix" (q-lint-rc-jest-dom-fixes-measured), asked how six jest-dom rules whose fixes break passing
+    tests ship: `jest-dom/prefer-checked`, `prefer-empty`, `prefer-in-document`, `prefer-required`,
+    `prefer-to-have-attribute` and `prefer-to-have-class` ship in `jest-dom`, their fixes withheld by `check`
+    (`cli/check/withheld-fixes.json`). Editors still offer them (proposed card q-lint-jd-editor-fixes). Lane JD.
+  - "Ship with the auto-fix" (q-lint-rc-pressed-fix-measured), asked how `jest-dom/prefer-pressed` ships, its fix breaking
+    tests on jest-dom before 6.7.0: on 6.9.1 too its fix turns a passing presence-only `aria-pressed` test into a failing
+    one, which the card did not say. Its false alarms are measured first; it stays held and the question goes back to the
+    owner (proposed card q-lint-rc-pressed-fix-current-jest-dom). Lane JD (JD-PRESSED).
+  - "Not in test files" (q-lint-unicorn-gethtml-jsdom), asked what to do about `unicorn/prefer-dom-node-html-methods`
+    rewriting test code to `getHTML()`, which jsdom lacks: it takes the test-file globs as its `ignores`. Setup and helper
+    files outside the globs, and source files a jsdom test imports, are still rewritten. Lane SCOPE-HTML.
+  - "Leave entry files alone" (q-lint-own-r-barrel-entry), asked whether `unicorn/no-barrel-files` leaves a package's main
+    entry file alone: measured, the rule takes no options and no file pattern matches main entries exactly, so by the
+    answer's own terms it went back to the owner (proposed card q-lint-barrel-entry-how). The rule ships as before; our
+    `packages/rule-data/src/index.ts` finding stays, and own-lint lane Z adds no disable and no split for it. Lane
+    SCOPE-BARREL.
+  - "Refuse it, naming the file" (q-lint-oxlint-null-options), asked what happens when a team's oxlint config sets
+    `options`, or `categories` with no config extended, to null: both merges refuse it with one line naming the file and
+    the key. `check` and `init` never read a team's oxlint config, so they do not change. A null `categories` beside an
+    extended config, other null keys and `plugins: null` went to the owner. Lane OXLINT-NULL.
+  - No option chosen (q-lint-own-gate-per-file), asked whether the own-lint gate also checks each file alone; the note:
+    "why is this investigate first. running eslint should surface all errors thats the point". The gate stays one
+    whole-repo run, and that run missing findings is a defect: is-immutable-type's cache makes
+    `functional/prefer-immutable-types` answer by what it checked first. It is fixed by wrapping that rule in the plugin
+    registry, so `check` and editors are fixed too; no per-file pass is added. Lane LINT-RUN-SET.
+- Owner 2026-10-11 (old candidates page https://claude.ai/artifact/VR852bgmX4krED5ZEbNawF, its Accept/Reject verdicts;
+  recorded 2026-10-28). Never applied until now. Recorded in `rule-candidates.json` under the decision label
+  `owner-2026-10-11` (lane R11); `docs/work/spec-accepted-rules-1011.md` builds the accepts, each as the page proposed it
+  (r1's pick, `docs/work/rule-candidates-r1.md` §1):
+  - Accepted, `recommended` until its lane ships it. correctness: `accessor-pairs` (test files ignored),
+    `no-array-constructor`, `no-empty`, `no-new-wrappers`, `no-self-compare`, `no-sequences`, `radix`,
+    `sonarjs/no-duplicated-branches`, `unicorn/no-async-iterator-callback`, `unicorn/no-conflicting-constraints`,
+    `unicorn/no-incomplete-accessor-override`, `unicorn/no-invalid-intl-options`,
+    `unicorn/no-invalid-property-descriptor`, `unicorn/no-invalid-response-options`, `unicorn/no-invalid-temporal-arithmetic`,
+    `unicorn/no-invalid-url-protocol-comparison`, `unicorn/no-unsafe-json-serialization`,
+    `unicorn/no-unused-builtin-method-return`, `unicorn/no-unused-iterator-helper`, `unicorn/no-url-in-search-params`,
+    `unicorn/no-using-resource-escape`, `unicorn/require-text-decoder-streaming`. type-safety:
+    `@typescript-eslint/no-namespace`, `@typescript-eslint/use-unknown-in-catch-callback-variable`,
+    `@typescript-eslint/parameter-properties` (was `considering`; r1 picked no ruleset, the spec reads type-safety).
+    security: `unicorn/no-ineffective-csp-directives`, `unicorn/no-invalid-integrity`. performance:
+    `anti-slop/no-reduce-accumulator-copy`, to be ported as `house/no-reduce-accumulator-copy`. immutability:
+    `@typescript-eslint/prefer-readonly`. modern-js: `no-object-constructor`, `prefer-object-has-own`,
+    `@typescript-eslint/prefer-string-starts-ends-with`, `unicorn/prefer-at`, `unicorn/prefer-temporal-conversion`.
+    redundancy: `no-useless-assignment`, `@typescript-eslint/no-unnecessary-qualifier`,
+    `unicorn/no-useless-set-construction`, `unicorn/prefer-single-call`. conventions: `symbol-description`,
+    `@typescript-eslint/consistent-type-exports`, `@typescript-eslint/consistent-type-imports`,
+    `@typescript-eslint/dot-notation`, `unicorn/prefer-literal-ascii`. tests: `sonarjs/composite-assertions`,
+    `sonarjs/no-duplicate-parameterized-test-case`, `sonarjs/no-empty-parameterized-test-dataset`,
+    `sonarjs/synchronous-exception-assertions`. react: `sonarjs/no-debounce-throttle-in-render`. browser:
+    `unicorn/no-invalid-boolean-attribute-value`, `unicorn/no-invalid-dom-token`,
+    `unicorn/no-invalid-style-set-property`, `unicorn/no-prevent-default-in-passive-listener`.
+  - His notes on three accepts: `unicorn/no-async-iterator-callback`, "If this is already covered don't add this to";
+    `unicorn/no-invalid-property-descriptor`, "If this is already handled don't add it"; `unicorn/prefer-single-call`,
+    "It's not bad that some lines will have multiple rule violations as long as they're not the same violations" (the
+    candidates page note above).
+  - Rejected, recorded `dropped`: `@typescript-eslint/no-unsafe-enum-assignment` (his note: "Same as a number of others
+    that are already handled by another rule"), `jsx-a11y/anchor-ambiguous-text`, `anti-slop/no-runtime-typeof`,
+    `anti-slop/no-unknown-parameters`, `anti-slop/no-unknown-returns` (anti-slop is not installed; r1 §3).
+  - No verdict, a note only, left to their bulk cards (unanswered): `ai-guard/no-console-in-handler`
+    (rc-bulk-considering); `anti-slop/no-known-value-widening`, `anti-slop/no-unsafe-dictionary-type`
+    (rc-bulk-rejected); `no-case-declarations`, `unicorn/prefer-escaped-irregular-whitespace` (rc-bulk-recommended).
+  - Knock-on: with `unicorn/prefer-literal-ascii` accepted, r2-d68 (`docs/work/spec-next-batch.md`, row D68) drops
+    `unicorn/no-hex-escape`, decided by `r2-d68`, in lane UNI.
