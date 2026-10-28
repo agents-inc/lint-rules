@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { catalog } from '@workspace/rule-data'
+import { catalog, routeOf } from '@workspace/rule-data'
 import type { OxlintConfig } from 'oxlint'
 import { describe, expect, it } from 'vitest'
 import {
@@ -99,9 +99,9 @@ function projectListingNoOxlint(files: ProjectFiles = {}): string {
 
 /** The name oxlint runs a rule of ours under: throws for a rule it has no version of. */
 function oxlintNameOf(ruleId: string): string {
-  const route = catalog.rules.get(ruleId)
-  if (route === undefined || route.oxlintName === null) throw new Error(`oxlint runs no ${ruleId} of ours`)
-  return route.oxlintName
+  const { oxlintName } = routeOf(ruleId, catalog)
+  if (oxlintName === null) throw new Error(`oxlint runs no ${ruleId} of ours`)
+  return oxlintName
 }
 
 /** The error the call throws, for a test of its cause: throws where the call does not. */
@@ -116,20 +116,23 @@ function errorThrownBy(call: () => unknown): Error {
 }
 
 /** The error's message, and the code of its cause, which Node gives the errors it throws. */
-function messageAndCauseCodeOf(error: Error): { readonly message: string; readonly causeCode: unknown } {
+function messageAndCauseCodeOf(error: Readonly<Error>): { readonly message: string; readonly causeCode: unknown } {
   return { message: error.message, causeCode: error.cause instanceof Error && 'code' in error.cause ? error.cause.code : error.cause }
 }
+
+/** A call of mergeEslintConfig, and how its third argument is given. */
+type MergeCall = { readonly how: string; readonly merge: () => ReturnType<typeof mergeEslintConfig> }
 
 describe("mergeEslintConfig's third argument, in a project whose package.json lists oxlint", () => {
   const projectDir = projectListingOxlintIn(tempProjects, { [OXLINT_CONFIG]: OXLINT_CONFIG_SETTING_NO_RULE_TEXT, ...FAILING_CONFIG_FILES })
 
-  it.each([
+  it.each<MergeCall>([
     // @ts-expect-error the third argument is required
-    { how: 'left out', merge: () => mergeEslintConfig([], ourPartsIn(projectDir).eslint) },
+    { how: 'left out', merge() { return mergeEslintConfig([], ourPartsIn(projectDir).eslint) } },
     // @ts-expect-error oxlintConfig is required
-    { how: 'given without its key', merge: () => mergeEslintConfig([], ourPartsIn(projectDir).eslint, {}) },
+    { how: 'given without its key', merge() { return mergeEslintConfig([], ourPartsIn(projectDir).eslint, {}) } },
   ])('is refused where it is $how, the error naming eslint.config.mjs and both ways to give it', ({ merge }) => {
-    expect(merge).toThrowError(
+    expect(merge).toThrow(
       new Error(
         "eslint.config.mjs: mergeEslintConfig needs the path of your oxlint config as its third argument, { oxlintConfig: 'oxlint.config.mts' }, or { oxlintConfig: null } if this project has none: the package.json nearest to tsconfigRootDir lists oxlint",
       ),
@@ -139,7 +142,7 @@ describe("mergeEslintConfig's third argument, in a project whose package.json li
   it('is refused where oxlintConfig is neither a path nor null, the error describing what it was given', () => {
     const { eslint } = ourPartsIn(projectDir)
     // @ts-expect-error a number is no path
-    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: NO_CONFIG_BUT_A_NUMBER })).toThrowError(
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: NO_CONFIG_BUT_A_NUMBER })).toThrow(
       new Error('eslint.config.mjs: oxlintConfig must be a path or null, and was given number 42'),
     )
   })
@@ -147,7 +150,7 @@ describe("mergeEslintConfig's third argument, in a project whose package.json li
   it('is refused where the path names no file, the error giving the path as read from tsconfigRootDir', () => {
     const { eslint } = ourPartsIn(projectDir)
 
-    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: MISSING_CONFIG })).toThrowError(
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: MISSING_CONFIG })).toThrow(
       new Error(`eslint.config.mjs: oxlintConfig names ${join(projectDir, MISSING_CONFIG)}, where there is no file`),
     )
   })
@@ -165,7 +168,7 @@ describe("mergeEslintConfig's third argument, in a project whose package.json li
   it('is refused where the file it names exports no object by default, the error saying what it exports', () => {
     const { eslint } = ourPartsIn(projectDir)
 
-    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: NOT_A_CONFIG })).toThrowError(
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: NOT_A_CONFIG })).toThrow(
       new Error(`eslint.config.mjs: could not read your oxlint config at ${join(projectDir, NOT_A_CONFIG)}: its default export is number 42, not an oxlint config object`),
     )
   })
@@ -194,10 +197,10 @@ describe("mergeEslintConfig's third argument, in a project whose package.json li
   const projectDir = projectListingNoOxlint()
 
   // No oxlint runs there, so no rule of the team's is set in it.
-  it.each([
+  it.each<MergeCall>([
     // @ts-expect-error the third argument is required
-    { how: 'left out', merge: () => mergeEslintConfig([], ourPartsIn(projectDir).eslint) },
-    { how: 'a path naming no file', merge: () => mergeEslintConfig([], ourPartsIn(projectDir).eslint, { oxlintConfig: MISSING_CONFIG }) },
+    { how: 'left out', merge() { return mergeEslintConfig([], ourPartsIn(projectDir).eslint) } },
+    { how: 'a path naming no file', merge() { return mergeEslintConfig([], ourPartsIn(projectDir).eslint, { oxlintConfig: MISSING_CONFIG }) } },
   ])('is not read where it is $how', ({ merge }) => {
     expect(merge).not.toThrow()
   })
@@ -211,7 +214,7 @@ describe("mergeOxlintConfig's third argument", () => {
   it('is refused where the path names no file, the error giving the path as read from tsconfigRootDir', () => {
     const oxlint = ourOxlintPartIn(projectDir)
 
-    expect(() => mergeOxlintConfig({}, oxlint, { eslintConfig: MISSING_CONFIG })).toThrowError(
+    expect(() => mergeOxlintConfig({}, oxlint, { eslintConfig: MISSING_CONFIG })).toThrow(
       new Error(`oxlint.config.mts: eslintConfig names ${join(projectDir, MISSING_CONFIG)}, where there is no file`),
     )
   })
@@ -230,7 +233,7 @@ describe("mergeOxlintConfig's third argument", () => {
   it("is refused where the file it names exports no object by default, the error giving ESLint's refusal", () => {
     const oxlint = ourOxlintPartIn(projectDir)
 
-    expect(() => mergeOxlintConfig({}, oxlint, { eslintConfig: NOT_A_CONFIG })).toThrowError(
+    expect(() => mergeOxlintConfig({}, oxlint, { eslintConfig: NOT_A_CONFIG })).toThrow(
       new Error(`oxlint.config.mts: could not read your ESLint config at ${join(projectDir, NOT_A_CONFIG)}: Expected an object but received 42.`),
     )
   })
@@ -263,7 +266,7 @@ describe("a file named as the team's oxlint config, read by mergeEslintConfig", 
   it.each(FILES_THAT_ARE_NO_OXLINT_CONFIG)('is refused where it is $what, the error naming the keys no oxlint config holds', ({ file, foreignKeys }) => {
     const { eslint } = ourPartsIn(projectDir, OURS_RUN_BY_ESLINT)
 
-    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: file })).toThrowError(
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: file })).toThrow(
       new Error(`eslint.config.mjs: could not read your oxlint config at ${join(projectDir, file)}: it is not an oxlint config: no oxlint config holds ${foreignKeys}`),
     )
   })
@@ -288,7 +291,7 @@ describe("a file named as the team's ESLint config, read by mergeOxlintConfig", 
   it.each(FILES_THAT_ARE_NO_ESLINT_CONFIG)('is refused where it is $what, the error naming the keys no ESLint config holds', ({ file, foreignKeys }) => {
     const oxlint = ourOxlintPartIn(projectDir, OURS_RUN_BY_OXLINT)
 
-    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: file })).toThrowError(
+    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: file })).toThrow(
       new Error(`oxlint.config.mts: could not read your ESLint config at ${join(projectDir, file)}: it is not an ESLint config: no ESLint config holds ${foreignKeys}`),
     )
   })
@@ -363,7 +366,7 @@ describe('a team oxlint config handed to mergeOxlintConfig', () => {
   it('is refused where its extends holds a path, the error naming the entry and what to do instead', () => {
     const oxlint = ourOxlintPartIn(projectDir)
 
-    expect(() => mergeOxlintConfig(buildTeamOxlintrcExtending(['./base.json']), oxlint, NO_TEAM_ESLINT_CONFIG)).toThrowError(
+    expect(() => mergeOxlintConfig(buildTeamOxlintrcExtending(['./base.json']), oxlint, NO_TEAM_ESLINT_CONFIG)).toThrow(
       new Error('oxlint.config.mts: extends[0] is a path, which oxlint refuses in a JS or TS config: import that file and put the object in extends'),
     )
   })
@@ -428,6 +431,10 @@ describe('both merges, given one pair of team configs, each naming the other', (
   })
 })
 
+function statedFor(merged: Readonly<OxlintConfig>): { readonly noExplicitAny: string; readonly noDebugger: string } {
+  return { noExplicitAny: severityStatedFor(merged, SOURCE_FILE, NO_EXPLICIT_ANY), noDebugger: severityStatedFor(merged, SOURCE_FILE, NO_DEBUGGER) }
+}
+
 // A config calling our merge for its own engine is read as what it hands that merge, with the plugins
 // we register; on a later read in the same process, Node serves the cached module without calling the
 // merge again. Our oxlint part is merged in a process loading the built package, as a team's oxlint run does.
@@ -454,10 +461,6 @@ describe('mergeOxlintConfig, reading a team ESLint config that calls mergeEslint
   )
   // The team turns no-explicit-any off, so it is the team's; no-debugger, which it sets nowhere, stays ours.
   const OWED = { noExplicitAny: NOT_STATED, noDebugger: 'error' }
-
-  function statedFor(merged: OxlintConfig): typeof OWED {
-    return { noExplicitAny: severityStatedFor(merged, SOURCE_FILE, NO_EXPLICIT_ANY), noDebugger: severityStatedFor(merged, SOURCE_FILE, NO_DEBUGGER) }
-  }
 
   it("drops from our part no-explicit-any, which the team's config turns off under ts/, the prefix it registers typescript-eslint under; and keeps no-debugger", () => {
     expect(mergedConfigsOf(twoMerges()).map(statedFor).at(0)).toStrictEqual(OWED)

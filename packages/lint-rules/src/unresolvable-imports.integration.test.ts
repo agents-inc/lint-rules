@@ -60,6 +60,7 @@ describe("imports eslint-plugin-n cannot resolve, in a monorepo's packages, our 
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
   })
   // Read before the tests, so only the assertion can fail inside it.fails.
+  // eslint-disable-next-line functional/no-let -- it.fails: only the assertion may throw, so the run is in beforeAll and its result crosses to the test (CLAUDE.md, Tests; q-lint-no-let-it-fails)
   let made: BothEnginesRuns | undefined
 
   beforeAll(() => {
@@ -130,6 +131,7 @@ describe("imports eslint-plugin-n cannot resolve, in a monorepo's packages, our 
     ...unresolvableImportFiles,
   })
   // As above, read before the tests, so only the assertion can fail inside it.fails.
+  // eslint-disable-next-line functional/no-let -- it.fails: only the assertion may throw, so the run is in beforeAll and its result crosses to the test (CLAUDE.md, Tests; q-lint-no-let-it-fails)
   let made: EslintCliReading | undefined
 
   beforeAll(() => {

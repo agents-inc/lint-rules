@@ -36,14 +36,17 @@ function mergedIntoAnEmptyTeamConfig(tsconfigRootDir: string): Linter.Config[] {
   return ourEditorEslintPartMergedInto([], correctnessIn(tsconfigRootDir))
 }
 
+/** A config of ours, named in full, and how it is built. */
+type BuiltConfig = { readonly config: string; readonly build: () => Linter.Config[] }
+
 // The config's name in full in its title, which $-interpolation would cut short.
-const CONFIGS = [
-  { config: 'the agent build', build: () => agentConfigsOf(defineLintRules(correctnessIn(projectListingOxlint))).eslint },
-  { config: 'the editor part of a project whose package.json lists oxlint, merged into an empty team config', build: () => mergedIntoAnEmptyTeamConfig(projectListingOxlint) },
-  { config: 'the editor part of a project whose package.json lists no oxlint, merged into an empty team config', build: () => mergedIntoAnEmptyTeamConfig(emptyTsconfigRootDir()) },
+const CONFIGS: readonly BuiltConfig[] = [
+  { config: 'the agent build', build() { return agentConfigsOf(defineLintRules(correctnessIn(projectListingOxlint))).eslint } },
+  { config: 'the editor part of a project whose package.json lists oxlint, merged into an empty team config', build() { return mergedIntoAnEmptyTeamConfig(projectListingOxlint) } },
+  { config: 'the editor part of a project whose package.json lists no oxlint, merged into an empty team config', build() { return mergedIntoAnEmptyTeamConfig(emptyTsconfigRootDir()) } },
 ]
 
-CONFIGS.forEach(({ config, build }) => {
+for (const { config, build } of CONFIGS) {
   describe(`Vue's, Astro's and Svelte's component globals in ESLint, in ${config}`, () => {
     it.each(JS_FILES_USING_A_FRAMEWORK_GLOBAL)('are no global in %s, which is no component', async (file) => {
       expect(namesDefinedIn(await globalsFor(build(), file), EVERY_FRAMEWORK_GLOBAL)).toStrictEqual([])
@@ -54,4 +57,4 @@ CONFIGS.forEach(({ config, build }) => {
       expect(await calculatedConfigFor(build(), file)).toBeUndefined()
     })
   })
-})
+}

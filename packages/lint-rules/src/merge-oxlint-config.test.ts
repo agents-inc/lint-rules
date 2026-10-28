@@ -98,52 +98,52 @@ function ourEditorParts(fields: SharedFields, rulesets: OurRulesets = {}): Edito
 }
 
 /** Our editor oxlint part for a config listing no ruleset, with these shared settings, merged into the team's config. */
-function mergedEditorOxlintConfig(projectDir: string, fields: SharedFields, teamConfig: OxlintConfig): OxlintConfig {
+function mergedEditorOxlintConfig(projectDir: string, fields: SharedFields, teamConfig: Readonly<OxlintConfig>): OxlintConfig {
   const { oxlint } = defineLintRules(buildConsumerLintRules(projectDir, {}, fields)).editorRulesets
   return mergeOxlintConfig(teamConfig, oxlint, NO_TEAM_ESLINT_CONFIG)
 }
 
-function overridesOf({ overrides }: OxlintConfig): NonNullable<OxlintConfig['overrides']> {
+function overridesOf({ overrides }: Readonly<OxlintConfig>): NonNullable<OxlintConfig['overrides']> {
   if (overrides === undefined) throw new Error('the merged config has no overrides')
   return overrides
 }
 
-function pluginsOf({ plugins }: OxlintConfig): NonNullable<OxlintConfig['plugins']> {
+function pluginsOf({ plugins }: Readonly<OxlintConfig>): NonNullable<OxlintConfig['plugins']> {
   if (plugins === undefined) throw new Error('the merged config lists no plugins')
   return plugins
 }
 
-function ignorePatternsOf({ ignorePatterns }: OxlintConfig): string[] {
+function ignorePatternsOf({ ignorePatterns }: Readonly<OxlintConfig>): string[] {
   if (ignorePatterns === undefined) throw new Error('the merged config has no ignorePatterns')
   return ignorePatterns
 }
 
 /** The objects the merged config extends: a JSON config's paths are not the merge's to write. */
-function extendedObjectsOf({ extends: extended }: OxlintConfig): OxlintConfig[] {
+function extendedObjectsOf({ extends: extended }: Readonly<OxlintConfig>): OxlintConfig[] {
   if (extended === undefined) throw new Error('the merged config extends no config')
   return extended.filter((each): each is OxlintConfig => typeof each !== 'string')
 }
 
 /** The first object the merged config extends, which oxlint applies before any other. */
-function firstExtendedObjectOf(config: OxlintConfig): OxlintConfig {
+function firstExtendedObjectOf(config: Readonly<OxlintConfig>): OxlintConfig {
   const [first] = extendedObjectsOf(config)
   if (first === undefined) throw new Error('the merged config extends no object')
   return first
 }
 
 /** The config's entry of each key the rule has in oxlint, in the file: oxlint reads any of them as the rule. */
-function entriesOfTheRuleIn(config: OxlintConfig, file: string, ruleId: string): Readonly<Record<string, unknown>> {
+function entriesOfTheRuleIn(config: Readonly<OxlintConfig>, file: string, ruleId: string): Readonly<Record<string, unknown>> {
   const { rules } = oxlintConfigForFile(config, file)
   return Object.fromEntries(Object.entries(rules).filter(([key]) => routeOf(ruleId).oxlintSpellings.includes(key)))
 }
 
 /** The entry oxlint applies to the rule in the file, whichever of its keys states it last. */
-function entryOfTheRuleIn(config: OxlintConfig, file: string, ruleId: string): unknown {
+function entryOfTheRuleIn(config: Readonly<OxlintConfig>, file: string, ruleId: string): unknown {
   return oxlintEntryOfRuleFor(config, file, routeOf(ruleId).oxlintSpellings)
 }
 
 /** Every override of the config, as oxlint lines them up: those of the configs it extends as objects first. */
-function overridesInLine(config: OxlintConfig): OxlintOverride[] {
+function overridesInLine(config: Readonly<OxlintConfig>): OxlintOverride[] {
   const { extends: extended = [], overrides = [] } = config
   return [...extended.filter((each): each is OxlintConfig => typeof each !== 'string').flatMap(overridesInLine), ...overrides]
 }
@@ -166,10 +166,12 @@ function ruleIdsStatedOffIn(overrides: readonly OxlintOverride[]): string[] {
 }
 
 /** The part of the merge an override is, read from what it states. */
-function partOfTheMergeIn(override: OxlintOverride, teamOverrides: readonly OxlintOverride[], parts: EditorParts): PartOfTheMerge {
+function partOfTheMergeIn(override: Readonly<OxlintOverride>, teamOverrides: readonly OxlintOverride[], parts: EditorParts): PartOfTheMerge {
   if (teamOverrides.some((teams) => isDeepStrictEqual(teams, override))) return "the team's"
   const ourRuleIds = ruleIdsOnIn(oxlintPartOf(parts).layers)
-  const isOurs = ([key, entry]: Statement): boolean => severityOfOxlintEntry(entry) !== 'off' && ourRuleIds.includes(ruleIdKeyedBy(key))
+  function isOurs([key, entry]: Statement): boolean {
+    return severityOfOxlintEntry(entry) !== 'off' && ourRuleIds.includes(ruleIdKeyedBy(key))
+  }
   // An override of the merge's stating no rule carries our env.
   return statementsOf([override]).every(isOurs) ? 'ours' : 'none of these'
 }
@@ -186,8 +188,9 @@ function partsOfTheMergeIn(overrides: readonly OxlintOverride[], teamOverrides: 
  */
 function entriesOursAloneRuns(part: OxlintPart): Readonly<Record<string, unknown>> {
   const alone = oxlintPartAlone(part, catalog)
-  const runsIn = (file: string, oxlintName: string): boolean =>
-    !isIgnoredByOxlintConfig(alone, file) && RUNNING_SEVERITIES.has(oxlintSeverityFor(alone, file, oxlintName))
+  function runsIn(file: string, oxlintName: string): boolean {
+    return !isIgnoredByOxlintConfig(alone, file) && RUNNING_SEVERITIES.has(oxlintSeverityFor(alone, file, oxlintName))
+  }
   return Object.fromEntries(
     FILES_READ.flatMap((file) =>
       oxlintNamesOfRulesOurPartRuns(part).map((oxlintName): [string, unknown] => [
@@ -199,7 +202,7 @@ function entriesOursAloneRuns(part: OxlintPart): Readonly<Record<string, unknown
 }
 
 /** The merged config's entry of each rule our oxlint part runs, in each file read, under the key our part gives it. */
-function entriesOfOurRulesIn(merged: OxlintConfig, part: OxlintPart): Readonly<Record<string, unknown>> {
+function entriesOfOurRulesIn(merged: Readonly<OxlintConfig>, part: OxlintPart): Readonly<Record<string, unknown>> {
   return Object.fromEntries(
     FILES_READ.flatMap((file) =>
       oxlintNamesOfRulesOurPartRuns(part).map((oxlintName): [string, unknown] => [`${file} ${oxlintName}`, oxlintConfigForFile(merged, file).rules[oxlintName]]),
@@ -217,7 +220,9 @@ describe('mergeOxlintConfig, given a team config setting every key', () => {
     rules: { 'no-debugger': 'error', [NO_WARNING_COMMENTS]: 'error', [ARRAY_TYPE]: 'error' },
     fileOverrides: [{ files: ['legacy/**'], rules: { 'no-debugger': 'off' } }],
   } satisfies SharedFields
-  const merged = (): OxlintConfig => mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, fields, TEAM_CONFIG)
+  function merged(): OxlintConfig {
+    return mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, fields, TEAM_CONFIG)
+  }
 
   it('keeps the categories, rules, env, globals, settings and jsPlugins of the team, untouched, and extends its objects after a first one of ours', () => {
     const config = merged()
@@ -297,7 +302,7 @@ describe('mergeOxlintConfig, given a team config setting every key', () => {
   it('states, in no oxlint spelling, an ESLint-run rule of ours that oxlint has', () => {
     const applied = oxlintConfigForFile(merged(), 'src/a.ts').rules
 
-    expect(routeOf(ARRAY_TYPE).oxlintSpellings.filter((spelling) => spelling in applied)).toStrictEqual([])
+    expect(routeOf(ARRAY_TYPE).oxlintSpellings.filter((spelling) => Object.hasOwn(applied, spelling))).toStrictEqual([])
   })
 
   // Our top-level rules turning a rule off remove only ours.
@@ -432,7 +437,9 @@ describe('the overrides mergeOxlintConfig writes, beside a team config that need
     fileOverrides: [{ files: ['lib/**'], rules: { [JSX_KEY]: 'off', 'no-compare-neg-zero': 'error' } }],
   } satisfies SharedFields
   const team = buildTeamOxlintConfig({ plugins: ROOT_LISTING_EVERY_PLUGIN_OF_OURS, categories: { correctness: 'off' } })
-  const merged = (): OxlintConfig => mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, fields, team)
+  function merged(): OxlintConfig {
+    return mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, fields, team)
+  }
 
   it('state no rule off, though our ESLint part runs a rule oxlint has', () => {
     expect(ruleIdsStatedOffIn(overridesInLine(merged()))).toStrictEqual([])
@@ -606,7 +613,7 @@ describe('mergeOxlintConfig, given the oxlint part of a project', () => {
   it('whose package.json lists no oxlint, which has no oxlint part, is refused, naming package.json', () => {
     const { oxlint } = defineLintRules(buildConsumerLintRules(PROJECT_WITHOUT_OXLINT, {})).editorRulesets
 
-    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, NO_TEAM_ESLINT_CONFIG)).toThrowError('package.json')
+    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, NO_TEAM_ESLINT_CONFIG)).toThrow('package.json')
   })
 
   it('whose package.json lists oxlint, with the oxlint this repo installs, merges', () => {

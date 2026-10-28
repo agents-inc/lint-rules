@@ -248,12 +248,12 @@ function among(findings: readonly string[], signals: readonly string[]): string[
 }
 
 /** The files the real oxlint CLI reports the code in over the folder layout project, with the config given written to the file given. */
-function filesOxlintReportsInTheFolderLayout(file: string, config: OxlintConfig, code: string): string[] {
+function filesOxlintReportsInTheFolderLayout(file: string, config: Readonly<OxlintConfig>, code: string): string[] {
   return filesOxlintReportsIn({ projectDir: THE_FOLDER_LAYOUT_PROJECT, paths: ['.'] }, file, config, code)
 }
 
 /** The files the real oxlint CLI reports the code in over the project's paths, with the config given written to the file given. */
-function filesOxlintReportsIn({ projectDir, paths }: LintedProject, file: string, config: OxlintConfig, code: string): string[] {
+function filesOxlintReportsIn({ projectDir, paths }: LintedProject, file: string, config: Readonly<OxlintConfig>, code: string): string[] {
   writeOxlintConfigFile(projectDir, file, config)
   const findings = oxlintFindingsIn(runOxlintCli(projectDir, file, paths).report).filter(({ rule }) => rule === code)
   return [...new Set(findings.map((finding) => finding.file))].toSorted()
@@ -300,7 +300,9 @@ describe('our rules, merged into a team oxlint config that sets them otherwise',
     "give the team's findings of the rules it sets $where, in every file, and ours of a rule it does not set",
     ({ team, codesOfTheRulesItSets, oursOfARuleItDoesNotSet }) => {
       const { teamAlone, merged } = findingsWithTheTeamAloneAndMerged(team)
-      const ofTheRulesItSets = (findings: readonly string[]): string[] => findings.filter((finding) => codesOfTheRulesItSets.some((code) => finding.endsWith(code)))
+      function ofTheRulesItSets(findings: readonly string[]): string[] {
+        return findings.filter((finding) => codesOfTheRulesItSets.some((code) => finding.endsWith(code)))
+      }
 
       expect({ theTeams: ofTheRulesItSets(merged), ours: among(merged, oursOfARuleItDoesNotSet) }).toStrictEqual({
         theTeams: ofTheRulesItSets(teamAlone),
@@ -672,7 +674,7 @@ describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint
       teamAlone: MAX_LINES_IN_EVERY_FILE,
       merged: MAX_LINES_IN_EVERY_FILE,
     },
-  ] satisfies readonly { how: string; ours: OurFields; team: TeamConfigFile; code: string; teamAlone: readonly string[]; merged: readonly string[] }[])(
+  ] satisfies ReadonlyArray<{ how: string; ours: OurFields; team: TeamConfigFile; code: string; teamAlone: readonly string[]; merged: readonly string[] }>)(
     "keeps the team's findings of it in every file, $how",
     ({ ours, team, code, teamAlone, merged }) => {
       const findings = findingsWithTheTeamAloneAndMergedWith(team, ours, THE_CROSS_ENGINE_PROJECT)
@@ -780,7 +782,7 @@ describe('max-lines, which our ESLint part runs and oxlint has, merged into a te
       how: 'turning it on for src/**/*.ts, where it would run in no file',
       entry: { files: ['src/**/*.ts'], rules: { 'max-lines': 'error' } },
     },
-  ] satisfies readonly { how: string; entry: NonNullable<OurFields['fileOverrides']>[number] }[])(
+  ] satisfies ReadonlyArray<{ how: string; entry: NonNullable<OurFields['fileOverrides']>[number] }>)(
     "keeps the team's findings of it in every file, $how",
     ({ entry }) => {
       const findings = findingsWithTheTeamAloneAndMergedWith(

@@ -126,8 +126,8 @@ async function runOf(shape: Shape<EslintMergeShapeValue>, usesOxlint: boolean): 
 }
 
 /** Every rule key a block of the team's config states, at any severity, whatever its files. */
-function ruleKeysStatedBy(teamConfig: Linter.Config[]): ReadonlySet<string> {
-  return new Set(defineConfig(teamConfig).flatMap(({ rules = {} }) => Object.keys(rules)))
+function ruleKeysStatedBy(teamConfig: readonly Linter.Config[]): ReadonlySet<string> {
+  return new Set(defineConfig([...teamConfig]).flatMap(({ rules = {} }) => Object.keys(rules)))
 }
 
 /** The team's config alone, made to lint every JS and TS file, lints each file the shapes read. */
@@ -170,15 +170,18 @@ function mergedEntriesOf(merged: CalculatedRulesOrNotLinted | undefined, names: 
   return Object.fromEntries(names.map((name) => [name, calculatedEntryOf(merged, name)]))
 }
 
+/** The names in play the merged config turns on in the file that the team's config alone does not, as `file: name, name`; null for none. */
+function namesOnBeyondTheTeamsInFile({ merged, sidesByFile, inPlay }: ShapeRun, file: string): string | null {
+  const rules = merged[file]
+  if (rules === undefined) throw new Error(`the merged config was not read in ${file}`)
+  if (rules === NOT_LINTED) return null
+  const beyond = namesOnBeyondTheTeams(rules, sidesOf(sidesByFile, file).team, inPlay)
+  return beyond.length === 0 ? null : `${file}: ${beyond.join(', ')}`
+}
+
 /** Each file and the names in play the merged config turns on there that the team's config alone does not, as `file: name, name`. */
-function namesOnBeyondTheTeamsIn({ merged, sidesByFile, inPlay }: ShapeRun): string[] {
-  return ESLINT_MERGE_FILES.flatMap((file) => {
-    const rules = merged[file]
-    if (rules === undefined) throw new Error(`the merged config was not read in ${file}`)
-    if (rules === NOT_LINTED) return []
-    const beyond = namesOnBeyondTheTeams(rules, sidesOf(sidesByFile, file).team, inPlay)
-    return beyond.length === 0 ? [] : [`${file}: ${beyond.join(', ')}`]
-  })
+function namesOnBeyondTheTeamsIn(run: ShapeRun): string[] {
+  return ESLINT_MERGE_FILES.map((file) => namesOnBeyondTheTeamsInFile(run, file)).filter((beyond) => beyond !== null)
 }
 
 function shapeStating({ stating }: EslintMergeShape): string {
@@ -225,17 +228,17 @@ describe('the ESLint merge shapes', () => {
 
 // Each shape's name in full in its title, which it.each's $-interpolation would cut short.
 describe.each(MODES)('mergeEslintConfig $mode, against ESLint calculating each file', ({ usesOxlint }) => {
-  SHAPE_NAMES.forEach((name, index) => {
+  for (const [index, name] of SHAPE_NAMES.entries()) {
     it(`shape ${String(index)} gives every name of the rule and its twins, in every file, the entry the contract owes: ${name}`, async () => {
       const { merged, owed } = entriesOwedIn(await runOf(shapeNamed(builtShapes(), name), usesOxlint))
 
       expect(merged).toStrictEqual(owed)
     })
-  })
+  }
 
-  SHAPE_NAMES.forEach((name, index) => {
+  for (const [index, name] of SHAPE_NAMES.entries()) {
     it(`shape ${String(index)} adds no name of a rule to a file beyond those the team's config alone runs there: ${name}`, async () => {
       expect(namesOnBeyondTheTeamsIn(await runOf(shapeNamed(builtShapes(), name), usesOxlint))).toStrictEqual([])
     })
-  })
+  }
 })

@@ -33,7 +33,7 @@ const TEAM_PLUGIN_VERSION = '1.0.0'
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJson()) } })
 
 /** The severity of our rule given in a source file, beside a team block registering the plugin given under the prefix given and turning the rule under it off: undefined where no block sets ours. */
-async function oursBeside(prefix: string, plugin: ESLint.Plugin, ruleName: string, ourRule: string): Promise<string | undefined> {
+async function oursBeside(prefix: string, plugin: Readonly<ESLint.Plugin>, ruleName: string, ourRule: string): Promise<string | undefined> {
   const { eslint } = defineLintRules(
     buildConsumerLintRules(projectDir, {}, { rules: { [OUR_PROMISE_RULE]: 'error', [OUR_ARRAY_TYPE]: 'error', [OUR_ALT_TEXT]: 'error' } }),
   ).editorRulesets

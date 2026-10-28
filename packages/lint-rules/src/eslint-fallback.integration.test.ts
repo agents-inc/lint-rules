@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { catalog, pluginPrefixOf, routeOf, type RuleRoute } from '@workspace/rule-data'
+import { compareCodeUnits } from '@workspace/rule-data/collections'
 import { ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON } from '@workspace/rule-data/test-support/routed-to-eslint-for-a-reason'
 import type { OxlintConfig } from 'oxlint'
 import { describe, expect, it } from 'vitest'
@@ -64,12 +65,21 @@ const fallbackWithEveryCoverOff = setUpEngineRun(
   buildEditorBuild(),
 )
 
-function isCovered({ shipped }: RuleRoute): boolean {
+function isCovered({ shipped }: Readonly<RuleRoute>): boolean {
   return shipped !== null && shipped.coveredBy !== null
 }
 
+function coverOf({ shipped }: Readonly<RuleRoute>): string | null {
+  return shipped === null ? null : shipped.coveredBy
+}
+
 function everyCoverOfAMovedRuleOff(): Readonly<Record<string, 'off'>> {
-  return Object.fromEntries(movedRules().flatMap(({ shipped }) => (shipped === null || shipped.coveredBy === null ? [] : [[shipped.coveredBy, 'off']])))
+  return Object.fromEntries(
+    movedRules()
+      .map(coverOf)
+      .filter((cover) => cover !== null)
+      .map((cover) => [cover, 'off']),
+  )
 }
 
 /** The run that proves the moved rule: the one with every cover off where another rule covers it, the one with every ruleset listed otherwise. */
@@ -96,17 +106,24 @@ function fatalMessagesOn(run: EngineRun, file: string): string[] {
 }
 
 /** Which of the pair ESLint ran on the file, and which it reported under, each once. */
-function pairOn(run: EngineRun, file: string, { core, twin }: TwinPair): { run: string[]; fired: (string | null)[] } {
-  const isOfThePair = (id: string | null): boolean => id === core || id === twin
+function pairOn(run: EngineRun, file: string, { core, twin }: TwinPair): { run: string[]; fired: Array<string | null> } {
+  function isOfThePair(id: string | null): boolean {
+    return id === core || id === twin
+  }
   return {
     run: run.eslintRulesRunOn(file).filter(isOfThePair),
     fired: [...new Set(run.eslintRuleIdsOn(file).filter(isOfThePair))],
   }
 }
 
+/** The order the default sort gives a list holding null: by text, null as the text "null". */
+function inDefaultSortOrder(left: string | null, right: string | null): number {
+  return compareCodeUnits(String(left), String(right))
+}
+
 describe('the shipped oxlint-run rules, without oxlint', () => {
   it('lack an ESLint version only under oxc, which exists only in oxlint', () => {
-    expect([...new Set(oxlintOnlyRules().map(({ id }) => pluginPrefixOf(id)))].toSorted()).toStrictEqual(['oxc'])
+    expect([...new Set(oxlintOnlyRules().map(({ id }) => pluginPrefixOf(id)))].toSorted(inDefaultSortOrder)).toStrictEqual(['oxc'])
   })
 })
 
@@ -234,7 +251,7 @@ describe('the rules routed to ESLint for a measured reason, in a project whose p
 })
 
 /** Every rule key an oxlint config states, at its root, in its overrides, and in each config it extends, once each. */
-function ruleKeysOf({ rules = {}, overrides = [], extends: extended = [] }: OxlintConfig): string[] {
+function ruleKeysOf({ rules = {}, overrides = [], extends: extended = [] }: Readonly<OxlintConfig>): string[] {
   const keys = [...Object.keys(rules), ...overrides.flatMap(({ rules: overrideRules = {} }) => Object.keys(overrideRules)), ...extended.flatMap(ruleKeysOf)]
   return [...new Set(keys)]
 }

@@ -43,12 +43,12 @@ const STRAY_LAYOUTS: readonly StrayLayout[] = [
   {
     layout: 'all in one folder the tsconfig leaves out',
     tsconfig: buildTsconfig({ include: ['src'] }),
-    filesFor: (index) => ({ [`out/f${String(index)}.ts`]: CLEAN_MODULE }),
+    filesFor(index) { return { [`out/f${String(index)}.ts`]: CLEAN_MODULE } },
   },
   {
     layout: 'each beside a file the tsconfig includes, left out by its exclude, as test files often are',
     tsconfig: buildTsconfig({ include: ['src'], exclude: ['**/*.test.ts'] }),
-    filesFor: (index) => ({ [`src/m${String(index)}/a.ts`]: CLEAN_MODULE, [`src/m${String(index)}/a.test.ts`]: CLEAN_MODULE }),
+    filesFor(index) { return { [`src/m${String(index)}/a.ts`]: CLEAN_MODULE, [`src/m${String(index)}/a.test.ts`]: CLEAN_MODULE } },
   },
 ]
 
@@ -118,6 +118,18 @@ describe('mergeEslintConfig, with a team config giving no type information, give
   })
 })
 
+function timedMerge(projectDir: string): MergeTiming {
+  const lintRulesJson = JSON.stringify(buildEveryRulesetLintRules(projectDir))
+  const { status, stdout, stderr, signal } = spawnSync(process.execPath, [MERGE_TIMING_PROCESS, BUILT_DIST_DIR, lintRulesJson], {
+    encoding: 'utf8',
+    timeout: PROCESS_CEILING_MS,
+  })
+  if (signal !== null) return { mergeMs: null }
+  if (status !== 0) throw new Error(`the timed merge failed (exit ${String(status)}): ${stderr}`)
+  // Parse boundary: the timing process prints its own JSON.
+  return JSON.parse(stdout) as MergeTiming
+}
+
 // Without oxlint, every TS file outside every tsconfig is left out of our typed blocks, which must not
 // make the merge's cost grow with their number. The merge runs in a process of its own, stopped at the
 // process ceiling, so one that never finishes fails rather than hanging the suite.
@@ -134,18 +146,6 @@ describe('mergeEslintConfig, without oxlint, in a project with a thousand TS fil
         ...Object.fromEntries(strays),
       },
     })
-  }
-
-  function timedMerge(projectDir: string): MergeTiming {
-    const lintRulesJson = JSON.stringify(buildEveryRulesetLintRules(projectDir))
-    const { status, stdout, stderr, signal } = spawnSync(process.execPath, [MERGE_TIMING_PROCESS, BUILT_DIST_DIR, lintRulesJson], {
-      encoding: 'utf8',
-      timeout: PROCESS_CEILING_MS,
-    })
-    if (signal !== null) return { mergeMs: null }
-    if (status !== 0) throw new Error(`the timed merge failed (exit ${String(status)}): ${stderr}`)
-    // Parse boundary: the timing process prints its own JSON.
-    return JSON.parse(stdout) as MergeTiming
   }
 
   it.each(STRAY_LAYOUTS)(

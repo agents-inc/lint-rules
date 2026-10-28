@@ -17,7 +17,7 @@ import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { textsOf } from './__tests__/temp-projects.ts'
 
-// check lints the changed lines of Vue, Svelte and Astro components with oxlint's rules alone: ESLint
+// check lints the changed lines of Vue.js, Svelte and Astro components with oxlint's rules alone: ESLint
 // never gets them, so neither its rules nor its suppression ban reach them (written limits).
 
 allowEveryTestForParallelLoad()
@@ -34,12 +34,12 @@ describe('check on changed Vue, Svelte and Astro components', () => {
       repo: 'committed',
       files: checkedPackageFiles(REDUNDANCY, { ignores: [IGNORED_FOLDER], ...SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED }),
     })
-    COMPONENT_FILE_KINDS.forEach(({ extension, scripting }) => {
+    for (const { extension, scripting } of COMPONENT_FILE_KINDS) {
       project.write(`src/a.${extension}`, moduleText(...scripting(WITH_A_DEBUGGER)))
       project.write(`src/fixed.${extension}`, moduleText(...scripting(A_USELESS_RENAME)))
       project.write(`src/generated/a.${extension}`, moduleText(...scripting(WITH_A_DEBUGGER)))
-    })
-    Object.entries(NOT_LINTED).forEach(([file, text]) => project.write(file, text))
+    }
+    for (const [file, text] of Object.entries(NOT_LINTED)) project.write(file, text)
     project.write('src/allowed/unused.vue', moduleText(...vueComponentScripting([suppressionOfTheNextLine('oxlint', 'no-debugger'), exportedConstant('b'), suppressionOfTheNextLine('eslint', 'no-debugger'), exportedConstant('c')])))
     project.write('src/banned.vue', moduleText(...vueComponentScripting([suppressionOfTheNextLine('eslint', 'no-debugger'), DEBUGGER_STATEMENT])))
     project.write('src/banned-unused.vue', moduleText(...vueComponentScripting([suppressionOfTheNextLine('oxlint', 'no-debugger'), exportedConstant('d')])))

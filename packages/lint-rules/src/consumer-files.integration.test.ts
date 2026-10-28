@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { catalog } from '@workspace/rule-data'
+import { compareCodeUnits } from '@workspace/rule-data/collections'
 import { describe, expect, it } from 'vitest'
 import { fatalMessagesIn } from './__tests__/engine-clis.ts'
 import { agentOxlintOf, ruleIdsOn, rulesRunOn, setUpEslintRunsInItsOwnProcess } from './__tests__/eslint-in-its-own-process.ts'
@@ -28,7 +29,7 @@ const TSCONFIG_FILE = 'tsconfig.json'
 
 // Both fire on the templates: `export default …(…)` is a top-level side effect, and the keys follow
 // plan.md's order, unsorted.
-const RULES_THE_TEMPLATES_BREAK = ['perfectionist/sort-objects', 'unicorn/no-top-level-side-effects']
+const RULES_THE_TEMPLATES_BREAK: ReadonlySet<string> = new Set(['perfectionist/sort-objects', 'unicorn/no-top-level-side-effects'])
 // n/no-unpublished-import reports our package's import in a publishable package. This fixture's
 // package is private, so it reports nothing in src/ either.
 const RULES_WHOSE_IGNORES_NAME_THEM = ['n/no-unpublished-import', ...RULES_THE_TEMPLATES_BREAK]
@@ -47,19 +48,24 @@ function isTypedRule(ruleId: string): boolean {
   return route.typed
 }
 
+/** The order the default sort gives a list holding null: by text, null as the text "null". */
+function inDefaultSortOrder(left: string | null, right: string | null): number {
+  return compareCodeUnits(String(left), String(right))
+}
+
 describe.each(TSCONFIGS)('the files a consumer writes for us, beside a tsconfig that includes $includes', ({ tsconfig, takesInTheTwo }) => {
   const runs = setUpEslintRunsInItsOwnProcess({
     project: { fixturesDir: CONSUMER_FILES_DIR, files: { [TSCONFIG_FILE]: JSON.stringify(tsconfig) }, linkedPackages: [INSTALLED_OXLINT] },
     tsconfigRootDir: '.',
-    lintRulesFor: (projectDir) => buildEveryRulesetLintRules(projectDir),
+    lintRulesFor(projectDir) { return buildEveryRulesetLintRules(projectDir) },
     // The fixture's package.json lists oxlint.
     teamOxlintConfig: {},
     runsTheAgentOxlintConfig: true,
   })
   /** The template rules reported on the file, once each; a parse error, whose rule ID is null, as null. */
-  function parseErrorsAndTemplateRulesReportedOn(file: string): (string | null)[] {
+  function parseErrorsAndTemplateRulesReportedOn(file: string): Array<string | null> {
     const reported = ruleIdsOn(runs(), 'agent', file)
-    return [...new Set(reported.filter((id) => id === null || RULES_THE_TEMPLATES_BREAK.includes(id)))].toSorted()
+    return [...new Set(reported.filter((id) => id === null || RULES_THE_TEMPLATES_BREAK.has(id)))].toSorted(inDefaultSortOrder)
   }
 
   function untypedRulesRunOn(file: string): string[] {
@@ -100,7 +106,7 @@ describe.each(TSCONFIGS)('the files a consumer writes for us, beside a tsconfig 
   )
 
   it.each(TS_FILES_WE_HAVE_A_CONSUMER_WRITE)(
-    takesInTheTwo ? 'run on %s every typed rule a .mts file in src/ gets' : 'run no typed rule on %s, which the tsconfig leaves out',
+    `run ${takesInTheTwo ? 'on %s every typed rule a .mts file in src/ gets' : 'no typed rule on %s, which the tsconfig leaves out'}`,
     (file) => {
       expect(typedRulesRunOn(file)).toStrictEqual(takesInTheTwo ? typedRulesRunOn(MTS_FILE_IN_SRC) : [])
     },

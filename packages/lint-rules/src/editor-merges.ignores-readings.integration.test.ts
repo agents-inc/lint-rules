@@ -109,7 +109,7 @@ const READING_CASES: readonly CorpusCase[] = [
 ]
 
 // Each case's name in full in its title, which describe.each's $-interpolation would cut short.
-READING_CASES.forEach((corpusCase) => {
+for (const corpusCase of READING_CASES) {
   describe(`our rules in the corpus, where our ignores are read by each engine and ${corpusCase.how}`, () => {
     const runs = setUpCorpusRuns(corpusCase)
     const { files, rules } = corpusCase
@@ -132,7 +132,7 @@ READING_CASES.forEach((corpusCase) => {
       )
     })
   })
-})
+}
 
 // ESLint takes keep/legacy/a.js back from **/legacy/** with !**/keep/**, so our ESLint part runs our
 // rules there; the shared ESLint reading of our ignores must agree.
@@ -196,10 +196,11 @@ const OXLINT_READING_LIMITS: readonly OxlintReadingLimit[] = [
   { ignores: ['**/legacy', '!legacy/keep', '!keep'], takenBackByTheReadingOnly: ['legacy/keep/legacy/c.js', 'keep/legacy/a.js', 'src/keep/legacy/x.js'] },
 ]
 
-OXLINT_READING_LIMITS.forEach(({ ignores, takenBackByTheReadingOnly }) => {
+for (const { ignores, takenBackByTheReadingOnly } of OXLINT_READING_LIMITS) {
   describe(`prefer-const, which our oxlint part runs, where our ignores are ${JSON.stringify(ignores)}`, () => {
     const runs = setUpCorpusRuns({ how: JSON.stringify(ignores), ourRulesets: NO_RULESETS, ours: oursWithIgnores(ignores), files: LIMIT_FILES, rules: [PREFER_CONST] })
     // Read before the tests, so only the assertion can fail inside it.fails.
+    // eslint-disable-next-line functional/no-let -- it.fails: only the assertion may throw, so the run is in beforeAll and its result crosses to the test (CLAUDE.md, Tests; q-lint-no-let-it-fails)
     let made: BothEnginesRuns | undefined
 
     beforeAll(() => {
@@ -230,7 +231,7 @@ OXLINT_READING_LIMITS.forEach(({ ignores, takenBackByTheReadingOnly }) => {
       }).toStrictEqual({ mergedOnly: [...takenBackByTheReadingOnly].toSorted(), agentBuildOnly: [] })
     })
   })
-})
+}
 
 // The agent build gives ESLint our ignores as global ignores, so it reports our no-var in
 // node_modules/mylib; in the editor they are not global, so our ESLint part never lints node_modules.
@@ -245,6 +246,7 @@ describe("our rules, where our ignores take node_modules/mylib back from ESLint'
   const files = Object.keys(packageTakenBackSourceFiles)
   const rules = [NO_VAR, NO_UNUSED_VARS]
   // Read before the tests, so only the assertion can fail inside it.fails.
+  // eslint-disable-next-line functional/no-let -- it.fails: only the assertion may throw, so the run is in beforeAll and its result crosses to the test (CLAUDE.md, Tests; q-lint-no-let-it-fails)
   let made: BothEnginesRuns | undefined
 
   beforeAll(() => {

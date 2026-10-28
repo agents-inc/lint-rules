@@ -21,6 +21,7 @@ import {
   readManifest,
   workspaceDirsOf,
 } from './__tests__/package-manifests.ts'
+import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 
 function devDependencyNamesOf({ name, devDependencies }: Manifest): string[] {
   if (devDependencies === undefined) throw new Error(`${name}'s package.json lists no devDependencies`)
@@ -52,6 +53,8 @@ const LINE_BREAK = '\n'
 // docs/release.md's release step 2, run from the package with its own scripts.
 const PREPUBLISH_ONLY = 'bun run build && bun run typecheck && bun run test'
 const SOURCE_FOLDER = 'src/'
+// vitest's default hook timeout.
+const NPM_PACK_TIMEOUT_MS = 10_000
 
 function nodeRangeShipped(): string {
   const nodeRange = SHIPPED.engines?.node
@@ -73,6 +76,7 @@ function inlinedManifestOf(name: string): Manifest {
 }
 
 describe('the Node versions @agents-inc/lint-rules admits, by its engines field', () => {
+  // eslint-disable-next-line functional/no-let -- it.fails: only the assertion may throw, so the run is in beforeAll and its result crosses to the test (CLAUDE.md, Tests; q-lint-no-let-it-fails)
   let admittingLess: readonly string[] | undefined
 
   // Worked out before the tests, so only the assertion can fail inside it.fails.
@@ -101,16 +105,7 @@ describe('the Node versions @agents-inc/lint-rules admits, by its engines field'
 })
 
 describe('the licence @agents-inc/lint-rules ships under', () => {
-  let packed: readonly string[] | undefined
-
-  beforeAll(() => {
-    packed = pathsNpmPacks(PACKAGE_DIR)
-  })
-
-  function pathsPacked(): readonly string[] {
-    if (packed === undefined) throw new Error('what npm packs was read outside the suite that packed it')
-    return packed
-  }
+  const pathsPacked = setUpRunsBeforeTheSuite(() => pathsNpmPacks(PACKAGE_DIR), { timeoutMs: NPM_PACK_TIMEOUT_MS, whatFailed: 'npm could not pack the package before the suite' })
 
   it('is MIT, by its package.json', () => {
     expect(SHIPPED.license).toBe(LICENSE_ID)

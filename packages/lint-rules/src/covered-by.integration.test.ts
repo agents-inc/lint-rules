@@ -68,8 +68,9 @@ const PROJECT_DIR = tempProjects.create({
 
 function coverOf(rule: string): string {
   const { shipped } = routeOf(rule, catalog)
-  if (shipped === null || shipped.coveredBy === null) throw new Error(`${rule}: the catalog records no rule covering it`)
-  return shipped.coveredBy
+  const cover = shipped === null ? null : shipped.coveredBy
+  if (cover === null) throw new Error(`${rule}: the catalog records no rule covering it`)
+  return cover
 }
 
 function pairNames(): ReadonlySet<string> {
@@ -102,7 +103,7 @@ async function pairFindingsWith(configs: BuildConfigs): Promise<string[]> {
   return findingsOfIn(configs, SOURCE_FILE, pairNames())
 }
 
-function oxlintFindingsOf(config: OxlintConfig, file: string): ReturnType<typeof oxlintFindingsIn> {
+function oxlintFindingsOf(config: Readonly<OxlintConfig>, file: string): ReturnType<typeof oxlintFindingsIn> {
   writeOxlintConfigFile(PROJECT_DIR, OXLINT_CONFIG_FILE, config)
   return oxlintFindingsIn(runOxlintCli(PROJECT_DIR, OXLINT_CONFIG_FILE, [file]).report)
 }
@@ -119,9 +120,9 @@ function agentBuild(rulesets: Rulesets, rules: Readonly<Record<string, 'error'>>
 
 function editorMerge(rulesets: Rulesets, usesOxlint: boolean, teamEslintConfig: Linter.Config[] = []): BuildConfigs {
   const { eslint, oxlint } = editorPartsOf({ ...buildTwoSetLintRules({ editorRulesets: rulesets }), tsconfigRootDir: PROJECT_DIR }, catalog, usesOxlint)
-  const setByTheTeamsEslintConfig = ruleIdsTheTeamsEslintConfigSets(defineConfig(teamEslintConfig), eslintPluginRegistry, catalog)
+  const rulesTheTeamsEslintConfigSets = ruleIdsTheTeamsEslintConfigSets(defineConfig(teamEslintConfig), eslintPluginRegistry, catalog)
   return {
-    oxlint: oxlint === undefined ? null : mergeOxlintPart(EMPTY_TEAM_OXLINT_CONFIG, oxlint, catalog, setByTheTeamsEslintConfig),
+    oxlint: oxlint === undefined ? null : mergeOxlintPart(EMPTY_TEAM_OXLINT_CONFIG, oxlint, catalog, rulesTheTeamsEslintConfigSets),
     eslint: mergeEslintPart(teamEslintConfig, eslint, catalog, eslintPluginRegistry, lintRulesPackageVersion(), NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG),
   }
 }
@@ -133,8 +134,8 @@ const COVEREDS_FINDING_BY_ESLINT = `${SOURCE_FILE}:1 ${covered}`
 type Build = { readonly build: string; readonly configsFor: (rulesets: Rulesets) => BuildConfigs }
 
 const AGENT_BUILD: Build = { build: 'the agent build', configsFor: agentBuild }
-const EDITOR_MERGES_LISTING_OXLINT: Build = { build: 'the editor merges, in a project listing oxlint', configsFor: (rulesets) => editorMerge(rulesets, true) }
-const ESLINT_MERGE_LISTING_NO_OXLINT: Build = { build: 'the ESLint merge, in a project listing no oxlint', configsFor: (rulesets) => editorMerge(rulesets, false) }
+const EDITOR_MERGES_LISTING_OXLINT: Build = { build: 'the editor merges, in a project listing oxlint', configsFor(rulesets) { return editorMerge(rulesets, true) } }
+const ESLINT_MERGE_LISTING_NO_OXLINT: Build = { build: 'the ESLint merge, in a project listing no oxlint', configsFor(rulesets) { return editorMerge(rulesets, false) } }
 
 const BUILDS = [
   { ...AGENT_BUILD, coveredsFinding: COVEREDS_FINDING_BY_OXLINT },
@@ -191,8 +192,8 @@ type CoverRunsSetUp = {
 }
 
 /** Made before the suite, so an it.fails beside them fails only on its assertion. Registers hooks: call it in a describe block. */
-function setUpCoverRuns(setUp: CoverRunsSetUp): () => CoverRun[] {
-  const runs = setUpRunsBeforeTheSuite(() => Promise.all(setUp.builds.map((build) => coverRunIn(build, setUp))))
+function setUpCoverRuns(plan: CoverRunsSetUp): () => CoverRun[] {
+  const runs = setUpRunsBeforeTheSuite(() => Promise.all(plan.builds.map((build) => coverRunIn(build, plan))))
   // A run that failed throws here, before the tests.
   beforeAll(() => {
     runs()

@@ -44,7 +44,7 @@ describe('tsconfigRootDir in agents-inc.lint.mts', () => {
   it.each(refusedValues)('is refused $refused, naming the file, the key, the value and the condition it fails', ({ value, reason }) => {
     const validLintRules = buildValidLintRules()
 
-    expect(() => defineLintRules({ ...validLintRules, tsconfigRootDir: value })).toThrowError(
+    expect(() => defineLintRules({ ...validLintRules, tsconfigRootDir: value })).toThrow(
       new Error(`agents-inc.lint.mts: tsconfigRootDir: "${value}" ${reason}`),
     )
   })
@@ -130,7 +130,7 @@ describe("a part handed to the other engine's merge", () => {
     const { oxlint } = bothParts()
 
     // @ts-expect-error the oxlint part is no ESLint part
-    expect(() => mergeEslintConfig([], oxlint, NO_TEAM_OXLINT_CONFIG)).toThrowError(/^eslint\.config\.mjs: /u)
+    expect(() => mergeEslintConfig([], oxlint, NO_TEAM_OXLINT_CONFIG)).toThrow(/^eslint\.config\.mjs: /u)
   })
 
   it('is accepted by mergeEslintConfig when it is the ESLint part', () => {

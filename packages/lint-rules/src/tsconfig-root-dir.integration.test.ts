@@ -37,9 +37,13 @@ describe('tsconfigRootDir in agents-inc.lint.mts, linted by both engines through
   ]
 
   it('as plan.md shows it, import.meta.dirname, is loaded by both engines, ESLint running a typed rule', () => {
+    // vitest types its asymmetric matchers as any; held as unknown, each compares as written.
+    const anyFindings: unknown = expect.any(Array)
+    const holdingTheTypedFinding: unknown = expect.arrayContaining([A_TYPED_FINDING])
+
     expect({ oxlint: oxlintReportOf(asPlanMdShows()), eslint: eslintReportOf(asPlanMdShows()) }).toStrictEqual({
-      oxlint: { refused: false, findings: expect.any(Array) },
-      eslint: { refused: false, findings: expect.arrayContaining([A_TYPED_FINDING]) },
+      oxlint: { refused: false, findings: anyFindings },
+      eslint: { refused: false, findings: holdingTheTypedFinding },
     })
   })
 
@@ -47,12 +51,15 @@ describe('tsconfigRootDir in agents-inc.lint.mts, linted by both engines through
     expect(eslintFatalMessagesOf(asPlanMdShows())).toStrictEqual([])
   })
 
-  refused.forEach(({ given, runs }) => {
+  for (const { given, runs } of refused) {
     it(`${given} is refused by both engines, which name agents-inc.lint.mts and tsconfigRootDir`, () => {
+      // vitest types its asymmetric matchers as any; held as unknown, it compares as written.
+      const namingTheOption: unknown = expect.stringContaining(TSCONFIG_ROOT_DIR_ERROR)
+
       expect({ oxlint: oxlintReportOf(runs()), eslint: eslintReportOf(runs()) }).toStrictEqual({
-        oxlint: { refused: true, output: expect.stringContaining(TSCONFIG_ROOT_DIR_ERROR) },
-        eslint: { refused: true, output: expect.stringContaining(TSCONFIG_ROOT_DIR_ERROR) },
+        oxlint: { refused: true, output: namingTheOption },
+        eslint: { refused: true, output: namingTheOption },
       })
     })
-  })
+  }
 })

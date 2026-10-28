@@ -25,7 +25,7 @@ const WEB_SETTINGS = buildConsumerSettings({}, { rules: { 'no-debugger': 'error'
 const TYPE_AWARE_ONLY_AT_THE_ROOT = 'The `options.typeAware` option is only supported in the root config, but it was found in '
 
 /** A monorepo root with a config of its own, and web, whose config merges our part into the team's. */
-function monorepoWithWebMerging(tempProjects: TempProjects, webTeamConfig: OxlintConfig): string {
+function monorepoWithWebMerging(tempProjects: TempProjects, webTeamConfig: Readonly<OxlintConfig>): string {
   const webFiles: ProjectFiles = {
     'package.json': packageJsonText(buildPackageJsonListingOxlint()),
     [CONSUMER_CONFIG_FILES.lintRules]: agentsIncLintModuleTextRootedAtItsFolder(WEB_SETTINGS),
@@ -77,7 +77,9 @@ describe("a monorepo whose root has an oxlint config of its own, beside a packag
   // A written limit: an option is oxlint's to refuse below the root, and its refusal names the option and the file.
   it("is refused by oxlint from the root where the team's own package config gives an option", () => {
     const { linting, webConfig } = runs().teamTypeAwareFromTheRoot
+    // vitest types its asymmetric matchers as any; held as unknown, it compares as written.
+    const namingTheOptionAndTheFile: unknown = expect.stringContaining(`${TYPE_AWARE_ONLY_AT_THE_ROOT}${webConfig}.`)
 
-    expect(linting).toStrictEqual({ outcome: 'refused', output: expect.stringContaining(`${TYPE_AWARE_ONLY_AT_THE_ROOT}${webConfig}.`) })
+    expect(linting).toStrictEqual({ outcome: 'refused', output: namingTheOptionAndTheFile })
   })
 })

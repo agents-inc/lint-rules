@@ -52,7 +52,7 @@ const RUNS = [
   },
 ]
 
-RUNS.forEach(({ project, files }) => {
+for (const { project, files } of RUNS) {
   describe(`imports through each package's alias, a team config setting the extensions eslint-plugin-n tries in some packages alone, in ${project}, linted by the ESLint CLI from the monorepo's root through the built package`, () => {
     const run = setUpConsumerEslintCliRun(files)
 
@@ -66,4 +66,4 @@ RUNS.forEach(({ project, files }) => {
       )
     })
   })
-})
+}

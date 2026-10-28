@@ -53,7 +53,7 @@ const PROJECTS = [
   { project: 'a project whose package.json lists no oxlint', files: monorepoFiles(buildPackageJson()) },
 ]
 
-PROJECTS.forEach(({ project, files }) => {
+for (const { project, files } of PROJECTS) {
   describe(`a TS module's import of a .jsx name beside a .tsx file, a team config setting eslint-plugin-n's settings under settings.node or settings.n in some packages alone and running its own n/no-missing-import, in ${project}, linted by the ESLint CLI from the monorepo's root through the built package`, () => {
     const runs = setUpMergedAndTeamAloneEslintCliRuns(files, TEAM_ALONE_CONFIG, [PLUGIN_THE_TEAM_IMPORTS])
 
@@ -78,4 +78,4 @@ PROJECTS.forEach(({ project, files }) => {
       )
     })
   })
-})
+}

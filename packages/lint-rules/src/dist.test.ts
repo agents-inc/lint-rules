@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { PARALLEL_LOAD_TIMEOUT_MS } from './__tests__/parallel-load.ts'
+import { isRecord } from './core/is-record.ts'
 
 // Reads the build output, so `turbo test` builds this package first (see turbo.json).
 const PACKAGE_DIR = fileURLToPath(new URL('..', import.meta.url))
@@ -48,7 +49,9 @@ function readBuilt(file: string): string {
 
 /** The names a built entry exports at runtime, sorted. */
 async function runtimeExportsOf(entry: string): Promise<string[]> {
-  const loaded: Readonly<Record<string, unknown>> = await import(pathToFileURL(join(DIST_DIR, entry)).href)
+  // Parse boundary: a built module, typed as any by import().
+  const loaded: unknown = await import(pathToFileURL(join(DIST_DIR, entry)).href)
+  if (!isRecord(loaded)) throw new Error(`${entry} loaded as no module namespace`)
   return Object.keys(loaded).toSorted()
 }
 

@@ -59,7 +59,9 @@ function floatingPromiseLineOf(file: string): number {
 
 /** The consumer's three files under the folder given, each TS one with its floating promise, and a package.json listing no oxlint. */
 function consumerFilesUnder(folder: string): ProjectFiles {
-  const under = (file: string): string => (folder === '.' ? file : `${folder}/${file}`)
+  function under(file: string): string {
+    return folder === '.' ? file : `${folder}/${file}`
+  }
   return {
     [under('package.json')]: packageJsonText(buildPackageJsonListingOthers()),
     [under(LINT_RULES_FILE)]: withAFloatingPromise(LINT_RULES_FILE),
@@ -112,7 +114,7 @@ function floatingPromisesIn({ eslint, rootDir }: EslintRunsInItsOwnProcess, buil
     .toSorted()
 }
 
-function isInOneOf(files: readonly string[]): (finding: string) => boolean {
+function inOneOf(files: readonly string[]): (finding: string) => boolean {
   return (finding) => files.some((file) => finding.startsWith(`${file}:`))
 }
 
@@ -120,7 +122,7 @@ describe.each(LAYOUTS)("the consumer's config files at tsconfigRootDir, in $shap
   const runs = setUpEslintRunsInItsOwnProcess({
     project: { files: { ...files, ...consumerFilesUnder(tsconfigRootDir) }, linkedPackages: [THIS_PACKAGE, INSTALLED_OXLINT] },
     tsconfigRootDir,
-    lintRulesFor: (rootDir) => buildConsumerLintRules(rootDir, { agentRulesets: CORRECTNESS, editorRulesets: CORRECTNESS }),
+    lintRulesFor(rootDir) { return buildConsumerLintRules(rootDir, { agentRulesets: CORRECTNESS, editorRulesets: CORRECTNESS }) },
     teamOxlintConfig: null,
     runsTheAgentOxlintConfig: false,
   })
@@ -131,16 +133,14 @@ describe.each(LAYOUTS)("the consumer's config files at tsconfigRootDir, in $shap
   })
 
   it.each(BUILDS)(
-    takesInTheTwo
-      ? 'draw the typed rule on the floating promise planted in each, in the %s build'
-      : 'draw no typed finding on the floating promise planted in each, which no tsconfig takes in, in the %s build',
+    `draw ${takesInTheTwo ? 'the typed rule on the floating promise planted in each' : 'no typed finding on the floating promise planted in each, which no tsconfig takes in'}, in the %s build`,
     (build) => {
-      expect(floatingPromisesIn(runs(), build).filter(isInOneOf(TS_FILES_WE_HAVE_A_CONSUMER_WRITE))).toStrictEqual(takesInTheTwo ? OWED_IN_THE_TWO : [])
+      expect(floatingPromisesIn(runs(), build).filter(inOneOf(TS_FILES_WE_HAVE_A_CONSUMER_WRITE))).toStrictEqual(takesInTheTwo ? OWED_IN_THE_TWO : [])
     },
   )
 
   it.each(BUILDS)("draw no typed finding in a nested package's consumer files no tsconfig takes in, in the %s build", (build) => {
-    expect(floatingPromisesIn(runs(), build).filter(isInOneOf(untypedConsumerFiles))).toStrictEqual([])
+    expect(floatingPromisesIn(runs(), build).filter(inOneOf(untypedConsumerFiles))).toStrictEqual([])
   })
 })
 
@@ -157,21 +157,21 @@ const VERBATIM_TSCONFIGS = [
 function isTypedRule(ruleId: string | null): boolean {
   if (ruleId === null) return false
   const route = catalog.rules.get(ruleId)
-  return route !== undefined && route.typed
+  return route?.typed === true
 }
 
 describe.each(VERBATIM_TSCONFIGS)("plan.md's config files, beside a tsconfig that includes $includes, @types/node installed", ({ tsconfig, takesInTheTwo }) => {
   const runs = setUpEslintRunsInItsOwnProcess({
     project: { fixturesDir: CONSUMER_FILES_DIR, files: { 'tsconfig.json': JSON.stringify(tsconfig) }, linkedPackages: [THIS_PACKAGE, TYPES_OF_NODE, INSTALLED_OXLINT] },
     tsconfigRootDir: '.',
-    lintRulesFor: (rootDir) => buildEveryRulesetLintRules(rootDir),
+    lintRulesFor(rootDir) { return buildEveryRulesetLintRules(rootDir) },
     teamOxlintConfig: {},
     runsTheAgentOxlintConfig: false,
   })
   const filesAndBuilds = TS_FILES_WE_HAVE_A_CONSUMER_WRITE.flatMap((file) => BUILDS.map((build) => ({ file, build })))
 
   it.each(filesAndBuilds)(
-    takesInTheTwo ? 'run the typed rules on $file, in the $build build' : 'run no typed rule on $file, which no tsconfig takes in, in the $build build',
+    `run ${takesInTheTwo ? 'the typed rules on $file' : 'no typed rule on $file, which no tsconfig takes in'}, in the $build build`,
     ({ file, build }) => {
       expect(rulesRunOn(runs(), build, file).some(isTypedRule)).toBe(takesInTheTwo)
     },

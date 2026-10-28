@@ -122,9 +122,14 @@ const config = defineLintRules({
       rules: { 'functional/immutable-data': 'off', 'functional/no-expression-statements': 'off', 'functional/no-return-void': 'off' },
     },
     {
-      // A type test makes its assertions in calls at its top level, which tsc checks and nothing runs.
+      // A type test makes its assertions in calls at its top level, which tsc checks and nothing runs, and proves an
+      // API missing by using it under `@ts-expect-error`, where the unsafe rules see a type that could not be resolved.
       files: ['**/*.test-d.ts'],
-      rules: { 'unicorn/no-top-level-side-effects': 'off' },
+      rules: {
+        'unicorn/no-top-level-side-effects': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-unsafe-assignment': 'off',
+      },
     },
     {
       // A Stryker config drops the build it spreads in with `buildCommand: undefined`: Stryker refuses `null` there,

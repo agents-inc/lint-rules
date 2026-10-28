@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { type BothEnginesRuns, setUpBothEnginesRuns } from './__tests__/both-engines-runs.ts'
 import {
   ARRAY_TYPE,
@@ -59,7 +59,7 @@ describe("the team's configs alone, on the grid's files", () => {
 })
 
 // Each row's full name in its title, which describe.each's $-interpolation would cut short.
-GRID_ROWS.forEach(({ how, ours }) => {
+for (const { how, ours } of GRID_ROWS) {
   describe(`our rules on the grid, where ${how}`, () => {
     const runs = setUpBothEnginesRuns({
       sources: gridSourceFiles,
@@ -94,7 +94,7 @@ GRID_ROWS.forEach(({ how, ours }) => {
       },
     )
   })
-})
+}
 
 // Our oxlint part lints .vue, .svelte and .astro files too (measured, oxlint 1.87). The team turns both
 // rules on in ESLint, so only its config reports them.
@@ -178,7 +178,7 @@ describe("our rules on the grid, merged into a team's configs whose ESLint globa
 
 // Other ways global ignores take files back: the root .git folder, a basePath inside or outside the
 // project, globs after a function.
-TEAM_TAKE_BACK_CASES.forEach(({ how, lintedByTheTeamsEslint, ...takeBack }) => {
+for (const { how, lintedByTheTeamsEslint, ...takeBack } of TEAM_TAKE_BACK_CASES) {
   describe(`our rules on the grid, merged into a team's configs whose ESLint global ignores ${how}`, () => {
     const runs = setUpBothEnginesRuns({
       ...takeBack,
@@ -207,7 +207,7 @@ TEAM_TAKE_BACK_CASES.forEach(({ how, lintedByTheTeamsEslint, ...takeBack }) => {
       )
     })
   })
-})
+}
 
 describe("our rules on the grid, merged into a team's configs, in a .git folder inside src, which ESLint lints and oxlint walking the project skips", () => {
   const runs = setUpBothEnginesRuns({
@@ -217,21 +217,10 @@ describe("our rules on the grid, merged into a team's configs, in a .git folder 
     teamOxlintConfig: TEAM_GRID_OXLINT_CONFIG,
   })
   const files = Object.keys(nestedGitSourceFiles)
-  // Read before the test, so only the assertion can fail inside it.fails.
-  let made: BothEnginesRuns | undefined
-
-  beforeAll(() => {
-    made = runs()
-  })
-
-  function theRuns(): BothEnginesRuns {
-    if (made === undefined) throw new Error('no run was made before the tests of a .git folder inside src')
-    return made
-  }
 
   // Without this, the test below would fail for another reason than the one it pins.
   it("are linted with no fatal message, the team's ESLint config linting every file alone and merged, and the team's oxlint config reporting in src alone", () => {
-    const { eslintFatalMessages, eslintLintedFiles, teamAlone } = theRuns()
+    const { eslintFatalMessages, eslintLintedFiles, teamAlone } = runs()
 
     expect({
       fatalMessages: eslintFatalMessages,
@@ -243,7 +232,7 @@ describe("our rules on the grid, merged into a team's configs, in a .git folder 
 
   // The team sets both rules, so they are the team's in src/.git too, where oxlint lints nothing.
   it("report, merged into the team's configs, the team's alone of each rule the team sets, from one engine", () => {
-    const { agent, teamAlone, mergedIntoTheTeamsConfigs } = theRuns()
+    const { agent, teamAlone, mergedIntoTheTeamsConfigs } = runs()
 
     expect(findingsByFileAndRule(mergedIntoTheTeamsConfigs, files, GRID_RULES)).toStrictEqual(
       owedBesideTheTeam(findingsByFileAndRule(agent, files, GRID_RULES), findingsByFileAndRule(teamAlone, files, GRID_RULES), GRID_RULES_THE_TEAM_SETS),
@@ -278,9 +267,9 @@ describe('max-params, which the complexity ruleset ships at 4, and @typescript-e
 
   // The pair runs in oxlint wherever our oxlint part runs the core rule; a build reporting it once from
   // ESLint would pass the two tests above.
-  it.each([
-    { build: 'the agent build', runOf: (made: BothEnginesRuns) => made.agent },
-    { build: 'the merge into empty team configs', runOf: (made: BothEnginesRuns) => made.mergedIntoEmptyTeamConfigs },
+  it.each<{ readonly build: string; readonly runOf: (made: BothEnginesRuns) => BothEnginesRuns['agent'] }>([
+    { build: 'the agent build', runOf(made: BothEnginesRuns) { return made.agent } },
+    { build: 'the merge into empty team configs', runOf(made: BothEnginesRuns) { return made.mergedIntoEmptyTeamConfigs } },
   ])('report a five-parameter function from oxlint alone in each file, in $build', ({ runOf }) => {
     expect(findingsByFileAndRule(runOf(runs()), FIVE_PARAMETER_FILES, [MAX_PARAMS])).toStrictEqual({
       'src/a.ts': { 'max-params': ['src/a.ts:1 eslint(max-params)'] },

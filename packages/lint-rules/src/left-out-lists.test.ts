@@ -70,8 +70,9 @@ describe('an agent set leaving lists out, in a project whose package.json lists 
     async ({ set }) => {
       const leavingListsOut = agentConfigsOf(defineLintRules(buildConsumerLintRulesLeavingListsOut(PROJECT_WITH_OXLINT, { agentRulesets: set })))
       const givingThemEmpty = agentConfigsOf(defineLintRules(buildConsumerLintRules(PROJECT_WITH_OXLINT, { agentRulesets: set })))
-      const globalsOfEach = async (config: typeof leavingListsOut.eslint): Promise<unknown[]> =>
-        Promise.all(A_FILE_OF_EACH_KIND.map(async (file) => globalsFor(config, file)))
+      async function globalsOfEach(config: Readonly<typeof leavingListsOut.eslint>): Promise<unknown[]> {
+        return Promise.all(A_FILE_OF_EACH_KIND.map(async (file) => globalsFor(config, file)))
+      }
 
       expect({
         rules: await calculatedRulesOfEach(leavingListsOut.eslint, A_FILE_OF_EACH_KIND),

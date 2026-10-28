@@ -22,13 +22,13 @@ function mergedInto(teamBlocks: readonly Linter.Config[], tsconfigRootDir: () =>
 }
 
 /** The file's settings.n, undefined where no block gives one. */
-async function nSettingsFor(config: Linter.Config[], file: string): Promise<unknown> {
+async function nSettingsFor(config: readonly Linter.Config[], file: string): Promise<unknown> {
   return (await settingsFor(config, file))[N_SETTINGS_KEY]
 }
 
 const PROJECTS = editorProjectsIn(tempProjects)
 
-PROJECTS.forEach(({ project, tsconfigRootDir }) => {
+for (const { project, tsconfigRootDir } of PROJECTS) {
   describe(`eslint-plugin-n's settings, in the editor part of ${project}, merged into a team config setting settings.node or settings.n in some packages alone`, () => {
     // Else each package owed no settings.n of ours would pass beside a part that gives none anywhere.
     it('hold, merged into a team config with no block, a settings.n of ours', async () => {
@@ -73,7 +73,9 @@ PROJECTS.forEach(({ project, tsconfigRootDir }) => {
 
     it("give eslint-plugin-n the team's typescriptExtensionMap or tsconfigPath in each package where the team sets one, under settings.node or settings.n, and neither in the others", async () => {
       const merged = mergedInto(TEAMS_N_SETTINGS_BLOCKS, tsconfigRootDir)
-      const readIn = async (file: string): Promise<Readonly<Record<string, unknown>>> => typescriptSettingsEslintPluginNReads(await settingsFor(merged, file))
+      async function readIn(file: string): Promise<Readonly<Record<string, unknown>>> {
+        return typescriptSettingsEslintPluginNReads(await settingsFor(merged, file))
+      }
 
       expect({
         teamSetsNone: await readIn(IMPORTER_IN.teamSetsNone),
@@ -96,4 +98,4 @@ PROJECTS.forEach(({ project, tsconfigRootDir }) => {
       })
     })
   })
-})
+}

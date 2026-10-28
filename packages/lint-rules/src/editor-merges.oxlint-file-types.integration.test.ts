@@ -1,5 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest'
-import type { BothEnginesRuns } from './__tests__/both-engines-runs.ts'
+import { describe, expect, it } from 'vitest'
 import {
   ARRAY_TYPE,
   BAN_TS_COMMENT,
@@ -75,7 +74,7 @@ const FILE_TYPE_CASES: readonly CorpusCase[] = [
 ]
 
 // Each case's name in full in its title, which describe.each's $-interpolation would cut short.
-FILE_TYPE_CASES.forEach((corpusCase) => {
+for (const corpusCase of FILE_TYPE_CASES) {
   describe(`our rules in the corpus, beside the file types oxlint runs each in, where ${corpusCase.how}`, () => {
     const runs = setUpCorpusRuns(corpusCase)
     const { files, rules } = corpusCase
@@ -98,7 +97,7 @@ FILE_TYPE_CASES.forEach((corpusCase) => {
       )
     })
   })
-})
+}
 
 // No block we write may make ESLint lint a file it would not lint without our part: one block with
 // `files` over both globs would hand ESLint the .vue files, which it cannot parse.
@@ -132,22 +131,11 @@ describe("our rules in the corpus, beside a .vue file with a plain script and th
   const files = ['src/d.vue']
   const rules = [BAN_TS_COMMENT, GETTER_RETURN]
   const runs = setUpCorpusRuns({ how: 'a .vue file with a plain script', ourRulesets: NO_RULESETS, ours: { rules: OUR_CORPUS_RULES }, files: ['src/c.vue', ...files], rules })
-  // Read before the tests, so only the assertion can fail inside it.fails.
-  let made: BothEnginesRuns | undefined
-
-  beforeAll(() => {
-    made = runs()
-  })
-
-  function theRuns(): BothEnginesRuns {
-    if (made === undefined) throw new Error('no run was made before the test for a .vue file with a plain script')
-    return made
-  }
 
   // No glob can tell a .vue file's script language. The team sets both rules, so both are the team's
   // there and nothing turns either off.
   it("reports, merged into the team's configs, each rule once, as the team's configs alone report it", () => {
-    const { agent, teamAlone, mergedIntoTheTeamsConfigs } = theRuns()
+    const { agent, teamAlone, mergedIntoTheTeamsConfigs } = runs()
 
     expect(findingsByFileAndRule(mergedIntoTheTeamsConfigs, files, rules)).toStrictEqual(
       owedBesideTheTeam(findingsByFileAndRule(agent, files, rules), findingsByFileAndRule(teamAlone, files, rules), corpusRulesTheTeamSets(rules)),

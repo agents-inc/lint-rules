@@ -20,7 +20,7 @@ import { defineLintRules } from './index.ts'
 // The parts are plain data, so importing agents-inc.lint.mts costs only the catalog: ESLint's plugins
 // and parser load only when a team's ESLint config imports the merge.
 
-const EDITOR_PART_KEYS = ['eslint', 'oxlint']
+const EDITOR_PART_KEYS: ReadonlySet<string> = new Set(['eslint', 'oxlint'])
 
 const tempProjects = setUpTempProjects()
 const PROJECT_WITH_OXLINT = createProjectListingOxlint(tempProjects)
@@ -37,7 +37,7 @@ describe('what defineLintRules returns', () => {
 
     expect({
       keys: Object.keys(config),
-      partKeysBesideTheTwo: Object.keys(config.editorRulesets).filter((key) => !EDITOR_PART_KEYS.includes(key)),
+      partKeysBesideTheTwo: Object.keys(config.editorRulesets).filter((key) => !EDITOR_PART_KEYS.has(key)),
     }).toStrictEqual({ keys: ['editorRulesets'], partKeysBesideTheTwo: [] })
   })
 
@@ -80,8 +80,12 @@ describe('the parts of a project whose package.json lists oxlint', () => {
 // Without oxlint, wherever the layers state an oxc rule, the ESLint part states its stand-in with the
 // oxc rule's severity, files and ignores but none of its options, and the oxc rule not at all.
 /** The rules the editor ESLint part of a project without oxlint runs, the correctness ruleset listed, under the catalog given. */
-function eslintRulesWith(catalog: Catalog): RuleSettings {
+function eslintRulesWith(catalog: Readonly<Catalog>): RuleSettings {
   return editorPartsOf(buildTwoSetLintRules({ editorRulesets: { quality: ['correctness'] } }), catalog, false).eslint.layers.rules
+}
+
+function catalogOf(rules: readonly RuleRoute[], eslintStandIns: ReadonlyMap<string, string>): Catalog {
+  return buildCatalog({ rulesets: [buildQualityRuleset('correctness')], rules, eslintStandIns })
 }
 
 describe('the stand-ins for oxlint-only rules', () => {
@@ -183,10 +187,6 @@ describe('the stand-ins for oxlint-only rules', () => {
       [DOUBLE_OXC, CHAINED_STAND_IN],
     ])
 
-    function catalogOf(rules: readonly RuleRoute[], eslintStandIns: ReadonlyMap<string, string>): Catalog {
-      return buildCatalog({ rulesets: [buildQualityRuleset('correctness')], rules, eslintStandIns })
-    }
-
     it('is none where the oxlint-only rule is one oxlint runs alone and its stand-in an untyped ESLint rule, not shipped, standing in for it alone', () => {
       expect(eslintRulesWith(catalogOf([chainedOxc, standIn], ONE_STAND_IN))).toStrictEqual({ [CHAINED_STAND_IN]: ON })
     })
@@ -204,11 +204,11 @@ describe('the stand-ins for oxlint-only rules', () => {
         catalog: { ...catalogOf([chainedOxc, standIn], ONE_STAND_IN), ruleIdsWithAnEslintVersion: new Set([CHAINED_OXC, CHAINED_STAND_IN]) },
       },
     ])('is refused where $breach', ({ catalog }) => {
-      expect(() => eslintRulesWith(catalog)).toThrowError(`${CHAINED_OXC}: stood in for by ${CHAINED_STAND_IN}`)
+      expect(() => eslintRulesWith(catalog)).toThrow(`${CHAINED_OXC}: stood in for by ${CHAINED_STAND_IN}`)
     })
 
     it('is refused where the stand-in stands in for two oxlint-only rules', () => {
-      expect(() => eslintRulesWith(catalogOf([chainedOxc, doubleOxc, standIn], ONE_STAND_IN_FOR_TWO))).toThrowError(
+      expect(() => eslintRulesWith(catalogOf([chainedOxc, doubleOxc, standIn], ONE_STAND_IN_FOR_TWO))).toThrow(
         new RegExp(`^(${CHAINED_OXC}|${DOUBLE_OXC}): stood in for by ${CHAINED_STAND_IN}`, 'u'),
       )
     })

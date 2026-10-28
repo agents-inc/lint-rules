@@ -75,8 +75,9 @@ const THROW_LITERAL = 'no-throw-literal'
 /** The untyped rule and the typed rule the catalog records it split by types with. */
 function pairSplitting(untyped: string): SplitByTypesPair {
   const { shipped } = routeOf(untyped, catalog)
-  if (shipped === null || shipped.splitByTypesWith === null) throw new Error(`${untyped}: the catalog records no typed rule it is split by types with`)
-  return { untyped, typed: shipped.splitByTypesWith }
+  const typed = shipped === null ? null : shipped.splitByTypesWith
+  if (typed === null) throw new Error(`${untyped}: the catalog records no typed rule it is split by types with`)
+  return { untyped, typed }
 }
 
 const tempProjects = setUpTempProjects()
@@ -91,8 +92,8 @@ const PROJECT_DIR = tempProjects.create({
 /** Each file's findings of the pair's two rules, as `line rule severity`, sorted. */
 type PairFindings = Readonly<Record<string, readonly string[]>>
 
-async function pairFindingsWith(config: Linter.Config[], { untyped, typed }: SplitByTypesPair, files: readonly string[]): Promise<PairFindings> {
-  const results = await new ESLint({ cwd: PROJECT_DIR, overrideConfigFile: true, overrideConfig: config }).lintFiles([...files])
+async function pairFindingsWith(config: readonly Linter.Config[], { untyped, typed }: SplitByTypesPair, files: readonly string[]): Promise<PairFindings> {
+  const results = await new ESLint({ cwd: PROJECT_DIR, overrideConfigFile: true, overrideConfig: [...config] }).lintFiles([...files])
   return Object.fromEntries(
     files.map((file) => {
       const result = results.find(({ filePath }) => filePath.endsWith(`/${file}`))

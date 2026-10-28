@@ -1,5 +1,5 @@
-import { beforeAll, describe, expect, it } from 'vitest'
-import { type BothEnginesRuns, setUpBothEnginesRuns } from './__tests__/both-engines-runs.ts'
+import { describe, expect, it } from 'vitest'
+import { setUpBothEnginesRuns } from './__tests__/both-engines-runs.ts'
 import { NO_UNDEF } from './__tests__/cases/svelte-components.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, eslintLintedFilesOf, setUpConsumerEslintCliRun } from './__tests__/consumer-cli-runs.ts'
 import { EMPTY_TEAM_ESLINT_MODULE_FILE, projectMergingOurEslintPartText } from './__tests__/factories/consumer-project-factories.ts'
@@ -87,36 +87,25 @@ const TYPE_TEST_JS_FILES = Object.keys(OWED_IN_TYPE_TESTS_BY_OXLINT)
 
 describe("a JS test file using Vitest's and Jest's globals, beside a file that is no test using them, our correctness ruleset on, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({ sources, ourRulesets: CORRECTNESS_IN_BOTH_SETS, ours: {}, teamEslintRules: {}, teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG })
-  // Read before the tests, so a run the engines cannot make fails the file.
-  let made: BothEnginesRuns | undefined
-
-  beforeAll(() => {
-    made = runs()
-  })
-
-  function theRuns(): BothEnginesRuns {
-    if (made === undefined) throw new Error('no run was made before the tests of the test files')
-    return made
-  }
 
   it("draw no no-undef in a test file, and every runner global in the file that is no test, by the agent build", () => {
-    expect(findingsByFileAndRule(theRuns().agent, JS_FILES, RULES)).toStrictEqual(OWED_BY_OXLINT)
+    expect(findingsByFileAndRule(runs().agent, JS_FILES, RULES)).toStrictEqual(OWED_BY_OXLINT)
   })
 
   it("draw no no-undef in a test file, and every runner global in the file that is no test, merged into empty team configs", () => {
-    expect(findingsByFileAndRule(theRuns().mergedIntoEmptyTeamConfigs, JS_FILES, RULES)).toStrictEqual(OWED_BY_OXLINT)
+    expect(findingsByFileAndRule(runs().mergedIntoEmptyTeamConfigs, JS_FILES, RULES)).toStrictEqual(OWED_BY_OXLINT)
   })
 
   it("draw no no-undef in a type test, and every runner global in a file that only ends like one, by the agent build", () => {
-    expect(findingsByFileAndRule(theRuns().agent, TYPE_TEST_JS_FILES, RULES)).toStrictEqual(OWED_IN_TYPE_TESTS_BY_OXLINT)
+    expect(findingsByFileAndRule(runs().agent, TYPE_TEST_JS_FILES, RULES)).toStrictEqual(OWED_IN_TYPE_TESTS_BY_OXLINT)
   })
 
   it("draw no no-undef in a type test, and every runner global in a file that only ends like one, merged into empty team configs", () => {
-    expect(findingsByFileAndRule(theRuns().mergedIntoEmptyTeamConfigs, TYPE_TEST_JS_FILES, RULES)).toStrictEqual(OWED_IN_TYPE_TESTS_BY_OXLINT)
+    expect(findingsByFileAndRule(runs().mergedIntoEmptyTeamConfigs, TYPE_TEST_JS_FILES, RULES)).toStrictEqual(OWED_IN_TYPE_TESTS_BY_OXLINT)
   })
 
   it('leave the .test.json file out of ESLint, in the agent build and merged into empty team configs', () => {
-    const { eslintLintedFiles } = theRuns()
+    const { eslintLintedFiles } = runs()
 
     expect({
       agent: eslintLintedFiles.agent.includes(FILES.testJson),

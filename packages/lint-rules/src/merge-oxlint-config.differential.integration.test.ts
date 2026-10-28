@@ -197,7 +197,7 @@ const builtShapes = setUpRunsBeforeTheSuite(() => pairwiseShapes(OXLINT_MERGE_DI
 })
 
 /** What the real oxlint CLI reports over the project with the config given, written to the file given. */
-function findingsWith(file: string, config: OxlintConfig): OxlintFinding[] {
+function findingsWith(file: string, config: Readonly<OxlintConfig>): OxlintFinding[] {
   writeOxlintConfigFile(PROJECT, file, config)
   return oxlintFindingsWithSeverityIn(runOxlintCli(PROJECT, file, OXLINT_MERGE_LINTED_DIRS).report)
 }
@@ -258,6 +258,7 @@ describe('mergeOxlintConfig, against the real oxlint CLI in shapes meeting every
 
 describe('mergeOxlintConfig, against the real oxlint CLI in the two shapes it cannot reproduce', () => {
   // Made before the tests, so only the assertion can fail inside it.fails.
+  // eslint-disable-next-line functional/no-let -- it.fails: only the assertion may throw, so the run is in beforeAll and its result crosses to the test (CLAUDE.md, Tests; q-lint-no-let-it-fails)
   let runs: ReadonlyMap<OxlintMergeShapeValue, FindingsOwed> = new Map()
 
   beforeAll(() => {

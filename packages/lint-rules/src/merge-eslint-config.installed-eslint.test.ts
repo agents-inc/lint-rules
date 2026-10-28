@@ -34,7 +34,7 @@ const tempProjects = setUpTempProjects()
 /** A project listing no oxlint, with a fake ESLint of the version given installed, or none where null. */
 function projectWithInstalledEslint(version: string | null): string {
   return tempProjects.create({
-    files: { 'package.json': packageJsonText(buildPackageJsonListingOthers()), ...(version === null ? {} : buildInstalledEslintFiles(version)) },
+    files: { 'package.json': packageJsonText(buildPackageJsonListingOthers()), ...(version !== null && buildInstalledEslintFiles(version)) },
   })
 }
 
@@ -51,7 +51,7 @@ describe("mergeEslintConfig, given a project's installed ESLint", () => {
   it(`refuses one below 10, ${ESLINT_BELOW_10}, naming the project, the version and the fix`, () => {
     const projectDir = projectWithInstalledEslint(ESLINT_BELOW_10)
 
-    expect(mergedInto(projectDir)).toThrowError(new Error(belowTenMessage(projectDir, ESLINT_BELOW_10)))
+    expect(mergedInto(projectDir)).toThrow(new Error(belowTenMessage(projectDir, ESLINT_BELOW_10)))
   })
 
   it.each([
@@ -69,13 +69,13 @@ describe("mergeEslintConfig, given a project's installed ESLint", () => {
   it('refuses a manifest whose version does not start with digits and a dot, naming the manifest', () => {
     const projectDir = projectWithInstalledEslint(NOT_A_VERSION)
 
-    expect(mergedInto(projectDir)).toThrowError(realpathSync(join(projectDir, INSTALLED_ESLINT_MANIFEST)))
+    expect(mergedInto(projectDir)).toThrow(realpathSync(join(projectDir, INSTALLED_ESLINT_MANIFEST)))
   })
 
   it(`refuses a manifest whose version holds digits and a dot only after its start, ${A_VERSION_AFTER_A_PREFIX}, naming the manifest`, () => {
     const projectDir = projectWithInstalledEslint(A_VERSION_AFTER_A_PREFIX)
 
-    expect(mergedInto(projectDir)).toThrowError(realpathSync(join(projectDir, INSTALLED_ESLINT_MANIFEST)))
+    expect(mergedInto(projectDir)).toThrow(realpathSync(join(projectDir, INSTALLED_ESLINT_MANIFEST)))
   })
 })
 

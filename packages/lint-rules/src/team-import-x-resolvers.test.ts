@@ -28,13 +28,13 @@ function mergedInto(teamBlocks: readonly Linter.Config[], tsconfigRootDir: () =>
   return ourEditorEslintPartMergedInto(teamBlocks, buildConsumerLintRules(tsconfigRootDir(), MODULES_IN_BOTH_SETS))
 }
 
-async function resolversReadFor(config: Linter.Config[], file: string): Promise<ResolversImportXReads> {
+async function resolversReadFor(config: readonly Linter.Config[], file: string): Promise<ResolversImportXReads> {
   return resolversImportXReads((await lintedConfigFor(config, file)).settings)
 }
 
 const PROJECTS = editorProjectsIn(tempProjects)
 
-PROJECTS.forEach(({ project, tsconfigRootDir }) => {
+for (const { project, tsconfigRootDir } of PROJECTS) {
   describe(`the resolvers import-x reads, in the editor part of ${project}, merged into a team config setting import-x's settings in some packages alone`, () => {
     // Else each package owed ours would pass beside a part that gives import-x no resolver at all.
     it('are, merged into a team config with no block, our node resolver under resolver-next', async () => {
@@ -63,4 +63,4 @@ PROJECTS.forEach(({ project, tsconfigRootDir }) => {
       })
     })
   })
-})
+}

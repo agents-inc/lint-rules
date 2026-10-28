@@ -629,10 +629,10 @@ const config = defineLintRules(allowed)
 export const { eslint, oxlint } = config.editorRulesets
 
 // @ts-expect-error the agent set is not visible on what defineLintRules returns
-export const agentRulesets = config.agentRulesets
+export const { agentRulesets } = config
 
 // @ts-expect-error no rulesets key is visible on what defineLintRules returns
-export const rulesets = config.rulesets
+export const { rulesets } = config
 
 // The team's ESLint config may be anything ESLint's defineConfig takes: an object, an array, nested
 // arrays. Each merge's third argument names the team's other engine config, or null where there is none.

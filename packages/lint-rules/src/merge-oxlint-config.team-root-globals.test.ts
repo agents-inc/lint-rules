@@ -20,19 +20,19 @@ const TEAM_SETTING = 'writable'
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) }, linkedPackages: [INSTALLED_OXLINT] })
 
 /** The merged config with ours merged into the team's config given. */
-function mergedInto(team: OxlintConfig): OxlintConfig {
+function mergedInto(team: Readonly<OxlintConfig>): OxlintConfig {
   const ourParts = defineLintRules(buildConsumerLintRules(projectDir, {})).editorRulesets
   return mergeOxlintConfig(team, oxlintPartOf(ourParts), NO_TEAM_ESLINT_CONFIG)
 }
 
 /** The global's setting among those given, as a list: none where they leave it out. */
-function settingIn(globals: NonNullable<OxlintConfig['globals']>): unknown[] {
+function settingIn(globals: Readonly<NonNullable<OxlintConfig['globals']>>): unknown[] {
   const setting = globals[SVELTE_GLOBAL]
   return setting === undefined ? [] : [setting]
 }
 
 /** How the merged config sets the global: at its root, and in each override that sets it, in order. */
-function settingsOfTheGlobal({ globals = {}, overrides }: OxlintConfig): { readonly root: unknown; readonly overrides: readonly unknown[] } {
+function settingsOfTheGlobal({ globals = {}, overrides }: Readonly<OxlintConfig>): { readonly root: unknown; readonly overrides: readonly unknown[] } {
   if (overrides === undefined) throw new Error('the merged config always holds overrides')
   return { root: globals[SVELTE_GLOBAL], overrides: overrides.flatMap(({ globals: overrideGlobals = {} }) => settingIn(overrideGlobals)) }
 }

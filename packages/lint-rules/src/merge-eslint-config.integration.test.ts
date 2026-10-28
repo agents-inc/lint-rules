@@ -71,14 +71,14 @@ const AGENTS_INC_LINT_WITH_EVERY_RULESET = readFileSync(
 const LINKED_PACKAGES = [THIS_PACKAGE, installedPackage('typescript-eslint'), installedPackage('eslint-plugin-react')]
 const TEAM_PROJECT_RUNS: RunsBeforeTheSuiteOptions = { timeoutMs: 480_000, whatFailed: 'ESLint could not lint the team project before the suite' }
 // The core rule, and its typescript-eslint extension, which the ESLint part runs on TS files in its place without oxlint.
-const UNUSED_VARIABLE_RULES = ['no-unused-vars', '@typescript-eslint/no-unused-vars']
+const UNUSED_VARIABLE_RULES: ReadonlySet<string> = new Set(['no-unused-vars', '@typescript-eslint/no-unused-vars'])
 // Two core rules oxlint runs for us, and typescript-eslint's extensions of them, which its recommended config turns on.
-const UNUSED_CODE_RULES = [
+const UNUSED_CODE_RULES: ReadonlySet<string> = new Set([
   'no-unused-vars',
   '@typescript-eslint/no-unused-vars',
   'no-unused-expressions',
   '@typescript-eslint/no-unused-expressions',
-]
+])
 const FLOATING_PROMISES = '@typescript-eslint/no-floating-promises'
 
 const PROJECTS = [
@@ -119,9 +119,9 @@ function setUpTeamProjectRuns(packageJson: PackageJson, teamConfigModule: string
   }
 
   return {
-    projectDir: () => completedRuns().projectDir,
-    teamAlone: () => completedRuns().teamAlone,
-    merged: () => completedRuns().merged,
+    projectDir() { return completedRuns().projectDir },
+    teamAlone() { return completedRuns().teamAlone },
+    merged() { return completedRuns().merged },
   }
 }
 
@@ -157,17 +157,27 @@ describe.each(PROJECTS)(
 
     // The narrowed off-switch: we route react/react-in-jsx-scope to oxlint, but our parts do not run it.
     it('keeps the team findings of react/react-in-jsx-scope, a rule we route to oxlint and do not run', () => {
-      const ofTheRule = (findings: readonly Finding[]): Finding[] =>
-        findings.filter((finding) => finding.rule === 'react/react-in-jsx-scope')
-      const teamAlone = ofTheRule(findingsOf(runs, 'teamAlone'))
+      const teamAlone = reactInJsxScopeFindingsIn(findingsOf(runs, 'teamAlone'))
 
       expect({
         filesTheTeamFlags: [...new Set(teamAlone.map((finding) => finding.file))],
-        merged: ofTheRule(findingsOf(runs, 'merged')),
+        merged: reactInJsxScopeFindingsIn(findingsOf(runs, 'merged')),
       }).toStrictEqual({ filesTheTeamFlags: [COMPONENT_FILE], merged: teamAlone })
     })
   },
 )
+
+function reactInJsxScopeFindingsIn(findings: readonly Finding[]): Finding[] {
+  return findings.filter((finding) => finding.rule === 'react/react-in-jsx-scope')
+}
+
+function floatingPromisesIn(findings: readonly Finding[]): string[] {
+  return findings.filter((finding) => finding.rule === FLOATING_PROMISES).map(describeFinding)
+}
+
+function unusedCodeIn(findings: readonly Finding[]): string[] {
+  return findings.filter((finding) => UNUSED_CODE_RULES.has(finding.rule)).map(describeFinding)
+}
 
 // typescript-eslint builds one project service per process from the first file's options, so
 // our typed block takes the team's type information whenever the team gives some.
@@ -195,12 +205,9 @@ describe('a team giving no type information, merged with the editor part', () =>
   })
 
   it('gets type information from our part: our typed rule fires where the team config alone has none', () => {
-    const ofTheRule = (findings: readonly Finding[]): string[] =>
-      findings.filter((finding) => finding.rule === '@typescript-eslint/no-floating-promises').map(describeFinding)
-
     expect({
-      teamAlone: ofTheRule(findingsOf(runs, 'teamAlone')),
-      merged: ofTheRule(findingsOf(runs, 'merged')),
+      teamAlone: floatingPromisesIn(findingsOf(runs, 'teamAlone')),
+      merged: floatingPromisesIn(findingsOf(runs, 'merged')),
     }).toStrictEqual({ teamAlone: [], merged: [`${FLOATING_PROMISE_FILE}:4 @typescript-eslint/no-floating-promises`] })
   })
 })
@@ -230,7 +237,7 @@ describe("a team on typescript-eslint's recommended config, merged with the edit
 
   it('reports an unused variable once, by the team\'s @typescript-eslint/no-unused-vars and not by the core rule', () => {
     const unusedVariableFindings = findingsOf(runs, 'merged').filter(
-      (finding) => finding.file === UNUSED_VARIABLE_FILE && UNUSED_VARIABLE_RULES.includes(finding.rule),
+      (finding) => finding.file === UNUSED_VARIABLE_FILE && UNUSED_VARIABLE_RULES.has(finding.rule),
     )
 
     expect(unusedVariableFindings.map(describeFinding)).toStrictEqual([
@@ -247,11 +254,9 @@ describe("a team on typescript-eslint's recommended config, merged with the edit
   })
 
   it("reports an unused variable and an unused expression in ESLint as the team's config alone does, by typescript-eslint's extensions", () => {
-    const ofUnusedCode = (findings: readonly Finding[]): string[] =>
-      findings.filter((finding) => UNUSED_CODE_RULES.includes(finding.rule)).map(describeFinding)
     const owed = [`${UNUSED_EXPRESSION_FILE}:3 @typescript-eslint/no-unused-expressions`, `${UNUSED_VARIABLE_FILE}:1 @typescript-eslint/no-unused-vars`]
 
-    expect({ teamAlone: ofUnusedCode(findingsOf(runs, 'teamAlone')), merged: ofUnusedCode(findingsOf(runs, 'merged')) }).toStrictEqual({ teamAlone: owed, merged: owed })
+    expect({ teamAlone: unusedCodeIn(findingsOf(runs, 'teamAlone')), merged: unusedCodeIn(findingsOf(runs, 'merged')) }).toStrictEqual({ teamAlone: owed, merged: owed })
   })
 })
 
@@ -268,10 +273,7 @@ describe('a team linting with types through the project service for its .ts and 
   })
 
   it('runs our typed rule in a file the team types, and not in the .mts file it lints without types', () => {
-    const ofTheRule = (findings: readonly Finding[]): string[] =>
-      findings.filter((finding) => finding.rule === FLOATING_PROMISES).map(describeFinding)
-
-    expect(ofTheRule(findingsOf(runs, 'merged'))).toStrictEqual([`${FLOATING_PROMISE_FILE}:4 ${FLOATING_PROMISES}`])
+    expect(floatingPromisesIn(findingsOf(runs, 'merged'))).toStrictEqual([`${FLOATING_PROMISE_FILE}:4 ${FLOATING_PROMISES}`])
   })
 })
 
@@ -290,9 +292,6 @@ describe.each([
   })
 
   it('runs our typed rule in a file the team types, and not in the script it lints without types', () => {
-    const ofTheRule = (findings: readonly Finding[]): string[] =>
-      findings.filter((finding) => finding.rule === FLOATING_PROMISES).map(describeFinding)
-
-    expect(ofTheRule(findingsOf(runs, 'merged'))).toStrictEqual([`${FLOATING_PROMISE_FILE}:4 ${FLOATING_PROMISES}`])
+    expect(floatingPromisesIn(findingsOf(runs, 'merged'))).toStrictEqual([`${FLOATING_PROMISE_FILE}:4 ${FLOATING_PROMISES}`])
   })
 })

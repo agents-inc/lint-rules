@@ -132,8 +132,8 @@ describe('check on the files and lines changed since the last commit', () => {
       project.write('src/new-untracked.ts', moduleText(exportedConstant('fresh'), DEBUGGER_STATEMENT, DEBUGGER_STATEMENT))
       project.write('src/with space.ts', moduleText(exportedConstant('spaced'), DEBUGGER_STATEMENT))
       project.write('src/ünïcode.ts', moduleText(exportedConstant('accented'), DEBUGGER_STATEMENT))
-      EXTENSIONS.forEach((extension) => project.write(`src/ext/a.${extension}`, moduleText(DEBUGGER_STATEMENT)))
-      Object.entries(NOT_JS_OR_TS).forEach(([file, content]) => project.write(file, content))
+      for (const extension of EXTENSIONS) project.write(`src/ext/a.${extension}`, moduleText(DEBUGGER_STATEMENT))
+      for (const [file, content] of Object.entries(NOT_JS_OR_TS)) project.write(file, content)
       project.write('src/generated/gen.ts', moduleText(DEBUGGER_STATEMENT))
       project.write('src/broken.ts', moduleText(...A_SYNTAX_ERROR))
     },
@@ -397,7 +397,9 @@ describe('what check leaves behind', () => {
       const [namesSeenInTheTopLevel, namesSeenInTheConfigFolder] = await Promise.all([watchedTopLevel.namesSeen(), watchedConfigFolder.namesSeen()])
       watchedTopLevel.close()
       watchedConfigFolder.close()
-      const isItsConfig = (name: string): boolean => tempConfigPatternOf(started.pid).test(name)
+      function isItsConfig(name: string): boolean {
+        return tempConfigPatternOf(started.pid).test(name)
+      }
       return {
         ...started,
         tempConfigSeenInTheGitTopLevel: namesSeenInTheTopLevel.some(isItsConfig),
@@ -407,11 +409,13 @@ describe('what check leaves behind', () => {
       }
     }
 
-    const toTheEnd = (env: Readonly<Record<string, string>>): Promise<BackgroundRun> => checkInTheBackground(runFolder, { env })
-    const signalledWith =
-      (signal: NodeJS.Signals) =>
-      (env: Readonly<Record<string, string>>, watched: FolderWatch): Promise<BackgroundRun> =>
+    function toTheEnd(env: Readonly<Record<string, string>>): Promise<BackgroundRun> {
+      return checkInTheBackground(runFolder, { env })
+    }
+    function signalledWith(signal: NodeJS.Signals) {
+      return (env: Readonly<Record<string, string>>, watched: FolderWatch): Promise<BackgroundRun> =>
         checkSignalledOnceItsConfigAppears(runFolder, watched, signal, { env })
+    }
 
     project.write(`${APP}/src/clean.ts`, moduleText(exportedConstant('clean')))
     const clean = await runLeaving(toTheEnd)
@@ -431,13 +435,16 @@ describe('what check leaves behind', () => {
     const sweep = await checkInTheBackground(runFolder)
     const afterTheSweep = tempConfigsIn(project.dir)
 
-    const eslintFailedOn = (file: string): string => notCheckedByEslint(file, eslintMessageWhileLinting(A_SELECTOR_ESLINT_THROWS_ON_MESSAGE, project.pathOf(`${APP}/${file}`)))
+    function eslintFailedOn(file: string): string {
+      return notCheckedByEslint(file, eslintMessageWhileLinting(A_SELECTOR_ESLINT_THROWS_ON_MESSAGE, project.pathOf(`${APP}/${file}`)))
+    }
     return { clean, findings, interrupted, terminated, engineFailure, notCheckedWhereEslintFails: CHANGED_WHEN_ESLINT_FAILS.map(eslintFailedOn), sweep, fromALiveProcess, afterTheSweep }
   }, RUNS_IN_THE_BACKGROUND)
+  type CheckRuns = ReturnType<typeof runs>
 
-  it.each([
-    { kind: 'a clean run', exitCode: EXIT.clean, ran: () => runs().clean },
-    { kind: 'a run with findings', exitCode: EXIT.findings, ran: () => runs().findings },
+  it.each<{ readonly kind: string; readonly exitCode: number; readonly ran: () => CheckRuns['clean'] }>([
+    { kind: 'a clean run', exitCode: EXIT.clean, ran() { return runs().clean } },
+    { kind: 'a run with findings', exitCode: EXIT.findings, ran() { return runs().findings } },
   ])("writes its temporary oxlint config in the git top level, not the config's folder, while it runs, and leaves none behind, after $kind", ({ exitCode, ran }) => {
     const { run, tempConfigSeenInTheGitTopLevel, tempConfigSeenInTheConfigFolder, leftovers } = ran()
 
@@ -463,9 +470,9 @@ describe('what check leaves behind', () => {
     })
   })
 
-  it.each([
-    { signal: 'SIGINT', exitCode: EXIT.interrupted, ran: () => runs().interrupted },
-    { signal: 'SIGTERM', exitCode: EXIT.terminated, ran: () => runs().terminated },
+  it.each<{ readonly signal: NodeJS.Signals; readonly exitCode: number; readonly ran: () => CheckRuns['interrupted'] }>([
+    { signal: 'SIGINT', exitCode: EXIT.interrupted, ran() { return runs().interrupted } },
+    { signal: 'SIGTERM', exitCode: EXIT.terminated, ran() { return runs().terminated } },
   ])('exits $exitCode on $signal, says it was interrupted, and leaves no temporary config behind', ({ exitCode, ran }) => {
     const { signalled, run, leftovers } = ran()
 
@@ -473,9 +480,9 @@ describe('what check leaves behind', () => {
   })
 
   // check-fixes.integration.test.ts covers a signal after check fixed files, which it names.
-  it.each([
-    { signal: 'SIGINT', ran: () => runs().interrupted },
-    { signal: 'SIGTERM', ran: () => runs().terminated },
+  it.each<{ readonly signal: NodeJS.Signals; readonly ran: () => CheckRuns['interrupted'] }>([
+    { signal: 'SIGINT', ran() { return runs().interrupted } },
+    { signal: 'SIGTERM', ran() { return runs().terminated } },
   ])('prints no autofixed line on $signal, where it had fixed nothing', ({ ran }) => {
     const { signalled, run } = ran()
 
@@ -649,8 +656,9 @@ describe('check where it cannot run', () => {
     const { oldNode } = runs()
     if (oldNode === null || OLD_NODE === undefined) throw new Error('the old Node runs were not made')
     const version = OLD_NODE.version.replace(/^v/u, '')
-    const floorLine = (command: string): RegExp =>
-      new RegExp(`^${command}: could not run: Node 22\\.18 or later is needed; this is Node v?${version.replaceAll('.', '\\.')}\\.\\n$`, 'u')
+    function floorLine(command: string): RegExp {
+      return new RegExp(`^${command}: could not run: Node 22\\.18 or later is needed; this is Node v?${version.replaceAll('.', '\\.')}\\.\\n$`, 'u')
+    }
 
     expect({
       check: { exitCode: oldNode.check.exitCode, stdout: oldNode.check.stdout, floor: floorLine('check').test(oldNode.check.stderr) },
@@ -662,16 +670,16 @@ describe('check where it cannot run', () => {
   })
 })
 
+function suppressionsOffIn(files: readonly string[]): Parameters<typeof checkedPackageFiles>[1] {
+  // @ts-expect-error a files list that may be empty is a type error: this pins what the config does without types
+  return { allowSuppressions: true, fileOverrides: [{ files: [...files], allowSuppressions: false }] }
+}
+
 describe('check where a file override lists no file', () => {
   // The types refuse an empty `files`; check loads the config with them stripped, so defineLintRules lets it
   // through, and ESLint refuses the block check builds for that entry's component files.
-  function suppressionsOffIn(files: readonly string[]): Parameters<typeof checkedPackageFiles>[1] {
-    // @ts-expect-error a files list that may be empty is a type error: this pins what the config does without types
-    return { allowSuppressions: true, fileOverrides: [{ files: [...files], allowSuppressions: false }] }
-  }
-
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const checkedWith = (files: readonly string[]): CliRun => {
+    function checkedWith(files: readonly string[]): CliRun {
       const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, suppressionsOffIn(files)) })
       project.write('src/a.ts', moduleText(exportedConstant('a'), DEBUGGER_STATEMENT))
       return runCheck(project.dir)
@@ -764,6 +772,9 @@ describe('a wrong call', () => {
   })
 })
 
+/** A run of check from a folder, made before the suite. */
+type RunFromCase = { readonly from: string; readonly ran: () => CliRun }
+
 describe('check in a monorepo package, after changes in it, in another package and at the repo root', () => {
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, { repo: 'committed', files: { ...A_TSCONFIG_TAKING_IN_THE_REPO, ...checkedPackageFiles(REDUNDANCY, {}, `${NESTED_PACKAGE}/`) } })
@@ -776,9 +787,9 @@ describe('check in a monorepo package, after changes in it, in another package a
     }
   })
 
-  it.each([
-    { from: 'the folder of its agents-inc.lint.mts', ran: () => runs().fromThePackage },
-    { from: 'a folder below it', ran: () => runs().fromBelowIt },
+  it.each<RunFromCase>([
+    { from: 'the folder of its agents-inc.lint.mts', ran() { return runs().fromThePackage } },
+    { from: 'a folder below it', ran() { return runs().fromBelowIt } },
   ])("run from $from, lints every changed file in the repo with the config found, with paths from the config's folder, and notes nothing", ({ ran }) => {
     expect(ran()).toStrictEqual({
       exitCode: EXIT.findings,
@@ -810,9 +821,9 @@ describe('check in a package whose folder, at the repo root, and a changed file 
     }
   })
 
-  it.each([
-    { from: 'the folder of its agents-inc.lint.mts', ran: () => runs().fromThePackage },
-    { from: 'a folder below it, finding the config in the ..pkg folder', ran: () => runs().fromBelowIt },
+  it.each<RunFromCase>([
+    { from: 'the folder of its agents-inc.lint.mts', ran() { return runs().fromThePackage } },
+    { from: 'a folder below it, finding the config in the ..pkg folder', ran() { return runs().fromBelowIt } },
   ])("run from $from, prints ..x.ts as a file in the config's folder, and the file at the repo root from the folder above it", ({ ran }) => {
     expect(ran()).toStrictEqual({
       exitCode: EXIT.findings,
@@ -938,9 +949,9 @@ describe('check where oxlint refuses an option the team gave a rule', () => {
   const REFUSED_OPTION = { rules: { 'no-console': ['error', NO_CONSOLE_OPTION_OXLINT_REFUSES] } } as const
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const runAfterAdding = (files: Readonly<Record<string, string>>): CliRun => {
+    function runAfterAdding(files: Readonly<Record<string, string>>): CliRun {
       const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY_AND_CORRECTNESS, REFUSED_OPTION) })
-      Object.entries(files).forEach(([file, text]) => project.write(file, text))
+      for (const [file, text] of Object.entries(files)) project.write(file, text)
       return runCheck(project.dir)
     }
     return {
@@ -977,7 +988,7 @@ describe('check where ESLint throws as it lints each file, on a selector it cann
   const AN_OPTION_ESLINT_REFUSES = 123
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const runWhereNoDebuggerIs = (setting: 'warn' | 'error'): { readonly result: CliRun; readonly notChecked: readonly string[] } => {
+    function runWhereNoDebuggerIs(setting: 'warn' | 'error'): { readonly result: CliRun; readonly notChecked: readonly string[] } {
       const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, { rules: { ...ESLINT_THROWING, 'no-debugger': setting } }) })
       project.write('src/a.ts', moduleText(exportedConstant('a')))
       project.write('src/b.ts', moduleText(exportedConstant('b'), DEBUGGER_STATEMENT))
@@ -1127,6 +1138,10 @@ describe('check on unused pairs beside comment-like text in a string or a templa
 /** A comment another writer changes after oxlint read it: its file, its text as oxlint read it, and the writer's text. */
 type OutOfDateComment = { readonly file: string; readonly asOxlintReadIt: readonly string[]; readonly writersText: string }
 
+function writersTextOf(form: SuppressionForm): string {
+  return moduleText(...movedDownByAnotherWriter(aSuppressionPartlyUnused(form)))
+}
+
 describe('check where another writer changes suppression comments after oxlint read them, where suppressions are allowed', () => {
   // Another writer edits each file between oxlint's read and check's: a report that no longer fits the text
   // goes unreported, never refusing the run, and the next run reports the comment where it is.
@@ -1143,10 +1158,6 @@ describe('check where another writer changes suppression comments after oxlint r
   // oxlint's span on the whole comment now covers a string holding its text.
   const UNDER_A_STRING = { file: 'src/allowed/oxlint-under-a-string.ts', asOxlintReadIt: A_WHOLLY_UNUSED_OXLINT_DISABLE }
 
-  function writersTextOf(form: SuppressionForm): string {
-    return moduleText(...movedDownByAnotherWriter(aSuppressionPartlyUnused(form)))
-  }
-
   function outOfDate(): OutOfDateComment[] {
     return [
       ...MOVED.map(({ file, form }) => ({ file, asOxlintReadIt: aSuppressionPartlyUnused(form), writersText: writersTextOf(form) })),
@@ -1158,8 +1169,8 @@ describe('check where another writer changes suppression comments after oxlint r
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const outOfDateComments = outOfDate()
     const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED) })
-    IN_PLACE.forEach(({ file, form }) => project.write(file, moduleText(...aSuppressionPartlyUnused(form))))
-    outOfDateComments.forEach(({ file, asOxlintReadIt }) => project.write(file, moduleText(...asOxlintReadIt)))
+    for (const { file, form } of IN_PLACE) project.write(file, moduleText(...aSuppressionPartlyUnused(form)))
+    for (const { file, asOxlintReadIt } of outOfDateComments) project.write(file, moduleText(...asOxlintReadIt))
     project.write('src/other.ts', moduleText(exportedConstant('other'), DEBUGGER_STATEMENT))
     const result = runCheck(project.dir, anotherWriterAsOxlintsLintRunEnds(outOfDateComments.map(({ file, writersText }) => ({ path: project.pathOf(file), text: writersText }))))
     return { result, textsNow: outOfDateComments.map(({ file }) => project.read(file)), nextRun: runCheck(project.dir) }

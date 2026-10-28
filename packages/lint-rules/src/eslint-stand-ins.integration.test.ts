@@ -1,7 +1,7 @@
 import { catalog } from '@workspace/rule-data'
 import { STAND_IN_CASES, type StandInCase } from '@workspace/rule-data/test-support/stand-in-cases'
 import { ESLint, type Linter } from 'eslint'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { eslintFindingsIn } from './__tests__/engine-clis.ts'
 import { buildLintRules, buildTwoSetLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { lintRulesPackageVersion } from './__tests__/factories/package-json-factories.ts'
@@ -41,9 +41,9 @@ const tempProjects = setUpTempProjects()
 const PROJECT_DIR = tempProjects.create({ files: Object.fromEntries(FIXTURES.map(({ path, source }) => [path, source])) })
 
 /** Each fixture file's findings of a stand-in, by rule ID, sorted. */
-async function standInsReportedWith(config: Linter.Config[]): Promise<Readonly<Record<string, readonly string[]>>> {
+async function standInsReportedWith(config: readonly Linter.Config[]): Promise<Readonly<Record<string, readonly string[]>>> {
   const standInIds: ReadonlySet<string> = new Set(FIXTURES.map(({ standInCase }) => standInOf(standInCase)))
-  const findings = eslintFindingsIn(await new ESLint({ cwd: PROJECT_DIR, overrideConfigFile: true, overrideConfig: config }).lintFiles(FIXTURE_FILES), PROJECT_DIR)
+  const findings = eslintFindingsIn(await new ESLint({ cwd: PROJECT_DIR, overrideConfigFile: true, overrideConfig: [...config] }).lintFiles(FIXTURE_FILES), PROJECT_DIR)
   return Object.fromEntries(
     FIXTURE_FILES.map((file) => [
       file,
@@ -79,13 +79,7 @@ describe('the ESLint stand-ins for oxc rules, each on its fixture', () => {
 })
 
 describe('the stand-in fixtures', () => {
-  let standInsOfTheCatalog: string[]
-
-  beforeAll(() => {
-    standInsOfTheCatalog = [...catalog.eslintStandIns.keys()].toSorted()
-  })
-
   it("cover exactly the real catalog's stand-ins", () => {
-    expect(STAND_IN_CASES.map(({ oxlintRule }) => oxlintRule).toSorted()).toStrictEqual(standInsOfTheCatalog)
+    expect(STAND_IN_CASES.map(({ oxlintRule }) => oxlintRule).toSorted()).toStrictEqual(catalog.eslintStandIns.keys().toArray().toSorted())
   })
 })

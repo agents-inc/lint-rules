@@ -129,20 +129,24 @@ async function suppressionSettingsFor(configs: BuiltConfigs, file: string): Prom
 }
 
 /** The ban's entry from the routed engine, ESLint's numeric severity read by name so both compare alike. */
-function tsCommentBanIn({ oxlint }: BuiltConfigs, calculated: Linter.Config, file: string): unknown {
+function tsCommentBanIn({ oxlint }: BuiltConfigs, calculated: Readonly<Linter.Config>, file: string): unknown {
   const { engine, oxlintName } = routeOfTheTsCommentBan()
   if (oxlint !== null && engine === 'oxlint') return oxlintConfigForFile(oxlint, file).rules[oxlintName]
   const entry = calculatedEntryOf(calculated, TS_COMMENT_BAN)
-  if (!Array.isArray(entry)) throw new Error(`ESLint calculates ${TS_COMMENT_BAN} as [severity, ...options], not ${JSON.stringify(entry)}`)
+  if (!isList(entry)) throw new TypeError(`ESLint calculates ${TS_COMMENT_BAN} as [severity, ...options], not ${JSON.stringify(entry)}`)
   const [, ...options] = entry
   return [severityOfCalculatedEntry(entry), ...options]
+}
+
+function isList(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value)
 }
 
 function routeOfTheTsCommentBan(): RuleRoute {
   return routeOf(TS_COMMENT_BAN)
 }
 
-function routedSeverityIn({ oxlint }: BuiltConfigs, calculated: Linter.Config, file: string, ruleId: string): Linter.StringSeverity {
+function routedSeverityIn({ oxlint }: BuiltConfigs, calculated: Readonly<Linter.Config>, file: string, ruleId: string): Linter.StringSeverity {
   const { engine, oxlintName } = routeOf(ruleId)
   if (oxlint === null || engine !== 'oxlint') return calculatedSeverityOf(calculated, ruleId)
   const severity = oxlintSeverityFor(oxlint, file, oxlintName)
@@ -155,19 +159,19 @@ function routeOf(ruleId: string): RuleRoute {
   return route
 }
 
-function calculatedEntryOf({ rules }: Linter.Config, ruleId: string): unknown {
+function calculatedEntryOf({ rules }: Readonly<Linter.Config>, ruleId: string): unknown {
   if (rules === undefined) throw new Error('no rules apply to the file')
   return rules[ruleId]
 }
 
 /** A rule no block sets does not run, which is what off means. */
-function calculatedSeverityOf(calculated: Linter.Config, ruleId: string): Linter.StringSeverity {
+function calculatedSeverityOf(calculated: Readonly<Linter.Config>, ruleId: string): Linter.StringSeverity {
   const severity = severityOfCalculatedEntry(calculatedEntryOf(calculated, ruleId))
   return severity === undefined ? 'off' : severity
 }
 
 /** ESLint reads directives unless noInlineConfig is true; it leaves the option out when no block sets it. */
-function readsDirectives({ linterOptions }: Linter.Config): boolean {
+function readsDirectives({ linterOptions }: Readonly<Linter.Config>): boolean {
   if (linterOptions === undefined) throw new Error('ESLint calculated no linterOptions for the file')
   return linterOptions.noInlineConfig !== true
 }

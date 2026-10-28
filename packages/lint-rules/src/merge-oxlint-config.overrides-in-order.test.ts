@@ -24,12 +24,12 @@ const NOT_RUN = 'not run'
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) }, linkedPackages: [INSTALLED_OXLINT] })
 
 /** Our oxlint part of the settings given, merged into the team config given. */
-function mergedWith(fields: Partial<Omit<LintRules, 'tsconfigRootDir'>>, team: OxlintConfig): OxlintConfig {
+function mergedWith(fields: Partial<Omit<LintRules, 'tsconfigRootDir'>>, team: Readonly<OxlintConfig>): OxlintConfig {
   return mergeOxlintConfig(team, oxlintPartOf(defineLintRules(buildConsumerLintRules(projectDir, {}, fields)).editorRulesets), NO_TEAM_ESLINT_CONFIG)
 }
 
 /** The severity oxlint runs the rule at in each file given: NOT_RUN where it is off or no statement applies. */
-function severitiesIn(merged: OxlintConfig, oxlintName: string, files: readonly string[]): Readonly<Record<string, string>> {
+function severitiesIn(merged: Readonly<OxlintConfig>, oxlintName: string, files: readonly string[]): Readonly<Record<string, string>> {
   return Object.fromEntries(
     files.map((file) => {
       const severity = oxlintSeverityFor(merged, file, oxlintName)

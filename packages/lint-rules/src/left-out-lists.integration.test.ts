@@ -64,18 +64,23 @@ describe('the editor set of agents-inc.lint.mts, linted by both engines through 
   it('giving correctness draws a finding in each engine that every list given empty does not', () => {
     const withCorrectness = correctnessAndEveryOtherListEmpty()
     const withNone = everyListEmpty()
+    // vitest types its asymmetric matchers as any; held as unknown, each compares as written.
+    const holdingTheOxlintFinding: unknown = expect.arrayContaining([A_CORRECTNESS_FINDING_IN_OXLINT])
+    const holdingTheEslintFinding: unknown = expect.arrayContaining([A_CORRECTNESS_FINDING_IN_ESLINT])
+    const withoutTheOxlintFinding: unknown = expect.not.arrayContaining([A_CORRECTNESS_FINDING_IN_OXLINT])
+    const withoutTheEslintFinding: unknown = expect.not.arrayContaining([A_CORRECTNESS_FINDING_IN_ESLINT])
 
     expect({
       withCorrectness: { oxlint: oxlintReportOf(withCorrectness), eslint: eslintReportOf(withCorrectness) },
       withNone: { oxlint: oxlintReportOf(withNone), eslint: eslintReportOf(withNone) },
     }).toStrictEqual({
       withCorrectness: {
-        oxlint: { refused: false, findings: expect.arrayContaining([A_CORRECTNESS_FINDING_IN_OXLINT]) },
-        eslint: { refused: false, findings: expect.arrayContaining([A_CORRECTNESS_FINDING_IN_ESLINT]) },
+        oxlint: { refused: false, findings: holdingTheOxlintFinding },
+        eslint: { refused: false, findings: holdingTheEslintFinding },
       },
       withNone: {
-        oxlint: { refused: false, findings: expect.not.arrayContaining([A_CORRECTNESS_FINDING_IN_OXLINT]) },
-        eslint: { refused: false, findings: expect.not.arrayContaining([A_CORRECTNESS_FINDING_IN_ESLINT]) },
+        oxlint: { refused: false, findings: withoutTheOxlintFinding },
+        eslint: { refused: false, findings: withoutTheEslintFinding },
       },
     })
   })

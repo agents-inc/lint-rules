@@ -8,7 +8,7 @@ import {
   THE_ALIASED_MODULE,
 } from './__tests__/cases/check-sources.ts'
 import { findingMessagesIn, findingsIn, findingsInFile, lastLineOf } from './__tests__/check-output.ts'
-import { EXIT, runCheck } from './__tests__/cli-runs.ts'
+import { type CliRun, EXIT, runCheck } from './__tests__/cli-runs.ts'
 import {
   A_TSCONFIG_TAKING_IN_THE_REPO,
   aLegacyEslintignoreIn,
@@ -218,7 +218,7 @@ describe("check in a monorepo, where the config's file overrides name a folder o
         },
       })
       const changed = [`${folder}/src/a.ts`, `${API_PACKAGE}/src/a.ts`, `${folder}/tests/a.test.ts`, `${API_PACKAGE}/tests/a.test.ts`]
-      changed.forEach((file) => project.write(file, moduleText(...A_DEBUGGER_AND_A_LITERAL_THROWN)))
+      for (const file of changed) project.write(file, moduleText(...A_DEBUGGER_AND_A_LITERAL_THROWN))
       return { kind, result: runCheck(project.pathOf(folder)) }
     }),
   )
@@ -266,7 +266,7 @@ describe("check, where the config's file overrides name files at its folder's ro
         files: { ...checkedPackageFiles(REDUNDANCY_AND_CORRECTNESS, { fileOverrides: FILE_OVERRIDES }, under), [`${under}tsconfig.json`]: packageTsconfigText(AT_ITS_ROOT) },
       })
       const changed = [LED_BY_DOT_SLASH, LED_BY_SLASH]
-      changed.forEach((file) => project.write(`${under}${file}`, moduleText(...A_DEBUGGER_AND_A_LITERAL_THROWN)))
+      for (const file of changed) project.write(`${under}${file}`, moduleText(...A_DEBUGGER_AND_A_LITERAL_THROWN))
       return { kind, result: runCheck(project.pathOf(folder)) }
     }),
   )
@@ -294,7 +294,7 @@ describe("check in a monorepo, where the config's file override on src/** meets 
       },
     })
     const changed = [SRC_FILE, `${WEB_PACKAGE}/${SRC_FILE}`]
-    changed.forEach((file) => project.write(file, moduleText(...A_DEBUGGER_AND_A_LITERAL_THROWN)))
+    for (const file of changed) project.write(file, moduleText(...A_DEBUGGER_AND_A_LITERAL_THROWN))
     return runCheck(project.pathOf(WEB_PACKAGE))
   })
 
@@ -302,6 +302,9 @@ describe("check in a monorepo, where the config's file override on src/** meets 
     expect(findingsIn(run().stdout)).toStrictEqual([`../../${SRC_FILE}:2 no-debugger`, `../../${SRC_FILE}:3 @typescript-eslint/only-throw-error`])
   })
 })
+
+/** A run of check made before the suite, and what it is. */
+type CheckRunCase = { readonly kind: string; readonly ran: () => CliRun }
 
 describe("check in a monorepo where nothing outside the config's folder changed, and with the config at the git top level", () => {
   const NESTED = 'packages/a'
@@ -314,9 +317,9 @@ describe("check in a monorepo where nothing outside the config's folder changed,
     return { nested: runCheck(nested.pathOf(NESTED)), atTheTop: runCheck(atTheTop.pathOf(NESTED)) }
   })
 
-  it.each([
-    { kind: "a config in a package, only that package's file changed", file: 'src/a.ts', ran: () => runs().nested },
-    { kind: 'a config at the git top level, run from a package below it', file: `${NESTED}/src/a.ts`, ran: () => runs().atTheTop },
+  it.each<CheckRunCase & { readonly file: string }>([
+    { kind: "a config in a package, only that package's file changed", file: 'src/a.ts', ran() { return runs().nested } },
+    { kind: 'a config at the git top level, run from a package below it', file: `${NESTED}/src/a.ts`, ran() { return runs().atTheTop } },
   ])('prints as it did before it linted other packages: $kind', ({ file, ran }) => {
     expect(ran()).toStrictEqual({
       exitCode: EXIT.findings,
@@ -353,7 +356,7 @@ describe("check in a monorepo where nothing outside the config's folder changed,
         ...monorepoPackageFiles(WEB_PACKAGE, { include: ['src', ...FILES_THE_GLOBS_NAME], paths: {} }, { devDependencies: { [DEV_ONLY]: '*' } }),
       },
     })
-    IMPORTING_DEV_ONLY.forEach((file) => devDependencies.write(`${WEB_PACKAGE}/${file}`, moduleText(...aValueReadFrom(DEV_ONLY))))
+    for (const file of IMPORTING_DEV_ONLY) devDependencies.write(`${WEB_PACKAGE}/${file}`, moduleText(...aValueReadFrom(DEV_ONLY)))
     return {
       spaced: runCheck(spaced.pathOf(SPACED_FOLDER)),
       fromTheConfigFolder: runCheck(devDependencies.pathOf(WEB_PACKAGE)),
@@ -370,9 +373,9 @@ describe("check in a monorepo where nothing outside the config's folder changed,
     })
   })
 
-  it.each([
-    { kind: "run from the config's folder", ran: () => runs().fromTheConfigFolder },
-    { kind: 'run from a folder below it', ran: () => runs().fromAFolderBelowIt },
+  it.each<CheckRunCase>([
+    { kind: "run from the config's folder", ran() { return runs().fromTheConfigFolder } },
+    { kind: 'run from a folder below it', ran() { return runs().fromAFolderBelowIt } },
   ])("reads a team's dependency globs from the config's folder, as it did before: the files they name may import a dev dependency, one they do not name may not: $kind", ({ ran }) => {
     const { exitCode, stderr, stdout } = ran()
 

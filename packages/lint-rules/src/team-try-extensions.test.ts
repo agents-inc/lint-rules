@@ -19,13 +19,13 @@ function mergedInto(teamBlocks: readonly Linter.Config[], tsconfigRootDir: () =>
   return ourEditorEslintPartMergedInto(teamBlocks, buildConsumerLintRules(tsconfigRootDir(), MODULES_IN_BOTH_SETS))
 }
 
-async function tryExtensionsReadFor(config: Linter.Config[], file: string): Promise<string[] | undefined> {
+async function tryExtensionsReadFor(config: readonly Linter.Config[], file: string): Promise<string[] | undefined> {
   return tryExtensionsEslintPluginNReads((await lintedConfigFor(config, file)).settings)
 }
 
 const PROJECTS = editorProjectsIn(tempProjects)
 
-PROJECTS.forEach(({ project, tsconfigRootDir }) => {
+for (const { project, tsconfigRootDir } of PROJECTS) {
   describe(`the extensions eslint-plugin-n tries, in the editor part of ${project}, merged into a team config setting them in some packages alone`, () => {
     // Else each package where ours is owed would pass on any list at all, the team's included.
     it("are, merged into a team config with no block, a list of ours that is not the team's", async () => {
@@ -56,4 +56,4 @@ PROJECTS.forEach(({ project, tsconfigRootDir }) => {
       })
     })
   })
-})
+}

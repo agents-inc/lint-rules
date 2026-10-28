@@ -635,6 +635,7 @@ describe("no-debugger, which the team turns off in a block its eslint.config.mjs
     CONSUMER_CONFIG_FILES.oxlint,
     [TYPESCRIPT_ESLINT],
   )
+  // eslint-disable-next-line functional/no-let -- it.fails: only the assertion may throw, so the run is in beforeAll and its result crosses to the test (CLAUDE.md, Tests; q-lint-no-let-it-fails)
   let findings: FindingsByFileAndRule = {}
 
   beforeAll(() => {

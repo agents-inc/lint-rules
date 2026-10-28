@@ -18,7 +18,7 @@ import { findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 
-// Vue's `<script setup>` macros, Astro's `Astro` and Svelte's `$$props`, `$$restProps` and
+// Vue.js's `<script setup>` macros, Astro's `Astro` and Svelte's `$$props`, `$$restProps` and
 // `$$slots`, in their component files. With oxlint, no-undef runs in each but Svelte components, where
 // Svelte's own checker reports undeclared names; without it, ESLint lints no component.
 

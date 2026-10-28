@@ -1,11 +1,11 @@
 import { join } from 'node:path'
-import { ESLint } from 'eslint'
+import { ESLint, type Linter } from 'eslint'
 import { catalog } from '@workspace/rule-data'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { buildConsumerLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJsonListingOthers, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildTsconfigWithPaths } from './__tests__/factories/tsconfig-factories.ts'
-import { setUpTempProjects } from './__tests__/temp-projects.ts'
+import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { buildAgentConfigs } from './agent-configs.ts'
 import { agentSettingsOf } from './agent-settings.ts'
 import { buildOxlintConfig } from './core/build-oxlint-config.ts'
@@ -24,35 +24,42 @@ const SENTINELS: ReadonlySet<string> = new Set([NAMED, FLOATING_PROMISES])
 const IMPORTER_SOURCE = "import { missing } from '@app/b'\n\nexport async function run(): Promise<number> {\n  Promise.resolve(missing)\n  return 1\n}\n"
 const STRAY_SOURCE = 'export async function run(): Promise<number> {\n  Promise.resolve(1)\n  return 1\n}\n'
 const MODULES_AND_CORRECTNESS = { quality: ['correctness', 'modules'] } as const
+const ESLINT_RUN_TIMEOUT_MS = 120_000
 
-const tempProjects = setUpTempProjects()
+function agentSettingsIn(dir: string): ReturnType<typeof agentSettingsOf> {
+  return agentSettingsOf(defineLintRules(buildConsumerLintRules(dir, { agentRulesets: MODULES_AND_CORRECTNESS })).editorRulesets.eslint)
+}
+
+/** A fatal message as `fatal`, a sentinel rule's as its ID, any other as null. */
+function sentinelOrFatal({ ruleId, fatal }: Readonly<Linter.LintMessage>): string | null {
+  if (fatal === true) return 'fatal'
+  return ruleId !== null && SENTINELS.has(ruleId) ? ruleId : null
+}
 
 describe('buildAgentConfigs, in a project whose package has a tsconfig of its own and whose root has none', () => {
-  let projectDir: string
-  let results: readonly ESLint.LintResult[]
-
-  beforeAll(async () => {
-    projectDir = tempProjects.create({
-      files: {
-        'package.json': packageJsonText(buildPackageJsonListingOthers()),
-        [PACKAGE_TSCONFIG]: JSON.stringify(buildTsconfigWithPaths({ '@app/*': ['./src/*'] }, { include: ['src'] })),
-        [IMPORTER]: IMPORTER_SOURCE,
-        'packages/app/src/b.ts': 'export const present = 1\n',
-        [STRAY_FILE]: STRAY_SOURCE,
-      },
-    })
-    const { eslint } = buildAgentConfigs(agentSettingsIn(projectDir))
-    results = await new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: eslint }).lintFiles(['.'])
-  }, 120_000)
-
-  function agentSettingsIn(dir: string): ReturnType<typeof agentSettingsOf> {
-    return agentSettingsOf(defineLintRules(buildConsumerLintRules(dir, { agentRulesets: MODULES_AND_CORRECTNESS })).editorRulesets.eslint)
-  }
+  const runs = setUpRunsBeforeTheSuite(
+    async (tempProjects) => {
+      const projectDir = tempProjects.create({
+        files: {
+          'package.json': packageJsonText(buildPackageJsonListingOthers()),
+          [PACKAGE_TSCONFIG]: JSON.stringify(buildTsconfigWithPaths({ '@app/*': ['./src/*'] }, { include: ['src'] })),
+          [IMPORTER]: IMPORTER_SOURCE,
+          'packages/app/src/b.ts': 'export const present = 1\n',
+          [STRAY_FILE]: STRAY_SOURCE,
+        },
+      })
+      const { eslint } = buildAgentConfigs(agentSettingsIn(projectDir))
+      const results = await new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: eslint }).lintFiles(['.'])
+      return { projectDir, results }
+    },
+    { timeoutMs: ESLINT_RUN_TIMEOUT_MS, whatFailed: 'ESLint could not be run on the project before the suite' },
+  )
 
   function sentinelsReportedOn(file: string): string[] {
+    const { projectDir, results } = runs()
     const result = results.find(({ filePath }) => filePath === join(projectDir, file))
     if (result === undefined) throw new Error(`ESLint did not lint ${file}`)
-    return result.messages.flatMap(({ ruleId, fatal }) => (fatal === true ? ['fatal'] : ruleId !== null && SENTINELS.has(ruleId) ? [ruleId] : []))
+    return result.messages.map(sentinelOrFatal).filter((reported) => reported !== null)
   }
 
   it("gives the import-x resolver the package's tsconfig, so its alias resolves, and runs the typed rules on the package's files", () => {
@@ -64,7 +71,7 @@ describe('buildAgentConfigs, in a project whose package has a tsconfig of its ow
   })
 
   it('gives the oxlint config the oxlint builder gives the same settings', () => {
-    const settings = agentSettingsIn(projectDir)
+    const settings = agentSettingsIn(runs().projectDir)
 
     expect(buildAgentConfigs(settings).oxlint).toStrictEqual(buildOxlintConfig(settings, catalog))
   })

@@ -192,7 +192,7 @@ describe('the ban, on as shipped, against comments that would silence it', () =>
 
 // allowSuppressions: true turns the ban off, so ESLint reads directives again, and turns
 // unicorn/no-abusive-eslint-disable on, so a blanket disable still draws one error, from oxlint.
-// @ts-ignore and @ts-nocheck stay banned; @ts-expect-error passes with a description.
+// Both @ts-ignore and @ts-nocheck stay banned; @ts-expect-error passes with a description.
 describe('suppressions allowed by allowSuppressions: true', () => {
   const allowed = setUpEngineRun(
     FIXTURES_DIR,

@@ -35,7 +35,7 @@ function projectWith(teamModule: string): { readonly projectDir: string; readonl
 }
 
 /** Whether ESLint gives the file a settings.n: ours, the team giving none. */
-async function hasOurNSettings(projectDir: string, merged: Linter.Config[], file: string): Promise<boolean> {
+async function hasOurNSettings(projectDir: string, merged: readonly Linter.Config[], file: string): Promise<boolean> {
   const calculated = await calculatedConfigInProjectFor(projectDir, merged, file)
   if (calculated === undefined) throw new Error(`ESLint does not lint ${file}`)
   const { settings = {} } = calculated
@@ -47,7 +47,7 @@ describe("our blocks, beside a team's global ignores holding a function beside a
     const { projectDir, eslint } = projectWith(GLOBAL_IGNORES_HOLDING_A_FUNCTION)
     const merged = mergeEslintConfig(await importedTeamConfig(projectDir, FUNCTION_CASE_MODULE), eslint, NO_TEAM_OXLINT_CONFIG)
 
-    expect(merged.map(({ name }) => name).filter((name) => name !== undefined && name.includes(CONFINED_COPY))).toStrictEqual([])
+    expect(merged.map(({ name }) => name).filter((name) => name?.includes(CONFINED_COPY) === true)).toStrictEqual([])
   })
 })
 

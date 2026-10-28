@@ -91,9 +91,9 @@ describe('the package.json edit', () => {
   it.each(EDITS)('edits the text alone, every other byte kept: $kind', ({ kind, layout, after, entry }) => {
     const { result, packageJson, configWritten } = runMadeFor(runs(), kind)
 
-    expect({ exitCode: result.exitCode, firstLine: result.stdout.split('\n')[0], packageJson, configWritten }).toStrictEqual({
+    expect({ exitCode: result.exitCode, firstLine: result.stdout.split('\n', 1)[0], packageJson, configWritten }).toStrictEqual({
       exitCode: EXIT.clean,
-      firstLine: initStdout(entry, NPM).split('\n')[0],
+      firstLine: initStdout(entry, NPM).split('\n', 1)[0],
       packageJson: packageJsonTextIn(after, layout),
       configWritten: true,
     })
@@ -278,7 +278,7 @@ describe('the sorting rulesets, opt-in: check in a project as init left it, besi
     const project = createGitProject(tempProjects, { repo: 'committed', files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_WITH_TYPES } })
     const init = runInit(project.dir)
     if (configAfterInit !== null) project.write(CONFIG_FILE, configAfterInit)
-    Object.entries(ADDED_FILES).forEach(([file, text]) => project.write(file, text))
+    for (const [file, text] of Object.entries(ADDED_FILES)) project.write(file, text)
     const check = runCheck(project.dir)
     return {
       init: init.exitCode,
@@ -335,6 +335,7 @@ describe('init where it refuses', () => {
       anArray: { path: anArray.pathOf(PACKAGE_JSON_FILE), result: runInit(anArray.dir), entries: entriesUnder(anArray.dir), text: anArray.read(PACKAGE_JSON_FILE) },
     }
   })
+  type RefusingRuns = ReturnType<typeof runs>
 
   it('exits 1 and changes neither file where agents-inc.lint.mts exists', () => {
     const { dir, result, configBefore, configAfter, packageJsonAfter } = runs().configExists
@@ -351,9 +352,9 @@ describe('init where it refuses', () => {
     })
   })
 
-  it.each([
-    { kind: 'no package.json at all', made: () => runs().noPackageJson },
-    { kind: 'a package.json only in the folder above', made: () => runs().onlyAbove },
+  it.each<{ readonly kind: string; readonly made: () => RefusingRuns['noPackageJson'] }>([
+    { kind: 'no package.json at all', made() { return runs().noPackageJson } },
+    { kind: 'a package.json only in the folder above', made() { return runs().onlyAbove } },
   ])('exits 2 and writes nothing where the folder has no package.json: $kind', ({ made }) => {
     const { dir, result, entries } = made()
 
@@ -368,9 +369,9 @@ describe('init where it refuses', () => {
     })
   })
 
-  it.each([
-    { kind: 'not valid JSON', problem: 'not valid JSON', made: () => runs().notJson, text: '{ "name": "consumer-project",\n' },
-    { kind: 'a JSON array', problem: 'not a JSON object', made: () => runs().anArray, text: '[]\n' },
+  it.each<{ readonly kind: string; readonly problem: string; readonly made: () => RefusingRuns['notJson']; readonly text: string }>([
+    { kind: 'not valid JSON', problem: 'not valid JSON', made() { return runs().notJson }, text: '{ "name": "consumer-project",\n' },
+    { kind: 'a JSON array', problem: 'not a JSON object', made() { return runs().anArray }, text: '[]\n' },
   ])('exits 2, naming the file, and writes nothing where package.json is $kind', ({ problem, made, text }) => {
     const { path, result, entries, text: textAfter } = made()
 
@@ -424,7 +425,7 @@ describe('the package manager init names', () => {
           ...Object.fromEntries(lockfiles.map((lockfile) => [lockfile, ''])),
         },
       })
-      above.forEach((lockfile) => project.writeAbove(lockfile, ''))
+      for (const lockfile of above) project.writeAbove(lockfile, '')
       return { kind, result: runInit(project.pathOf(folder)) }
     }),
   )
@@ -436,6 +437,15 @@ describe('the package manager init names', () => {
   })
 })
 
+// npm's own cache, where npx would install, no notice of a newer npm on stderr, and no bin of ours on PATH but the project's.
+function runnerEnvFor(cache: string): Readonly<Record<string, string>> {
+  return {
+    npm_config_cache: cache,
+    npm_config_update_notifier: 'false',
+    PATH: searchPathWithoutOurBin(),
+  }
+}
+
 describe('the command init names, as an agent runs it, for npm and bun', () => {
   // Both run the project's bin and never download a package of its name; with none, npx asks the registry
   // (network, as packed-install does) and installs nothing.
@@ -444,12 +454,6 @@ describe('the command init names, as an agent runs it, for npm and bun', () => {
     { kind: 'bun', runner: BUN.runner },
   ]
   const BIN = 'node_modules/.bin/agents-inc-lint'
-  // npm's own cache, where npx would install, no notice of a newer npm on stderr, and no bin of ours on PATH but the project's.
-  const runnerEnvFor = (cache: string): Readonly<Record<string, string>> => ({
-    npm_config_cache: cache,
-    npm_config_update_notifier: 'false',
-    PATH: searchPathWithoutOurBin(),
-  })
   const NPX_INSTALLS_UNDER = '_npx'
   // How npm and bun exit where no package or script has the name.
   const NOTHING_TO_RUN = 1
@@ -506,7 +510,7 @@ describe('the @types/node note', () => {
         repo: 'committed',
         files: {
           [`${folder}${PACKAGE_JSON_FILE}`]: npmPackageJsonText(packageJson),
-          ...(root === null ? {} : { [PACKAGE_JSON_FILE]: npmPackageJsonText(root) }),
+          ...(root !== null && { [PACKAGE_JSON_FILE]: npmPackageJsonText(root) }),
         },
       })
       if (above !== null) project.writeAbove(PACKAGE_JSON_FILE, npmPackageJsonText(above))
@@ -570,9 +574,11 @@ describe('the ignores init writes, in check', () => {
   ]
   const NEAR_MISSES = ['src/distance.ts', 'src/generated-x/a.ts']
 
+  function writeTheFiles(project: ReturnType<typeof createGitProject>): void {
+    for (const file of [...IGNORED, ...NEAR_MISSES]) project.write(file, moduleText(exportedConstant('generated'), DEBUGGER_STATEMENT, A_LITERAL_THROWN))
+  }
+
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const writeTheFiles = (project: ReturnType<typeof createGitProject>): void =>
-      [...IGNORED, ...NEAR_MISSES].forEach((file) => project.write(file, moduleText(exportedConstant('generated'), DEBUGGER_STATEMENT, A_LITERAL_THROWN)))
     const initialised = createGitProject(tempProjects, { repo: 'committed', files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_WITH_TYPES } })
     const init = runInit(initialised.dir)
     writeTheFiles(initialised)

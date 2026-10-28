@@ -27,7 +27,7 @@ describe('the bin entry', () => {
   })
 
   it('is built, and starts with the line that has a shell run it with Node', () => {
-    expect({ built: existsSync(CLI_FILE), firstLine: existsSync(CLI_FILE) ? readFileSync(CLI_FILE, 'utf8').split('\n')[0] : null }).toStrictEqual({
+    expect({ built: existsSync(CLI_FILE), firstLine: existsSync(CLI_FILE) ? readFileSync(CLI_FILE, 'utf8').split('\n', 1)[0] : null }).toStrictEqual({
       built: true,
       firstLine: SHEBANG,
     })

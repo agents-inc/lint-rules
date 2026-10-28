@@ -30,6 +30,7 @@ describe('no-var, which the team turns off in rules its oxlint.config.mts adds a
     },
     [TYPESCRIPT_ESLINT, INSTALLED_OXLINT],
   )
+  // eslint-disable-next-line functional/no-let -- it.fails: only the assertion may throw, so the run is in beforeAll and its result crosses to the test (CLAUDE.md, Tests; q-lint-no-let-it-fails)
   let findings: FindingsByFileAndRule = {}
 
   beforeAll(() => {

@@ -125,7 +125,7 @@ const TWIN_CASES: readonly TwinCase[] = [
 ]
 
 // Each case's name in full in its title, which describe.each's $-interpolation would cut short.
-TWIN_CASES.forEach((twinCase) => {
+for (const twinCase of TWIN_CASES) {
   describe(`a twin pair in the corpus, where ${twinCase.how}`, () => {
     const runs = setUpCorpusRuns(twinCase)
     const { files, rules, agentBuildOwes } = twinCase
@@ -152,7 +152,7 @@ TWIN_CASES.forEach((twinCase) => {
       )
     })
   })
-})
+}
 
 // No config we write gives oxlint options its rule refuses: the entry's option exists only in
 // typescript-eslint's no-redeclare, so ESLint runs it on the TS files in legacy/** and oxlint's copy is
@@ -188,7 +188,7 @@ describe("no-redeclare in every file, and typescript-eslint's in legacy/** with 
 
 // A twin pair is one rule: the team turns the core rule on in oxlint and the twin in ESLint, so the pair
 // is the team's in every file.
-TWIN_CASES.forEach((twinCase) => {
+for (const twinCase of TWIN_CASES) {
   describe(`a twin pair in the corpus, beside a team oxlint config turning its core rule on, where ${twinCase.how}`, () => {
     const runs = setUpCorpusRuns({ ...twinCase, teamOxlintConfig: TEAM_CORPUS_OXLINT_CONFIG_TURNING_TWIN_CORE_RULES_ON })
     const { files, rules } = twinCase
@@ -205,7 +205,7 @@ TWIN_CASES.forEach((twinCase) => {
       )
     })
   })
-})
+}
 
 // With typescript-eslint's default-param-last ours, our ESLint part runs it in JS and TS files alike (measured).
 describe("typescript-eslint's default-param-last, set in our rules beside ignores naming legacy/, and a team oxlint config turning default-param-last on, in a project whose package.json lists oxlint", () => {

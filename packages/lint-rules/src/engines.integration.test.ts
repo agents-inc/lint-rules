@@ -60,7 +60,7 @@ function emittedOxlintRules(): Record<string, unknown> {
   return rules
 }
 
-function canonicalIdsOfRulesOn(rules: Record<string, unknown>): string[] {
+function canonicalIdsOfRulesOn(rules: Readonly<Record<string, unknown>>): string[] {
   return Object.entries(rules)
     .filter(([, entry]) => {
       const severity: unknown = Array.isArray(entry) ? entry[0] : entry

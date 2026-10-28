@@ -38,7 +38,7 @@ function runtimeGlobalsBlocks(): Linter.Config[] {
   return mergeEslintConfig([], eslint, NO_TEAM_OXLINT_CONFIG).filter(({ name }) => name?.includes('runtime-globals') === true)
 }
 
-function globalsOf({ languageOptions }: Linter.Config): Record<string, unknown> {
+function globalsOf({ languageOptions }: Readonly<Linter.Config>): Record<string, unknown> {
   const globals: unknown = languageOptions?.['globals']
   if (!isRecord(globals)) throw new Error('a runtime-globals block gives globals')
   return globals

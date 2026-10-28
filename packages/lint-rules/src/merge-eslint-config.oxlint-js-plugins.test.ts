@@ -85,7 +85,7 @@ describe("mergeEslintConfig, given a team oxlint config's plugins", () => {
   it('refuses a config listing a plugin oxlint has no plugin of, naming it', () => {
     const eslint = ourEslintPart()
 
-    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: CONFIG_LISTING_NO_PLUGIN_OF_OXLINTS.file })).toThrowError(
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: CONFIG_LISTING_NO_PLUGIN_OF_OXLINTS.file })).toThrow(
       new Error(`"${NO_PLUGIN_OF_OXLINTS}" names no plugin of oxlint's`),
     )
   })

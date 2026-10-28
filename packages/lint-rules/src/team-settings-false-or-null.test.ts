@@ -23,18 +23,18 @@ function mergedInto(teamBlocks: readonly Linter.Config[], tsconfigRootDir: () =>
   return ourEditorEslintPartMergedInto(teamBlocks, buildConsumerLintRules(tsconfigRootDir(), MODULES_IN_BOTH_SETS))
 }
 
-async function resolversReadFor(config: Linter.Config[], file: string): Promise<ResolversImportXReads> {
+async function resolversReadFor(config: readonly Linter.Config[], file: string): Promise<ResolversImportXReads> {
   return resolversImportXReads(await settingsFor(config, file))
 }
 
 /** The file's settings.n, undefined where no block gives one. */
-async function nSettingsFor(config: Linter.Config[], file: string): Promise<unknown> {
+async function nSettingsFor(config: readonly Linter.Config[], file: string): Promise<unknown> {
   return (await settingsFor(config, file))[N_SETTINGS_KEY]
 }
 
 const PROJECTS = editorProjectsIn(tempProjects)
 
-PROJECTS.forEach(({ project, tsconfigRootDir }) => {
+for (const { project, tsconfigRootDir } of PROJECTS) {
   describe(`the settings import-x and eslint-plugin-n read, in the editor part of ${project}, merged into a team config setting one of theirs to false or null in some packages alone`, () => {
     // Else each package owed no setting of ours would pass beside a part that gives none anywhere.
     it('hold, merged into a team config with no block, our resolver-next and a settings.n of ours', async () => {
@@ -75,4 +75,4 @@ PROJECTS.forEach(({ project, tsconfigRootDir }) => {
       })
     })
   })
-})
+}

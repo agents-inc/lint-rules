@@ -27,8 +27,8 @@ function ourEslintPart(): EslintPart {
 }
 
 /** The names of our blocks the merge moved a rule into a copy of: none where they keep their names. */
-function confinedCopiesIn(merged: readonly Linter.Config[]): (string | undefined)[] {
-  return merged.map(({ name }) => name).filter((name) => name !== undefined && name.includes(CONFINED_COPY))
+function confinedCopiesIn(merged: readonly Linter.Config[]): Array<string | undefined> {
+  return merged.map(({ name }) => name).filter((name) => name?.includes(CONFINED_COPY) === true)
 }
 
 describe("our blocks, beside a team's global ignores read from a basePath, which leave dist/ out and take a keep.js back", () => {

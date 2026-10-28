@@ -51,18 +51,18 @@ function definedIn(projectDir: string, fields: Partial<Pick<LintRules, 'fileOver
   return defineLintRules(buildConsumerLintRules(projectDir, BROWSER_SET, fields))
 }
 
-function mergedOxlintConfig(teamConfig: OxlintConfig, fields: Partial<Pick<LintRules, 'fileOverrides'>> = {}): OxlintConfig {
+function mergedOxlintConfig(teamConfig: Readonly<OxlintConfig>, fields: Partial<Pick<LintRules, 'fileOverrides'>> = {}): OxlintConfig {
   const { oxlint } = definedIn(PROJECT_WITH_OXLINT, fields).editorRulesets
   return mergeOxlintConfig(teamConfig, oxlint, NO_TEAM_ESLINT_CONFIG)
 }
 
-function mergedEslintConfig(projectDir: string, teamConfig: Linter.Config[], fields: Partial<Pick<LintRules, 'fileOverrides'>> = {}): Linter.Config[] {
+function mergedEslintConfig(projectDir: string, teamConfig: readonly Linter.Config[], fields: Partial<Pick<LintRules, 'fileOverrides'>> = {}): Linter.Config[] {
   const { eslint } = definedIn(projectDir, fields).editorRulesets
-  return mergeEslintConfig(teamConfig, eslint, writeTeamOxlintConfigSettingNoRule(eslint))
+  return mergeEslintConfig([...teamConfig], eslint, writeTeamOxlintConfigSettingNoRule(eslint))
 }
 
 /** Each no-undef finding the real oxlint CLI reports in the Node file, with the merged config. */
-function oxlintNoUndefInTheNodeFile(merged: OxlintConfig): string[] {
+function oxlintNoUndefInTheNodeFile(merged: Readonly<OxlintConfig>): string[] {
   writeOxlintConfigFile(PROJECT_WITH_OXLINT, OXLINT_CONFIG_FILE, merged)
   return oxlintFindingsIn(runOxlintCli(PROJECT_WITH_OXLINT, OXLINT_CONFIG_FILE, [NODE_FILE]).report)
     .filter(({ rule }) => rule === NO_UNDEF_IN_OXLINT)
@@ -70,15 +70,15 @@ function oxlintNoUndefInTheNodeFile(merged: OxlintConfig): string[] {
 }
 
 /** Each no-undef finding ESLint reports in the Node file, with the merged config. */
-async function eslintNoUndefInTheNodeFile(projectDir: string, merged: Linter.Config[]): Promise<string[]> {
-  const results = await new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: merged }).lintFiles([NODE_FILE])
+async function eslintNoUndefInTheNodeFile(projectDir: string, merged: readonly Linter.Config[]): Promise<string[]> {
+  const results = await new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: [...merged] }).lintFiles([NODE_FILE])
   return eslintFindingsIn(results, projectDir)
     .filter(({ rule }) => rule === NO_UNDEF_IN_ESLINT)
     .map(describeFinding)
 }
 
 /** The browser's `window` as ESLint's calculated config for the file declares it: undefined where no block does. */
-async function eslintWindowGlobalIn(projectDir: string, merged: Linter.Config[], file: string): Promise<unknown> {
+async function eslintWindowGlobalIn(projectDir: string, merged: readonly Linter.Config[], file: string): Promise<unknown> {
   const calculated = await calculatedConfigInProjectFor(projectDir, merged, file)
   if (calculated === undefined) throw new Error(`ESLint does not lint ${file}`)
   const { languageOptions } = calculated

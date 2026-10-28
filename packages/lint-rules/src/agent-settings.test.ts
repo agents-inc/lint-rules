@@ -49,6 +49,10 @@ const AGENT_SETTINGS = {
   ],
 }
 
+function hasTheRuleNoDebugger(rules: ReadonlyArray<{ readonly id: string }>): boolean {
+  return rules.some(({ id }) => id === 'no-debugger')
+}
+
 describe('agentSettingsOf', () => {
   it('returns the agent settings for the ESLint part: the shared keys, and the agent set as rulesets, per entry too', () => {
     expect(agentSettingsOf(defineLintRules(lintRules).editorRulesets.eslint)).toStrictEqual(AGENT_SETTINGS)
@@ -63,7 +67,7 @@ describe('agentSettingsOf', () => {
   it('refuses a part defineLintRules did not return, even a copy equal to one it did', () => {
     const { eslint } = defineLintRules(lintRules).editorRulesets
 
-    expect(() => agentSettingsOf({ ...eslint })).toThrowError(/^agents-inc\.lint\.mts: /u)
+    expect(() => agentSettingsOf({ ...eslint })).toThrow(/^agents-inc\.lint\.mts: /u)
   })
 
   it('accepts the part defineLintRules returned, beside that copy', () => {
@@ -85,13 +89,12 @@ describe('the agent build of a project whose package.json lists no oxlint', () =
     const defined = defineLintRules(sameSetsForBoth)
     const agent = agentConfigsOf(defined)
     const editorEslint = mergeEslintConfig([], defined.editorRulesets.eslint, writeTeamOxlintConfigSettingNoRule(defined.editorRulesets.eslint))
-    const runs = (rules: readonly { readonly id: string }[]): boolean => rules.some(({ id }) => id === 'no-debugger')
 
     expect({
-      agentOxlint: runs(rulesOnInOxlint(agent.oxlint)),
-      agentEslint: runs(rulesOnInEslint(agent.eslint)),
+      agentOxlint: hasTheRuleNoDebugger(rulesOnInOxlint(agent.oxlint)),
+      agentEslint: hasTheRuleNoDebugger(rulesOnInEslint(agent.eslint)),
       editorOxlintPart: defined.editorRulesets.oxlint,
-      editorEslint: runs(rulesOnInEslint(editorEslint)),
+      editorEslint: hasTheRuleNoDebugger(rulesOnInEslint(editorEslint)),
     }).toStrictEqual({ agentOxlint: true, agentEslint: false, editorOxlintPart: undefined, editorEslint: true })
   })
 })

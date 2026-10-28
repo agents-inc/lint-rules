@@ -48,7 +48,7 @@ describe('mergeEslintConfig, handed what a team config gives as its second argum
     const { oxlint } = ourEditorParts()
 
     // @ts-expect-error mergeEslintConfig takes the eslint part
-    expect(() => mergeEslintConfig([], oxlint, NO_TEAM_OXLINT_CONFIG)).toThrowError(
+    expect(() => mergeEslintConfig([], oxlint, NO_TEAM_OXLINT_CONFIG)).toThrow(
       new Error('eslint.config.mjs: mergeEslintConfig takes the eslint part agents-inc.lint.mts exports, and was given its oxlint part'),
     )
   })
@@ -57,7 +57,7 @@ describe('mergeEslintConfig, handed what a team config gives as its second argum
     const value = given()
 
     // @ts-expect-error mergeEslintConfig takes the eslint part
-    expect(() => mergeEslintConfig([], value, NO_TEAM_OXLINT_CONFIG)).toThrowError(
+    expect(() => mergeEslintConfig([], value, NO_TEAM_OXLINT_CONFIG)).toThrow(
       new Error(`eslint.config.mjs: mergeEslintConfig takes the eslint part agents-inc.lint.mts exports, and was given ${NEITHER_PART}`),
     )
   })

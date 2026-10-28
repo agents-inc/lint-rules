@@ -119,18 +119,18 @@ describe("mergeOxlintConfig, given a project's installed oxlint", () => {
   it.each(OUTSIDE_THE_RANGE)('refuses one $where, $version, whose schema lacks a rule the merge writes, naming the rule and the version', ({ version }) => {
     const projectDir = projectWithInstalledOxlint(version, installedOxlintSchemaTextLacking({ ruleNames: [A_RULE_THE_MERGE_WRITES], pluginNames: [] }))
 
-    expect(mergedInto(projectDir)).toThrowError(lackingNamesError(projectDir, version, [A_RULE_THE_MERGE_WRITES]))
+    expect(mergedInto(projectDir)).toThrow(lackingNamesError(projectDir, version, [A_RULE_THE_MERGE_WRITES]))
   })
 
   it.each(OUTSIDE_THE_RANGE)('refuses one $where, $version, that ships no schema, naming where it looked', ({ version }) => {
     const projectDir = projectWithInstalledOxlint(version, null)
 
-    expect(mergedInto(projectDir)).toThrowError(unreadableSchemaError(projectDir, version))
+    expect(mergedInto(projectDir)).toThrow(unreadableSchemaError(projectDir, version))
   })
 })
 
 describe('mergeOxlintConfig, given an installed oxlint inside the range whose schema lacks a name the merge writes', () => {
-  const lacking: readonly { readonly what: string; readonly leftOut: NamesLeftOut; readonly named: readonly string[] }[] = [
+  const lacking: ReadonlyArray<{ readonly what: string; readonly leftOut: NamesLeftOut; readonly named: readonly string[] }> = [
     { what: 'a rule', leftOut: { ruleNames: [A_RULE_THE_MERGE_WRITES], pluginNames: [] }, named: [A_RULE_THE_MERGE_WRITES] },
     { what: 'a plugin', leftOut: { ruleNames: [], pluginNames: [A_PLUGIN_THE_MERGE_WRITES] }, named: [A_PLUGIN_THE_MERGE_WRITES] },
     {
@@ -143,7 +143,7 @@ describe('mergeOxlintConfig, given an installed oxlint inside the range whose sc
   it.each(lacking)('refuses one lacking $what, naming each missing name, sorted', ({ leftOut, named }) => {
     const projectDir = projectWithInstalledOxlint(OXLINT_VERSION_INSIDE_THE_RANGE, installedOxlintSchemaTextLacking(leftOut))
 
-    expect(mergedInto(projectDir)).toThrowError(lackingNamesError(projectDir, OXLINT_VERSION_INSIDE_THE_RANGE, named))
+    expect(mergedInto(projectDir)).toThrow(lackingNamesError(projectDir, OXLINT_VERSION_INSIDE_THE_RANGE, named))
   })
 
   it('accepts the same version when its schema lacks nothing', () => {
@@ -157,7 +157,7 @@ describe('mergeOxlintConfig, given an installed oxlint inside the range whose sc
 })
 
 describe('mergeOxlintConfig, given an installed oxlint inside the range whose schema it cannot read', () => {
-  const unreadable: readonly { readonly schema: string; readonly schemaText: string | null }[] = [
+  const unreadable: ReadonlyArray<{ readonly schema: string; readonly schemaText: string | null }> = [
     { schema: 'missing', schemaText: null },
     { schema: 'not JSON', schemaText: NOT_JSON },
     { schema: 'without a rule map', schemaText: oxlintSchemaTextWithout('rule map') },
@@ -167,7 +167,7 @@ describe('mergeOxlintConfig, given an installed oxlint inside the range whose sc
   it.each(unreadable)('refuses one whose schema is $schema, naming where it looked', ({ schemaText }) => {
     const projectDir = projectWithInstalledOxlint(OXLINT_VERSION_INSIDE_THE_RANGE, schemaText)
 
-    expect(mergedInto(projectDir)).toThrowError(unreadableSchemaError(projectDir, OXLINT_VERSION_INSIDE_THE_RANGE))
+    expect(mergedInto(projectDir)).toThrow(unreadableSchemaError(projectDir, OXLINT_VERSION_INSIDE_THE_RANGE))
   })
 })
 
@@ -188,7 +188,7 @@ describe('the name check, over two merges in one process', () => {
     const unreadable = projectWithInstalledOxlint(OXLINT_VERSION_INSIDE_THE_RANGE, NOT_JSON)
     mergedInto(readable)()
 
-    expect(mergedInto(unreadable)).toThrowError(unreadableSchemaError(unreadable, OXLINT_VERSION_INSIDE_THE_RANGE))
+    expect(mergedInto(unreadable)).toThrow(unreadableSchemaError(unreadable, OXLINT_VERSION_INSIDE_THE_RANGE))
   })
 })
 
@@ -210,7 +210,7 @@ describe('mergeOxlintConfig, in a package whose nearest package.json lists no ox
   })
 
   it("refuses the package's missing part, naming the nearest package.json as the reason", () => {
-    expect(mergedInto(join(monorepoRoot, NESTED_PACKAGE))).toThrowError(
+    expect(mergedInto(join(monorepoRoot, NESTED_PACKAGE))).toThrow(
       new Error(
         'oxlint.config.mts: the package.json nearest to tsconfigRootDir does not list oxlint under dependencies or devDependencies, so there is no oxlint part to merge',
       ),

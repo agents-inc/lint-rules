@@ -5,6 +5,7 @@ import { catalog } from '@workspace/rule-data'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { namesARuleInEachKindOfString, namesRulesOnlyInComments } from './__tests__/cases/rule-id-strings.ts'
+import { nodesUnder } from './__tests__/repo-programs.ts'
 
 // lint-rules reads every rule, and what allowSuppressions decides, from the catalog and names none:
 // moving a rule or changing its settings is then a change to rule-data's data alone.
@@ -17,14 +18,10 @@ const ENTRY_POINTS = ['eslint.ts', 'index.ts', 'oxlint.ts']
 
 /** Every string literal in the source, comments and template literals with substitutions aside, that is a RuleId. */
 function ruleIdsNamedIn(source: string): string[] {
-  const sourceFile = ts.createSourceFile('scanned.ts', source, ts.ScriptTarget.Latest)
-  const named: string[] = []
-  const visit = (node: ts.Node): void => {
-    if (ts.isStringLiteralLike(node) && catalog.rules.has(node.text)) named.push(node.text)
-    ts.forEachChild(node, visit)
-  }
-  visit(sourceFile)
-  return named
+  return nodesUnder(ts.createSourceFile('scanned.ts', source, ts.ScriptTarget.Latest))
+    .filter((node) => ts.isStringLiteralLike(node))
+    .map(({ text }) => text)
+    .filter((text) => catalog.rules.has(text))
 }
 
 async function nonTestSourceFiles(): Promise<string[]> {

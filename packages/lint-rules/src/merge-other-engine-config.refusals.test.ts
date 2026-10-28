@@ -46,7 +46,7 @@ describe("mergeEslintConfig's third argument, where it is neither a path nor nul
   it.each(VALUES_THAT_ARE_NO_PATH)('is refused where oxlintConfig is $what, the error describing it as $described', ({ value, described }) => {
     const { eslint } = ourPartsIn(projectDir)
     // @ts-expect-error oxlintConfig is a path or null
-    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: value })).toThrowError(
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: value })).toThrow(
       new Error(`eslint.config.mjs: oxlintConfig must be a path or null, and was given ${described}`),
     )
   })
@@ -77,7 +77,7 @@ describe("a file named as the team's oxlint config that holds no config object, 
     const { eslint } = ourPartsIn(projectDir)
     const path = join(projectDir, file)
 
-    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: file })).toThrowError(
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: file })).toThrow(
       new Error(`eslint.config.mjs: could not read your oxlint config at ${path}: ${path} holds ${described}, not a JSON object`),
     )
   })
@@ -91,7 +91,7 @@ describe("a file named as the team's oxlint config that holds no config object, 
   it.each(MODULES_EXPORTING_NO_OBJECT)('is refused where it is a module exporting $what by default, the error saying it exports $described', ({ file, described }) => {
     const { eslint } = ourPartsIn(projectDir)
 
-    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: file })).toThrowError(
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: file })).toThrow(
       new Error(`eslint.config.mjs: could not read your oxlint config at ${join(projectDir, file)}: its default export is ${described}, not an oxlint config object`),
     )
   })
@@ -112,7 +112,7 @@ describe("a config module that fails as it loads, named as the team's other conf
   it.each(MODULES_FAILING_AS_THEY_LOAD)('is refused by mergeEslintConfig where it $what, the error giving its own reason', ({ file, reason }) => {
     const { eslint } = ourPartsIn(eslintProjectDir)
 
-    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: file })).toThrowError(
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: file })).toThrow(
       new Error(`eslint.config.mjs: could not read your oxlint config at ${join(eslintProjectDir, file)}: ${reason}`),
     )
   })
@@ -120,7 +120,7 @@ describe("a config module that fails as it loads, named as the team's other conf
   it.each(MODULES_FAILING_AS_THEY_LOAD)('is refused by mergeOxlintConfig where it $what, the error giving its own reason', ({ file, reason }) => {
     const oxlint = ourOxlintPartIn(oxlintProjectDir)
 
-    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: file })).toThrowError(
+    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: file })).toThrow(
       new Error(`oxlint.config.mts: could not read your ESLint config at ${join(oxlintProjectDir, file)}: ${reason}`),
     )
   })
@@ -132,7 +132,7 @@ describe('a team ESLint config nesting its blocks in arrays, read by mergeOxlint
   it("is refused where a block nested three arrays deep holds eslintrc's env, the error naming it", () => {
     const oxlint = ourOxlintPartIn(projectDir, OURS_RUN_BY_OXLINT)
 
-    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: ESLINT_CONFIG_NESTING_ENV.file })).toThrowError(
+    expect(() => mergeOxlintConfig(buildTeamOxlintConfig(), oxlint, { eslintConfig: ESLINT_CONFIG_NESTING_ENV.file })).toThrow(
       new Error(
         `oxlint.config.mts: could not read your ESLint config at ${join(projectDir, ESLINT_CONFIG_NESTING_ENV.file)}: it is not an ESLint config: no ESLint config holds env`,
       ),
@@ -157,7 +157,7 @@ describe('a team JSON oxlint config extending another file by path, read by merg
   it('is refused where the file it extends is a tsconfig.json, judged by its keys before what it extends is read', () => {
     const { eslint } = ourPartsIn(projectDir, OURS_RUN_BY_ESLINT)
 
-    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: OXLINTRC_EXTENDING_A_TSCONFIG.file })).toThrowError(
+    expect(() => mergeEslintConfig([], eslint, { oxlintConfig: OXLINTRC_EXTENDING_A_TSCONFIG.file })).toThrow(
       new Error(
         `eslint.config.mjs: could not read your oxlint config at ${join(projectDir, OXLINTRC_EXTENDING_A_TSCONFIG.file)}: it is not an oxlint config: no oxlint config holds ${KEYS_OF_THE_EXTENDED_TSCONFIG_NO_OXLINT_CONFIG_HOLDS}`,
       ),

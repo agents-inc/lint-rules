@@ -32,8 +32,8 @@ type Build = { readonly build: string; readonly configOf: (projectDir: string) =
 
 // The project lists no oxlint, so the editor merge has no third config to read.
 const BUILDS: readonly Build[] = [
-  { build: 'agent build', configOf: (projectDir) => agentConfigsOf(definedIn(projectDir)).eslint },
-  { build: 'ESLint merge', configOf: (projectDir) => mergeEslintConfig([], definedIn(projectDir).editorRulesets.eslint, NO_TEAM_OXLINT_CONFIG) },
+  { build: 'agent build', configOf(projectDir) { return agentConfigsOf(definedIn(projectDir)).eslint } },
+  { build: 'ESLint merge', configOf(projectDir) { return mergeEslintConfig([], definedIn(projectDir).editorRulesets.eslint, NO_TEAM_OXLINT_CONFIG) } },
 ]
 
 const tempProjects = setUpTempProjects()
@@ -51,7 +51,7 @@ async function lintTheJsxFile(projectDir: string, config: readonly Linter.Config
   await new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: [...config] }).lintFiles([JSX_FILE])
 }
 
-async function reactSettingFor(projectDir: string, config: Linter.Config[]): Promise<unknown> {
+async function reactSettingFor(projectDir: string, config: readonly Linter.Config[]): Promise<unknown> {
   const calculated = await calculatedConfigInProjectFor(projectDir, config, JSX_FILE)
   if (calculated === undefined) throw new Error(`ESLint does not lint ${JSX_FILE}`)
   const { settings } = calculated
@@ -60,6 +60,7 @@ async function reactSettingFor(projectDir: string, config: Linter.Config[]): Pro
 }
 
 describe("eslint-plugin-react's React version, as our settings give it", () => {
+  // eslint-disable-next-line functional/no-let -- TS2588 as a const: beforeEach makes a fresh spy for each test and afterEach restores it, where setUpRunsBeforeTheSuite makes one value once for the whole suite
   let printed: MockInstance<typeof console.error>
 
   beforeEach(() => {

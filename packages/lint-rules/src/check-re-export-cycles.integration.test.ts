@@ -18,7 +18,8 @@ const TYPE_EXPORTS_TURNED_ON = { rules: { '@typescript-eslint/consistent-type-ex
 /** A committed project of the package files given and a tsconfig taking in src, then src/cycle.ts and the files beside it written. */
 function projectWithACycleBeside(tempProjects: TempProjects, packageFiles: ProjectFiles, beside: Readonly<Record<string, readonly string[]>>): GitProject {
   const project = createGitProject(tempProjects, { repo: 'committed', files: { ...packageFiles, 'tsconfig.json': packageTsconfigText(TAKING_IN_SRC) } })
-  Object.entries({ [RE_EXPORTING_ITSELF.file]: RE_EXPORTING_ITSELF.lines, ...beside }).forEach(([file, lines]) => project.write(file, moduleText(...lines)))
+  const linesByFile = { [RE_EXPORTING_ITSELF.file]: RE_EXPORTING_ITSELF.lines, ...beside }
+  for (const [file, lines] of Object.entries(linesByFile)) project.write(file, moduleText(...lines))
   return project
 }
 

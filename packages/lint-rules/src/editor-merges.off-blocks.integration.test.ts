@@ -36,7 +36,7 @@ const OFF_BLOCK_CASES: readonly CorpusCase[] = [
 ]
 
 // Each case's name in full in its title, which describe.each's $-interpolation would cut short.
-OFF_BLOCK_CASES.forEach((corpusCase) => {
+for (const corpusCase of OFF_BLOCK_CASES) {
   describe(`our prefer-const in the corpus, where ${corpusCase.how}`, () => {
     const runs = setUpCorpusRuns(corpusCase)
     const { files, rules } = corpusCase
@@ -59,4 +59,4 @@ OFF_BLOCK_CASES.forEach((corpusCase) => {
       )
     })
   })
-})
+}

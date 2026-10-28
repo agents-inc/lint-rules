@@ -72,25 +72,34 @@ function routeOf(id: string): RuleRoute {
 
 /** Every shipped rule allowSuppressions does not decide, except each one another rule covers. */
 function shippedRoutesBesidesTheSuppressionRules(): RuleRoute[] {
-  return [...catalog.rules.values()].filter((route) => route.shipped !== null && !SUPPRESSION_RULE_IDS.has(route.id) && !isCoveredByAShippedRule(route))
+  return catalog.rules
+    .values()
+    .filter((route) => route.shipped !== null && !SUPPRESSION_RULE_IDS.has(route.id) && !isCoveredByAShippedRule(route))
+    .toArray()
 }
 
 /** The rule standing in, without oxlint, for each shipped oxlint-only rule. */
 function standInsOfShippedRules(): string[] {
-  return [...catalog.eslintStandIns].flatMap(([oxlintRule, standIn]) => (routeOf(oxlintRule).shipped === null ? [] : [standIn]))
+  return [...catalog.eslintStandIns].filter(([oxlintRule]) => routeOf(oxlintRule).shipped !== null).map(([, standIn]) => standIn)
 }
 
-function shippedOptionsOf(route: RuleRoute): readonly unknown[] {
+function shippedOptionsOf(route: Readonly<RuleRoute>): readonly unknown[] {
   if (route.shipped === null) throw new Error(`${route.id} is not shipped`)
   return route.shipped.options
 }
 
-describe('the editor parts of a project whose package.json lists oxlint, merged into empty team configs', () => {
-  const merged = (): MergedEditorConfigs => mergedEditorConfigsOf(PROJECT_WITH_OXLINT)
+function editorConfigsWithOxlint(): MergedEditorConfigs {
+  return mergedEditorConfigsOf(PROJECT_WITH_OXLINT)
+}
 
+function editorConfigsWithoutOxlint(): MergedEditorConfigs {
+  return mergedEditorConfigsOf(PROJECT_WITHOUT_OXLINT)
+}
+
+describe('the editor parts of a project whose package.json lists oxlint, merged into empty team configs', () => {
   // A rule covered in oxlint by another is left out wherever oxlint runs.
   it('run exactly the editor rules, each once, on its routed engine, with its options, suppressions allowed', () => {
-    const configs = merged()
+    const configs = editorConfigsWithOxlint()
     const expected = sortedById([
       ...shippedRoutesBesidesTheSuppressionRules()
         .filter((route) => !isCoveredInOxlintByAShippedRule(route))
@@ -103,16 +112,16 @@ describe('the editor parts of a project whose package.json lists oxlint, merged 
   })
 
   it('run no rule in both engines', () => {
-    const configs = merged()
+    const configs = editorConfigsWithOxlint()
     const eslintIds = new Set(rulesOnInEslint(configs.eslint).map((rule) => rule.id))
 
     expect(uniqueById(rulesOnInOxlint(oxlintConfigOf(configs))).filter((rule) => eslintIds.has(rule.id))).toStrictEqual([])
   })
 
   it('state in ESLint no oxlint-routed rule, under its ID or an alias', () => {
-    const { eslint } = merged()
+    const { eslint } = editorConfigsWithOxlint()
     const oxlintRoutedNames = new Set(
-      [...catalog.rules.values()].filter((route) => route.engine === 'oxlint').flatMap((route) => [route.id, ...route.eslintAliases]),
+      catalog.rules.values().flatMap((route) => (route.engine === 'oxlint' ? [route.id, ...route.eslintAliases] : [])),
     )
 
     expect(ruleIdsStatedInEslint(eslint).filter((id) => oxlintRoutedNames.has(id))).toStrictEqual([])
@@ -120,10 +129,8 @@ describe('the editor parts of a project whose package.json lists oxlint, merged 
 })
 
 describe('the editor ESLint part of a project whose package.json lists no oxlint, merged into an empty team config', () => {
-  const merged = (): MergedEditorConfigs => mergedEditorConfigsOf(PROJECT_WITHOUT_OXLINT)
-
   it('comes with no oxlint part', () => {
-    expect(merged().oxlint).toBeNull()
+    expect(editorConfigsWithoutOxlint().oxlint).toBeNull()
   })
 
   // Twins are read from the installed typescript-eslint. A covered core rule is left out, and so is its twin.
@@ -131,11 +138,12 @@ describe('the editor ESLint part of a project whose package.json lists no oxlint
     const provenMovedIds = new Set(provenMovedRules().map((route) => route.id))
     const twinned = twinnedMovedRules().filter(({ core }) => !isCoveredByAShippedRule(routeOf(core)))
     const twinnedCoreRules = new Set(twinned.map(({ core }) => core))
-    const ranInEslint = (route: RuleRoute): boolean =>
-      route.engine === 'eslint' || provenMovedIds.has(route.id) || twinnedCoreRules.has(route.id)
+    function isRunByEslint(route: Readonly<RuleRoute>): boolean {
+      return route.engine === 'eslint' || provenMovedIds.has(route.id) || twinnedCoreRules.has(route.id)
+    }
     const expected: RuleOnEngine[] = sortedById([
       ...shippedRoutesBesidesTheSuppressionRules()
-        .filter(ranInEslint)
+        .filter(isRunByEslint)
         .map((route) => onEslint(route.id, shippedOptionsOf(route))),
       ...twinned.map(({ core, twin }) => onEslint(twin, shippedOptionsOf(routeOf(core)))),
       // Each stand-in, with none of its oxc rule's options.
@@ -145,12 +153,12 @@ describe('the editor ESLint part of a project whose package.json lists no oxlint
       onEslint('unicorn/no-abusive-eslint-disable', []),
     ])
 
-    expect(uniqueById(rulesOnInEslint(merged().eslint))).toStrictEqual(expected)
+    expect(uniqueById(rulesOnInEslint(editorConfigsWithoutOxlint().eslint))).toStrictEqual(expected)
   })
 
   it('states no skipped rule and none ESLint has no version of, so the team keeps its own settings of them', () => {
     const notOurs = new Set([...skippedRuleIds(), ...oxlintOnlyRules().map((route) => route.id)])
 
-    expect(ruleIdsStatedInEslint(merged().eslint).filter((id) => notOurs.has(id))).toStrictEqual([])
+    expect(ruleIdsStatedInEslint(editorConfigsWithoutOxlint().eslint).filter((id) => notOurs.has(id))).toStrictEqual([])
   })
 })

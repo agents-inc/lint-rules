@@ -24,7 +24,7 @@ const TEAM_TRY_EXTENSIONS = ['.js', '.ts']
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJson()) } })
 
 /** The file's settings.n, as ESLint calculates it from the project: undefined where no block gives one. */
-async function nSettingsFor(merged: Linter.Config[], file: string): Promise<unknown> {
+async function nSettingsFor(merged: readonly Linter.Config[], file: string): Promise<unknown> {
   const calculated = await calculatedConfigInProjectFor(projectDir, merged, file)
   if (calculated === undefined) throw new Error(`ESLint does not lint ${file}`)
   const { settings = {} } = calculated

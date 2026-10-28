@@ -17,7 +17,7 @@ type FixRun = {
   /** Whether any fix was applied, even one a later pass undid. */
   readonly fixed: boolean
   /** The rules still reporting once the fix loop stopped. */
-  readonly remaining: readonly (string | null)[]
+  readonly remaining: ReadonlyArray<string | null>
   readonly fatal: readonly string[]
 }
 

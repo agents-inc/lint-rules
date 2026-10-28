@@ -80,7 +80,7 @@ function definedWithModules(projectDir: string): ReturnType<typeof defineLintRul
 /** Each file's import-x rules ESLint reports, once each, sorted. */
 function importXRulesReportedIn(run: EngineRun, files: readonly string[]): Readonly<Record<string, readonly string[]>> {
   return Object.fromEntries(
-    files.map((file) => [file, [...new Set(run.eslintRuleIdsOn(file).filter((ruleId): ruleId is string => ruleId !== null && ruleId.startsWith(IMPORT_X)))].toSorted()]),
+    files.map((file) => [file, [...new Set(run.eslintRuleIdsOn(file).filter((ruleId): ruleId is string => ruleId?.startsWith(IMPORT_X) === true))].toSorted()]),
   )
 }
 

@@ -62,7 +62,7 @@ function owedInEveryBuild(files: readonly string[]): FilesReportingByBuild {
 }
 
 // Each list's values in full in its title, which describe.each's $-interpolation would cut short.
-IGNORES_AS_GITIGNORE_LINES.forEach(({ ignores, leftOut }) => {
+for (const { ignores, leftOut } of IGNORES_AS_GITIGNORE_LINES) {
   describe(`our ignores ${JSON.stringify(ignores)}, beside empty team configs`, () => {
     const runs = setUpRunsIgnoring(IGNORED_FILES, ignores)
 
@@ -70,11 +70,11 @@ IGNORES_AS_GITIGNORE_LINES.forEach(({ ignores, leftOut }) => {
       expect(filesReportingByBuild(runs(), IGNORED_FILES)).toStrictEqual(owedInEveryBuild(IGNORED_FILES.filter((file) => !leftOut.includes(file))))
     })
   })
-})
+}
 
 // Each list again, our rules run by an entry over every legacy folder alone, so each value meets the
 // entry's files.
-EVERY_ROW.forEach(({ ignores, leftOut }) => {
+for (const { ignores, leftOut } of EVERY_ROW) {
   describe(`our ignores ${JSON.stringify(ignores)}, beside an entry running our rules in ${EVERY_FILE_IN_A_LEGACY_FOLDER} and empty team configs`, () => {
     const runs = setUpRunsIgnoringBesideAnEntry(IGNORED_FILES, ignores)
 
@@ -82,9 +82,9 @@ EVERY_ROW.forEach(({ ignores, leftOut }) => {
       expect(filesReportingByBuild(runs(), IGNORED_FILES)).toStrictEqual(owedInEveryBuild(EVERY_LEGACY_FOLDER.filter((file) => !leftOut.includes(file))))
     })
   })
-})
+}
 
-ROOT_TAKE_BACKS_BESIDE_AN_ENTRY.ignoresLists.forEach((ignores) => {
+for (const ignores of ROOT_TAKE_BACKS_BESIDE_AN_ENTRY.ignoresLists) {
   describe(`our ignores ${JSON.stringify(ignores)}, beside an entry running our rules in ${EVERY_FILE_IN_A_LEGACY_FOLDER}, over a.js at each depth under it and a b.js, and empty team configs`, () => {
     const { files, entryRunsIn } = ROOT_TAKE_BACKS_BESIDE_AN_ENTRY
     const runs = setUpRunsIgnoringBesideAnEntry(files, ignores)
@@ -93,7 +93,7 @@ ROOT_TAKE_BACKS_BESIDE_AN_ENTRY.ignoresLists.forEach((ignores) => {
       expect(filesReportingByBuild(runs(), files)).toStrictEqual(owedInEveryBuild(entryRunsIn))
     })
   })
-})
+}
 
 describe(`our ignores ${JSON.stringify(NEGATED_UNDER_A_LEFT_OUT_FOLDER.ignores)}, a negated value taking back a file under a folder another leaves out, beside empty team configs`, () => {
   const { files, ignores, leftOut } = NEGATED_UNDER_A_LEFT_OUT_FOLDER
