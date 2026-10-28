@@ -65,7 +65,7 @@ const INIT_IGNORES = [
 /** Opt-in, so init names them in quality's comment, with the formatter warning. */
 const SORTING_RULESETS: ReadonlySet<string> = new Set(['import-order', 'ordering'])
 /** init names each in its own list's comment. */
-const OPT_IN_RULESETS: ReadonlySet<string> = new Set([...SORTING_RULESETS, 'tailwind', 'browser-targets'])
+const OPT_IN_RULESETS: ReadonlySet<string> = new Set([...SORTING_RULESETS, 'tailwind', 'browser-targets', 'jest-dom', 'react-ssr'])
 
 const NO_OPT_IN: readonly string[] = []
 /** What init's comment says after the opt-in rulesets that sort code. */

@@ -69,6 +69,7 @@ export const EVERY_RULESET = {
     routing: ['tanstack-router'],
     validation: ['zod'],
     auth: ['jsonwebtoken'],
+    effect: ['effect'],
   },
   runtimes: ['node', 'browser', 'browser-targets'],
   languages: [],
