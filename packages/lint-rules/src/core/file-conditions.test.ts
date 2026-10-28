@@ -7,6 +7,9 @@ import { bothOf, eitherOf, type FilesCondition, type FilesTerm, filesAndIgnoresO
 
 type Drawn = { readonly condition: FilesCondition; readonly files: readonly string[] }
 
+/** A shape of condition over the paths, built by `run`, and the condition it owes. */
+type AlgebraShape = { readonly shape: string; readonly run: () => FilesCondition; readonly owed: () => FilesCondition }
+
 // Paths at the depths the globs tell apart, a literal path's file among them.
 const FILES = [
   'src/a.ts',
@@ -93,6 +96,14 @@ function keysOf(condition: FilesCondition): string[] {
   return condition.map((term) => JSON.stringify(term)).toSorted()
 }
 
+function typeScriptFilesBut(excluded: readonly string[]): FilesTerm {
+  return { all: ['**/*.ts'], none: [...excluded] }
+}
+
+function javaScriptFilesBut(excluded: readonly string[]): FilesTerm {
+  return { all: ['**/*.js'], none: [...excluded] }
+}
+
 function timed(shape: () => FilesCondition): { readonly condition: FilesCondition; readonly ms: number } {
   const start = performance.now()
   const condition = shape()
@@ -140,29 +151,43 @@ describe('a term naming one literal path, as bothOf writes it', () => {
 describe(`the algebra, given ${String(PATH_COUNT)} literal paths`, () => {
   const paths = literalPaths('a')
   const otherPaths = literalPaths('b')
-  const typeScriptFilesBut = (excluded: readonly string[]): FilesTerm => ({ all: ['**/*.ts'], none: [...excluded] })
-  const javaScriptFilesBut = (excluded: readonly string[]): FilesTerm => ({ all: ['**/*.js'], none: [...excluded] })
 
-  it.each([
+  it.each<AlgebraShape>([
     {
       shape: 'either of them, each a term of its own',
-      run: () => eitherOf(termsNaming(paths)),
-      owed: () => termsNaming(paths),
+      run() {
+        return eitherOf(termsNaming(paths))
+      },
+      owed() {
+        return termsNaming(paths)
+      },
     },
     {
       shape: 'not of them',
-      run: () => notOf(eitherOf(termsNaming(paths))),
-      owed: () => [{ all: [], none: paths.toSorted() }],
+      run() {
+        return notOf(eitherOf(termsNaming(paths)))
+      },
+      owed() {
+        return [{ all: [], none: paths.toSorted() }]
+      },
     },
     {
       shape: 'both of them and as many others, which no file meets',
-      run: () => bothOf(eitherOf(termsNaming(paths)), eitherOf(termsNaming(otherPaths))),
-      owed: () => [],
+      run() {
+        return bothOf(eitherOf(termsNaming(paths)), eitherOf(termsNaming(otherPaths)))
+      },
+      owed() {
+        return []
+      },
     },
     {
       shape: 'both of two conditions holding them all, each beside a glob of its own',
-      run: () => bothOf(eitherOf(termsNaming(paths), [typeScriptFilesBut(otherPaths)]), eitherOf(termsNaming(paths), [javaScriptFilesBut(otherPaths)])),
-      owed: () => [...termsNaming(paths), { all: ['**/*.js', '**/*.ts'], none: otherPaths.toSorted() }],
+      run() {
+        return bothOf(eitherOf(termsNaming(paths), [typeScriptFilesBut(otherPaths)]), eitherOf(termsNaming(paths), [javaScriptFilesBut(otherPaths)]))
+      },
+      owed() {
+        return [...termsNaming(paths), { all: ['**/*.js', '**/*.ts'], none: otherPaths.toSorted() }]
+      },
     },
   ])('meet $shape in time linear in their number', { timeout: SHAPE_TEST_TIMEOUT_MS }, ({ run, owed }) => {
     const { condition, ms } = timed(run)

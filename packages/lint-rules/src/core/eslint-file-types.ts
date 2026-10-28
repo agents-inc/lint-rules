@@ -1,7 +1,7 @@
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import { type FilesEntry, globsOf } from './file-conditions.ts'
 import { isNegated, normalizeGlob } from './globs.ts'
-import { eslintTakesFilesBackFrom } from './ignores-read-by-each-engine.ts'
+import { doesEslintTakeFilesBackFrom } from './ignores-read-by-each-engine.ts'
 import type { RuleLayers } from './resolve-rule-layers.ts'
 
 // Here rather than with the blocks, so the oxlint build reads them without loading ESLint's side.
@@ -37,7 +37,7 @@ export function ignoresEslintAppliesToOurEditorPart(layers: RuleLayers): string[
 
 /** Whether no global ignore given takes back a file ESLint's default ignores leave out. */
 export function takesNothingBackFromEslintDefaultIgnores(globalIgnores: readonly string[]): boolean {
-  return ESLINT_DEFAULT_IGNORES.every((value) => !eslintTakesFilesBackFrom(value, globalIgnores))
+  return ESLINT_DEFAULT_IGNORES.every((value) => !doesEslintTakeFilesBackFrom(value, globalIgnores))
 }
 
 // ESLint ANDs the globs inside a nested array: `[[a, b], [c]]` matches (a AND c) OR (b AND c). Each is kept to JS

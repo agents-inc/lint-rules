@@ -5,7 +5,7 @@ import { eslintGlobalIgnoresOf, ignoresEslintAppliesToOurEditorPart, JS_AND_TS_F
 import { bothOf, EVERY_FILE, eitherOf, type FilesCondition, filesInScopeOf, NO_FILE, notOf } from './file-conditions.ts'
 import { EVERY_FILE_AT_ANY_DEPTH } from './globs.ts'
 import { filesEslintLeavesOutOf, filesOxlintLeavesOutOf } from './ignores-read-by-each-engine.ts'
-import { isOn, type RuleEntry, rulesOf } from './oxlint-config-reading.ts'
+import { isOn, rulesOf } from './oxlint-config-reading.ts'
 import { filesOxlintRunsTheRuleIn } from './oxlint-file-types.ts'
 import type { FileOverrideLayer, RuleLayers, RuleSetting } from './resolve-rule-layers.ts'
 import { entryStatements } from './twin-pairs.ts'
@@ -23,7 +23,7 @@ export type OurEslintPart = {
   readonly leftOutByOurIgnores: FilesCondition
 }
 
-export function ourOxlintPartOf(layers: RuleLayers, catalog: Catalog): OurOxlintPart {
+export function ourOxlintPartOf(layers: RuleLayers, catalog: Readonly<Catalog>): OurOxlintPart {
   return { inLine: ourOxlintPartInLine(layers, catalog), leftOut: filesOxlintLeavesOutOf(oxlintIgnorePatternsOf(layers)) }
 }
 
@@ -35,11 +35,11 @@ export function ourEslintPartOf(layers: RuleLayers): OurEslintPart {
 }
 
 /** The top-level rules and env as one override for every file, then its own, as the agent build lays them out. */
-function ourOxlintPartInLine(layers: RuleLayers, catalog: Catalog): OxlintOverride[] {
+function ourOxlintPartInLine(layers: RuleLayers, catalog: Readonly<Catalog>): OxlintOverride[] {
   return [{ files: [EVERY_FILE_AT_ANY_DEPTH], env: oxlintEnvOf(layers), rules: topLevelRuleMap(layers, catalog) }, ...oxlintOverridesOf(layers, catalog)]
 }
 
-export function whereOurOxlintPartRuns(ruleId: string, ourPart: OurOxlintPart, catalog: Catalog): FilesCondition {
+export function whereOurOxlintPartRuns(ruleId: string, ourPart: OurOxlintPart, catalog: Readonly<Catalog>): FilesCondition {
   const { oxlintName } = oxlintRouteOf(routeOf(ruleId, catalog))
   return bothOf(eitherOf(...whereEachOverrideTurningItOnLeavesItOn(oxlintName, ourPart)), filesOxlintRunsTheRuleIn(oxlintName))
 }
@@ -70,17 +70,17 @@ function whereEachOverrideTurningItOnLeavesItOn(oxlintName: string, { inLine, le
   )
 }
 
-export function whereTheOverrideLeavesItOn(override: OxlintOverride, later: readonly OxlintOverride[], oxlintName: string, leftOut: FilesCondition): FilesCondition {
-  const turningItOff = later.filter((each) => isStatedOff(rulesOf(each)[oxlintName])).map(filesTheOverrideAppliesTo)
+export function whereTheOverrideLeavesItOn(override: Readonly<OxlintOverride>, later: readonly OxlintOverride[], oxlintName: string, leftOut: FilesCondition): FilesCondition {
+  const turningItOff = later.filter((each) => isStatedOffIn(each, oxlintName)).map(filesTheOverrideAppliesTo)
   return bothOf(whereTheOverrideApplies(override, leftOut), notOf(eitherOf(...turningItOff)))
 }
 
-export function whereTheOverrideApplies(override: OxlintOverride, leftOut: FilesCondition): FilesCondition {
+export function whereTheOverrideApplies(override: Readonly<OxlintOverride>, leftOut: FilesCondition): FilesCondition {
   return bothOf(filesTheOverrideAppliesTo(override), notOf(leftOut))
 }
 
 /** A negated glob in either matches every file the glob does not (measured, oxlint 1.87). */
-function filesTheOverrideAppliesTo({ files, excludeFiles = [] }: OxlintOverride): FilesCondition {
+function filesTheOverrideAppliesTo({ files, excludeFiles = [] }: Readonly<OxlintOverride>): FilesCondition {
   return bothOf(isEveryFile(files) ? EVERY_FILE : filesAnyOf(files), notOf(filesAnyOf(excludeFiles)))
 }
 
@@ -92,11 +92,12 @@ function isEveryFile(files: readonly string[]): boolean {
   return files.includes(EVERY_FILE_AT_ANY_DEPTH)
 }
 
-function oxlintRouteOf(route: RuleRoute): RuleRoute & { readonly oxlintName: string } {
+function oxlintRouteOf(route: Readonly<RuleRoute>): RuleRoute & { readonly oxlintName: string } {
   if (!isOxlintRoute(route)) throw new Error(`${route.id}: our oxlint part runs only oxlint-routed rules`)
   return route
 }
 
-function isStatedOff(entry: RuleEntry | undefined): boolean {
+function isStatedOffIn(override: Readonly<OxlintOverride>, oxlintName: string): boolean {
+  const entry = rulesOf(override)[oxlintName]
   return entry !== undefined && !isOn(entry)
 }

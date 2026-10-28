@@ -132,5 +132,9 @@ export function extensionsNamedBy(glob: string): string[] | null {
 
 /** As an extglob, which only ESLint's minimatch reads. */
 export function filesOfOtherExtensionsThan(extensions: readonly string[]): string {
-  return `${ANY_DEPTH}!(${extensions.map((extension) => `*${EXTENSION_DOT}${extension}`).join(EXTGLOB_SEPARATOR)})`
+  return `${ANY_DEPTH}!(${extensions.map(filesOfExtensionInAFolder).join(EXTGLOB_SEPARATOR)})`
+}
+
+function filesOfExtensionInAFolder(extension: string): string {
+  return `*${EXTENSION_DOT}${extension}`
 }

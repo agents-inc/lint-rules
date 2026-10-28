@@ -17,17 +17,17 @@ type ImmutabilityTypeOverride = { readonly type: RegExp; readonly to: string }
 
 // functional/prefer-immutable-types matches these as RegExps, so they must be written here, not as JSON strings.
 const IMMUTABILITY_TYPE_OVERRIDES: readonly ImmutabilityTypeOverride[] = [
-  { type: /^(React\.)?(ReactNode|ReactElement|ReactPortal|ReactFragment|JSX\.Element)$/u, to: 'Immutable' },
-  { type: /^(React\.)?(CSSProperties|Properties(<.*>)?)$/u, to: 'Immutable' },
-  { type: /^(HTML|SVG)\w*Element$/u, to: 'Immutable' },
-  { type: /^(React\.)?(RefObject|MutableRefObject|Ref|ForwardedRef)<.*>$/u, to: 'Immutable' },
-  { type: /^(React\.)?\w*(HTML|SVG|DOM)Attributes<.*>$/u, to: 'Immutable' },
+  { type: /^(?:React\.)?(?:ReactNode|ReactElement|ReactPortal|ReactFragment|JSX\.Element)$/u, to: 'Immutable' },
+  { type: /^(?:React\.)?(?:CSSProperties|Properties(?:<.*>)?)$/u, to: 'Immutable' },
+  { type: /^(?:HTML|SVG)\w*Element$/u, to: 'Immutable' },
+  { type: /^(?:React\.)?(?:RefObject|MutableRefObject|Ref|ForwardedRef)<.*>$/u, to: 'Immutable' },
+  { type: /^(?:React\.)?\w*(?:HTML|SVG|DOM)Attributes<.*>$/u, to: 'Immutable' },
   {
-    type: /^(React\.)?(ComponentProps|ComponentPropsWithoutRef|ComponentPropsWithRef|ComponentType|FC|ElementType)<.*>$/u,
+    type: /^(?:React\.)?(?:ComponentProps|ComponentPropsWithoutRef|ComponentPropsWithRef|ComponentType|FC|ElementType)<.*>$/u,
     to: 'Immutable',
   },
-  { type: /^(StoryObj|Meta|StoryFn)<.*>$/u, to: 'Immutable' },
-  { type: /^(RegExpMatchArray|RegExpExecArray)$/u, to: 'Immutable' },
+  { type: /^(?:StoryObj|Meta|StoryFn)<.*>$/u, to: 'Immutable' },
+  { type: /^(?:RegExpMatchArray|RegExpExecArray)$/u, to: 'Immutable' },
 ]
 
 // eslint-plugin-n's default try-extensions hold no TS or JSX one (18.4.1), so a tsconfig path alias to a .ts
@@ -73,7 +73,7 @@ function typeScriptResolverOf(tsconfigFiles: readonly string[]): ReturnType<type
 }
 
 /** Each key of ours under settings.n yields to the team's settings.n of that key and to any settings.node the plugin reads as one object with it; where the team gives one, all of our settings.n leaves its files. */
-export function settingsOfOurs(settings: Settings): SettingOfOurs[] {
+export function settingsOfOurs(settings: Readonly<Settings>): SettingOfOurs[] {
   return Object.entries(settings).flatMap(([key, value]) => settingsOfOursUnder(key, value))
 }
 
@@ -118,7 +118,7 @@ function valueGivenUnder(key: string, settings: readonly SettingOfOurs[]): unkno
 }
 
 /** None for a whole setting. */
-function entryWithinTheKey({ path: { keyWithin }, value }: SettingOfOurs): [string, unknown][] {
+function entryWithinTheKey({ path: { keyWithin }, value }: SettingOfOurs): Array<[string, unknown]> {
   return keyWithin === null ? [] : [[keyWithin, value]]
 }
 

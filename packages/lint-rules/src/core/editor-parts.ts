@@ -49,12 +49,17 @@ export function isOxlintPart(given: unknown): given is OxlintPart {
   return isRecord(given) && given['engine'] === 'oxlint'
 }
 
-export function editorPartsOf(lintRules: TwoSetLintRulesInput, catalog: Catalog, usesOxlint: boolean): EditorParts {
+export function editorPartsOf(lintRules: TwoSetLintRulesInput, catalog: Readonly<Catalog>, usesOxlint: boolean): EditorParts {
   const settings = editorSettingsOf(lintRules)
   const { tsconfigRootDir } = lintRules
   return usesOxlint
     ? partsBesideOxlint(tsconfigRootDir, resolveRuleLayersBesideOxlint(settings, catalog), catalog)
-    : { eslint: eslintPartWithoutOxlint(tsconfigRootDir, resolveRuleLayers(settings, catalog), catalog), oxlint: undefined }
+    : partsWithoutOxlint(tsconfigRootDir, resolveRuleLayers(settings, catalog), catalog)
+}
+
+function partsWithoutOxlint(tsconfigRootDir: string, layers: RuleLayers, catalog: Readonly<Catalog>): EditorParts {
+  // eslint-disable-next-line sonarjs/no-undefined-assignment -- TS2741 left out and TS2322 as null: EditorParts, which dist declares, holds oxlint as a required OxlintPart | undefined
+  return { eslint: eslintPartWithoutOxlint(tsconfigRootDir, layers, catalog), oxlint: undefined }
 }
 
 /** Suppressions are allowed everywhere in the editor set: people may keep theirs, only sub-agents may not. */
@@ -70,7 +75,7 @@ function withoutItsSuppressionSetting({ allowSuppressions, ...entry }: FileOverr
 }
 
 /** A rule a part only turns off is the team's to set in the other engine: our off removes only ours. */
-function partsBesideOxlint(tsconfigRootDir: string, resolved: RuleLayers, catalog: Catalog): EditorParts {
+function partsBesideOxlint(tsconfigRootDir: string, resolved: RuleLayers, catalog: Readonly<Catalog>): EditorParts {
   const layers = layersWithEachTwinPairDecidedBesideOxlint(resolved, catalog)
   const eslintLayers = layersKeepingRules(layers, ({ id }) => isEslintRoute(routeOf(id, catalog)))
   const oxlintLayers = layersKeepingRules(layers, ({ id }) => isOxlintRoute(routeOf(id, catalog)))
@@ -81,7 +86,7 @@ function partsBesideOxlint(tsconfigRootDir: string, resolved: RuleLayers, catalo
 }
 
 /** Without oxlint, ESLint takes over each oxlint-routed rule it has a version of, unless the skip list names it; some oxlint-only rules get an ESLint stand-in. A rule left unstated keeps the team's setting. */
-function eslintPartWithoutOxlint(tsconfigRootDir: string, layers: RuleLayers, catalog: Catalog): EslintPart {
+function eslintPartWithoutOxlint(tsconfigRootDir: string, layers: RuleLayers, catalog: Readonly<Catalog>): EslintPart {
   const standIns = standInsIn(catalog)
   const layersWithStandIns = layersWithEachRuleMap(layers, (settings) => withStandIns(settings, standIns))
   return {
@@ -100,13 +105,13 @@ function withStandIns(settings: RuleSettings, standIns: ReadonlyMap<string, stri
 }
 
 /** None where the rule has no stand-in, or the map states the stand-in itself. */
-function standInSettingFor(id: string, setting: RuleSetting, settings: RuleSettings, standIns: ReadonlyMap<string, string>): [string, RuleSetting][] {
+function standInSettingFor(id: string, setting: RuleSetting, settings: RuleSettings, standIns: ReadonlyMap<string, string>): Array<[string, RuleSetting]> {
   const standIn = standIns.get(id)
   return standIn === undefined || Object.hasOwn(settings, standIn) ? [] : [[standIn, { ...setting, options: [] }]]
 }
 
 /** Throws on bad data: a stand-in must be a rule ESLint runs untyped, that we do not ship, standing in for one rule only, or it would report twice, run nowhere, or take one setting for two rules. */
-function standInsIn(catalog: Catalog): ReadonlyMap<string, string> {
+function standInsIn(catalog: Readonly<Catalog>): ReadonlyMap<string, string> {
   const breach = [...catalog.eslintStandIns].find(([oxlintOnly, standIn]) => !isStandInAsTheDataGuarantees(oxlintOnly, standIn, catalog))
   if (breach !== undefined) {
     const [oxlintOnly, standIn] = breach
@@ -115,28 +120,28 @@ function standInsIn(catalog: Catalog): ReadonlyMap<string, string> {
   return catalog.eslintStandIns
 }
 
-function isStandInAsTheDataGuarantees(oxlintOnly: string, standIn: string, catalog: Catalog): boolean {
+function isStandInAsTheDataGuarantees(oxlintOnly: string, standIn: string, catalog: Readonly<Catalog>): boolean {
   return isRunByOxlintAlone(oxlintOnly, catalog) && canStandIn(standIn, catalog) && standsInForOneRule(standIn, catalog)
 }
 
-function isRunByOxlintAlone(ruleId: string, catalog: Catalog): boolean {
+function isRunByOxlintAlone(ruleId: string, catalog: Readonly<Catalog>): boolean {
   return isOxlintRoute(routeOf(ruleId, catalog)) && !catalog.ruleIdsWithAnEslintVersion.has(ruleId)
 }
 
-function canStandIn(ruleId: string, catalog: Catalog): boolean {
+function canStandIn(ruleId: string, catalog: Readonly<Catalog>): boolean {
   const route = routeOf(ruleId, catalog)
   return isEslintRoute(route) && !route.typed && route.shipped === null
 }
 
-function standsInForOneRule(standIn: string, catalog: Catalog): boolean {
-  return [...catalog.eslintStandIns.values()].filter((each) => each === standIn).length === 1
+function standsInForOneRule(standIn: string, catalog: Readonly<Catalog>): boolean {
+  return catalog.eslintStandIns.values().filter((each) => each === standIn).toArray().length === 1
 }
 
 function keepsNoRule(): boolean {
   return false
 }
 
-function runsInEslintWithoutOxlint({ id }: StatedRule, catalog: Catalog): boolean {
+function runsInEslintWithoutOxlint({ id }: StatedRule, catalog: Readonly<Catalog>): boolean {
   if (isEslintRoute(routeOf(id, catalog))) return true
   return catalog.ruleIdsWithAnEslintVersion.has(id) && !catalog.eslintFallbackSkips.has(id)
 }

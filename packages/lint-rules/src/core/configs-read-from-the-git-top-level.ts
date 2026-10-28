@@ -53,7 +53,9 @@ function isTiedToAFolderInOxlint(pattern: string): boolean {
 }
 
 function readFrom(folder: string, isTiedToAFolder: (pattern: string) => boolean): GlobRead {
-  const patternRead = (pattern: string): string => (isTiedToAFolder(pattern) ? underTheFolder(folder, pattern) : pattern)
+  function patternRead(pattern: string): string {
+    return isTiedToAFolder(pattern) ? underTheFolder(folder, pattern) : pattern
+  }
   return (glob) => keepingNegation(glob, patternRead)
 }
 
@@ -62,17 +64,17 @@ function underTheFolder(folder: string, pattern: string): string {
 }
 
 /** ESLint reads globs under `files` and `ignores` alone: plugins, parsers and settings are passed on as they are. */
-function eslintBlockRead(block: Linter.Config, reads: GlobReads): Linter.Config {
+function eslintBlockRead(block: Readonly<Linter.Config>, reads: GlobReads): Linter.Config {
   const { files, ignores } = block
   return {
     ...block,
-    ...(files === undefined ? {} : { files: files.map((entry) => filesEntryRead(entry, reads.files)) }),
-    ...(ignores === undefined ? {} : { ignores: ignores.map(reads.ignores) }),
+    ...(files !== undefined && { files: files.map((entry) => filesEntryRead(entry, reads.files)) }),
+    ...(ignores !== undefined && { ignores: ignores.map(reads.ignores) }),
   }
 }
 
 /** A nested list is globs a file must all match. */
-function filesEntryRead(entry: FilesEntry, read: GlobRead): FilesEntry {
+function filesEntryRead(entry: Readonly<FilesEntry>, read: GlobRead): FilesEntry {
   return typeof entry === 'string' ? read(entry) : entry.map((matcher) => matcherRead(matcher, read))
 }
 
@@ -83,17 +85,17 @@ function matcherRead(matcher: string, read: GlobRead): string {
   return typeof given === 'string' ? read(given) : matcher
 }
 
-function oxlintConfigRead(config: OxlintConfig, reads: GlobReads): OxlintConfig {
+function oxlintConfigRead(config: Readonly<OxlintConfig>, reads: GlobReads): OxlintConfig {
   const { ignorePatterns, overrides } = config
   return {
     ...config,
-    ...(ignorePatterns === undefined ? {} : { ignorePatterns: ignorePatterns.map(reads.ignores) }),
-    ...(overrides === undefined ? {} : { overrides: overrides.map((override) => oxlintOverrideRead(override, reads.files)) }),
+    ...(ignorePatterns !== undefined && { ignorePatterns: ignorePatterns.map(reads.ignores) }),
+    ...(overrides !== undefined && { overrides: overrides.map((override) => oxlintOverrideRead(override, reads.files)) }),
   }
 }
 
 /** `excludeFiles` names files as `files` does: oxlint reads both alike. */
-function oxlintOverrideRead(override: OxlintOverride, read: GlobRead): OxlintOverride {
+function oxlintOverrideRead(override: Readonly<OxlintOverride>, read: GlobRead): OxlintOverride {
   const { files, excludeFiles } = override
-  return { ...override, files: files.map(read), ...(excludeFiles === undefined ? {} : { excludeFiles: excludeFiles.map(read) }) }
+  return { ...override, files: files.map(read), ...(excludeFiles !== undefined && { excludeFiles: excludeFiles.map(read) }) }
 }

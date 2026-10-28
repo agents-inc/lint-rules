@@ -33,8 +33,10 @@ const EVERY_OXLINT_LIST = [...IGNORES_READ_AS_OXLINT_READS_THEM, ...OXLINT_READI
 
 const tempProjects = setUpTempProjects()
 // Every reading is made before the tests, so one that throws fails the file instead of passing an it.fails.
-const eslintLeftOutByList = new Map<string, FilesLeftOut>()
-const oxlintLeftOutByList = new Map<string, FilesLeftOut>()
+// eslint-disable-next-line functional/no-let -- it.fails: only the assertion may throw, so the run is in beforeAll and its result crosses to the test (CLAUDE.md, Tests; q-lint-no-let-it-fails)
+let eslintLeftOutByList: ReadonlyMap<string, FilesLeftOut> = new Map()
+// eslint-disable-next-line functional/no-let -- it.fails: only the assertion may throw, so the run is in beforeAll and its result crosses to the test (CLAUDE.md, Tests; q-lint-no-let-it-fails)
+let oxlintLeftOutByList: ReadonlyMap<string, FilesLeftOut> = new Map()
 
 function layersIgnoring(ignores: readonly string[]): RuleLayers {
   return resolveRuleLayers(buildLintRules({}, { ignores: [...ignores] }), catalog)
@@ -43,29 +45,51 @@ function layersIgnoring(ignores: readonly string[]): RuleLayers {
 beforeAll(async () => {
   const eslintProjectDir = tempProjects.create({ files: Object.fromEntries(ESLINT_READING_FILES.map((file) => [file, ESLINT_FILE_TEXT])) })
   const leftOutByEslintDefaults = await filesEslintLeavesOutGiven(eslintProjectDir, NO_IGNORES)
-  for (const ignores of EVERY_ESLINT_LIST) {
-    const layers = layersIgnoring(ignores)
-    const leftOutByEslint = await filesEslintLeavesOutGiven(eslintProjectDir, eslintGlobalIgnoresOf(layers))
-    eslintLeftOutByList.set(JSON.stringify(ignores), {
+  // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- the reading the let above is for
+  eslintLeftOutByList = new Map(await Promise.all(EVERY_ESLINT_LIST.map(async (ignores) => eslintReadingOf(ignores, eslintProjectDir, leftOutByEslintDefaults))))
+  const oxlintProjectDir = tempProjects.create({ files: projectFilesOxlintReportsIn(OXLINT_READING_FILES) })
+  // eslint-disable-next-line unicorn/no-top-level-assignment-in-function -- the reading the let above is for
+  oxlintLeftOutByList = new Map(EVERY_OXLINT_LIST.map((ignores) => oxlintReadingOf(ignores, oxlintProjectDir)))
+})
+
+/** Keyed by the list. */
+async function eslintReadingOf(ignores: readonly string[], projectDir: string, leftOutByEslintDefaults: readonly string[]): Promise<[string, FilesLeftOut]> {
+  const layers = layersIgnoring(ignores)
+  const leftOutByEslint = await filesEslintLeavesOutGiven(projectDir, eslintGlobalIgnoresOf(layers))
+  return [
+    JSON.stringify(ignores),
+    {
       byTheReading: filesTheConditionMatches(ourEslintPartOf(layers).leftOut, ESLINT_READING_FILES).toSorted(),
       byTheEngine: [...new Set([...leftOutByEslint, ...leftOutByEslintDefaults])].toSorted(),
-    })
-  }
-  const oxlintProjectDir = tempProjects.create({ files: projectFilesOxlintReportsIn(OXLINT_READING_FILES) })
-  for (const ignores of EVERY_OXLINT_LIST) {
-    const layers = layersIgnoring(ignores)
-    const linted = filesOxlintLintsUnderIgnorePatterns(oxlintProjectDir, oxlintIgnorePatternsOf(layers), OXLINT_READING_FILES)
-    oxlintLeftOutByList.set(JSON.stringify(ignores), {
+    },
+  ]
+}
+
+/** Keyed by the list. */
+function oxlintReadingOf(ignores: readonly string[], projectDir: string): [string, FilesLeftOut] {
+  const layers = layersIgnoring(ignores)
+  const linted = filesOxlintLintsUnderIgnorePatterns(projectDir, oxlintIgnorePatternsOf(layers), OXLINT_READING_FILES)
+  return [
+    JSON.stringify(ignores),
+    {
       byTheReading: filesTheConditionMatches(ourOxlintPartOf(layers, catalog).leftOut, OXLINT_READING_FILES).toSorted(),
       byTheEngine: OXLINT_READING_FILES.filter((file) => !linted.includes(file)).toSorted(),
-    })
-  }
-})
+    },
+  ]
+}
 
 /** As `eslint .` does, under one block of the list given as global ignores. */
 async function filesEslintLeavesOutGiven(projectDir: string, ignores: readonly string[]): Promise<string[]> {
   const linted = await filesEslintLintsUnderGlobalIgnores(projectDir, ignores)
   return ESLINT_READING_FILES.filter((file) => !linted.includes(file))
+}
+
+function eslintLeftOutGiven(ignores: readonly string[]): FilesLeftOut {
+  return leftOutGiven(eslintLeftOutByList, ignores)
+}
+
+function oxlintLeftOutGiven(ignores: readonly string[]): FilesLeftOut {
+  return leftOutGiven(oxlintLeftOutByList, ignores)
 }
 
 function leftOutGiven(byList: ReadonlyMap<string, FilesLeftOut>, ignores: readonly string[]): FilesLeftOut {
@@ -78,9 +102,9 @@ describe("the ESLint reading of our ignores, against the files the real ESLint l
   // Lists with and without left-out files, so the comparison is seen to tell them apart.
   it('is checked over files ESLint leaves out and files it lints', () => {
     expect({
-      legacyFolder: leftOutGiven(eslintLeftOutByList, ['legacy/']).byTheEngine,
-      vueFiles: leftOutGiven(eslintLeftOutByList, ['**/*.vue']).byTheEngine,
-      noIgnores: leftOutGiven(eslintLeftOutByList, NO_IGNORES).byTheEngine,
+      legacyFolder: eslintLeftOutGiven(['legacy/']).byTheEngine,
+      vueFiles: eslintLeftOutGiven(['**/*.vue']).byTheEngine,
+      noIgnores: eslintLeftOutGiven(NO_IGNORES).byTheEngine,
     }).toStrictEqual({
       legacyFolder: [...new Set([...ESLINT_READING_FILES.filter((file) => file.split('/').includes('legacy')), ...FILES_ESLINT_DEFAULTS_LEAVE_OUT])].toSorted(),
       vueFiles: [...FILES_ESLINT_DEFAULTS_LEAVE_OUT].toSorted(),
@@ -89,36 +113,36 @@ describe("the ESLint reading of our ignores, against the files the real ESLint l
   })
 
   // Each list's name in full in its title, which describe.each's $-interpolation would cut short.
-  IGNORES_READ_AS_ESLINT_READS_THEM.forEach((ignores) => {
+  for (const ignores of IGNORES_READ_AS_ESLINT_READS_THEM) {
     it(`leaves out exactly the files ESLint leaves out, given ${JSON.stringify(ignores)}`, () => {
-      const { byTheReading, byTheEngine } = leftOutGiven(eslintLeftOutByList, ignores)
+      const { byTheReading, byTheEngine } = eslintLeftOutGiven(ignores)
 
       expect(byTheReading).toStrictEqual(byTheEngine)
     })
-  })
+  }
 
   // In the editor our negated lines take back nothing ESLint's default ignores leave out (a known limit).
-  IGNORES_TAKING_FILES_BACK_FROM_ESLINT_DEFAULTS.forEach((ignores) => {
+  for (const ignores of IGNORES_TAKING_FILES_BACK_FROM_ESLINT_DEFAULTS) {
     it(`leaves out exactly the files ESLint leaves out, its default ignores holding whatever our negated lines say, given ${JSON.stringify(ignores)}`, () => {
-      const { byTheReading, byTheEngine } = leftOutGiven(eslintLeftOutByList, ignores)
+      const { byTheReading, byTheEngine } = eslintLeftOutGiven(ignores)
 
       expect(byTheReading).toStrictEqual(byTheEngine)
     })
-  })
+  }
 
-  ESLINT_READING_LIMITS.forEach(({ ignores, takenInByTheReadingOnly }) => {
+  for (const { ignores, takenInByTheReadingOnly } of ESLINT_READING_LIMITS) {
     describe(`given ${JSON.stringify(ignores)}`, () => {
       // KNOWN GAP: ESLint decides a file by the highest left-out folder above it, which the globs cannot always tell
       // from a deeper one (no-var in legacy/keep/legacy/a.js under **/legacy/** and !**/keep/**). The editor
       // merge then runs our ESLint rules where the agent build leaves them out.
       it.fails('leaves out exactly the files ESLint leaves out', () => {
-        const { byTheReading, byTheEngine } = leftOutGiven(eslintLeftOutByList, ignores)
+        const { byTheReading, byTheEngine } = eslintLeftOutGiven(ignores)
 
         expect(byTheReading).toStrictEqual(byTheEngine)
       })
 
       it('takes in only the files of the limit that ESLint leaves out, and leaves out none ESLint lints', () => {
-        const { byTheReading, byTheEngine } = leftOutGiven(eslintLeftOutByList, ignores)
+        const { byTheReading, byTheEngine } = eslintLeftOutGiven(ignores)
 
         expect({
           takenInByTheReadingOnly: byTheEngine.filter((file) => !byTheReading.includes(file)),
@@ -126,7 +150,7 @@ describe("the ESLint reading of our ignores, against the files the real ESLint l
         }).toStrictEqual({ takenInByTheReadingOnly: [...takenInByTheReadingOnly].toSorted(), leftOutByTheReadingOnly: [] })
       })
     })
-  })
+  }
 })
 
 describe('the oxlint reading of our ignores, against the files the real oxlint leaves out under the ignore patterns the agent build gives it', () => {
@@ -135,34 +159,34 @@ describe('the oxlint reading of our ignores, against the files the real oxlint l
     const inNodeModules = OXLINT_READING_FILES.filter((file) => file.includes('node_modules/'))
 
     expect({
-      legacyFolder: leftOutGiven(oxlintLeftOutByList, ['legacy/']).byTheEngine,
-      noIgnores: leftOutGiven(oxlintLeftOutByList, NO_IGNORES).byTheEngine,
+      legacyFolder: oxlintLeftOutGiven(['legacy/']).byTheEngine,
+      noIgnores: oxlintLeftOutGiven(NO_IGNORES).byTheEngine,
     }).toStrictEqual({
       legacyFolder: [...new Set([...OXLINT_READING_FILES.filter((file) => file.split('/').includes('legacy')), ...inNodeModules])].toSorted(),
       noIgnores: [...inNodeModules].toSorted(),
     })
   })
 
-  IGNORES_READ_AS_OXLINT_READS_THEM.forEach((ignores) => {
+  for (const ignores of IGNORES_READ_AS_OXLINT_READS_THEM) {
     it(`leaves out exactly the files oxlint leaves out, given ${JSON.stringify(ignores)}`, () => {
-      const { byTheReading, byTheEngine } = leftOutGiven(oxlintLeftOutByList, ignores)
+      const { byTheReading, byTheEngine } = oxlintLeftOutGiven(ignores)
 
       expect(byTheReading).toStrictEqual(byTheEngine)
     })
-  })
+  }
 
-  OXLINT_READING_LIMITS.forEach(({ ignores, takenBackByTheReadingOnly }) => {
+  for (const { ignores, takenBackByTheReadingOnly } of OXLINT_READING_LIMITS) {
     describe(`given ${JSON.stringify(ignores)}`, () => {
       // KNOWN GAP: where a negated line takes back a folder, oxlint decides a file by a deeper left-out folder,
       // which the globs cannot tell, so the editor merge runs our oxlint rules there and the agent build does not.
       it.fails('leaves out exactly the files oxlint leaves out', () => {
-        const { byTheReading, byTheEngine } = leftOutGiven(oxlintLeftOutByList, ignores)
+        const { byTheReading, byTheEngine } = oxlintLeftOutGiven(ignores)
 
         expect(byTheReading).toStrictEqual(byTheEngine)
       })
 
       it('takes back only the files of the limit that oxlint leaves out, and leaves out none oxlint lints', () => {
-        const { byTheReading, byTheEngine } = leftOutGiven(oxlintLeftOutByList, ignores)
+        const { byTheReading, byTheEngine } = oxlintLeftOutGiven(ignores)
 
         expect({
           takenBackByTheReadingOnly: byTheEngine.filter((file) => !byTheReading.includes(file)),
@@ -170,5 +194,5 @@ describe('the oxlint reading of our ignores, against the files the real oxlint l
         }).toStrictEqual({ takenBackByTheReadingOnly: [...takenBackByTheReadingOnly].toSorted(), leftOutByTheReadingOnly: [] })
       })
     })
-  })
+  }
 })

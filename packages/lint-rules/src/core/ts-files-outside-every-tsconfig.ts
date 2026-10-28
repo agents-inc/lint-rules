@@ -38,7 +38,12 @@ const EVERY_ANCESTOR_CONFIG_SINCE: ReleaseLine = { major: 5, minor: 7 }
 const RELEASE_LINE = /^(?<major>\d+)\.(?<minor>\d+)$/u
 
 // A config file TypeScript cannot read lists no file, as the project service then finds no project in it.
-const CONFIG_HOST: ts.ParseConfigFileHost = { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => undefined }
+const CONFIG_HOST: ts.ParseConfigFileHost = {
+  ...ts.sys,
+  onUnRecoverableConfigFileDiagnostic() {
+    return undefined
+  },
+}
 
 export function tsconfigWalkOf(tsconfigRootDir: string): TsconfigWalk {
   const root = resolve(tsconfigRootDir)
@@ -48,12 +53,12 @@ export function tsconfigWalkOf(tsconfigRootDir: string): TsconfigWalk {
 
 /** The configs are read once, when first asked of; a file the walk did not find is asked of them read afresh, as that read may predate it. */
 function listingTestOf(root: string, foundByTheWalk: ReadonlySet<string>): FileTest {
-  const firstReads = newReads()
+  const firstReads = freshReads()
   function isListedAsFirstRead(file: string): boolean {
     return isTakenInByAConfig(file, root, firstReads)
   }
   function isListedAsTheDiskNowHolds(file: string): boolean {
-    return isTakenInByAConfig(file, root, newReads())
+    return isTakenInByAConfig(file, root, freshReads())
   }
   function isMadeSinceTheWalk(file: string): boolean {
     return !foundByTheWalk.has(file)
@@ -71,7 +76,7 @@ function liesUnderAFolderNeverWalked(fromTheRoot: string): boolean {
   return fromTheRoot.split(sep).some((part) => DIRECTORIES_NEVER_WALKED.has(part))
 }
 
-function newReads(): Reads {
+function freshReads(): Reads {
   return { configFiles: new Map(), configFilesInDirectory: new Map(), extendedConfigs: new Map() }
 }
 
@@ -96,15 +101,17 @@ function configFilesIn(directory: string, reads: Reads): readonly string[] {
   )
 }
 
-function configFilesLoadedFrom(configFile: string, reads: Reads): string[] {
-  const loaded = new Set<string>()
-  const load = (current: string): void => {
-    if (loaded.has(current)) return
-    loaded.add(current)
-    readOf(current, reads).loadedReferences.forEach(load)
-  }
-  load(configFile)
-  return [...loaded]
+function configFilesLoadedFrom(configFile: string, reads: Reads): readonly string[] {
+  return withEachConfigLoadedFrom(configFile, [], reads)
+}
+
+/** Depth first, each once: a config loaded already is not read again, so a cycle of references ends. */
+function withEachConfigLoadedFrom(configFile: string, loaded: readonly string[], reads: Reads): readonly string[] {
+  if (loaded.includes(configFile)) return loaded
+  return readOf(configFile, reads).loadedReferences.reduce<readonly string[]>(
+    (loadedSoFar, reference) => withEachConfigLoadedFrom(reference, loadedSoFar, reads),
+    [...loaded, configFile],
+  )
 }
 
 function readOf(configFile: string, reads: Reads): ConfigFileRead {
@@ -117,7 +124,7 @@ function configFileReadAt(configFile: string, reads: Reads): ConfigFileRead {
 }
 
 /** With `disableReferencedProjectLoad`, the service loads none of its references. */
-function configFileReadFrom({ fileNames, options, projectReferences = [] }: ts.ParsedCommandLine): ConfigFileRead {
+function configFileReadFrom({ fileNames, options, projectReferences = [] }: Readonly<ts.ParsedCommandLine>): ConfigFileRead {
   const loadsReferences = options.disableReferencedProjectLoad !== true
   return {
     ownFiles: new Set(fileNames.map((fileName) => resolve(fileName))),
@@ -141,7 +148,7 @@ function filesUnder(root: string, fromRoot: string): string[] {
   return entriesOf(join(root, fromRoot)).flatMap((entry) => filesOfTheEntry(root, fromRoot, entry))
 }
 
-function filesOfTheEntry(root: string, fromRoot: string, entry: Dirent): string[] {
+function filesOfTheEntry(root: string, fromRoot: string, entry: Readonly<Dirent>): string[] {
   const path = fromRoot === AT_THE_ROOT ? entry.name : `${fromRoot}${GLOB_SEPARATOR}${entry.name}`
   if (entry.isDirectory()) return DIRECTORIES_NEVER_WALKED.has(entry.name) ? [] : filesUnder(root, path)
   return entry.isFile() ? [path] : []

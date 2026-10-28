@@ -30,7 +30,7 @@ describe('parsedJsonc', () => {
   })
 
   it('throws for text that is not JSON once its comments and trailing commas are gone', () => {
-    expect(() => parsedJsonc(JSONC_TEXT_UNCLOSED)).toThrowError(SyntaxError)
+    expect(() => parsedJsonc(JSONC_TEXT_UNCLOSED)).toThrow(SyntaxError)
   })
 
   it.each(JSONC_TEXTS_A_BACKTRACKING_READ_TOOK_SECONDS_ON)(`reads $how in under ${String(READ_CEILING_MS)} ms`, { timeout: SLOW_READ_TIMEOUT_MS }, ({ text, holds }) => {

@@ -1,3 +1,4 @@
+import { foundOr } from '@workspace/rule-data/collections'
 import { describe, expect, it } from 'vitest'
 import { globsReadFromTheRoot } from './globs-read-from-above.ts'
 
@@ -20,7 +21,7 @@ function fastestMsToRead(glob: string): TimedRead {
     const fromTheRoot = globsReadFromTheRoot(glob, FOLDERS)
     return { fromTheRoot, ms: performance.now() - start }
   })
-  return reads.reduce((fastest, read) => (read.ms < fastest.ms ? read : fastest))
+  return reads.reduce((fastest, read) => (read.ms < fastest.ms ? read : fastest), foundOr(reads.at(0), 'the reads were timed at least once'))
 }
 
 describe('globsReadFromTheRoot', () => {

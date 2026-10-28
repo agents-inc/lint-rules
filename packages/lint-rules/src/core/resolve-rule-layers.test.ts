@@ -422,10 +422,6 @@ describe('a rule covered by another', () => {
     })
   })
 
-  function scopedTypedCoverSetting(): RuleSetting {
-    return { severity: 'error', options: [], files: ['**/*.ts'], ignores: ['**/use-*.ts'] }
-  }
-
   // The data's tests guarantee a valid cover; the core still throws on a breach, naming both rules.
   describe('a breach of the data', () => {
     const COVERED_SHIPPED = buildShippedRule('react', { coveredBy: COVER })
@@ -433,7 +429,7 @@ describe('a rule covered by another', () => {
     // Covers the cover, in a chain: a rule of the cover's ruleset.
     const COVER_OF_THE_COVER = 'functional/immutable-data'
 
-    function catalogOf(cover: ShippedRule | null, covered: ShippedRule): Catalog {
+    function catalogOf(cover: Readonly<ShippedRule> | null, covered: Readonly<ShippedRule>): Catalog {
       return buildCatalog({
         rulesets: [buildQualityRuleset('declarative'), buildLibsRuleset('react', 'ui')],
         rules: [
@@ -460,14 +456,14 @@ describe('a rule covered by another', () => {
     ])('is refused where $breach', ({ cover, covered }) => {
       const bothListed = buildLintRules(BOTH_RULESETS)
 
-      expect(() => resolveRuleLayers(bothListed, catalogOf(cover, covered))).toThrowError(`${COVERED}: covered by ${COVER}`)
+      expect(() => resolveRuleLayers(bothListed, catalogOf(cover, covered))).toThrow(`${COVERED}: covered by ${COVER}`)
     })
 
     it('is refused where the cover is the rule itself', () => {
       const bothListed = buildLintRules(BOTH_RULESETS)
-      const catalog = catalogOf(COVER_SHIPPED, buildShippedRule('react', { coveredBy: COVERED }))
+      const coveringItself = catalogOf(COVER_SHIPPED, buildShippedRule('react', { coveredBy: COVERED }))
 
-      expect(() => resolveRuleLayers(bothListed, catalog)).toThrowError(`${COVERED}: covered by ${COVERED}`)
+      expect(() => resolveRuleLayers(bothListed, coveringItself)).toThrow(`${COVERED}: covered by ${COVERED}`)
     })
   })
 })
@@ -489,11 +485,7 @@ describe('a rule covered in oxlint by another', () => {
   const ACCESSIBILITY_ALONE = { quality: ['accessibility'] }
   const BOTH_RULESETS = { quality: ['accessibility', 'lang'] }
 
-  function oxlintRoute(id: string, shipped: ShippedRule | null): RuleRoute {
-    return buildOxlintRoute(id, { oxlintName: id.replace('jsx-a11y/', 'jsx_a11y/'), oxlintPlugin: 'jsx_a11y', shipped })
-  }
-
-  function catalogOf(cover: RuleRoute, covered: RuleRoute): Catalog {
+  function catalogOf(cover: Readonly<RuleRoute>, covered: Readonly<RuleRoute>): Catalog {
     return buildCatalog({
       rulesets: [buildQualityRuleset('accessibility'), buildQualityRuleset('lang')],
       rules: [cover, covered, oxlintRoute(OTHER_ACCESSIBILITY_RULE, buildShippedRule('accessibility')), oxlintRoute(COVER_OF_THE_COVER, buildShippedRule('lang'))],
@@ -533,13 +525,13 @@ describe('a rule covered in oxlint by another', () => {
     })
   })
 
-  describe('in an entry', () => {
-    function onlyEntryOf(resolve: typeof resolveRuleLayers, lintRules: Parameters<typeof resolveRuleLayers>[0]): Pick<FileOverrideLayer, 'rulesetChanges' | 'rules'> {
-      const [entry, ...rest] = resolve(lintRules, coveredCatalog).fileOverrides
-      if (entry === undefined || rest.length > 0) throw new Error('the config gives one entry')
-      return { rulesetChanges: entry.rulesetChanges, rules: entry.rules }
-    }
+  function onlyEntryOf(resolve: typeof resolveRuleLayers, lintRules: Parameters<typeof resolveRuleLayers>[0]): Pick<FileOverrideLayer, 'rulesetChanges' | 'rules'> {
+    const [entry, ...rest] = resolve(lintRules, coveredCatalog).fileOverrides
+    if (entry === undefined || rest.length > 0) throw new Error('the config gives one entry')
+    return { rulesetChanges: entry.rulesetChanges, rules: entry.rules }
+  }
 
+  describe('in an entry', () => {
     it("is left out beside oxlint of the files of an entry that adds its cover's ruleset, and kept there without oxlint", () => {
       const lintRules = buildLintRules(ACCESSIBILITY_ALONE, { fileOverrides: [buildFileOverride([SRC_FILES], { rulesets: { quality: ['accessibility', 'lang'] } })] })
 
@@ -569,14 +561,14 @@ describe('a rule covered in oxlint by another', () => {
     ])('is refused beside oxlint where $breach', ({ cover, covered }) => {
       const bothListed = buildLintRules(BOTH_RULESETS)
 
-      expect(() => resolveRuleLayersBesideOxlint(bothListed, catalogOf(cover, covered))).toThrowError(`${COVERED}: covered in oxlint by ${COVER}`)
+      expect(() => resolveRuleLayersBesideOxlint(bothListed, catalogOf(cover, covered))).toThrow(`${COVERED}: covered in oxlint by ${COVER}`)
     })
 
     it('is none without oxlint, where the relation is not read', () => {
       const bothListed = buildLintRules(BOTH_RULESETS)
-      const catalog = catalogOf(buildEslintRoute(COVER, { typed: false, shipped: COVER_SHIPPED }), oxlintRoute(COVERED, COVERED_SHIPPED))
+      const coverInEslint = catalogOf(buildEslintRoute(COVER, { typed: false, shipped: COVER_SHIPPED }), oxlintRoute(COVERED, COVERED_SHIPPED))
 
-      expect(Object.keys(resolveRuleLayers(bothListed, catalog).rules).toSorted()).toStrictEqual([COVER, COVER_OF_THE_COVER, COVERED, OTHER_ACCESSIBILITY_RULE].toSorted())
+      expect(Object.keys(resolveRuleLayers(bothListed, coverInEslint).rules).toSorted()).toStrictEqual([COVER, COVER_OF_THE_COVER, COVERED, OTHER_ACCESSIBILITY_RULE].toSorted())
     })
   })
 })
@@ -762,6 +754,15 @@ describe.each([
     })
   })
 })
+
+function scopedTypedCoverSetting(): RuleSetting {
+  return { severity: 'error', options: [], files: ['**/*.ts'], ignores: ['**/use-*.ts'] }
+}
+
+/** Under the jsx-a11y plugin, as oxlint names it. */
+function oxlintRoute(id: string, shipped: Readonly<ShippedRule> | null): RuleRoute {
+  return buildOxlintRoute(id, { oxlintName: id.replace('jsx-a11y/', 'jsx_a11y/'), oxlintPlugin: 'jsx_a11y', shipped })
+}
 
 /** The rule holding the entries, on every file. */
 function holderSetting(options: readonly unknown[], severity: RuleSetting['severity'] = 'error'): RuleSetting {

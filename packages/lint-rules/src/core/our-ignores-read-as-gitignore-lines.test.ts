@@ -30,11 +30,11 @@ function filesEachEngineLeavesOut(ignores: readonly string[]): { readonly eslint
 
 describe('our ignores, as each engine reads the forms our layers hold them in', () => {
   // Each list's values in full in its title, which it.each's $-interpolation would cut short.
-  EVERY_ROW.forEach(({ ignores, leftOut }) => {
+  for (const { ignores, leftOut } of EVERY_ROW) {
     it(`leave out in each engine the files a .gitignore holding ${JSON.stringify(ignores)} leaves out`, () => {
       expect(filesEachEngineLeavesOut(ignores)).toStrictEqual({ eslint: leftOut, oxlint: leftOut })
     })
-  })
+  }
 })
 
 describe('the values the answer leaves as they are', () => {

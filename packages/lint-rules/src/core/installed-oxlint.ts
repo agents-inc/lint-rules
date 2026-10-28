@@ -36,7 +36,8 @@ const schemaReads = new Map<string, SchemaRead>()
 const requireFromHere = createRequire(import.meta.url)
 
 /** oxlint refuses a rule or plugin name it does not know even when it is off (measured, 1.87), so the installed oxlint's schema must hold every name the merge may write. */
-export function refuseUnsupportedInstalledOxlint(tsconfigRootDir: string, catalog: Catalog): void {
+// eslint-disable-next-line functional/no-return-void -- a refusal: an oxlint lacking a name the merge writes must stop the merge before it builds anything, so it throws, and where it finds none it has nothing to give back
+export function refuseUnsupportedInstalledOxlint(tsconfigRootDir: string, catalog: Readonly<Catalog>): void {
   const oxlint = installedOxlint(tsconfigRootDir)
   const schemaPath = join(dirname(oxlint.manifestPath), OXLINT_SCHEMA)
   const read = schemaReadAt(schemaPath)
@@ -69,7 +70,7 @@ function installedOxlintManifest(tsconfigRootDir: string): string {
   }
 }
 
-function unreadableSchema({ tsconfigRootDir, version }: InstalledOxlint, schemaPath: string, cause: Error): Error {
+function unreadableSchema({ tsconfigRootDir, version }: InstalledOxlint, schemaPath: string, cause: Readonly<Error>): Error {
   return configErrorIn(
     consumerConfigFiles.oxlintConfig,
     `the oxlint installed for ${tsconfigRootDir} (${version}) has no rule list ${THIS_PACKAGE} can read at ${schemaPath}, so it cannot check that oxlint knows every name the merge writes: install another oxlint within ${OXLINT_RANGE_THE_MERGE_ADVISES}`,
@@ -84,13 +85,13 @@ function lackingNames({ tsconfigRootDir, version }: InstalledOxlint, names: read
   )
 }
 
-function namesLackedBy({ ruleNames, pluginNames }: SchemaNames, catalog: Catalog): string[] {
+function namesLackedBy({ ruleNames, pluginNames }: SchemaNames, catalog: Readonly<Catalog>): string[] {
   const rulesLacked = catalog.oxlintRules.filter((rule) => !ruleNames.has(schemaSpellingOf(rule))).map(({ oxlintName }) => oxlintName)
   const pluginsLacked = oxlintPluginsOf(catalog).filter((plugin) => !pluginNames.has(plugin))
   return [...rulesLacked, ...pluginsLacked]
 }
 
-function oxlintPluginsOf(catalog: Catalog): string[] {
+function oxlintPluginsOf(catalog: Readonly<Catalog>): string[] {
   return [...new Set(catalog.oxlintRules.map(({ oxlintPlugin }) => oxlintPlugin))]
 }
 

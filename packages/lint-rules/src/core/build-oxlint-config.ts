@@ -74,7 +74,7 @@ const OXLINT_PLUGINS: readonly OxlintPlugin[] = [
 ]
 
 /** No `extends`: oxlint's `extends` drops `ignorePatterns`, `env` and `globals`. */
-export function buildOxlintConfig(lintRules: LintRulesInput, catalog: Catalog): OxlintConfig {
+export function buildOxlintConfig(lintRules: LintRulesInput, catalog: Readonly<Catalog>): OxlintConfig {
   const layers = agentBuildLayersOf(lintRules, catalog)
   return {
     categories: { ...EVERY_CATEGORY_OFF },
@@ -96,12 +96,12 @@ export function oxlintIgnorePatternsOf(layers: RuleLayers): string[] {
   return [...BUILTIN_IGNORE_PATTERNS, ...layers.ignores]
 }
 
-export function topLevelRuleMap(layers: RuleLayers, catalog: Catalog): DummyRuleMap {
+export function topLevelRuleMap(layers: RuleLayers, catalog: Readonly<Catalog>): DummyRuleMap {
   return oxlintRuleMap(oxlintSettingsOf(layers.rules, catalog))
 }
 
 /** Framework and test-runner globals, each rule off under its own ignores, the top level's TS-file rules, then each file-override entry's. */
-export function oxlintOverridesOf(layers: RuleLayers, catalog: Catalog): OxlintOverride[] {
+export function oxlintOverridesOf(layers: RuleLayers, catalog: Readonly<Catalog>): OxlintOverride[] {
   return [
     ...GLOBALS_OVERRIDES,
     ...oxlintSettingsOf(layers.rules, catalog).filter(hasIgnores).map(offUnderItsIgnores),
@@ -111,7 +111,7 @@ export function oxlintOverridesOf(layers: RuleLayers, catalog: Catalog): OxlintO
 }
 
 /** oxlint silently skips a rule whose plugin is not listed, so every plugin of a rule we emit is. */
-export function oxlintPluginsOf(ruleMaps: readonly RuleSettings[], catalog: Catalog): OxlintPlugin[] {
+export function oxlintPluginsOf(ruleMaps: readonly RuleSettings[], catalog: Readonly<Catalog>): OxlintPlugin[] {
   const plugins = ruleMaps
     .flatMap((settings) => Object.keys(settings))
     .map((id) => routeOf(id, catalog))
@@ -133,7 +133,7 @@ export function sortedUnique<T extends string>(values: readonly T[]): T[] {
 }
 
 /** Ruleset changes and suppression rules, then the entry's own rules, which win over those, then its TS files' rules. */
-function fileOverrideOverrides(layer: FileOverrideLayer, catalog: Catalog): OxlintOverride[] {
+function fileOverrideOverrides(layer: FileOverrideLayer, catalog: Readonly<Catalog>): OxlintOverride[] {
   const files = [...layer.files]
   const configChanges = { ...layer.rulesetChanges, ...suppressionRulesOf(layer) }
   return [
@@ -143,7 +143,7 @@ function fileOverrideOverrides(layer: FileOverrideLayer, catalog: Catalog): Oxli
   ]
 }
 
-function tsFileOverridesOf(layerFiles: FilesCondition, tsFileRules: RuleSettings, catalog: Catalog): OxlintOverride[] {
+function tsFileOverridesOf(layerFiles: FilesCondition, tsFileRules: RuleSettings, catalog: Readonly<Catalog>): OxlintOverride[] {
   return oxlintSettingsOf(tsFileRules, catalog).flatMap((oxlintSetting) => overridesOnTheLayersTsFiles(layerFiles, oxlintSetting))
 }
 
@@ -154,7 +154,7 @@ function overridesOnTheLayersTsFiles(layerFiles: FilesCondition, { route, settin
 }
 
 /** An override has one `excludeFiles`, so each rule turned on with ignores gets its own override to stay off under them. */
-function overridesSetting(files: string[], env: OxlintEnv, settings: readonly OxlintSetting[]): OxlintOverride[] {
+function overridesSetting(files: readonly string[], env: Readonly<OxlintEnv>, settings: readonly OxlintSetting[]): OxlintOverride[] {
   const onWithIgnores = settings.filter(isOnWithIgnores)
   const offInSomeFiles = settings.filter(isOffInItsFiles)
   const throughout = settings.filter((setting) => !isOnWithIgnores(setting) && !isOffInItsFiles(setting))
@@ -165,7 +165,7 @@ function overridesSetting(files: string[], env: OxlintEnv, settings: readonly Ox
   ]
 }
 
-function offInItsFilesOf(files: string[], { route, setting }: OffInItsFiles): OxlintOverride[] {
+function offInItsFilesOf(files: readonly string[], { route, setting }: OffInItsFiles): OxlintOverride[] {
   const where = bothOf(filesInScopeOf(files, []), filesInScopeOf(setting.files, []))
   return overrideFilesOf(where).map((overrideFiles): OxlintOverride => ({ ...overrideFiles, rules: { [route.oxlintName]: 'off' } }))
 }
@@ -174,23 +174,23 @@ function offUnderItsIgnores({ route, setting }: IgnoringSetting): OxlintOverride
   return { files: [...setting.ignores], rules: { [route.oxlintName]: 'off' } }
 }
 
-function onExcludingItsIgnores(files: string[], { route, setting }: IgnoringSetting): OxlintOverride {
-  return { files, excludeFiles: [...setting.ignores], rules: { [route.oxlintName]: ruleEntryOf(setting) } }
+function onExcludingItsIgnores(files: readonly string[], { route, setting }: IgnoringSetting): OxlintOverride {
+  return { files: [...files], excludeFiles: [...setting.ignores], rules: { [route.oxlintName]: ruleEntryOf(setting) } }
 }
 
-function overrideIfNotEmpty(files: string[], env: OxlintEnv, rules: DummyRuleMap): OxlintOverride[] {
+function overrideIfNotEmpty(files: readonly string[], env: Readonly<OxlintEnv>, rules: Readonly<DummyRuleMap>): OxlintOverride[] {
   const hasEnv = Object.keys(env).length > 0
   const hasRules = Object.keys(rules).length > 0
   if (!hasEnv && !hasRules) return []
-  return [{ files, ...(hasEnv ? { env } : {}), ...(hasRules ? { rules } : {}) }]
+  return [{ files: [...files], ...(hasEnv && { env }), ...(hasRules && { rules }) }]
 }
 
 function envChangesOf({ enabled, disabled }: EnvChanges): OxlintEnv {
   return { ...envSwitchedTo(false, disabled), ...envSwitchedTo(true, enabled) }
 }
 
-function envSwitchedTo(on: boolean, envs: readonly string[]): OxlintEnv {
-  return Object.fromEntries(envs.map((env): [string, boolean] => [env, on]))
+function envSwitchedTo(isSwitchedOn: boolean, envs: readonly string[]): OxlintEnv {
+  return Object.fromEntries(envs.map((env): [string, boolean] => [env, isSwitchedOn]))
 }
 
 function envOverrideOf({ files, env }: FrameworkEnv): OxlintOverride {
@@ -201,12 +201,12 @@ function globalsReadOnly(names: readonly string[]): OxlintGlobals {
   return Object.fromEntries(names.map((name) => [name, READ_ONLY]))
 }
 
-function oxlintSettingsOf(settings: RuleSettings, catalog: Catalog): OxlintSetting[] {
+function oxlintSettingsOf(settings: RuleSettings, catalog: Readonly<Catalog>): OxlintSetting[] {
   return Object.entries(settings).flatMap(([id, setting]) => oxlintSettingOf(id, setting, catalog))
 }
 
 /** None for an ESLint-routed rule. The catalog routes every rule shipped with files of its own to ESLint, so only an off is written here. */
-function oxlintSettingOf(id: string, setting: RuleSetting, catalog: Catalog): OxlintSetting[] {
+function oxlintSettingOf(id: string, setting: RuleSetting, catalog: Readonly<Catalog>): OxlintSetting[] {
   const route = routeOf(id, catalog)
   if (!isOxlintRoute(route)) return []
   if (setting.severity !== 'off' && setting.files !== null) {

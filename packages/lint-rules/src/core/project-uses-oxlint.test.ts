@@ -7,7 +7,7 @@ import {
   packageJsonText,
 } from '../__tests__/factories/package-json-factories.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from '../__tests__/temp-projects.ts'
-import { projectUsesOxlint } from './project-uses-oxlint.ts'
+import { doesProjectUseOxlint } from './project-uses-oxlint.ts'
 
 // Only the nearest package.json is read, skipping directories without one; node_modules never is, since
 // our package brings its own oxlint for `check`.
@@ -24,7 +24,7 @@ describe('projectUsesOxlint', () => {
       files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint('devDependencies')) },
     })
 
-    expect(projectUsesOxlint(projectDir)).toBe(true)
+    expect(doesProjectUseOxlint(projectDir)).toBe(true)
   })
 
   it('answers yes when it lists oxlint under dependencies', () => {
@@ -32,7 +32,7 @@ describe('projectUsesOxlint', () => {
       files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint('dependencies')) },
     })
 
-    expect(projectUsesOxlint(projectDir)).toBe(true)
+    expect(doesProjectUseOxlint(projectDir)).toBe(true)
   })
 
   // A monorepo package whose own package.json lists no oxlint uses ESLint only.
@@ -44,7 +44,7 @@ describe('projectUsesOxlint', () => {
       },
     })
 
-    expect(projectUsesOxlint(join(projectDir, NESTED_PACKAGE))).toBe(false)
+    expect(doesProjectUseOxlint(join(projectDir, NESTED_PACKAGE))).toBe(false)
   })
 
   it('answers no when the nearest package.json lies above tsconfigRootDir and lists no oxlint, though one above it does', () => {
@@ -56,7 +56,7 @@ describe('projectUsesOxlint', () => {
       },
     })
 
-    expect(projectUsesOxlint(join(projectDir, DIR_WITHOUT_A_PACKAGE_JSON))).toBe(false)
+    expect(doesProjectUseOxlint(join(projectDir, DIR_WITHOUT_A_PACKAGE_JSON))).toBe(false)
   })
 
   it('answers yes when the nearest package.json lists it, above a parent listing other packages', () => {
@@ -67,7 +67,7 @@ describe('projectUsesOxlint', () => {
       },
     })
 
-    expect(projectUsesOxlint(join(projectDir, NESTED_PACKAGE))).toBe(true)
+    expect(doesProjectUseOxlint(join(projectDir, NESTED_PACKAGE))).toBe(true)
   })
 
   it('passes over a directory with no package.json on the way up', () => {
@@ -78,7 +78,7 @@ describe('projectUsesOxlint', () => {
       },
     })
 
-    expect(projectUsesOxlint(join(projectDir, DIR_WITHOUT_A_PACKAGE_JSON))).toBe(true)
+    expect(doesProjectUseOxlint(join(projectDir, DIR_WITHOUT_A_PACKAGE_JSON))).toBe(true)
   })
 
   it('answers no when no package.json lists it, though oxlint resolves through node_modules', () => {
@@ -87,25 +87,25 @@ describe('projectUsesOxlint', () => {
       linkedPackages: [INSTALLED_OXLINT],
     })
 
-    expect(projectUsesOxlint(projectDir)).toBe(false)
+    expect(doesProjectUseOxlint(projectDir)).toBe(false)
   })
 
   it('answers no when there is no package.json from tsconfigRootDir up', () => {
     const projectDir = tempProjects.create({ files: { 'tsconfig.json': '{}\n' } })
 
-    expect(projectUsesOxlint(projectDir)).toBe(false)
+    expect(doesProjectUseOxlint(projectDir)).toBe(false)
   })
 
   it('answers no when the package.json lists no dependency at all', () => {
     const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJson()) } })
 
-    expect(projectUsesOxlint(projectDir)).toBe(false)
+    expect(doesProjectUseOxlint(projectDir)).toBe(false)
   })
 
   it('throws on a malformed package.json in tsconfigRootDir, naming that file', () => {
     const projectDir = tempProjects.create({ files: { 'package.json': MALFORMED_PACKAGE_JSON } })
 
-    expect(() => projectUsesOxlint(projectDir)).toThrowError(join(projectDir, 'package.json'))
+    expect(() => doesProjectUseOxlint(projectDir)).toThrow(join(projectDir, 'package.json'))
   })
 
   // Nothing above the nearest package.json is read, so a malformed one there goes unseen.
@@ -117,7 +117,7 @@ describe('projectUsesOxlint', () => {
       },
     })
 
-    expect(projectUsesOxlint(join(projectDir, NESTED_PACKAGE))).toBe(false)
+    expect(doesProjectUseOxlint(join(projectDir, NESTED_PACKAGE))).toBe(false)
   })
 
   it('throws on a malformed nearest package.json that lies above tsconfigRootDir, naming that file', () => {
@@ -128,7 +128,7 @@ describe('projectUsesOxlint', () => {
       },
     })
 
-    expect(() => projectUsesOxlint(join(projectDir, DIR_WITHOUT_A_PACKAGE_JSON))).toThrowError(
+    expect(() => doesProjectUseOxlint(join(projectDir, DIR_WITHOUT_A_PACKAGE_JSON))).toThrow(
       join(projectDir, NESTED_PACKAGE, 'package.json'),
     )
   })

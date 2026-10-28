@@ -87,8 +87,10 @@ export function isInReadingMode(): boolean {
   return readsInProgress.length > 0
 }
 
+// eslint-disable-next-line functional/no-return-void -- the merge calling it runs inside the team's file another merge is loading, and returns to that file alone: the loading merge finds what was handed over in its read in progress, which no returned value reaches
 export function handOverToTheRead(handedOver: HandedOver): void {
   const read = foundOr(readsInProgress.at(-1), 'a merge handed over a config with no read in progress')
+  // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements -- as on handOverToTheRead
   read.handedOver.push(handedOver)
 }
 
@@ -177,6 +179,7 @@ function objectsDefineConfigReadsIn(defaultExport: unknown): readonly object[] {
 }
 
 /** Such a file is something else, a package.json say, even beside keys a config holds. */
+// eslint-disable-next-line functional/no-return-void -- a refusal: a foreign key must stop the read before the config is used, so it throws, and where it finds none it has nothing to give back
 function refuseKeysNoConfigHolds(configs: readonly object[], keysAConfigHolds: ReadonlySet<string>, other: OtherConfig): void {
   const foreignKeys = new Set(configs.flatMap((config) => Object.keys(config).filter((key) => !keysAConfigHolds.has(key))))
   if (foreignKeys.size > 0) throw new Error(`it is not an ${other.named}: no ${other.named} holds ${[...foreignKeys].join(KEYS_SEPARATOR)}`)
@@ -190,11 +193,13 @@ function theOneConfigHandedOver<Config>(handedOver: readonly Config[], mergeCall
 
 function loadedInReadingMode(file: string): Loaded {
   const read: Read = { handedOver: [] }
+  // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements -- reading mode is module state: a merge the file calls as it loads finds the read in progress here, since require hands it nothing of ours
   readsInProgress.push(read)
   try {
     const defaultExport = defaultExportOf(requireFromHere(file))
     return { handedOver: handedOverByTheFile(file, read.handedOver), defaultExport }
   } finally {
+    // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements -- as on the push above
     readsInProgress.pop()
   }
 }
@@ -202,7 +207,8 @@ function loadedInReadingMode(file: string): Loaded {
 /** On a later read Node serves the cached module, which calls no merge again, so the first hand-over stands. */
 function handedOverByTheFile(file: string, handedOverNow: readonly HandedOver[]): readonly HandedOver[] {
   const handedOverFirst = handedOverByFile.get(file)
-  if (handedOverNow.length === 0 && handedOverFirst !== undefined) return handedOverFirst
+  if (handedOverFirst !== undefined && handedOverNow.length === 0) return handedOverFirst
+  // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements -- Node serves a later read of the file from its module cache, which calls no merge again, so the first hand-over is kept here for that read
   handedOverByFile.set(file, handedOverNow)
   return handedOverNow
 }
@@ -219,7 +225,7 @@ function oxlintConfigInJson(file: string, keysAConfigHolds: ReadonlySet<string>)
   return { ...config, ...extendsReadFrom(config, dirname(file), keysAConfigHolds) }
 }
 
-function extendsReadFrom(config: OxlintConfig, folder: string, keysAConfigHolds: ReadonlySet<string>): Pick<OxlintConfig, 'extends'> {
+function extendsReadFrom(config: Readonly<OxlintConfig>, folder: string, keysAConfigHolds: ReadonlySet<string>): Pick<OxlintConfig, 'extends'> {
   if (config.extends === undefined) return {}
   return {
     extends: extendedBy(config).map((extended) => (isAnObject(extended) ? extended : oxlintConfigInJson(resolve(folder, extended), keysAConfigHolds))),
@@ -227,8 +233,9 @@ function extendsReadFrom(config: OxlintConfig, folder: string, keysAConfigHolds:
 }
 
 function eslintBlocksOf(config: unknown): readonly Linter.Config[] {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- require returns any: ESLint's config helpers are required here, only when a team's ESLint config is read, so the oxlint merge loads no ESLint module otherwise (dist-loading.test.ts), and they are typed once, at this boundary
   const { defineConfig }: typeof import('eslint/config') = requireFromHere(ESLINT_CONFIG_HELPERS)
-  // Parse boundary: a team's default export, which defineConfig checks.
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- parse boundary, TS2345 without it: a team's default export is unknown, and defineConfig, which refuses what it cannot read, is typed to take its own input
   return defineConfig(config as TeamEslintConfig)
 }
 

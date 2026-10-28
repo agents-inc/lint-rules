@@ -24,9 +24,9 @@ export function mergeEslintConfig(theirs: TeamEslintConfig, eslint: EslintPart, 
   const part = eslintPartGiven(eslint)
   refuseUnsupportedInstalledEslint(part.tsconfigRootDir)
   const oxlintConfigPath = part.usesOxlint ? pathOfTheTeamsOxlintConfigGiven(teamOxlintConfig, OXLINT_IS_LISTED) : null
-  if (isInReadingMode()) return handedOverToTheRead(theirs)
-  const setByTheTeamsOxlintConfig = ruleIdsSetByTheTeamsOxlintConfig(part, oxlintConfigPath)
-  return mergeEslintPart(theirs, part, catalog, eslintPluginRegistry, versionOf(ourPackageJsonFile()), setByTheTeamsOxlintConfig)
+  return isInReadingMode()
+    ? handedOverToTheRead(theirs)
+    : mergeEslintPart(theirs, part, catalog, eslintPluginRegistry, versionOf(ourPackageJsonFile()), ruleIdsSetByTheTeamsOxlintConfig(part, oxlintConfigPath))
 }
 
 /** None where the project does not list oxlint. */
@@ -36,6 +36,7 @@ function ruleIdsSetByTheTeamsOxlintConfig({ usesOxlint, tsconfigRootDir }: Eslin
 }
 
 /** While an oxlint merge reads this config: hand it the team's blocks and our plugins, unmerged. */
+// eslint-disable-next-line functional/prefer-immutable-types -- TS2345 as Readonly: ESLint's defineConfig, which it hands the team's config to, takes a mutable InfiniteArray<ConfigWithExtends>
 function handedOverToTheRead(theirs: TeamEslintConfig): Linter.Config[] {
   const blocks = defineConfig(theirs)
   handOverToTheRead({ engine: 'eslint', config: { blocks, ourPlugins: eslintPluginRegistry } })

@@ -13,7 +13,7 @@ export type NamesOffWhere = Where & { readonly names: readonly string[] }
 
 export type Within<T> = T & { readonly within: FilesAndIgnores }
 
-type EntryByExtensions = { readonly extensions: readonly (readonly string[])[]; readonly others: readonly string[] }
+type EntryByExtensions = { readonly extensions: ReadonlyArray<readonly string[]>; readonly others: readonly string[] }
 
 type OffBlockScope = Pick<Linter.Config, 'files' | 'ignores'>
 
@@ -38,11 +38,11 @@ export function rulesOff(ruleIds: readonly string[]): Linter.RulesRecord {
 }
 
 /** In the order each set of files is first met. */
-export function groupedByWhere<T extends Where>(items: readonly T[]): (readonly T[])[] {
+export function groupedByWhere<T extends Where>(items: readonly T[]): Array<readonly T[]> {
   return groupBy(items, ({ where }) => keyOfCondition(where)).values().toArray()
 }
 
-export function eachWithin<T extends Where>(items: readonly T[]): Within<T>[] {
+export function eachWithin<T extends Where>(items: readonly T[]): Array<Within<T>> {
   return items.flatMap((item) => filesAndIgnoresOf(item.where).map((within) => ({ ...item, within })))
 }
 
@@ -84,10 +84,10 @@ function ignoresKey(ignores: readonly string[]): Pick<Linter.Config, 'ignores'> 
 }
 
 /** Every file, then each entry's glob taken back, then every file of another extension. Null where ignores cannot say it. */
-function ignoresAlone(files: readonly (readonly string[])[]): string[] | null {
+function ignoresAlone(files: ReadonlyArray<readonly string[]>): string[] | null {
   const entries = files.map(splitByExtensions)
   const first = foundOr(entries.at(0), 'a block naming files names at least one entry')
-  if (!entries.every(asksOneGlobAtMost) || !entries.every((entry) => namesTheSameExtensions(entry, first))) return null
+  if (!entries.every(asksOneGlobAtMost) || entries.some((entry) => !namesTheSameExtensions(entry, first))) return null
   return [...eachEntrysGlobTakenBack(entries), ...first.extensions.map(filesOfOtherExtensionsThan)]
 }
 
@@ -123,6 +123,6 @@ function splitByExtensions(entry: readonly string[]): EntryByExtensions {
   return { extensions: entry.flatMap(extensionsListedBy), others: entry.filter((glob) => extensionsNamedBy(glob) === null) }
 }
 
-function keyOfExtensions(extensions: readonly (readonly string[])[]): string {
+function keyOfExtensions(extensions: ReadonlyArray<readonly string[]>): string {
   return JSON.stringify(extensions)
 }

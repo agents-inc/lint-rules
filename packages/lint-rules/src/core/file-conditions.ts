@@ -15,7 +15,7 @@ export type FilesCondition = readonly FilesTerm[]
 export type FilesEntry = string | string[]
 
 /** `files` entries each AND their globs; null where every file is kept. */
-export type FilesAndIgnores = { readonly files: readonly (readonly string[])[] | null; readonly ignores: readonly string[] }
+export type FilesAndIgnores = { readonly files: ReadonlyArray<readonly string[]> | null; readonly ignores: readonly string[] }
 
 type GlobsHeld = { readonly all: ReadonlySet<string>; readonly none: ReadonlySet<string> }
 
@@ -112,7 +112,7 @@ function termOfBoth(term: FilesTerm, other: FilesTerm): FilesTerm[] {
 }
 
 function negationsIn(ignores: readonly string[]): Negation[] {
-  return ignores.flatMap((glob, index) => (isNegated(glob) ? [{ index, takesBack: withoutNegation(glob) }] : []))
+  return ignores.flatMap((glob, index) => (isNegated(glob) ? { index, takesBack: withoutNegation(glob) } : []))
 }
 
 function takenBackAfter(index: number, negations: readonly Negation[]): string[] {
@@ -136,7 +136,7 @@ function termMissing(glob: string): FilesTerm {
   return isNegated(glob) ? { all: [withoutNegation(glob)], none: [] } : { all: [], none: [glob] }
 }
 
-function termsGroupedByIgnores(condition: FilesCondition): (readonly FilesTerm[])[] {
+function termsGroupedByIgnores(condition: FilesCondition): Array<readonly FilesTerm[]> {
   return groupBy(condition, ({ none }) => JSON.stringify(none)).values().toArray()
 }
 
@@ -235,7 +235,7 @@ function inOrderOfKeys([key]: readonly [string, FilesTerm], [otherKey]: readonly
 /** Its lists are searched, not walked. */
 function isContradictory(term: FilesTerm): boolean {
   const { all, none } = term
-  return all.some((glob) => sortedHolds(none, glob) || sortedHolds(all, negationOf(glob))) || asksOnlyExtensionsItRefuses(term)
+  return all.some((glob) => isInSorted(none, glob) || isInSorted(all, negationOf(glob))) || asksOnlyExtensionsItRefuses(term)
 }
 
 /** A file has one last extension, so no file meets both. */
@@ -252,7 +252,7 @@ export function extensionsListedBy(glob: string): string[][] {
   return extensions === null ? [] : [extensions]
 }
 
-function sortedHolds(sorted: readonly string[], glob: string): boolean {
+function isInSorted(sorted: readonly string[], glob: string): boolean {
   const index = lowerBoundOf(sorted, glob, 0, sorted.length)
   return sorted[index] === glob
 }

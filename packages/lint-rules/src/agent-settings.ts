@@ -13,8 +13,11 @@ const NOT_A_PART_DEFINE_LINT_RULES_RETURNED = configProblemIn(
   'the part given is not one defineLintRules returned: pass `eslint` or `oxlint` exactly as the file exports it',
 )
 
+// eslint-disable-next-line functional/no-return-void -- defineLintRules hands a team its parts alone, and check gets back only the part the team's config exports: the settings are kept against that part object here, where a value returned would reach no one
 export function recordAgentSettings(parts: EditorParts, agentSettings: LintRulesInput): void {
+  // eslint-disable-next-line functional/no-expression-statements -- as on recordAgentSettings
   agentSettingsByPart.set(parts.eslint, agentSettings)
+  // eslint-disable-next-line functional/no-expression-statements -- as on recordAgentSettings
   if (parts.oxlint !== undefined) agentSettingsByPart.set(parts.oxlint, agentSettings)
 }
 

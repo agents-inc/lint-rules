@@ -11,6 +11,7 @@ const LOWEST_ESLINT_MAJOR = 10
 const MAJOR_VERSION = /^(?<major>\d+)\./u
 
 /** Resolved from `tsconfigRootDir`, as the oxlint merge reads oxlint. Where none resolves, ESLint is installed where we cannot read it, and the merge goes on. */
+// eslint-disable-next-line functional/no-return-void -- a refusal: an ESLint older than 10 must stop the merge before it builds anything, so it throws, and where it finds none it has nothing to give back
 export function refuseUnsupportedInstalledEslint(tsconfigRootDir: string): void {
   const manifestPath = resolvedFrom(tsconfigRootDir, ESLINT_MANIFEST)
   if (manifestPath === null) return

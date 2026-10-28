@@ -18,7 +18,7 @@ export type ProjectFacts = {
 
 const RELATIVE_SPECIFIER = /^\.\.?\//u
 // ts.preProcessFile's first flag: read the file's imports.
-const READ_IMPORTS = true
+const SHOULD_READ_IMPORTS = true
 // TypeScript reads a `require` call as an import only in a JavaScript file, not in a TS ES module (measured).
 const JAVASCRIPT_FILE = /\.[cm]?jsx?$/u
 const CONSUMER_FILES_AT_THE_ROOT: readonly string[] = Object.values(consumerConfigFiles)
@@ -45,7 +45,7 @@ function isConsumerFileFoundThroughAnImporter(file: string, root: string, isList
 }
 
 function relativeImportsOf(file: string): string[] {
-  const { importedFiles } = ts.preProcessFile(readFileSync(file, 'utf8'), READ_IMPORTS, JAVASCRIPT_FILE.test(file))
+  const { importedFiles } = ts.preProcessFile(readFileSync(file, 'utf8'), SHOULD_READ_IMPORTS, JAVASCRIPT_FILE.test(file))
   const specifiers = importedFiles.map(({ fileName }) => fileName)
   return specifiers.filter((specifier) => RELATIVE_SPECIFIER.test(specifier)).map((specifier) => resolve(dirname(file), specifier))
 }

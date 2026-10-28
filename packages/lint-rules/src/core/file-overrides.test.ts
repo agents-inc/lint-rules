@@ -10,13 +10,14 @@ import {
   buildQualityRuleset,
   buildRuntimeRuleset,
 } from '../__tests__/factories/catalog-factories.ts'
+import { buildRulesetDefinition } from '../__tests__/factories/init-factories.ts'
 import { buildFileOverride, buildLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { setUpEslintConfigOracle } from '../__tests__/eslint-config-oracle.ts'
 import { buildProjectFacts } from '../__tests__/factories/project-facts-factories.ts'
 import { oxlintConfigForFile, oxlintSeverityFor } from '../__tests__/oxlint-config-oracle.ts'
 import { buildEslintConfig } from './build-eslint-config.ts'
 import { buildOxlintConfig } from './build-oxlint-config.ts'
-import { resolveRuleLayers } from './resolve-rule-layers.ts'
+import { type FileOverrideLayer, resolveRuleLayers } from './resolve-rule-layers.ts'
 
 const WARN = 1
 const OFF_OR_ABSENT_SEVERITY = ['off', undefined]
@@ -75,6 +76,28 @@ const everyTopLevelRuleset = {
   quality: ['correctness'],
   libs: { ui: ['react'], testing: ['vitest'] },
   runtimes: ['node', 'browser'],
+}
+
+// One ruleset in the languages list: the one list read with a default where an entry writes it undefined. Quality, libs
+// or runtimes written undefined stop at a TypeError before an entry's lists are compared with an earlier entry's.
+const languagesCatalog = buildCatalog({
+  rulesets: [buildRulesetDefinition({ name: 'json', list: 'languages' })],
+  rules: [buildEslintRoute('jsonc/no-dupe-keys', { typed: false, shipped: buildShippedRule('json') })],
+})
+const ALL_DATA = ['data/**']
+const GENERATED_DATA = ['data/generated/**']
+const NO_ENV_CHANGE = { enabled: [], disabled: [] }
+
+function isDefinedGlobal(value: unknown): boolean {
+  return value !== undefined && value !== 'off'
+}
+
+/** The layer of an entry for generated data, after an entry adding json for all data. */
+function generatedDataLayerOf(generatedData: ReturnType<typeof buildFileOverride>): FileOverrideLayer | undefined {
+  const lintRules = buildLintRules({}, {
+    fileOverrides: [buildFileOverride(ALL_DATA, { rulesets: { languages: ['json'] } }), generatedData],
+  })
+  return resolveRuleLayers(lintRules, languagesCatalog).fileOverrides.at(1)
 }
 
 const { globalsFor, ruleEntryFor, ruleSeverityFor } = setUpEslintConfigOracle()
@@ -291,7 +314,6 @@ describe('file overrides', () => {
       ],
     }
     const RUNTIME_GLOBALS = ['process', 'window']
-    const isDefinedGlobal = (value: unknown): boolean => value !== undefined && value !== 'off'
     const filesByEntriesMatching = [
       {
         matching: 'both entries, so the runtimes of the earlier one and the rules of the later one',
@@ -323,7 +345,7 @@ describe('file overrides', () => {
       const lintRules = buildLintRules(everyTopLevelRuleset, fields)
       const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
       const severities = Object.fromEntries(
-        await Promise.all(Object.keys(eslintRules).map(async (id) => [id, await ruleSeverityFor(config, file, id)])),
+        await Promise.all(Object.keys(eslintRules).map(async (id): Promise<[string, unknown]> => [id, await ruleSeverityFor(config, file, id)])),
       )
 
       expect(severities).toStrictEqual(eslintRules)
@@ -400,7 +422,6 @@ describe('file overrides', () => {
       vitest: ['valid-title'],
     })
     const RUNTIME_GLOBALS = ['process', 'window']
-    const isDefinedGlobal = (value: unknown): boolean => value !== undefined && value !== 'off'
 
     describe('runtimes: everything server-side, then the web app browser-only', () => {
       const rulesets = { runtimes: ['node', 'browser'] }
@@ -444,7 +465,7 @@ describe('file overrides', () => {
           const config = buildEslintConfig(lintRules, rulesetCatalog, rulesetPluginRegistry, buildProjectFacts())
           const severities = Object.fromEntries(
             await Promise.all(
-              Object.keys(eslintRules).map(async (id) => [id, await ruleSeverityFor(config, file, id)]),
+              Object.keys(eslintRules).map(async (id): Promise<[string, unknown]> => [id, await ruleSeverityFor(config, file, id)]),
             ),
           )
 
@@ -523,7 +544,7 @@ describe('file overrides', () => {
           const config = buildEslintConfig(lintRules, rulesetCatalog, rulesetPluginRegistry, buildProjectFacts())
           const severities = Object.fromEntries(
             await Promise.all(
-              Object.keys(eslintRules).map(async (id) => [id, await ruleSeverityFor(config, file, id)]),
+              Object.keys(eslintRules).map(async (id): Promise<[string, unknown]> => [id, await ruleSeverityFor(config, file, id)]),
             ),
           )
 
@@ -539,6 +560,28 @@ describe('file overrides', () => {
         )
 
         expect(severities).toStrictEqual(oxlintRules)
+      })
+    })
+  })
+
+  // A later entry restates what an earlier overlapping one changed only in a list it gives. A config nobody
+  // type-checks may write a list undefined, which the types refuse.
+  describe('a later entry over one adding a ruleset of a list', () => {
+    it('restates nothing where it writes that list undefined, as where it leaves the list out, and turns the rule off where it gives it empty', () => {
+      expect({
+        // @ts-expect-error a list the types take is never undefined, though a config nobody type-checks may write one
+        writtenUndefined: generatedDataLayerOf(buildFileOverride(GENERATED_DATA, { rulesets: { languages: undefined } })),
+        leftOut: generatedDataLayerOf(buildFileOverride(GENERATED_DATA, { rulesets: {} })),
+        givenEmpty: generatedDataLayerOf(buildFileOverride(GENERATED_DATA, { rulesets: { languages: [] } })),
+      }).toStrictEqual({
+        writtenUndefined: { files: GENERATED_DATA, env: NO_ENV_CHANGE, rulesetChanges: {}, rules: {} },
+        leftOut: { files: GENERATED_DATA, env: NO_ENV_CHANGE, rulesetChanges: {}, rules: {} },
+        givenEmpty: {
+          files: GENERATED_DATA,
+          env: NO_ENV_CHANGE,
+          rulesetChanges: { 'jsonc/no-dupe-keys': { severity: 'off', options: [], files: null, ignores: null } },
+          rules: {},
+        },
       })
     })
   })

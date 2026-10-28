@@ -42,7 +42,7 @@ export function entryStatements(layer: FileOverrideLayer): LayerStatements {
   return { settings: { ...layer.rulesetChanges, ...suppressionRulesOf(layer), ...layer.rules }, statedAbove: new Set(Object.keys(layer.rules)) }
 }
 
-export function twinPairsNamedIn(layer: LayerStatements, catalog: Catalog): TwinPair[] {
+export function twinPairsNamedIn(layer: LayerStatements, catalog: Readonly<Catalog>): TwinPair[] {
   const named = [...new Set([...Object.keys(layer.settings), ...layer.statedAbove])].map((id) => routeOf(id, catalog))
   const cores = eachOnce(named.flatMap((route) => coreRulesNamedBy(route, catalog)))
   return cores.flatMap((core) => extensionsOfACoreRuleRoutedToOxlint(core, catalog).map((extension) => ({ core, extension })))
@@ -57,23 +57,23 @@ export function statedIn({ settings, statedAbove }: LayerStatements, ruleId: str
 
 /** Its upper part, where that states either name, else its lower. */
 export function whatTheDecidingPartStates({ core, extension }: TwinPair, layer: LayerStatements): DecidingPart {
-  const aboveStatesEither = layer.statedAbove.has(core.id) || layer.statedAbove.has(extension.id)
-  if (aboveStatesEither) return { decidesTheExtension: layer.statedAbove.has(extension.id), decidesTheCore: layer.statedAbove.has(core.id) }
+  const doesTheUpperPartStateEither = layer.statedAbove.has(core.id) || layer.statedAbove.has(extension.id)
+  if (doesTheUpperPartStateEither) return { decidesTheExtension: layer.statedAbove.has(extension.id), decidesTheCore: layer.statedAbove.has(core.id) }
   return { decidesTheExtension: Object.hasOwn(layer.settings, extension.id), decidesTheCore: Object.hasOwn(layer.settings, core.id) }
 }
 
 /** None for an ESLint-routed rule. */
-function extensionsOfACoreRuleRoutedToOxlint(route: RuleRoute, catalog: Catalog): RuleRoute[] {
+function extensionsOfACoreRuleRoutedToOxlint(route: Readonly<RuleRoute>, catalog: Readonly<Catalog>): RuleRoute[] {
   if (!isOxlintRoute(route)) return []
   return currentExtensionsOf(route, catalog).map((id) => routeOf(id, catalog))
 }
 
 function eachOnce(routes: readonly RuleRoute[]): RuleRoute[] {
-  return [...new Map(routes.map((route) => [route.id, route])).values()]
+  return new Map(routes.map((route) => [route.id, route])).values().toArray()
 }
 
 /** The rule itself where it is such a core rule; each core rule it extends where it is an extension. */
-function coreRulesNamedBy(route: RuleRoute, catalog: Catalog): RuleRoute[] {
+function coreRulesNamedBy(route: Readonly<RuleRoute>, catalog: Readonly<Catalog>): RuleRoute[] {
   if (extensionsOfACoreRuleRoutedToOxlint(route, catalog).length > 0) return [route]
   return twinsOf(route, catalog)
     .map((id) => routeOf(id, catalog))
@@ -81,31 +81,35 @@ function coreRulesNamedBy(route: RuleRoute, catalog: Catalog): RuleRoute[] {
 }
 
 /** False where the core rule is not routed to oxlint. */
-function isAnExtensionOf(route: RuleRoute, core: RuleRoute, catalog: Catalog): boolean {
+function isAnExtensionOf(route: Readonly<RuleRoute>, core: Readonly<RuleRoute>, catalog: Readonly<Catalog>): boolean {
   return extensionsOfACoreRuleRoutedToOxlint(core, catalog).some(({ id }) => id === route.id)
 }
 
 /** Sub-agents always run oxlint, so the rules are resolved, and each twin pair decided, as beside oxlint. */
-export function agentBuildLayersOf(lintRules: LintRulesInput, catalog: Catalog): RuleLayers {
+export function agentBuildLayersOf(lintRules: LintRulesInput, catalog: Readonly<Catalog>): RuleLayers {
   return layersWithEachTwinPairDecidedBesideOxlint(resolveRuleLayersBesideOxlint(lintRules, catalog), catalog)
 }
 
 /** Beside oxlint, oxlint runs the pair where it runs the core rule. Where the deciding part states one name, the other takes its setting; where it states both, TS files take the extension's setting and the rest the core rule's. Where oxlint refuses or ignores an option, ESLint runs the extension on TS files instead. */
-export function layersWithEachTwinPairDecidedBesideOxlint(layers: RuleLayers, catalog: Catalog): RuleLayers {
+export function layersWithEachTwinPairDecidedBesideOxlint(layers: RuleLayers, catalog: Readonly<Catalog>): RuleLayers {
   const topLevel = topLevelWithEachPairDecided(layers, catalog)
   return { ...layers, ...topLevel, fileOverrides: layers.fileOverrides.map((layer) => entryWithEachPairDecided(layer, topLevel, catalog)) }
 }
 
-function topLevelWithEachPairDecided(layers: RuleLayers, catalog: Catalog): DecidedRules {
+function topLevelWithEachPairDecided(layers: RuleLayers, catalog: Readonly<Catalog>): DecidedRules {
   const topLevel = topLevelStatements(layers)
-  const inForce = (ruleId: string): boolean => statedIn(topLevel, ruleId) !== null
-  return rulesWithEachPairDecided(layers.rules, pairsDecidedIn(topLevel, catalog), { inForce, offs: 'left out' })
+  function isInForce(ruleId: string): boolean {
+    return statedIn(topLevel, ruleId) !== null
+  }
+  return rulesWithEachPairDecided(layers.rules, pairsDecidedIn(topLevel, catalog), { isInForce, offs: 'left out' })
 }
 
-function entryWithEachPairDecided(layer: FileOverrideLayer, topLevel: DecidedRules, catalog: Catalog): FileOverrideLayer {
+function entryWithEachPairDecided(layer: FileOverrideLayer, topLevel: DecidedRules, catalog: Readonly<Catalog>): FileOverrideLayer {
   const entry = entryStatements(layer)
-  const inForce = (ruleId: string): boolean => statedIn(entry, ruleId) !== null || runsAtTheTopLevel(topLevel, ruleId)
-  return { ...layer, ...rulesWithEachPairDecided(layer.rules, pairsDecidedIn(entry, catalog), { inForce, offs: 'stated' }) }
+  function isInForce(ruleId: string): boolean {
+    return statedIn(entry, ruleId) !== null || runsAtTheTopLevel(topLevel, ruleId)
+  }
+  return { ...layer, ...rulesWithEachPairDecided(layer.rules, pairsDecidedIn(entry, catalog), { isInForce, offs: 'stated' }) }
 }
 
 /** In all its files, or on its TS files alone. */
@@ -125,9 +129,9 @@ type DecidedByBothNames = { readonly pair: TwinPair; readonly by: 'both names'; 
 type PairDecided = DecidedByOneName | DecidedByBothNames
 
 /** `offs` is stated in an entry, left out at the top level. */
-type SettingsTaking = { readonly inForce: (ruleId: string) => boolean; readonly offs: 'stated' | 'left out' }
+type SettingsTaking = { readonly isInForce: (ruleId: string) => boolean; readonly offs: 'stated' | 'left out' }
 
-function pairsDecidedIn(layer: LayerStatements, catalog: Catalog): PairDecided[] {
+function pairsDecidedIn(layer: LayerStatements, catalog: Readonly<Catalog>): PairDecided[] {
   return twinPairsNamedIn(layer, catalog).flatMap((pair) => pairDecidedIn(layer, pair))
 }
 
@@ -192,29 +196,29 @@ function rulesTakingBothNames(taken: RulesTaken, { pair: { core, extension }, se
 }
 
 /** None where it is off. */
-function extensionOnTsFiles(extension: RuleRoute, setting: RuleSetting): RuleSettings {
+function extensionOnTsFiles(extension: Readonly<RuleRoute>, setting: RuleSetting): RuleSettings {
   return setting.severity === 'off' ? {} : { [extension.id]: setting }
 }
 
 /** Off where oxlint refuses or ignores an option of the setting, as ESLint runs the extension there. */
-function coreSettingOnTsFiles(core: RuleRoute, extensionSetting: RuleSetting): RuleSetting {
-  if (oxlintRefusesAnOptionOf(extensionSetting, core)) return OFF_SETTING
+function coreSettingOnTsFiles(core: Readonly<RuleRoute>, extensionSetting: RuleSetting): RuleSetting {
+  if (doesOxlintRefuseAnOptionOf(extensionSetting, core)) return OFF_SETTING
   return { ...extensionSetting, ...shippedScopeOf(core) }
 }
 
-function coreTakingTheExtensionsSetting(settings: RuleSettings, { pair: { core }, setting }: DecidedByOneName, { inForce, offs }: SettingsTaking): RuleSettings {
-  if (!inForce(core.id)) return settings
-  if (oxlintRefusesAnOptionOf(setting, core)) return withTsFilesLeftToEslint(settings, core, offs)
+function coreTakingTheExtensionsSetting(settings: RuleSettings, { pair: { core }, setting }: DecidedByOneName, { isInForce, offs }: SettingsTaking): RuleSettings {
+  if (!isInForce(core.id)) return settings
+  if (doesOxlintRefuseAnOptionOf(setting, core)) return withTsFilesLeftToEslint(settings, core, offs)
   return withSetting(settings, core.id, { ...setting, ...shippedScopeOf(core) }, offs)
 }
 
-function extensionTakingTheCoreRulesOff(settings: RuleSettings, { pair: { extension }, setting }: DecidedByOneName, { inForce, offs }: SettingsTaking): RuleSettings {
-  if (setting.severity !== 'off' || !inForce(extension.id)) return settings
+function extensionTakingTheCoreRulesOff(settings: RuleSettings, { pair: { extension }, setting }: DecidedByOneName, { isInForce, offs }: SettingsTaking): RuleSettings {
+  if (setting.severity !== 'off' || !isInForce(extension.id)) return settings
   return withSetting(settings, extension.id, setting, offs)
 }
 
 /** The top level holds only rules turned on, so it keeps the core rule out of TS files as it keeps it out of its ignores; an entry states it off there. */
-function withTsFilesLeftToEslint(settings: RuleSettings, core: RuleRoute, offs: SettingsTaking['offs']): RuleSettings {
+function withTsFilesLeftToEslint(settings: RuleSettings, core: Readonly<RuleRoute>, offs: SettingsTaking['offs']): RuleSettings {
   if (offs === 'stated') return { ...settings, [core.id]: OFF_ON_TS_FILES }
   const topLevelSetting = foundOr(settings[core.id], `${core.id}: in force at the top level, so the top level runs it`)
   return { ...settings, [core.id]: withTsFilesIgnored(topLevelSetting) }
@@ -226,7 +230,7 @@ function withTsFilesIgnored(setting: RuleSetting): RuleSetting {
 }
 
 /** A refused key makes oxlint load no part of the config; an ignored one would drop the setting silently. */
-function oxlintRefusesAnOptionOf({ options }: RuleSetting, core: RuleRoute): boolean {
+function doesOxlintRefuseAnOptionOf({ options }: RuleSetting, core: Readonly<RuleRoute>): boolean {
   if (!isOxlintRoute(core)) throw new Error(`${core.id}: a core rule of a twin pair is routed to oxlint`)
   const refusedKeys = optionKeysOxlintRefuses(core.oxlintName)
   return options.some((option) => givesAnyKeyOf(option, refusedKeys))
@@ -238,6 +242,6 @@ function givesAnyKeyOf(option: unknown, keys: readonly string[]): boolean {
 
 /** At the top level, which holds only rules turned on, an off is left out. */
 function withSetting(settings: RuleSettings, ruleId: string, setting: RuleSetting, offs: SettingsTaking['offs']): RuleSettings {
-  if (setting.severity === 'off' && offs === 'left out') return settingsWithout(settings, new Set([ruleId]))
+  if (offs === 'left out' && setting.severity === 'off') return settingsWithout(settings, new Set([ruleId]))
   return { ...settings, [ruleId]: setting }
 }

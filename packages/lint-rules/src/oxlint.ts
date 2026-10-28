@@ -32,7 +32,7 @@ export function mergeOxlintConfig(theirs: OxlintConfig, oxlint: OxlintPart | und
 }
 
 /** While an ESLint merge reads this config: hand it the team's config, unmerged. */
-function handedOverToTheRead(theirs: OxlintConfig): OxlintConfig {
+function handedOverToTheRead(theirs: Readonly<OxlintConfig>): OxlintConfig {
   handOverToTheRead({ engine: 'oxlint', config: theirs })
   return theirs
 }

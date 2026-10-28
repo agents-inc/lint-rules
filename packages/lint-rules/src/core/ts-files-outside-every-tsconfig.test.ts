@@ -155,3 +155,22 @@ describe('tsconfigWalkOf, given a tsconfig it cannot read', () => {
     expect(listedByNoTsconfig(root, [INSIDE, 'scripts/b.ts'])).toStrictEqual(['scripts/b.ts'])
   })
 })
+
+// Each config references the other, so following references from either comes back to it.
+describe("tsconfigWalkOf's listing, given two tsconfigs referencing each other", () => {
+  it('reads as listed by none only the TS file neither takes in, as the project service does', { timeout: PARALLEL_LOAD_TIMEOUT_MS }, () => {
+    const referencedCompilerOptions = { composite: true, noEmit: false, emitDeclarationOnly: true, declaration: true }
+    const root = tempProjects.create({
+      files: {
+        [TSCONFIG]: configFileText({ compilerOptions: referencedCompilerOptions, include: ['src'], references: [{ path: './tsconfig.lib.json' }] }),
+        'tsconfig.lib.json': configFileText({ compilerOptions: referencedCompilerOptions, include: ['lib'], references: [{ path: `./${TSCONFIG}` }] }),
+        ...standaloneSources([INSIDE, 'lib/b.ts', OUTSIDE]),
+      },
+    })
+
+    expect({ computed: listedByNoTsconfig(root), projectService: tsFilesTheProjectServiceFindsNoProjectFor(root) }).toStrictEqual({
+      computed: [OUTSIDE],
+      projectService: [OUTSIDE],
+    })
+  })
+})

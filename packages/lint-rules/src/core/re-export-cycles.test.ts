@@ -50,11 +50,6 @@ describe("a checker cutting re-export cycles, stepping through a re-export's ali
 describe('withReExportCyclesCut', () => {
   const typescriptEslint = tseslint.plugin
 
-  function rulesOf(plugin: ESLint.Plugin): NonNullable<ESLint.Plugin['rules']> {
-    if (plugin.rules === undefined) throw new Error('the plugin has no rules')
-    return plugin.rules
-  }
-
   it("gives typescript-eslint's two rules that follow re-exports modules of their own and keeps the rest, beside another plugin, kept as it is", () => {
     const cut = rulesOf(withReExportCyclesCut(TYPESCRIPT_ESLINT, typescriptEslint))
     const ours = rulesOf(typescriptEslint)
@@ -74,13 +69,20 @@ describe('withReExportCyclesCut', () => {
   })
 
   it('leaves a file with no type information to the rule, which says it needs some, as the rule given no cut does', () => {
-    const verified = (plugin: ESLint.Plugin) => (): void => {
-      new Linter().verify('export const a = 1\n', [{ files: ['**/*.ts'], languageOptions: { parser: tseslint.parser }, plugins: { [TYPESCRIPT_ESLINT]: plugin }, rules: { '@typescript-eslint/no-deprecated': 'error' } }], { filename: 'a.ts' })
-    }
-
     expect([verified(withReExportCyclesCut(TYPESCRIPT_ESLINT, typescriptEslint)), verified(typescriptEslint)].map((verify) => messageThrownBy(verify).includes(NEEDS_TYPE_INFORMATION))).toStrictEqual([true, true])
   })
 })
+
+function rulesOf(plugin: Readonly<ESLint.Plugin>): NonNullable<ESLint.Plugin['rules']> {
+  if (plugin.rules === undefined) throw new Error('the plugin has no rules')
+  return plugin.rules
+}
+
+function verified(plugin: Readonly<ESLint.Plugin>): () => void {
+  return () => {
+    new Linter().verify('export const a = 1\n', [{ files: ['**/*.ts'], languageOptions: { parser: tseslint.parser }, plugins: { [TYPESCRIPT_ESLINT]: plugin }, rules: { '@typescript-eslint/no-deprecated': 'error' } }], { filename: 'a.ts' })
+  }
+}
 
 function messageThrownBy(call: () => unknown): string {
   try {

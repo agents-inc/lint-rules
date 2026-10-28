@@ -20,7 +20,7 @@ export const SVELTE_RUNES: FrameworkEnv = { files: [SVELTE_COMPONENTS, ...SVELTE
 /** Given by Svelte's compiler to a component alone, and in neither engine's env (`RESERVED` in svelte 5.57.2). */
 export const SVELTE_COMPONENT_GLOBALS = { files: [SVELTE_COMPONENTS], names: ['$$props', '$$restProps', '$$slots'] } as const
 
-/** Vue's `<script setup>` macros and Astro's `Astro` global, each in an oxlint env of its name (measured, oxlint 1.87). */
+/** Vue.js's `<script setup>` macros and Astro's `Astro` global, each in an oxlint env of its name (measured, oxlint 1.87). */
 export const OTHER_FRAMEWORK_ENVS: readonly FrameworkEnv[] = [
   { files: ['**/*.vue'], env: 'vue' },
   { files: ['**/*.astro'], env: 'astro' },

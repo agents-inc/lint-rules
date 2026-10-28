@@ -31,6 +31,7 @@ const TAKEN_OPTION = 'builtinGlobals'
 const RULESET_SETTING = ['error', { [TAKEN_OPTION]: true }] as const
 const EXTENSION_SETTING = ['warn', { [TAKEN_OPTION]: false }] as const
 const ENTRY_EXTENSION_SETTING = ['error', { [TAKEN_OPTION]: false }] as const
+const SHIPPED_WITHOUT_OPTIONS = ['error'] as const
 
 type RunningEntries = Readonly<Record<string, unknown>>
 
@@ -46,13 +47,25 @@ function twinCatalogShipping(shipped: 'the core rule' | 'the extension' | 'neith
   })
 }
 
+// The core rule ships with options, the extension without, so oxlint's entry on a file tells whose setting it took.
+function twinCatalogShippingBothNames(): Catalog {
+  return buildCatalog({
+    rulesets: [buildQualityRuleset('correctness')],
+    rules: [
+      buildOxlintRoute(CORE_RULE, { oxlintName: CORE_RULE, oxlintPlugin: 'eslint', shipped: buildShippedRule('correctness', { options: [RULESET_SETTING[1]] }) }),
+      buildEslintRoute(EXTENSION, { typed: false, shipped: buildShippedRule('correctness') }),
+    ],
+    coreRuleExtensions: new Map([[CORE_RULE, [EXTENSION]]]),
+  })
+}
+
 // The real typescript-eslint plugin, whose rules refuse options they do not take.
 function realTypescriptEslintPlugin(): EslintPluginRegistry {
   return { '@typescript-eslint': pluginRegisteredUnder(eslintPlugins, '@typescript-eslint') }
 }
 
 /** NOT_RUN where none applies, or it is off. */
-function oxlintRunningEntriesFor(given: LintRulesInput, catalog: Catalog, files: readonly string[]): RunningEntries {
+function oxlintRunningEntriesFor(given: LintRulesInput, catalog: Readonly<Catalog>, files: readonly string[]): RunningEntries {
   const config = buildOxlintConfig(given, catalog)
   return Object.fromEntries(
     files.map((file) => {
@@ -63,10 +76,10 @@ function oxlintRunningEntriesFor(given: LintRulesInput, catalog: Catalog, files:
 }
 
 /** NOT_RUN where no block sets it, or it is off. */
-function setUpEslintExtensionSeverities(): (given: LintRulesInput, catalog: Catalog, files: readonly string[]) => Promise<RunningEntries> {
+function setUpEslintExtensionSeverities(): (given: LintRulesInput, catalog: Readonly<Catalog>, files: readonly string[]) => Promise<RunningEntries> {
   const { ruleSeverityFor } = setUpEslintConfigOracle()
 
-  async function runningSeverityFor(config: Linter.Config[], file: string): Promise<string> {
+  async function runningSeverityFor(config: readonly Linter.Config[], file: string): Promise<string> {
     const severity = await ruleSeverityFor(config, file, EXTENSION)
     return severity === undefined || severity === 'off' ? NOT_RUN : severity
   }
@@ -91,6 +104,18 @@ describe('a twin pair whose extension alone our top level states, with options o
     const extensionAlone = buildLintRules({ quality: ['correctness'] }, { rules: { [EXTENSION]: [...EXTENSION_SETTING] } })
 
     expect(oxlintRunningEntriesFor(extensionAlone, twinCatalogShipping('neither'), [TS_FILE, JS_FILE])).toStrictEqual({ [TS_FILE]: NOT_RUN, [JS_FILE]: NOT_RUN })
+  })
+})
+
+// Where our `rules` state neither name, the ruleset decides, as a layer stating both names does.
+describe('a twin pair a ruleset ships both names of, where our top level states neither', () => {
+  it("is run by oxlint with the extension's shipped setting on TS files and the core rule's on JS files", () => {
+    const neitherStated = buildLintRules({ quality: ['correctness'] })
+
+    expect(oxlintRunningEntriesFor(neitherStated, twinCatalogShippingBothNames(), [TS_FILE, JS_FILE])).toStrictEqual({
+      [TS_FILE]: [...SHIPPED_WITHOUT_OPTIONS],
+      [JS_FILE]: [...RULESET_SETTING],
+    })
   })
 })
 

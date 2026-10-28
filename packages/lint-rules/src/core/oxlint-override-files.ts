@@ -41,7 +41,7 @@ export function overrideFilesOf(condition: FilesCondition): OverrideFiles[] {
 }
 
 export function filesLess(files: readonly string[], excludeFiles: readonly string[]): OverrideFiles {
-  return { files: [...files], ...(excludeFiles.length === 0 ? {} : { excludeFiles: [...excludeFiles] }) }
+  return { files: [...files], ...(excludeFiles.length > 0 && { excludeFiles: [...excludeFiles] }) }
 }
 
 function filesOfAlike(alike: readonly WrittenTerm[]): OverrideFiles {
@@ -83,11 +83,11 @@ function withGlobJoined(globs: readonly string[], glob: string): readonly string
   if (joins.some(({ kind }) => kind === 'no file')) return null
   const index = joins.findIndex(({ kind }) => kind === 'one glob')
   if (index === NOT_FOUND) return [...globs, glob]
-  return globs.toSpliced(index, 1, globOfAJoin(joins[index]))
+  return globs.with(index, globOfAJoin(joins[index]))
 }
 
 function globOfAJoin(join: Joined | undefined): string {
-  if (join === undefined || join.kind !== 'one glob') throw new Error('only a join into one glob gives a glob')
+  if (join?.kind !== 'one glob') throw new Error('only a join into one glob gives a glob')
   return join.glob
 }
 
@@ -127,8 +127,8 @@ function hasAnExtensionOf(path: string, extensions: readonly string[]): boolean 
   return extensions.some((extension) => path.endsWith(`${EXTENSION_DOT}${extension}`))
 }
 
-function keptWhere(matches: boolean, glob: string): Joined {
-  return matches ? { kind: 'one glob', glob } : NO_FILE
+function keptWhere(doesMatch: boolean, glob: string): Joined {
+  return doesMatch ? { kind: 'one glob', glob } : NO_FILE
 }
 
 function joinedByExtensions(first: string, second: string): Joined {

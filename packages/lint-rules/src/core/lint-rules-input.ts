@@ -91,9 +91,14 @@ export function optionsGivenBy(entry: RuleEntryInput): readonly unknown[] | null
 }
 
 /** Null where it is left out, so the earlier mode stands. */
+// eslint-disable-next-line sonarjs/bool-param-default -- left out is not false: it keeps the earlier mode, which a default would replace with banned wherever an entry leaves allowSuppressions out
 export function suppressionModeSetBy(allowSuppressions: boolean | undefined): SuppressionMode | null {
   if (allowSuppressions === undefined) return null
-  return allowSuppressions ? 'allowed' : 'banned'
+  return suppressionModeOf(allowSuppressions)
+}
+
+export function suppressionModeOf(areSuppressionsAllowed: boolean): SuppressionMode {
+  return areSuppressionsAllowed ? 'allowed' : 'banned'
 }
 
 export function listedRulesetNames({ quality, libs, runtimes, languages = [] }: RulesetsInput): ReadonlySet<string> {

@@ -59,7 +59,7 @@ export function filesOxlintLeavesOutOf(ignores: readonly string[]): FilesConditi
 }
 
 /** `value` has no leading ./; `later` are the global ignores ESLint reads after it. */
-export function eslintTakesFilesBackFrom(value: string, later: readonly string[]): boolean {
+export function doesEslintTakeFilesBackFrom(value: string, later: readonly string[]): boolean {
   return takeBacksEslintMakesAfter(value, later.map(asEslintNormalizesIt)).length > 0
 }
 
@@ -94,7 +94,7 @@ function takeBacksEslintMakesFrom(leftOut: FolderReading, negated: string): read
   const takingBack = folderReadingOf(withoutTheLastSlash(negated))
   switch (leftOut.kind) {
     case 'one folder':
-      return mayMatchTheFolder(takingBack, leftOut.path) ? everyFileUnder(negated) : NO_TAKE_BACK
+      return canMatchTheFolder(takingBack, leftOut.path) ? everyFileUnder(negated) : NO_TAKE_BACK
     case 'a folder and every folder in it':
       return takeBacksFromAFolderAndThoseInIt(leftOut.path, takingBack, negated)
     case 'every folder named':
@@ -119,7 +119,7 @@ function takeBacksFromAFolderAndThoseInIt(path: string, takingBack: FolderReadin
     case 'a folder and every folder in it':
     case 'every folder named, and every folder in one':
     case 'unread':
-      return mayMatchTheFolder(takingBack, path) ? everyFileUnder(negated) : NO_TAKE_BACK
+      return canMatchTheFolder(takingBack, path) ? everyFileUnder(negated) : NO_TAKE_BACK
     default: {
       const unhandled: never = takingBack
       return unhandled
@@ -173,20 +173,20 @@ function everyFileUnder(glob: string): TakeBack[] {
 /** Less those a negated line may take back by matching a deeper folder or the file itself. */
 function filesUnderFoldersOxlintLeavesOut(line: IgnoreLine, lines: readonly IgnoreLine[], takenBackAsFiles: readonly string[]): FilesCondition {
   const leftOut = folderReadingOf(line.glob)
-  const takingBack = lines.filter(({ takesBack }) => takesBack).filter((negated) => oxlintMayTakeBackFrom(line, leftOut, negated))
+  const takingBack = lines.filter(({ takesBack }) => takesBack).filter((negated) => canOxlintTakeBackFrom(line, leftOut, negated))
   return [{ all: [everyFileUnderFoldersMatching(line.glob)], none: [...takenBackAsFiles, ...takingBack.map(({ glob }) => everyFileUnderFoldersMatching(glob))] }]
 }
 
 /** A line ending `/**` matches every file it takes back as a file, which the files' own reading decides. */
-function oxlintMayTakeBackFrom(line: IgnoreLine, leftOut: FolderReading, negated: IgnoreLine): boolean {
+function canOxlintTakeBackFrom(line: IgnoreLine, leftOut: FolderReading, negated: IgnoreLine): boolean {
   if (negated.glob.endsWith(EVERY_FOLDER_IN)) return false
   const isLater = negated.index > line.index
   const takingBack = folderReadingOf(negated.glob)
   switch (leftOut.kind) {
     case 'one folder':
-      return mayTakeBackFromTheFolder(leftOut.path, takingBack, isLater)
+      return canTakeBackFromTheFolder(leftOut.path, takingBack, isLater)
     case 'every folder named':
-      return mayTakeBackFromFoldersNamed(leftOut.name, takingBack, isLater)
+      return canTakeBackFromFoldersNamed(leftOut.name, takingBack, isLater)
     case 'a folder and every folder in it':
     case 'every folder named, and every folder in one':
     case 'unread':
@@ -199,14 +199,14 @@ function oxlintMayTakeBackFrom(line: IgnoreLine, leftOut: FolderReading, negated
 }
 
 /** A negated folder below it takes files back, the folder itself only after it, any other none. */
-function mayTakeBackFromTheFolder(path: string, takingBack: FolderReading, isLater: boolean): boolean {
+function canTakeBackFromTheFolder(path: string, takingBack: FolderReading, isLater: boolean): boolean {
   if (takingBack.kind !== 'one folder') return true
   if (takingBack.path === path) return isLater
   return isUnder(takingBack.path, path)
 }
 
 /** A negated folder inside one of that name takes files back, one of that name itself only after it, any other none. */
-function mayTakeBackFromFoldersNamed(name: string, takingBack: FolderReading, isLater: boolean): boolean {
+function canTakeBackFromFoldersNamed(name: string, takingBack: FolderReading, isLater: boolean): boolean {
   if (takingBack.kind === 'every folder named') return takingBack.name !== name || isLater
   if (takingBack.kind !== 'one folder') return true
   if (isInAFolderNamed(takingBack.path, name)) return true
@@ -238,13 +238,13 @@ function asIgnoresGlob({ takesBack, glob }: IgnoreLine): string {
 
 /** Read without its last slash. */
 function folderReadingOf(glob: string): FolderReading {
-  const everyFolderIn = glob.endsWith(EVERY_FOLDER_IN)
-  const folder = everyFolderIn ? glob.slice(0, -EVERY_FOLDER_IN.length) : glob
+  const isEveryFolderIn = glob.endsWith(EVERY_FOLDER_IN)
+  const folder = isEveryFolderIn ? glob.slice(0, -EVERY_FOLDER_IN.length) : glob
   const name = nameAtAnyDepth(folder)
-  if (name !== null) return everyFolderIn ? { kind: 'every folder named, and every folder in one', name } : { kind: 'every folder named', name }
+  if (name !== null) return { kind: isEveryFolderIn ? 'every folder named, and every folder in one' : 'every folder named', name }
   const path = pathNamedBy(folder)
   if (path === null) return { kind: 'unread' }
-  return everyFolderIn ? { kind: 'a folder and every folder in it', path } : { kind: 'one folder', path }
+  return { kind: isEveryFolderIn ? 'a folder and every folder in it' : 'one folder', path }
 }
 
 /** null for any glob not matching every folder of one name at any depth. */
@@ -255,7 +255,7 @@ function nameAtAnyDepth(glob: string): string | null {
 }
 
 /** Globs that cannot be read may. */
-function mayMatchTheFolder(negated: FolderReading, path: string): boolean {
+function canMatchTheFolder(negated: FolderReading, path: string): boolean {
   switch (negated.kind) {
     case 'one folder':
       return negated.path === path

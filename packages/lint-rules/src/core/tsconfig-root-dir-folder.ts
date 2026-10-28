@@ -8,6 +8,7 @@ import { configErrorIn } from './config-error.ts'
  * it is checked as the config loads to be the absolute path of an existing folder: otherwise it would surface later
  * as an error blaming another file, or as none.
  */
+// eslint-disable-next-line functional/no-return-void -- a refusal: a tsconfigRootDir naming no folder must stop defineLintRules before it reads anything there, so it throws, and where it finds a folder it has nothing to give back
 export function refuseATsconfigRootDirThatIsNoFolder(tsconfigRootDir: string): void {
   const problem = whyNoFolderIsAt(tsconfigRootDir)
   if (problem !== null) throw configErrorIn(consumerConfigFiles.lintRules, `tsconfigRootDir: "${tsconfigRootDir}" ${problem}`)

@@ -26,7 +26,7 @@ describe('resolvedFrom', () => {
   })
 
   it('throws where the package does not export the path asked for', () => {
-    expect(() => resolvedFrom(projectDir, PATH_NOT_EXPORTED)).toThrowError(expect.objectContaining({ code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' }))
+    expect(() => resolvedFrom(projectDir, PATH_NOT_EXPORTED)).toThrow(expect.objectContaining({ code: 'ERR_PACKAGE_PATH_NOT_EXPORTED' }))
   })
 })
 
@@ -40,7 +40,7 @@ describe('versionOf', () => {
     { version: 'none', given: undefined },
     { version: 'one that is no string', given: 1 },
   ])('throws a TypeError naming the file where it gives $version', ({ given }) => {
-    expect(() => versionOf(buildPackageJsonFile({ version: given }))).toThrowError(new TypeError(`${PACKAGE_JSON_FILE_PATH}: gives no version`))
+    expect(() => versionOf(buildPackageJsonFile({ version: given }))).toThrow(new TypeError(`${PACKAGE_JSON_FILE_PATH}: gives no version`))
   })
 })
 
@@ -50,6 +50,6 @@ describe('readPackageJsonFile', () => {
     const projectDir = tempProjects.create({ files: { 'package.json': NOT_JSON } })
     const path = join(projectDir, 'package.json')
 
-    expect(() => readPackageJsonFile(path)).toThrowError(expect.objectContaining({ name: 'Error', message: `${path}: not valid JSON` }))
+    expect(() => readPackageJsonFile(path)).toThrow(expect.objectContaining({ name: 'Error', message: `${path}: not valid JSON` }))
   })
 })

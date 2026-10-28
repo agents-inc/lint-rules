@@ -43,10 +43,10 @@ function offBlockName(index: number): string {
 
 /** With the off blocks after a block running it. */
 async function severitiesOf(
-  runningTheRule: Linter.Config,
+  runningTheRule: Readonly<Linter.Config>,
   offs: readonly Linter.Config[],
   files: readonly string[],
-): Promise<{ file: string; severity: Linter.StringSeverity | undefined }[]> {
+): Promise<Array<{ file: string; severity: Linter.StringSeverity | undefined }>> {
   const config = [runningTheRule, ...offs]
   return Promise.all(files.map(async (file) => ({ file, severity: await ruleSeverityFor(config, file, RULE) })))
 }

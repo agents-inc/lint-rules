@@ -70,7 +70,7 @@ function oxlintRunningEntryFor(given: LintRulesInput, file: string): unknown {
   return oxlintRunningEntryUnder(twinCatalog, given, file)
 }
 
-function oxlintRunningEntryUnder(catalog: Catalog, given: LintRulesInput, file: string): unknown {
+function oxlintRunningEntryUnder(catalog: Readonly<Catalog>, given: LintRulesInput, file: string): unknown {
   const entry = oxlintEntryOfRuleFor(buildOxlintConfig(given, catalog), file, CORE_SPELLINGS)
   return entry === undefined || severityOfOxlintEntry(entry) === 'off' ? NOT_RUN : entry
 }
@@ -79,7 +79,7 @@ describe('a twin pair whose extension alone our top level states, with an option
   const { ruleSeverityFor, ruleEntryFor } = setUpEslintConfigOracle()
 
   /** NOT_RUN where no block sets it or it is off. */
-  async function runningEntryFor(config: Linter.Config[], file: string, ruleId: string): Promise<unknown> {
+  async function runningEntryFor(config: readonly Linter.Config[], file: string, ruleId: string): Promise<unknown> {
     const severity = await ruleSeverityFor(config, file, ruleId)
     return severity === undefined || severity === 'off' ? NOT_RUN : ruleEntryFor(config, file, ruleId)
   }
@@ -184,7 +184,7 @@ function oxlintRunningEntriesFor(given: LintRulesInput, files: readonly string[]
 function setUpEslintRunningEntries(): (given: LintRulesInput, files: readonly string[]) => Promise<Readonly<Record<string, unknown>>> {
   const { ruleSeverityFor, ruleEntryFor } = setUpEslintConfigOracle()
 
-  async function runningEntryFor(config: Linter.Config[], file: string, ruleId: string): Promise<unknown> {
+  async function runningEntryFor(config: readonly Linter.Config[], file: string, ruleId: string): Promise<unknown> {
     const severity = await ruleSeverityFor(config, file, ruleId)
     return severity === undefined || severity === 'off' ? NOT_RUN : ruleEntryFor(config, file, ruleId)
   }
@@ -205,7 +205,7 @@ type StatingBothNames = { readonly where: string; readonly fields: NonNullable<P
 function setUpMergedEslintRunningEntries(): (given: TwoSetLintRulesInput, files: readonly string[]) => Promise<Readonly<Record<string, unknown>>> {
   const { ruleSeverityFor, ruleEntryFor } = setUpEslintConfigOracle()
 
-  async function runningEntryFor(config: Linter.Config[], file: string, ruleId: string): Promise<unknown> {
+  async function runningEntryFor(config: readonly Linter.Config[], file: string, ruleId: string): Promise<unknown> {
     const severity = await ruleSeverityFor(config, file, ruleId)
     return severity === undefined || severity === 'off' ? NOT_RUN : ruleEntryFor(config, file, ruleId)
   }

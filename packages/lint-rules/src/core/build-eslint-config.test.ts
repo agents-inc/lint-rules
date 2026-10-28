@@ -61,6 +61,9 @@ const FILE_THE_PATH_READ_AS_A_GLOB_MATCHES = 'app/i/(group)/page.ts'
 
 const SUPPRESSES_AN_OXLINT_ONLY_RULE = '// eslint-disable-next-line oxc/approx-constant\nexport const pi = 3.141592653589793\n'
 const SUPPRESSES_A_RULE_NOBODY_DEFINES = '// eslint-disable-next-line nobody/rule\nexport const pi = 3.141592653589793\n'
+// ESLint checks the options an inline config gives a rule against that rule's schema.
+const GIVES_AN_OXLINT_ONLY_RULE_OPTIONS = '/* eslint oxc/approx-constant: ["error", { "a": 1 }] */\nexport const pi = 3.141592653589793\n'
+const GIVES_NO_DEBUGGER_OPTIONS = '/* eslint no-debugger: ["error", { "a": 1 }] */\nexport const pi = 3.141592653589793\n'
 const SUPPRESSES_AN_OXLINT_ONLY_NAME_UNDER_A_REGISTERED_PREFIX =
   '// eslint-disable-next-line react/no-clone-element\nexport const element = null\n'
 const SUPPRESSES_A_NAME_NEITHER_ENGINE_HAS_UNDER_A_REGISTERED_PREFIX =
@@ -74,18 +77,28 @@ const REACT_VERSION = '18.3.0'
 
 // functional/prefer-immutable-types matches these as RegExps, which JSON could only hold as strings.
 const IMMUTABILITY_TYPE_OVERRIDES = [
-  { type: /^(React\.)?(ReactNode|ReactElement|ReactPortal|ReactFragment|JSX\.Element)$/u, to: 'Immutable' },
-  { type: /^(React\.)?(CSSProperties|Properties(<.*>)?)$/u, to: 'Immutable' },
-  { type: /^(HTML|SVG)\w*Element$/u, to: 'Immutable' },
-  { type: /^(React\.)?(RefObject|MutableRefObject|Ref|ForwardedRef)<.*>$/u, to: 'Immutable' },
-  { type: /^(React\.)?\w*(HTML|SVG|DOM)Attributes<.*>$/u, to: 'Immutable' },
+  { type: /^(?:React\.)?(?:ReactNode|ReactElement|ReactPortal|ReactFragment|JSX\.Element)$/u, to: 'Immutable' },
+  { type: /^(?:React\.)?(?:CSSProperties|Properties(?:<.*>)?)$/u, to: 'Immutable' },
+  { type: /^(?:HTML|SVG)\w*Element$/u, to: 'Immutable' },
+  { type: /^(?:React\.)?(?:RefObject|MutableRefObject|Ref|ForwardedRef)<.*>$/u, to: 'Immutable' },
+  { type: /^(?:React\.)?\w*(?:HTML|SVG|DOM)Attributes<.*>$/u, to: 'Immutable' },
   {
-    type: /^(React\.)?(ComponentProps|ComponentPropsWithoutRef|ComponentPropsWithRef|ComponentType|FC|ElementType)<.*>$/u,
+    type: /^(?:React\.)?(?:ComponentProps|ComponentPropsWithoutRef|ComponentPropsWithRef|ComponentType|FC|ElementType)<.*>$/u,
     to: 'Immutable',
   },
-  { type: /^(StoryObj|Meta|StoryFn)<.*>$/u, to: 'Immutable' },
-  { type: /^(RegExpMatchArray|RegExpExecArray)$/u, to: 'Immutable' },
+  { type: /^(?:StoryObj|Meta|StoryFn)<.*>$/u, to: 'Immutable' },
+  { type: /^(?:RegExpMatchArray|RegExpExecArray)$/u, to: 'Immutable' },
 ]
+// The index in IMMUTABILITY_TYPE_OVERRIDES of the override reading a type name as Immutable.
+const BY_REACT_NODES = 0
+const BY_CSS_PROPERTIES = 1
+const BY_MARKUP_ELEMENTS = 2
+const BY_REFS = 3
+const BY_MARKUP_ATTRIBUTES = 4
+const BY_COMPONENT_TYPES = 5
+const BY_STORIES = 6
+const BY_REGEXP_MATCHES = 7
+const BY_NONE = -1
 
 const catalog = buildCatalog({
   rulesets: [
@@ -200,12 +213,12 @@ const {
   ruleSeverityFor,
 } = setUpEslintConfigOracle()
 
-function pluginsOf(block: Linter.Config): Record<string, ESLint.Plugin> {
+function pluginsOf(block: Readonly<Linter.Config>): Record<string, ESLint.Plugin> {
   if (block.plugins === undefined) throw new Error(`block ${block.name} registers no plugins`)
   return block.plugins
 }
 
-function languageOptionsOf(block: Linter.Config): Linter.LanguageOptions {
+function languageOptionsOf(block: Readonly<Linter.Config>): Linter.LanguageOptions {
   if (block.languageOptions === undefined) throw new Error(`block ${block.name} sets no languageOptions`)
   return block.languageOptions
 }
@@ -216,18 +229,18 @@ function registeredPlugin(prefix: string): ESLint.Plugin {
   return plugin
 }
 
-function ruleNamesOf(plugin: ESLint.Plugin | undefined): string[] {
+function ruleNamesOf(plugin: Readonly<ESLint.Plugin> | undefined): string[] {
   if (plugin?.rules === undefined) throw new Error('plugin has no rules')
   return Object.keys(plugin.rules)
 }
 
-function rulesOf(plugin: ESLint.Plugin): NonNullable<ESLint.Plugin['rules']> {
+function rulesOf(plugin: Readonly<ESLint.Plugin>): NonNullable<ESLint.Plugin['rules']> {
   if (plugin.rules === undefined) throw new Error('plugin has no rules')
   return plugin.rules
 }
 
 /** 'own' where it is the original's very rule module, 'stub' otherwise. */
-function ruleProvenanceOf(plugin: ESLint.Plugin, original: ESLint.Plugin): Record<string, 'own' | 'stub'> {
+function ruleProvenanceOf(plugin: Readonly<ESLint.Plugin>, original: Readonly<ESLint.Plugin>): Record<string, 'own' | 'stub'> {
   const originalRules = rulesOf(original)
   return Object.fromEntries(
     Object.entries(rulesOf(plugin)).map(([name, rule]) => [name, rule === originalRules[name] ? 'own' : 'stub']),
@@ -242,6 +255,25 @@ function correctnessAllowingSuppressions(): LintRulesInput {
 // The real typescript-eslint plugin, whose rules refuse options they do not take.
 function realTypescriptEslintPlugin(): ReadonlyMap<string, ESLint.Plugin> {
   return new Map([['@typescript-eslint', pluginRegisteredUnder(eslintPlugins, '@typescript-eslint')]])
+}
+
+/** Its max-params declares a schema ESLint cannot compile. */
+function typescriptEslintWithAnUncompilableMaxParamsSchema(): ESLint.Plugin {
+  const real = pluginRegisteredUnder(eslintPlugins, '@typescript-eslint')
+  const maxParams = real.rules?.['max-params']
+  if (maxParams === undefined) throw new Error('typescript-eslint has no max-params')
+  const schema = [{ type: 'object', properties: { max: { type: 'integer', format: 'no-such-format' } } }] as const
+  return { ...real, rules: { ...real.rules, 'max-params': { ...maxParams, meta: { ...maxParams.meta, schema } } } }
+}
+
+function causeOfTheErrorThrownBy(build: () => unknown): unknown {
+  try {
+    build()
+  } catch (error) {
+    if (error instanceof Error) return error.cause
+    throw error
+  }
+  throw new Error('the build threw nothing')
 }
 
 /** How a typed rule is turned on, as a title names it, the lint rules doing so, and the rule's severity there. */
@@ -622,17 +654,34 @@ describe('buildEslintConfig', () => {
       })
       const registryWithTheExtension = buildPluginRegistry({ '@typescript-eslint': [TYPED_EXTENSION_NAME] })
 
-      it('parses a TS file through the project service and runs the extension there', async () => {
-        const statingBothNames = buildLintRules(
+      function lintRulesStatingBothNames(): LintRulesInput {
+        return buildLintRules(
           {},
           { tsconfigRootDir: TSCONFIG_ROOT_DIR, rules: { [CORE_RULE_WITH_A_TYPED_EXTENSION]: 'error', [TYPED_EXTENSION]: ['error', AN_OPTION_OXLINT_REFUSES] } },
         )
-        const config = buildEslintConfig(statingBothNames, catalogWithATypedExtension, registryWithTheExtension, buildProjectFacts())
+      }
+
+      it('parses a TS file through the project service and runs the extension there', async () => {
+        const config = buildEslintConfig(lintRulesStatingBothNames(), catalogWithATypedExtension, registryWithTheExtension, buildProjectFacts())
 
         expect({
           projectService: (await parserOptionsFor(config, ORDINARY_MTS_FILE))['projectService'],
           entry: await ruleEntryFor(config, ORDINARY_MTS_FILE, TYPED_EXTENSION),
         }).toStrictEqual({ projectService: true, entry: [ERROR, AN_OPTION_OXLINT_REFUSES] })
+      })
+
+      it("names each block it emits, the one running the extension on the top level's TS files alone under agents-inc/scope", () => {
+        const config = buildEslintConfig(lintRulesStatingBothNames(), catalogWithATypedExtension, registryWithTheExtension, buildProjectFacts())
+
+        expect(config.map((block) => block.name)).toStrictEqual([
+          'agents-inc/base',
+          SVELTE_RUNES_ESLINT_BLOCK_NAME,
+          TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME,
+          'agents-inc/typed',
+          `agents-inc/scope/${TYPED_EXTENSION}`,
+          'agents-inc/twins-off/0',
+          'agents-inc/oxlint-rules-off',
+        ])
       })
     })
   })
@@ -733,7 +782,7 @@ describe('buildEslintConfig', () => {
           const config = buildEslintConfig(lintRules(), catalog, pluginRegistry, buildProjectFacts())
           const calculated = Object.fromEntries(
             await Promise.all(
-              FILES_INSIDE_AND_OUTSIDE_THE_SCOPES.map(async (file) => [
+              FILES_INSIDE_AND_OUTSIDE_THE_SCOPES.map(async (file): Promise<[string, string]> => [
                 file,
                 (await ruleSeverityFor(config, file, 'max-lines')) ?? 'off',
               ]),
@@ -752,7 +801,7 @@ describe('buildEslintConfig', () => {
         const config = buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts())
         const calculated = Object.fromEntries(
           await Promise.all(
-            ['src/a.ts', 'src/a.test.ts', 'lib/a.ts'].map(async (file) => [
+            ['src/a.ts', 'src/a.test.ts', 'lib/a.ts'].map(async (file): Promise<[string, string]> => [
               file,
               (await ruleSeverityFor(config, file, 'demo/not-in-tests')) ?? 'off',
             ]),
@@ -915,6 +964,15 @@ describe('buildEslintConfig', () => {
       )
 
       expect(await ruleIdsReportedOn(config, SUPPRESSES_AN_OXLINT_ONLY_RULE, 'src/suppressed.js')).toStrictEqual([])
+    })
+
+    it('lets an inline config give an oxlint-only rule options, through its stub, where it reports options no-debugger refuses', async () => {
+      const config = buildEslintConfig(correctnessAllowingSuppressions(), catalog, pluginRegistry, buildProjectFacts())
+
+      expect({
+        oxlintOnly: await ruleIdsReportedOn(config, GIVES_AN_OXLINT_ONLY_RULE_OPTIONS, 'src/suppressed.js'),
+        refusingThem: await ruleIdsReportedOn(config, GIVES_NO_DEBUGGER_OPTIONS, 'src/suppressed.js'),
+      }).toStrictEqual({ oxlintOnly: [], refusingThem: ['no-debugger'] })
     })
 
     it('still lets ESLint report a suppression of a rule no plugin defines', async () => {
@@ -1142,46 +1200,27 @@ describe('buildEslintConfig', () => {
 
     /** NOT_RUN where no block sets it or it is off. */
     async function entriesIn(
-      config: Linter.Config[],
+      config: readonly Linter.Config[],
       files: readonly string[],
       ruleIds: readonly string[],
     ): Promise<Record<string, Record<string, unknown>>> {
       return Object.fromEntries(
         await Promise.all(
-          files.map(async (file) => [
+          files.map(async (file): Promise<[string, Record<string, unknown>]> => [
             file,
-            Object.fromEntries(await Promise.all(ruleIds.map(async (ruleId) => [ruleId, await runningEntryFor(config, file, ruleId)]))),
+            Object.fromEntries(await Promise.all(ruleIds.map(async (ruleId): Promise<[string, unknown]> => [ruleId, await runningEntryFor(config, file, ruleId)]))),
           ]),
         ),
       )
     }
 
-    async function runningEntryFor(config: Linter.Config[], file: string, ruleId: string): Promise<unknown> {
+    async function runningEntryFor(config: readonly Linter.Config[], file: string, ruleId: string): Promise<unknown> {
       const severity = await ruleSeverityFor(config, file, ruleId)
       return severity === undefined || severity === 'off' ? NOT_RUN : ruleEntryFor(config, file, ruleId)
     }
 
-    /** Its max-params declares a schema ESLint cannot compile. */
-    function typescriptEslintWithAnUncompilableMaxParamsSchema(): ESLint.Plugin {
-      const real = pluginRegisteredUnder(eslintPlugins, '@typescript-eslint')
-      const maxParams = real.rules?.['max-params']
-      if (maxParams === undefined) throw new Error('typescript-eslint has no max-params')
-      const schema = [{ type: 'object', properties: { max: { type: 'integer', format: 'no-such-format' } } }] as const
-      return { ...real, rules: { ...real.rules, 'max-params': { ...maxParams, meta: { ...maxParams.meta, schema } } } }
-    }
-
-    function causeOfTheErrorThrownBy(build: () => unknown): unknown {
-      try {
-        build()
-      } catch (error) {
-        if (error instanceof Error) return error.cause
-        throw error
-      }
-      throw new Error('the build threw nothing')
-    }
-
     /** ESLint fills in the default options the rule declares. */
-    async function coreEntryAsEslintFillsIn(ruleId: string, entry: Linter.RuleEntry): Promise<unknown> {
+    async function coreEntryAsEslintFillsIn(ruleId: string, entry: Linter.RuleSeverity): Promise<unknown> {
       return ruleEntryFor([{ files: [JS_FILE], rules: { [ruleId]: entry } }], JS_FILE, ruleId)
     }
 
@@ -1413,7 +1452,7 @@ describe('a rule split by types with another, as the data gives it', () => {
   const typedInEslint = buildEslintRoute(TYPED, { typed: true, shipped: buildShippedRule('redundancy') })
   const splitRegistry = buildPluginRegistry({ '@typescript-eslint': ['no-unnecessary-boolean-literal-compare'], unicorn: ['no-unnecessary-boolean-comparison'] })
 
-  function configWith(untyped: RuleRoute, typed: RuleRoute): Linter.Config[] {
+  function configWith(untyped: Readonly<RuleRoute>, typed: Readonly<RuleRoute>): Linter.Config[] {
     const splitCatalog = buildCatalog({ rulesets: [buildQualityRuleset('redundancy')], rules: [untyped, typed] })
     return buildEslintConfig(buildLintRules({ quality: ['redundancy'] }), splitCatalog, splitRegistry, buildProjectFacts())
   }
@@ -1457,12 +1496,12 @@ describe('a rule split by types with another, as the data gives it', () => {
       typed: typedInEslint,
     },
   ])('is refused where $breach', ({ untyped, typed }) => {
-    expect(() => configWith(untyped, typed)).toThrowError(`${UNTYPED}: split by types with ${TYPED}`)
+    expect(() => configWith(untyped, typed)).toThrow(`${UNTYPED}: split by types with ${TYPED}`)
   })
 
   // An entry stating either rule of the pair states the untyped one in a typed block of its own; one
   // stating neither leaves it to the top level's typed block.
-  function blockNamesWithAnEntryStating(rules: RuleSettingsInput): (string | undefined)[] {
+  function blockNamesWithAnEntryStating(rules: RuleSettingsInput): Array<string | undefined> {
     const splitCatalog = buildCatalog({ rulesets: [buildQualityRuleset('redundancy')], rules: [untypedInEslint, typedInEslint] })
     const lintRules = buildLintRules({ quality: ['redundancy'] }, { fileOverrides: [buildFileOverride(['legacy/**'], { rules })] })
     return buildEslintConfig(lintRules, splitCatalog, splitRegistry, buildProjectFacts()).map((block) => block.name)
@@ -1473,7 +1512,7 @@ describe('a rule split by types with another, as the data gives it', () => {
   it.each([
     { states: 'the untyped rule', rules: { [UNTYPED]: 'warn' } },
     { states: 'the typed rule', rules: { [TYPED]: 'off' } },
-  ] satisfies { states: string; rules: RuleSettingsInput }[])('gives an entry stating $states a typed block of its own, named for the entry', ({ rules }) => {
+  ] satisfies Array<{ states: string; rules: RuleSettingsInput }>)('gives an entry stating $states a typed block of its own, named for the entry', ({ rules }) => {
     expect(blockNamesWithAnEntryStating(rules)).toStrictEqual([
       ...BLOCKS_BEFORE_THE_ENTRIES,
       'agents-inc/file-overrides/0',
@@ -1493,6 +1532,67 @@ describe('buildEslintSettings', () => {
   })
 })
 
+// The base block's settings hold IMMUTABILITY_TYPE_OVERRIDES, each RegExp equal in source and flags (the base block
+// test), so what these read is what functional/prefer-immutable-types reads as Immutable in a team's code.
+describe('the immutability type overrides the base block gives', () => {
+  it.each([
+    { typeName: 'ReactNode', readBy: BY_REACT_NODES },
+    { typeName: 'React.ReactElement', readBy: BY_REACT_NODES },
+    { typeName: 'ReactPortal', readBy: BY_REACT_NODES },
+    { typeName: 'React.ReactFragment', readBy: BY_REACT_NODES },
+    { typeName: 'JSX.Element', readBy: BY_REACT_NODES },
+    { typeName: 'React.JSX.Element', readBy: BY_REACT_NODES },
+    { typeName: 'CSSProperties', readBy: BY_CSS_PROPERTIES },
+    { typeName: 'React.CSSProperties', readBy: BY_CSS_PROPERTIES },
+    { typeName: 'Properties', readBy: BY_CSS_PROPERTIES },
+    { typeName: 'Properties<string>', readBy: BY_CSS_PROPERTIES },
+    { typeName: 'HTMLElement', readBy: BY_MARKUP_ELEMENTS },
+    { typeName: 'HTMLDivElement', readBy: BY_MARKUP_ELEMENTS },
+    { typeName: 'SVGPathElement', readBy: BY_MARKUP_ELEMENTS },
+    { typeName: 'RefObject<HTMLDivElement>', readBy: BY_REFS },
+    { typeName: 'React.MutableRefObject<number>', readBy: BY_REFS },
+    { typeName: 'Ref<T>', readBy: BY_REFS },
+    { typeName: 'ForwardedRef<T>', readBy: BY_REFS },
+    { typeName: 'HTMLAttributes<HTMLDivElement>', readBy: BY_MARKUP_ATTRIBUTES },
+    { typeName: 'React.InputHTMLAttributes<HTMLInputElement>', readBy: BY_MARKUP_ATTRIBUTES },
+    { typeName: 'SVGAttributes<SVGElement>', readBy: BY_MARKUP_ATTRIBUTES },
+    { typeName: 'DOMAttributes<T>', readBy: BY_MARKUP_ATTRIBUTES },
+    { typeName: 'ComponentProps<typeof Button>', readBy: BY_COMPONENT_TYPES },
+    { typeName: 'React.ComponentPropsWithoutRef<"button">', readBy: BY_COMPONENT_TYPES },
+    { typeName: 'ComponentPropsWithRef<T>', readBy: BY_COMPONENT_TYPES },
+    { typeName: 'ComponentType<Props>', readBy: BY_COMPONENT_TYPES },
+    { typeName: 'React.FC<Props>', readBy: BY_COMPONENT_TYPES },
+    { typeName: 'ElementType<T>', readBy: BY_COMPONENT_TYPES },
+    { typeName: 'StoryObj<typeof Button>', readBy: BY_STORIES },
+    { typeName: 'Meta<typeof Button>', readBy: BY_STORIES },
+    { typeName: 'StoryFn<T>', readBy: BY_STORIES },
+    { typeName: 'RegExpMatchArray', readBy: BY_REGEXP_MATCHES },
+    { typeName: 'RegExpExecArray', readBy: BY_REGEXP_MATCHES },
+  ])('read $typeName by the override at index $readBy', ({ typeName, readBy }) => {
+    expect(IMMUTABILITY_TYPE_OVERRIDES.findIndex(({ type }) => type.test(typeName))).toBe(readBy)
+  })
+
+  it.each([
+    'ReactNodes',
+    'MyReactNode',
+    'JSXxElement',
+    'CSSPropertiesX',
+    'Element',
+    'HTMLDivElements',
+    'RefObject',
+    'AriaAttributes<T>',
+    'HTMLAttributes',
+    'FC',
+    'MyFC<Props>',
+    'Metadata<T>',
+    'React.Meta<T>',
+    'RegExpMatchArrays',
+    'RegExp',
+  ])('read %s by none', (typeName) => {
+    expect(IMMUTABILITY_TYPE_OVERRIDES.findIndex(({ type }) => type.test(typeName))).toBe(BY_NONE)
+  })
+})
+
 // Only the ESLint build writes a setting for test files, so the data routes each rule with one to ESLint.
 // The rule here is off where suppressions are allowed, so a test-file setting leaking out of a banning entry shows.
 describe('a rule allowSuppressions decides, given a setting for test files while suppressions are banned', () => {
@@ -1505,6 +1605,12 @@ describe('a rule allowSuppressions decides, given a setting for test files while
   const strictAlone = buildPluginRegistry({ demo: ['strict'] })
 
   const routedToEslint = buildCatalog({ rulesets: [], rules: [buildEslintRoute('demo/strict', { typed: false, shipped: SHIPPED_WITH_A_TEST_FILE_SETTING })] })
+
+  function blockNamesOf(lintRules: ReturnType<typeof buildLintRules>): Array<string | undefined> {
+    return buildEslintConfig(lintRules, routedToEslint, strictAlone, buildProjectFacts())
+      .map(({ name }) => name)
+      .filter((name) => name?.endsWith('/demo/strict'))
+  }
 
   it('takes it in test files alone, at any depth, routed to ESLint', async () => {
     const config = buildEslintConfig(buildLintRules({}), routedToEslint, strictAlone, buildProjectFacts())
@@ -1528,11 +1634,6 @@ describe('a rule allowSuppressions decides, given a setting for test files while
   })
 
   it("names the test files' block of an entry under the entry's name, as the top level's is under its own, as ESLint's config inspector shows them", () => {
-    const blockNamesOf = (lintRules: ReturnType<typeof buildLintRules>): (string | undefined)[] =>
-      buildEslintConfig(lintRules, routedToEslint, strictAlone, buildProjectFacts())
-        .map(({ name }) => name)
-        .filter((name) => name?.endsWith('/demo/strict'))
-
     expect({
       topLevel: blockNamesOf(buildLintRules({})),
       entry: blockNamesOf(buildLintRules({}, { allowSuppressions: true, fileOverrides: [buildFileOverride(['strict/**'], { allowSuppressions: false })] })),
@@ -1545,7 +1646,7 @@ describe('a rule allowSuppressions decides, given a setting for test files while
       rules: [buildOxlintRoute('no-debugger', { oxlintName: 'no-debugger', oxlintPlugin: 'eslint', shipped: SHIPPED_WITH_A_TEST_FILE_SETTING })],
     })
 
-    expect(() => buildEslintConfig(buildLintRules({}), routedToOxlint, strictAlone, buildProjectFacts())).toThrowError(
+    expect(() => buildEslintConfig(buildLintRules({}), routedToOxlint, strictAlone, buildProjectFacts())).toThrow(
       'no-debugger: given a setting for test files while suppressions are banned',
     )
   })

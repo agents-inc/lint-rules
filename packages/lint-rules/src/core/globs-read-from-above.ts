@@ -18,11 +18,11 @@ const ONE_CHARACTER_IN_A_NAME = '[^/]'
 
 /** `folders` is the root's path from the basePath, one folder each. A glob ending at the root itself matches no file under it. */
 export function globsReadFromTheRoot(glob: string, folders: readonly string[]): string[] {
-  const negated = isNegated(glob)
-  const pattern = withoutLeadingDotSlash(negated ? withoutNegation(glob) : glob)
+  const isGlobNegated = isNegated(glob)
+  const pattern = withoutLeadingDotSlash(isGlobNegated ? withoutNegation(glob) : glob)
   const left = segmentsLeftPast(pattern.split(SEGMENT_SEPARATOR), folders)
   const globs = left.filter(reachesBelowTheRoot).map((segments) => segments.join(SEGMENT_SEPARATOR))
-  return [...new Set(globs)].map((each) => (negated ? negationOf(each) : each))
+  return [...new Set(globs)].map((each) => (isGlobNegated ? negationOf(each) : each))
 }
 
 /** A `**` matches any number of folders. */
@@ -32,20 +32,21 @@ function segmentsLeftPast(segments: readonly string[], folders: readonly string[
   const [segment, ...rest] = segments
   if (segment === undefined) return []
   if (segment === GLOBSTAR) return [...segmentsLeftPast(segments, foldersBelow), ...segmentsLeftPast(rest, folders)]
-  return segmentMatches(segment, folder) ? segmentsLeftPast(rest, foldersBelow) : []
+  return doesSegmentMatch(segment, folder) ? segmentsLeftPast(rest, foldersBelow) : []
 }
 
 function reachesBelowTheRoot(segmentsLeft: readonly string[]): boolean {
   return segmentsLeft.length > 0
 }
 
-function segmentMatches(segment: string, folder: string): boolean {
-  return bracesExpanded(segment).some((expanded) => segmentWithoutBracesMatches(expanded, folder))
+function doesSegmentMatch(segment: string, folder: string): boolean {
+  return bracesExpanded(segment).some((expanded) => doesSegmentWithoutBracesMatch(expanded, folder))
 }
 
 /** No `u` flag, as minimatch builds its RegExp, so a `?` or a class matches one UTF-16 code unit. A segment holding an extglob matches none. */
-function segmentWithoutBracesMatches(segment: string, folder: string): boolean {
+function doesSegmentWithoutBracesMatch(segment: string, folder: string): boolean {
   const source = sourceOfSegment(segment)
+  // oxlint-disable-next-line require-unicode-regexp -- under u, a `?` or a class would match a character outside the basic plane whole, where minimatch matches one UTF-16 code unit (three cases in globs-read-from-above.test.ts fail with it)
   return source !== null && new RegExp(`^${source}$`).test(folder)
 }
 
@@ -60,8 +61,8 @@ function bracesExpanded(segment: string): string[] {
 
 /** Null where it holds an extglob. */
 function sourceOfSegment(segment: string): string | null {
-  const parts = [...segment.matchAll(SEGMENT_PART)].map(sourceOfPart)
-  return parts.some((part) => part === null) ? null : parts.join('')
+  const parts = segment.matchAll(SEGMENT_PART).toArray().map(sourceOfPart)
+  return parts.includes(null) ? null : parts.join('')
 }
 
 function sourceOfPart(part: RegExpExecArray): string | null {
