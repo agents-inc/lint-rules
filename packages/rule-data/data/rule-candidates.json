@@ -1,23 +1,9 @@
 [
   {
-    "id": "@eslint-community/eslint-comments/disable-enable-pair",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-eslint-community-eslint-comments-disable-enable-pair); not built yet: waits on card q-lint-cmt-editor-reach (the editor parts always allow suppressions, so built as specified it would run in every team's editor too).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24; docs/work/rule-candidates-r1.md §2: 104 hits",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "@eslint-community/eslint-comments/no-aggregating-enable",
     "status": "not-reviewed",
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "@eslint-community/eslint-comments/no-duplicate-disable",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-eslint-community-eslint-comments-no-duplicate-disable); not built yet: waits on card q-lint-rc-duplicate-disable-measured (where suppressions are allowed, check already reports the second disable of a rule ESLint runs as unused; of a rule oxlint runs, nothing).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24; docs/work/rule-candidates-r1.md §2: 1 hit",
     "recorded": "2026-10-24"
   },
   {
@@ -46,13 +32,6 @@
     "status": "not-reviewed",
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "@eslint-community/eslint-comments/require-description",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-eslint-community-eslint-comments-require-description); not built yet: waits on card q-lint-cmt-editor-reach (the editor parts always allow suppressions, so built as specified it would run in every team's editor too) and card q-lint-cmt-require-description-scope (at its defaults it also asks a reason of eslint-enable and /* global */ comments).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24; docs/work/rule-candidates-r1.md §2: 600 hits",
     "recorded": "2026-10-24"
   },
   {
@@ -805,10 +784,11 @@
   },
   {
     "id": "@tanstack/query/infinite-query-property-order",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-query-infinite-query-property-order); not built yet: waits on card q-lint-rc-tanstack-property-order-measured (where the opt-in ordering ruleset is listed, perfectionist/sort-objects reports the order its fix writes, and sorting the object as that report asks makes the next check rewrite it again).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
+    "status": "dropped",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-query-infinite-query-property-order); then \"Leave both rules out\" (q-lint-rc-tanstack-property-order-which-skip): the rule checks a call by its name alone, whatever it is imported from, so no skip of perfectionist/sort-objects matches the calls it checks. Skipping by name leaves another library's calls of these names unsorted, such as @pinia/colada's useInfiniteQuery and @hono/zod-openapi's createRoute; skipping by the file's @tanstack/ import reports a TanStack call reached through a re-export whatever order its options are in (measured, perfectionist 5.12.1, @tanstack/eslint-plugin-query 5.104.5).",
+    "decidedBy": "q-lint-rc-tanstack-property-order-which-skip",
+    "evidence": "docs/work/decisions.md, owner 2026-10-30, card q-lint-rc-tanstack-property-order-which-skip",
+    "recorded": "2026-10-30"
   },
   {
     "id": "@tanstack/query/mutation-property-order",
@@ -825,18 +805,12 @@
     "recorded": "2026-10-24"
   },
   {
-    "id": "@tanstack/query/stable-query-client",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-query-stable-query-client); not built yet: waits on card q-lint-rc-stable-query-client-fix-measured (check applies its fix, which writes React.useState(() => new QueryClient()) whether or not the file binds React, so a component file that does not bind React stops compiling: TS2686).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "@tanstack/router/create-route-property-order",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-router-create-route-property-order); not built yet: waits on card q-lint-rc-tanstack-property-order-measured (where the opt-in ordering ruleset is listed, perfectionist/sort-objects reports the order its fix writes, and sorting the object as that report asks makes the next check rewrite it again).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
+    "status": "dropped",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-tanstack-router-create-route-property-order); then \"Leave it out\" (q-lint-rc-tanstack-router-order-spread-crash): the rule throws on a spread of anything but a plain name, such as ...routeDefaults() or ...(devOnly ? { ssr: false } : {}), in any call named createRoute, createFileRoute, createRootRoute or createRootRouteWithContext, Hono's createRoute included, so check leaves the whole file unchecked (measured, @tanstack/eslint-plugin-router 1.162.0, the newest); and \"Leave both rules out\" (q-lint-rc-tanstack-property-order-which-skip), as no skip of perfectionist/sort-objects matches the calls the two property-order rules check.",
+    "decidedBy": "q-lint-rc-tanstack-router-order-spread-crash",
+    "evidence": "docs/work/decisions.md, owner 2026-10-30, card q-lint-rc-tanstack-router-order-spread-crash",
+    "recorded": "2026-10-30"
   },
   {
     "id": "@typescript-eslint/adjacent-overload-signatures",
@@ -888,32 +862,11 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "@typescript-eslint/consistent-type-exports",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 7 hits, 0 FP of 7",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "@typescript-eslint/consistent-type-imports",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 3,274 hits in 1,806 files, 24 of 33 repos; 2 FP of 20 at defaults, both removed by the option",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "@typescript-eslint/default-param-last",
     "status": "not-reviewed",
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "@typescript-eslint/dot-notation",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 5 hits, 0 FP of 5",
-    "recorded": "2026-10-28"
   },
   {
     "id": "@typescript-eslint/explicit-function-return-type",
@@ -1021,13 +974,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "@typescript-eslint/no-namespace",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "@typescript-eslint/no-non-null-asserted-nullish-coalescing",
     "status": "dropped",
     "why": "A duplicate: @typescript-eslint/no-non-null-assertion reports every non-null assertion outside test files.",
@@ -1055,13 +1001,6 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "@typescript-eslint/no-unnecessary-qualifier",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
   },
   {
     "id": "@typescript-eslint/no-unsafe-enum-assignment",
@@ -1130,13 +1069,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "@typescript-eslint/parameter-properties",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §4",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "@typescript-eslint/prefer-destructuring",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -1181,13 +1113,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "@typescript-eslint/prefer-readonly",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 191 hits, 0 FP of 10",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "@typescript-eslint/prefer-readonly-parameter-types",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -1214,13 +1139,6 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "@typescript-eslint/prefer-string-starts-ends-with",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 14 hits, 0 FP of 14",
-    "recorded": "2026-10-28"
   },
   {
     "id": "@typescript-eslint/prefer-ts-expect-error",
@@ -1271,20 +1189,6 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "@typescript-eslint/use-unknown-in-catch-callback-variable",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 80 hits, 0 FP of 10",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "accessor-pairs",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 11 hits in 1 repo; 3 FP of 11 (write-only canvas stubs in test doubles)",
-    "recorded": "2026-10-28"
   },
   {
     "id": "ai-guard/no-console-in-handler",
@@ -1345,13 +1249,6 @@
     "decidedBy": "rc-anti-slop-effect-prefer-effect-match",
     "evidence": "docs/work/decisions.md, owner 2026-10-24; docs/work/rule-candidates-r1.md §2: prefer-effect-match fired 152 times on non-Effect code",
     "recorded": "2026-10-24"
-  },
-  {
-    "id": "anti-slop/no-reduce-accumulator-copy",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 1 authored hit (+25 in bundles), 0 FP of 1 authored",
-    "recorded": "2026-10-28"
   },
   {
     "id": "anti-slop/no-runtime-typeof",
@@ -1433,13 +1330,6 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "compat/compat",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"we should accept this but can the rule default to including only relevant browsers like the major ones?\" (rc-compat-compat); not built yet: waits on card q-lint-compat-vite-target (whether \"the major browsers as Vite targets them\", the answer on card q-lint-compat-default-target, means browserslist's baseline widely available, which moves forward with the date, or Vite's own fixed list of browsers, which moves only with a Vite major), on card q-lint-compat-install-size (installing the plugin makes every install about 52 MB bigger, whether or not a project opts into browser-targets) and on card q-lint-compat-stale-data-warning (whether check silences browserslist's message, printed on every run once its browser data is six months old, telling the reader to run npx update-browserslist-db).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
   },
   {
     "id": "complexity",
@@ -1609,13 +1499,6 @@
     "status": "not-reviewed",
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "e18e/prefer-get-or-insert",
-    "status": "parked",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-e18e-prefer-get-or-insert), into the later category for the newest language features, enabled by Node version; off until then, as the 8 parked 2026-10-11: its fix writes Map.prototype.getOrInsert(), which Node 22.23 lacks (measured).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24; questions.md \"Parked\"; docs/work/rule-candidates-r1.md §2: fix measured on Node 22.23",
     "recorded": "2026-10-24"
   },
   {
@@ -1847,10 +1730,11 @@
   },
   {
     "id": "hydration-proof/no-browser-global-in-render",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-hydration-proof-no-browser-global-in-render); not built yet: waits on card q-lint-rc-hydration-false-alarms-measured (in code that renders on a server, every hit read was code a competent developer would defend: a browser read that runs only once an effect has set a flag after hydrating, and a component loaded with ssr: false, which never renders on the server).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
+    "status": "dropped",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-hydration-proof-no-browser-global-in-render); then \"Leave them off\" (q-lint-rc-hydration-false-alarms-measured): in code that renders on a server, every hit read was code a competent developer would defend: a browser read that runs only once an effect has set a flag after hydrating, and a component loaded with ssr: false, which never renders on the server; then \"Decided against for now\" (q-lint-hp-left-off-record). A later card can bring it back.",
+    "decidedBy": "q-lint-hp-left-off-record",
+    "evidence": "docs/work/decisions.md, owner 2026-10-29, card q-lint-hp-left-off-record",
+    "recorded": "2026-10-29"
   },
   {
     "id": "hydration-proof/no-client-only-initial-state",
@@ -1882,10 +1766,11 @@
   },
   {
     "id": "hydration-proof/no-locale-without-explicit-locale",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-hydration-proof-no-locale-without-explicit-locale); not built yet: waits on card q-lint-rc-hydration-false-alarms-measured (in code that renders on a server, every hit read was code a competent developer would defend: toLocaleString in a tooltip that renders only while the pointer hovers, never on the server or while hydrating, where the user's own locale is the one wanted).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
+    "status": "dropped",
+    "why": "Owner 2026-10-24: \"Accept\" (rc-hydration-proof-no-locale-without-explicit-locale); then \"Leave them off\" (q-lint-rc-hydration-false-alarms-measured): in code that renders on a server, every hit read was code a competent developer would defend: toLocaleString in a tooltip that renders only while the pointer hovers, never on the server or while hydrating, where the user's own locale is the one wanted; then \"Decided against for now\" (q-lint-hp-left-off-record). A later card can bring it back.",
+    "decidedBy": "q-lint-hp-left-off-record",
+    "evidence": "docs/work/decisions.md, owner 2026-10-29, card q-lint-hp-left-off-record",
+    "recorded": "2026-10-29"
   },
   {
     "id": "hydration-proof/no-match-media-in-render",
@@ -1902,20 +1787,6 @@
     "recorded": "2026-10-24"
   },
   {
-    "id": "hydration-proof/no-storage-in-initial-render",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-hydration-proof-no-storage-in-initial-render); not built yet: waits on card q-lint-hp-server-components-gap (whether the react-ssr rules ship while the catalog cannot pass the plugin's setting that skips a file only a server renders, a Next.js App Router file without 'use client').",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "hydration-proof/no-timezone-without-explicit-timezone",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-hydration-proof-no-timezone-without-explicit-timezone); not built yet: waits on card q-lint-hp-timezone-hold (whether it ships or waits with the two rules held on q-lint-rc-hydration-false-alarms-measured) and on card q-lint-hp-server-components-gap (it reports a date formatted in a Next.js App Router file without 'use client', which only a server renders and which never hydrates, and the catalog cannot pass the plugin's setting that skips such a file).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "hydration-proof/no-unstable-id",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -1923,24 +1794,10 @@
     "recorded": "2026-10-24"
   },
   {
-    "id": "hydration-proof/no-window-render-branch",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-hydration-proof-no-window-render-branch); not built yet: waits on card q-lint-hp-server-components-gap (whether the react-ssr rules ship while the catalog cannot pass the plugin's setting that skips a file only a server renders, a Next.js App Router file without 'use client').",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "hydration-proof/require-deterministic-list-order",
     "status": "not-reviewed",
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "hydration-proof/require-stable-server-snapshot",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-hydration-proof-require-stable-server-snapshot); not built yet: waits on card q-lint-hp-server-components-gap (whether the react-ssr rules ship while the catalog cannot pass the plugin's setting that skips a file only a server renders, a Next.js App Router file without 'use client').",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
   {
@@ -2176,20 +2033,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "jest-dom/prefer-checked",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-jest-dom-prefer-checked); not built yet: waits on card q-lint-rc-jest-dom-fixes-measured (its fix rewrites a test that an aria-checked attribute is present, toHaveAttribute('aria-checked'), into one that the element is checked, toBeChecked(), so it turns a passing test into a failing one where aria-checked is \"false\").",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "jest-dom/prefer-empty",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-jest-dom-prefer-empty); not built yet: waits on card q-lint-rc-jest-dom-fixes-measured (its fix rewrites a test that a fragment has no first child, expect(asFragment().firstChild).toBeNull(), into expect(asFragment()).toBeEmptyDOMElement(), which takes only an element, so it turns a passing test into a failing one).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "jest-dom/prefer-enabled-disabled",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -2201,41 +2044,6 @@
     "status": "not-reviewed",
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "jest-dom/prefer-in-document",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-jest-dom-prefer-in-document); not built yet: waits on card q-lint-rc-jest-dom-fixes-measured (its fix rewrites a test that some elements exist, expect(getAllByRole('listitem')).toBeTruthy(), into one that exactly one does, expect(getByRole('listitem')).toBeInTheDocument(), and a test of an element rendered into a container off the page into one that it is in the page, so it turns a passing test into a failing one in both).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "jest-dom/prefer-pressed",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-jest-dom-prefer-pressed); not built yet: waits on card q-lint-rc-pressed-fix-measured (its fix writes toBePressed, which jest-dom has only since 6.7.0, so it turns a passing test into a failing one in a project on an older jest-dom).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "jest-dom/prefer-required",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-jest-dom-prefer-required); not built yet: waits on card q-lint-rc-jest-dom-fixes-measured (its fix rewrites a test that an aria-required attribute is present, toHaveAttribute('aria-required'), into one that the element is required, toBeRequired(), so it turns a passing test into a failing one where aria-required is \"false\").",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "jest-dom/prefer-to-have-attribute",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-jest-dom-prefer-to-have-attribute); not built yet: waits on card q-lint-rc-jest-dom-fixes-measured (its fix rewrites getAttribute on an element DOMParser made, expect(link.getAttribute('rel')).toBe('noopener'), into expect(link).toHaveAttribute('rel', 'noopener'), which takes only an element whose document has a window, so it turns a passing test into a failing one).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "jest-dom/prefer-to-have-class",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-jest-dom-prefer-to-have-class); not built yet: waits on card q-lint-rc-jest-dom-fixes-measured (its fix rewrites a test that className contains a name, toContain('active'), into one that the element has a class of exactly that name, toHaveClass('active'), so it turns a passing test into a failing one where a CSS module hashes the class names).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
   {
@@ -3114,13 +2922,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "no-array-constructor",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "no-bitwise",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -3176,13 +2977,6 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "no-empty",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 3 hits in 1 repo (+274 in bundles), 0 FP of 3",
-    "recorded": "2026-10-28"
   },
   {
     "id": "no-empty-function",
@@ -3292,20 +3086,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "no-new-wrappers",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits; the gate recorded this hole",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "no-object-constructor",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "no-octal",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -3383,20 +3163,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "no-self-compare",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "no-sequences",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 1 hit, 0 FP",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "no-template-curly-in-string",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -3438,13 +3204,6 @@
     "decidedBy": "owner-2026-10-10",
     "evidence": "docs/work/decisions.md: owner 2026-10-10 rule changes",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "no-useless-assignment",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 70 hits in 54 files, 6 repos; 0 FP of 14",
-    "recorded": "2026-10-28"
   },
   {
     "id": "one-var",
@@ -3647,13 +3406,6 @@
     "recorded": "2026-10-10"
   },
   {
-    "id": "playwright/no-focused-test",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-no-focused-test); then \"Don't ship them by default\" (q-lint-playwright-vitest-twins): off by default, since it reports the same line as a shipped vitest rule in Vitest and Jest test files; a team turns it on for its Playwright folder in fileOverrides.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "playwright/no-force-option",
     "status": "considering",
     "why": "Not measured yet: eslint-plugin-playwright, which needs a Playwright libs ruleset the owner names.",
@@ -3673,13 +3425,6 @@
     "why": "Not measured yet: eslint-plugin-playwright, which needs a Playwright libs ruleset the owner names.",
     "evidence": "docs/work/rule-candidates-r1.md §4",
     "recorded": "2026-10-10"
-  },
-  {
-    "id": "playwright/no-identical-title",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-no-identical-title); then \"Don't ship them by default\" (q-lint-playwright-vitest-twins): off by default, since it reports the same line as a shipped vitest rule in Vitest and Jest test files; a team turns it on for its Playwright folder in fileOverrides.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
   },
   {
     "id": "playwright/no-magic-timeouts",
@@ -3773,13 +3518,6 @@
     "recorded": "2026-10-10"
   },
   {
-    "id": "playwright/no-unnecessary-assertions",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-no-unnecessary-assertions); not built yet: waits on card q-lint-rc-unnecessary-assertions-measured (a Testing Library getBy* query reads as a locator, so it reports expect(screen.getByText(...)).toBeTruthy() in Vitest and Jest test files).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "playwright/no-unsafe-references",
     "status": "considering",
     "why": "Not measured yet: eslint-plugin-playwright, which needs a Playwright libs ruleset the owner names.",
@@ -3850,13 +3588,6 @@
     "recorded": "2026-10-10"
   },
   {
-    "id": "playwright/prefer-hooks-on-top",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-prefer-hooks-on-top); then \"Don't ship them by default\" (q-lint-playwright-vitest-twins): off by default, since it reports the same line as a shipped vitest rule in Vitest and Jest test files; a team turns it on for its Playwright folder in fileOverrides.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "playwright/prefer-locator",
     "status": "considering",
     "why": "Not measured yet: eslint-plugin-playwright, which needs a Playwright libs ruleset the owner names.",
@@ -3913,13 +3644,6 @@
     "recorded": "2026-10-10"
   },
   {
-    "id": "playwright/prefer-web-first-assertions",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-prefer-web-first-assertions); not built yet: waits on card q-lint-rc-web-first-assertions-measured (it reports element.getAttribute(...) assertions in Vitest and Jest test files, and check applies its fix, which changes the verdict of several Playwright assertions).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "playwright/require-annotation-reason",
     "status": "considering",
     "why": "Not measured yet: eslint-plugin-playwright, which needs a Playwright libs ruleset the owner names.",
@@ -3946,13 +3670,6 @@
     "why": "Not measured yet: eslint-plugin-playwright, which needs a Playwright libs ruleset the owner names.",
     "evidence": "docs/work/rule-candidates-r1.md §4",
     "recorded": "2026-10-10"
-  },
-  {
-    "id": "playwright/require-to-throw-message",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-playwright-require-to-throw-message); then \"Don't ship them by default\" (q-lint-playwright-vitest-twins): off by default, since it reports the same line as a shipped vitest rule in Vitest and Jest test files; a team turns it on for its Playwright folder in fileOverrides.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
-    "recorded": "2026-10-24"
   },
   {
     "id": "playwright/require-top-level-describe",
@@ -3988,13 +3705,6 @@
     "why": "Not measured yet: eslint-plugin-playwright, which needs a Playwright libs ruleset the owner names.",
     "evidence": "docs/work/rule-candidates-r1.md §4",
     "recorded": "2026-10-10"
-  },
-  {
-    "id": "prefer-object-has-own",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 22 hits, 0 FP of 22",
-    "recorded": "2026-10-28"
   },
   {
     "id": "prefer-template",
@@ -4081,13 +3791,6 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "radix",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 47 hits in 24 files, 5 repos; 0 FP of 15",
-    "recorded": "2026-10-28"
   },
   {
     "id": "react-google-translate/no-conditional-text-nodes-with-siblings",
@@ -4521,6 +4224,14 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
+  },
+  {
+    "id": "react/no-adjacent-inline-elements",
+    "status": "dropped",
+    "why": "Shipped in react until the owner answered \"Stop shipping it\" (q-lint-crit2-adjacent-inline): it reports <b>one</b><i>two</i> written on one line but not the same pair split over two lines, which also renders \"onetwo\", and it reports markup written that way on purpose, such as <span>$</span><strong>42</strong> (measured, eslint-plugin-react 7.37.5). It fires in any JSX, Hono's included, so it could not stay in react. Run-together inline elements go unreported.",
+    "decidedBy": "q-lint-crit2-adjacent-inline",
+    "evidence": "docs/work/decisions.md, owner 2026-10-30, card q-lint-crit2-adjacent-inline; docs/work/ruleset-critique-r2.md, M1, M2 and Q7",
+    "recorded": "2026-10-31"
   },
   {
     "id": "react/no-clone-element",
@@ -5069,13 +4780,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "sonarjs/composite-assertions",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "sonarjs/concise-regex",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -5245,13 +4949,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "sonarjs/no-debounce-throttle-in-render",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "sonarjs/no-delete-var",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -5264,13 +4961,6 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "sonarjs/no-duplicate-parameterized-test-case",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
   },
   {
     "id": "sonarjs/no-duplicate-string",
@@ -5288,10 +4978,11 @@
   },
   {
     "id": "sonarjs/no-duplicated-branches",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 22 hits in 15 files, 5 repos; 2 FP of 22 (per-case comments, symmetric clamps)",
-    "recorded": "2026-10-28"
+    "status": "dropped",
+    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); then, once measured, \"Don't ship it\" (q-lint-snr-duplicated-branches-false-alarms): 4 of its 21 corpus reports were false alarms, and where every branch is identical beside an else or default it repeats the report of the shipped sonarjs/no-all-duplicated-branches.",
+    "decidedBy": "q-lint-snr-duplicated-branches-false-alarms",
+    "evidence": "docs/work/decisions.md, owner 2026-10-29, card q-lint-snr-duplicated-branches-false-alarms; docs/work/rule-candidates-r1.md §1: 22 hits in 15 files, 5 repos; src/generated/routing.json: installed, not shipped",
+    "recorded": "2026-10-29"
   },
   {
     "id": "sonarjs/no-empty-after-reluctant",
@@ -5320,13 +5011,6 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "sonarjs/no-empty-parameterized-test-dataset",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
   },
   {
     "id": "sonarjs/no-empty-test-file",
@@ -5727,13 +5411,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "sonarjs/synchronous-exception-assertions",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "sonarjs/synchronous-suite-callback",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -5865,13 +5542,6 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "symbol-description",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
   },
   {
     "id": "testing-library/consistent-data-testid",
@@ -6098,13 +5768,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "unicorn/no-async-iterator-callback",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet. His note: \"If this is already covered don't add this to\".",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "unicorn/no-await-expression-member",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -6124,13 +5787,6 @@
     "why": "not reviewed yet",
     "evidence": "data/eslint-stand-ins.json: stands in for oxc/bad-comparison-sequence without oxlint",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "unicorn/no-conflicting-constraints",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
-    "recorded": "2026-10-28"
   },
   {
     "id": "unicorn/no-console-spaces",
@@ -6183,25 +5839,19 @@
     "recorded": "2026-10-17"
   },
   {
+    "id": "unicorn/no-hex-escape",
+    "status": "dropped",
+    "why": "Owner 2026-10-14: \"Keep both, then drop no-hex-escape\" (r2-d68); prefer-literal-ascii was accepted on 2026-10-11 (owner-2026-10-11).",
+    "decidedBy": "r2-d68",
+    "evidence": "docs/work/spec-next-batch.md, row D68; docs/work/decisions.md, owner 2026-10-14",
+    "recorded": "2026-10-29"
+  },
+  {
     "id": "unicorn/no-immediate-mutation",
     "status": "not-reviewed",
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "unicorn/no-incomplete-accessor-override",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "unicorn/no-ineffective-csp-directives",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
   },
   {
     "id": "unicorn/no-instanceof-array",
@@ -6211,75 +5861,12 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "unicorn/no-invalid-boolean-attribute-value",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "unicorn/no-invalid-character-comparison",
     "status": "dropped",
     "why": "Not shipped as a rule of its own: oxc/bad-char-at-comparison reports the same code beside oxlint, and this rule stands in for it without oxlint.",
     "decidedBy": "r2-d49-51",
     "evidence": "docs/work/spec-core.md §4.2; data/eslint-stand-ins.json",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "unicorn/no-invalid-dom-token",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "unicorn/no-invalid-integrity",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "unicorn/no-invalid-intl-options",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "unicorn/no-invalid-property-descriptor",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet. His note: \"If this is already handled don't add it\".",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "unicorn/no-invalid-response-options",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "unicorn/no-invalid-style-set-property",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "unicorn/no-invalid-temporal-arithmetic",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "unicorn/no-invalid-url-protocol-comparison",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
-    "recorded": "2026-10-28"
   },
   {
     "id": "unicorn/no-javascript-url",
@@ -6388,13 +5975,6 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "unicorn/no-prevent-default-in-passive-listener",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
   },
   {
     "id": "unicorn/no-process-exit",
@@ -6513,40 +6093,12 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "unicorn/no-unsafe-json-serialization",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "unicorn/no-unsafe-string-replacement",
     "status": "dropped",
     "why": "Turned off for every team: each report here was code written so on purpose, and no option fixes it. It reported a replacement held in a named constant, as our code standard asks.",
     "decidedBy": "q-dogfood-off-five",
     "evidence": "docs/work/spec-answers-3.md, item 6",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "unicorn/no-unused-builtin-method-return",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 5 hits, 0 FP of 5",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "unicorn/no-unused-iterator-helper",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
-    "recorded": "2026-10-28"
-  },
-  {
-    "id": "unicorn/no-url-in-search-params",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
-    "recorded": "2026-10-28"
   },
   {
     "id": "unicorn/no-useless-collection-argument",
@@ -6585,11 +6137,11 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "unicorn/no-useless-set-construction",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
+    "id": "unicorn/no-useless-spread",
+    "status": "parked",
+    "why": "Shipped in redundancy, run by oxlint, until the owner answered 'Run it in ESLint' on 2026-10-29 (q-lint-jsdom-src-no-useless-spread): oxlint's version removes the spread around an iterator's .map(), so [...list.values().map(f)] returns an iterator (measured, oxlint 1.87.0). ESLint's version leaves that alone but removes the copy in for (const child of [...parent.childNodes]) child.remove(), so a loop over a live list it shrinks skips items, and two passing jsdom tests failed after check (measured, eslint-plugin-unicorn 78.0.0, jsdom 29.1.1). Held, unshipped, on card q-lint-useless-spread-loop-copy; then \"Keep it unshipped\" (q-lint-useless-spread-fix-when-on, owner 2026-10-30): no team can turn it on through agents-inc.lint.mts, and naming it there is refused.",
+    "evidence": "<r44>/resume-1029/evidence/FIXES-WITHHELD-1029/reviewer/real/jsdom-29.1.1/out/probe-for-of/; docs/work/decisions.md, owner 2026-10-29 on no-useless-spread",
+    "recorded": "2026-10-31"
   },
   {
     "id": "unicorn/no-useless-switch-case",
@@ -6604,13 +6156,6 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "unicorn/no-using-resource-escape",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
-    "recorded": "2026-10-28"
   },
   {
     "id": "unicorn/no-zero-fractions",
@@ -6641,13 +6186,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "unicorn/prefer-at",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 275 hits, 0 FP of 16",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "unicorn/prefer-bigint-literals",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -6676,20 +6214,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "unicorn/prefer-dispose",
-    "status": "parked",
-    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
-    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
-    "recorded": "2026-10-15"
-  },
-  {
-    "id": "unicorn/prefer-error-is-error",
-    "status": "parked",
-    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
-    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
-    "recorded": "2026-10-15"
-  },
-  {
     "id": "unicorn/prefer-escaped-irregular-whitespace",
     "status": "recommended",
     "why": "Adopt (r1): an invisible NBSP or zero-width character in a string. correctness, ESLint.",
@@ -6702,13 +6226,6 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "unicorn/prefer-get-or-insert-computed",
-    "status": "parked",
-    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
-    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
-    "recorded": "2026-10-15"
   },
   {
     "id": "unicorn/prefer-global-this",
@@ -6725,33 +6242,12 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "unicorn/prefer-iterator-concat",
-    "status": "parked",
-    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
-    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
-    "recorded": "2026-10-15"
-  },
-  {
-    "id": "unicorn/prefer-iterator-zip",
-    "status": "parked",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-unicorn-prefer-iterator-zip), into the later category for the newest language features, enabled by Node version; off until then, as the 8 parked 2026-10-11: its suggested fix writes Iterator.zip(), which Node 22.23 lacks (measured).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24; questions.md \"Parked\"; docs/work/rule-candidates-r1.md §2: 2 hits",
-    "recorded": "2026-10-24"
-  },
-  {
     "id": "unicorn/prefer-json-import",
     "status": "dropped",
     "why": "Owner 2026-10-24: \"Reject\" (rc-unicorn-prefer-json-import).",
     "decidedBy": "rc-unicorn-prefer-json-import",
     "evidence": "docs/work/decisions.md, owner 2026-10-24; docs/work/rule-candidates-r1.md §2: 6 hits, 1 FP",
     "recorded": "2026-10-24"
-  },
-  {
-    "id": "unicorn/prefer-literal-ascii",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits (2,877 in minified bundles)",
-    "recorded": "2026-10-28"
   },
   {
     "id": "unicorn/prefer-math-min-max",
@@ -6789,13 +6285,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "unicorn/prefer-promise-try",
-    "status": "parked",
-    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
-    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
-    "recorded": "2026-10-15"
-  },
-  {
     "id": "unicorn/prefer-prototype-methods",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -6809,13 +6298,6 @@
     "decidedBy": "r2-d80",
     "evidence": "docs/work/spec-core.md §4.2",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "unicorn/prefer-regexp-escape",
-    "status": "parked",
-    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
-    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
-    "recorded": "2026-10-15"
   },
   {
     "id": "unicorn/prefer-response-static-json",
@@ -6838,13 +6320,6 @@
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "unicorn/prefer-single-call",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet. His note: \"It's not bad that some lines will have multiple rule violations as long as they're not the same violations\".",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 482 hits (204 in one code generator), 0 FP of 12",
-    "recorded": "2026-10-28"
   },
   {
     "id": "unicorn/prefer-single-replace",
@@ -6883,20 +6358,6 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "unicorn/prefer-temporal",
-    "status": "parked",
-    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
-    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
-    "recorded": "2026-10-15"
-  },
-  {
-    "id": "unicorn/prefer-temporal-conversion",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 hits",
-    "recorded": "2026-10-28"
-  },
-  {
     "id": "unicorn/prefer-ternary",
     "status": "not-reviewed",
     "why": "not reviewed yet",
@@ -6924,20 +6385,6 @@
     "decidedBy": "owner-2026-10-10",
     "evidence": "docs/work/decisions.md: owner 2026-10-10 rule changes",
     "recorded": "2026-10-17"
-  },
-  {
-    "id": "unicorn/prefer-uint8array-base64",
-    "status": "parked",
-    "why": "Its fix writes an API Node 22 lacks; the owner shipped it off on 2026-10-11 until a category for the newest language features, enabled by Node version, exists",
-    "evidence": "questions.md \"Parked\"; decisions.md, the third sweep",
-    "recorded": "2026-10-15"
-  },
-  {
-    "id": "unicorn/prefer-uint8array-hex",
-    "status": "parked",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-unicorn-prefer-uint8array-hex), into the later category for the newest language features, enabled by Node version; off until then, as the 8 parked 2026-10-11: its fix writes Uint8Array.fromHex() and Uint8Array#toHex(), which Node 22.23 lacks (measured).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24; questions.md \"Parked\"; docs/work/rule-candidates-r1.md §2: 42 hits",
-    "recorded": "2026-10-24"
   },
   {
     "id": "unicorn/relative-url-style",
@@ -6990,11 +6437,12 @@
     "recorded": "2026-10-17"
   },
   {
-    "id": "unicorn/require-text-decoder-streaming",
-    "status": "recommended",
-    "why": "Owner 2026-10-11: \"accept\" (owner-2026-10-11, the candidates page); not built yet.",
-    "evidence": "docs/work/decisions.md, owner 2026-10-11; docs/work/rule-candidates-r1.md §1: 0 corpus hits; fixture-proven, and nothing shipped fires on its fixture",
-    "recorded": "2026-10-28"
+    "id": "unicorn/require-post-message-target-origin",
+    "status": "dropped",
+    "why": "Shipped in browser until the owner answered \"Stop shipping it\" (q-lint-crit2-post-message-origin): it cannot tell window.postMessage, which takes a target origin, from a worker's, a broadcast channel's or a message port's, which take none, so it reports every message sent to those, and ESLint's version offers suggestions there such as channel.location.origin that throw a TypeError when run (measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0). unicorn leaves it out of its recommended set for that reason. A window.postMessage with no target origin goes unreported.",
+    "decidedBy": "q-lint-crit2-post-message-origin",
+    "evidence": "docs/work/decisions.md, owner 2026-10-30, card q-lint-crit2-post-message-origin; docs/work/ruleset-critique-r2.md, M4 and Q6",
+    "recorded": "2026-10-31"
   },
   {
     "id": "unicorn/single-line-block-comment-style",
@@ -7995,13 +7443,6 @@
     "status": "not-reviewed",
     "why": "not reviewed yet",
     "evidence": "src/generated/routing.json: installed, not shipped",
-    "recorded": "2026-10-24"
-  },
-  {
-    "id": "zod/prefer-trim-before-string-length-checks",
-    "status": "recommended",
-    "why": "Owner 2026-10-24: \"Accept\" (rc-zod-prefer-trim-before-string-length-checks); not built yet: waits on card q-lint-rc-zod-trim-fix-measured (check applies its fix, which moves .trim() before the length checks and so changes what the schema accepts).",
-    "evidence": "docs/work/decisions.md, owner 2026-10-24",
     "recorded": "2026-10-24"
   },
   {

@@ -9,6 +9,7 @@ export const eslintPluginPackageNames: Readonly<Record<string, string>> = {
   '@tanstack/router': '@tanstack/eslint-plugin-router',
   '@typescript-eslint': 'typescript-eslint',
   'check-file': 'eslint-plugin-check-file',
+  compat: 'eslint-plugin-compat',
   'css-modules': 'eslint-plugin-css-modules',
   e18e: '@e18e/eslint-plugin',
   functional: 'eslint-plugin-functional',

@@ -19,15 +19,23 @@ export type WhenSuppressions<Setting, InTestFiles> = BySuppressionMode<Setting> 
 export type SettingBySuppressionMode = WhenSuppressions<SuppressionModeSetting, TestFileSetting>
 
 /**
+ * The ruleset a rule `allowSuppressions` decides belongs to: the editor parts, which always allow
+ * suppressions, run it only where their rulesets list this one. Absent, every editor part gives it its
+ * allowed setting.
+ */
+type EditorRuleset = { readonly editorRuleset?: string }
+
+/**
  * What turns a shipped rule on: its ruleset, when a consumer lists it; nothing, for a rule that is on
- * whatever rulesets are listed; or `allowSuppressions`, whatever rulesets are listed. A consumer can
- * turn the first two kinds off by ID in `rules`.
- * `ruleset?: never` lets `ruleset` be read on every kind; `in` tells the other two apart.
+ * whatever rulesets are listed; only a consumer naming it in `rules`, for a rule shipped off; or
+ * `allowSuppressions`. A consumer can turn the first two kinds off by ID in `rules`.
+ * `ruleset?: never` lets `ruleset` be read on every kind; `in` tells the others apart.
  */
 export type TurnedOnBy =
   | { ruleset: string }
   | { alwaysOn: true; ruleset?: never }
-  | { whenSuppressions: SettingBySuppressionMode; ruleset?: never }
+  | { offByDefault: true; ruleset?: never }
+  | ({ whenSuppressions: SettingBySuppressionMode; ruleset?: never } & EditorRuleset)
 
 /** A suppression-mode setting as JSON gives it, which types `off` as `string`. */
 export type SuppressionModeSettingField = string | { readonly options: readonly unknown[] }
@@ -35,25 +43,35 @@ export type SuppressionModeSettingField = string | { readonly options: readonly 
 /** The settings as the generated routing gives them. */
 type SettingFieldBySuppressionMode = WhenSuppressions<SuppressionModeSettingField, TestFileSetting | undefined>
 
-/** The three fields as the generated routing gives them; `data/rules.json` gives the first two the same way. */
+/** The fields as the generated routing gives them; `data/rules.json` gives the first three the same way. */
 export type TurnedOnByFields = {
   readonly ruleset?: string | undefined
   readonly alwaysOn?: boolean | undefined
+  readonly offByDefault?: boolean | undefined
   readonly whenSuppressions?: SettingFieldBySuppressionMode | undefined
+  readonly editorRuleset?: string | undefined
 }
 
 /**
- * Exactly one of a ruleset, `alwaysOn: true` and `whenSuppressions`. JSON types `true` as `boolean` and
- * `off` as `string`; this narrows them.
+ * Exactly one of a ruleset, `alwaysOn: true`, `offByDefault: true` and `whenSuppressions`, which alone
+ * may have an editor ruleset beside it. JSON types `true` as `boolean` and `off` as `string`; this
+ * narrows them.
  */
-export function parseTurnedOnBy(id: string, { ruleset, alwaysOn, whenSuppressions }: TurnedOnByFields): TurnedOnBy {
-  const waysGiven = [ruleset !== undefined, alwaysOn === true, whenSuppressions !== undefined].filter(Boolean)
+export function parseTurnedOnBy(id: string, { ruleset, alwaysOn, offByDefault, whenSuppressions, editorRuleset }: TurnedOnByFields): TurnedOnBy {
+  const waysGiven = [ruleset !== undefined, alwaysOn === true, offByDefault === true, whenSuppressions !== undefined].filter(Boolean)
   if (waysGiven.length !== 1) {
-    throw new Error(`${id} needs exactly one of a ruleset, alwaysOn: true and whenSuppressions`)
+    throw new Error(`${id} needs exactly one of a ruleset, alwaysOn: true, offByDefault: true and whenSuppressions`)
   }
-  if (whenSuppressions !== undefined) return { whenSuppressions: parseWhenSuppressions(id, whenSuppressions) }
+  if (whenSuppressions !== undefined) return { whenSuppressions: parseWhenSuppressions(id, whenSuppressions), ...editorRulesetOf(editorRuleset) }
+  if (editorRuleset !== undefined) throw new Error(`${id}: an editor ruleset goes only beside whenSuppressions`)
   if (ruleset !== undefined) return { ruleset }
+  if (offByDefault === true) return { offByDefault }
   return { alwaysOn: true }
+}
+
+/** None is no key, as exactOptionalPropertyTypes asks. */
+export function editorRulesetOf(editorRuleset: string | undefined): EditorRuleset {
+  return editorRuleset === undefined ? {} : { editorRuleset }
 }
 
 export function parseSuppressionModeSetting(id: string, setting: SuppressionModeSettingField): SuppressionModeSetting {

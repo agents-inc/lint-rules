@@ -10,6 +10,7 @@ import vitest from '@vitest/eslint-plugin'
 import { housePlugin } from '@workspace/eslint-plugin-house'
 import type { ESLint } from 'eslint'
 import checkFile from 'eslint-plugin-check-file'
+import compat from 'eslint-plugin-compat'
 import cssModules from 'eslint-plugin-css-modules'
 import functional from 'eslint-plugin-functional'
 import hydrationProof from 'eslint-plugin-hydration-proof'
@@ -47,6 +48,7 @@ export const eslintPlugins: Readonly<Record<string, ESLint.Plugin>> = {
   '@tanstack/router': checkedPlugin('@tanstack/router', tanstackRouter),
   '@typescript-eslint': typescriptEslint.plugin,
   'check-file': checkFile,
+  compat,
   'css-modules': checkedPlugin('css-modules', cssModules),
   e18e,
   functional,

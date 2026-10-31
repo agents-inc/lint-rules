@@ -1,5 +1,69 @@
 [
   {
+    "id": "@eslint-community/eslint-comments/disable-enable-pair",
+    "ruleset": "comments",
+    "engine": "eslint",
+    "options": [],
+    "whenSuppressions": {
+      "banned": "off",
+      "allowed": "on"
+    },
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-eslint-community-eslint-comments-disable-enable-pair",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "@eslint-community/eslint-comments/no-duplicate-disable",
+    "ruleset": "comments",
+    "engine": "eslint",
+    "options": [],
+    "whenSuppressions": {
+      "banned": "off",
+      "allowed": "on"
+    },
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-eslint-community-eslint-comments-no-duplicate-disable",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "@eslint-community/eslint-comments/require-description",
+    "ruleset": "comments",
+    "engine": "eslint",
+    "options": [
+      {
+        "ignore": [
+          "eslint-enable",
+          "eslint-env",
+          "exported",
+          "global",
+          "globals"
+        ],
+        "additionalDirectives": [
+          "eslint-disable",
+          "oxlint-disable",
+          "oxlint-disable-line",
+          "oxlint-disable-next-line"
+        ]
+      }
+    ],
+    "whenSuppressions": {
+      "banned": "off",
+      "allowed": "on"
+    },
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-eslint-community-eslint-comments-require-description",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
     "id": "@eslint-react/dom-no-dangerously-set-innerhtml",
     "ruleset": "security",
     "engine": "eslint",
@@ -445,13 +509,14 @@
   },
   {
     "id": "@eslint-react/x-no-leaked-conditional-rendering",
-    "ruleset": "react",
+    "ruleset": "correctness",
     "engine": "eslint",
     "options": [],
     "typed": true,
     "assignment": {
       "confidence": "high",
-      "by": "plugin"
+      "note": "react keeps what depends on React",
+      "by": "owner-2026-10-10"
     }
   },
   {
@@ -668,6 +733,18 @@
     }
   },
   {
+    "id": "@tanstack/query/stable-query-client",
+    "ruleset": "tanstack-query",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-tanstack-query-stable-query-client",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
     "id": "@tanstack/router/route-param-names",
     "ruleset": "tanstack-router",
     "engine": "eslint",
@@ -682,7 +759,8 @@
   {
     "id": "@typescript-eslint/array-type",
     "ruleset": "conventions",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "typescript/array-type",
     "options": [
       {
         "default": "array-simple"
@@ -708,7 +786,7 @@
   },
   {
     "id": "@typescript-eslint/ban-ts-comment",
-    "alwaysOn": true,
+    "ruleset": "type-safety",
     "engine": "eslint",
     "eslintBecause": "oxlint skips JS files for it (oxlint-file-types.json), where ESLint's version reports a // @ts-ignore (measured, oxlint 1.87, ESLint 10.12)",
     "options": [
@@ -742,8 +820,8 @@
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "note": "allowSuppressions decides it, whatever rulesets are listed: bans all three @ts- comments while suppressions are banned, but for @ts-expect-error with a description in test and type-test files (q-dogfood-ts-expect-error-tests); allows @ts-expect-error with a description while allowed",
-      "by": "owner-2026-10-10"
+      "note": "q-lint-ban-ts-comment-editor: editors run it only where type-safety is listed, the ruleset the critique's test gives it (removing it changes what tsc reports). In the agent build allowSuppressions decides it, whatever rulesets are listed: bans all three @ts- comments while suppressions are banned, but for @ts-expect-error with a description in test and type-test files (q-dogfood-ts-expect-error-tests); allows @ts-expect-error with a description while allowed",
+      "by": "owner-2026-10-29"
     }
   },
   {
@@ -761,7 +839,8 @@
   {
     "id": "@typescript-eslint/consistent-type-assertions",
     "ruleset": "type-safety",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "typescript/consistent-type-assertions",
     "options": [
       {
         "assertionStyle": "as",
@@ -779,7 +858,8 @@
   {
     "id": "@typescript-eslint/consistent-type-definitions",
     "ruleset": "conventions",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "typescript/consistent-type-definitions",
     "options": [
       "type"
     ],
@@ -788,6 +868,52 @@
       "confidence": "low",
       "note": "needs consistency (interface vs type)",
       "by": "critique-r1"
+    }
+  },
+  {
+    "id": "@typescript-eslint/consistent-type-exports",
+    "ruleset": "conventions",
+    "engine": "eslint",
+    "options": [],
+    "typed": true,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
+    "id": "@typescript-eslint/consistent-type-imports",
+    "ruleset": "conventions",
+    "engine": "eslint",
+    "eslintBecause": "under emitDecoratorMetadata, oxlint's fix makes the import a decorated class's emitted design:paramtypes reads type-only, so the metadata names Function, where ESLint's version, with type information, leaves that file alone (q-lint-tse-type-imports-decorator-metadata; measured, oxlint 1.87, typescript-eslint 8.71.2)",
+    "options": [
+      {
+        "disallowTypeAnnotations": false
+      }
+    ],
+    "typed": true,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
+    "id": "@typescript-eslint/dot-notation",
+    "ruleset": "redundancy",
+    "engine": "eslint",
+    "options": [
+      {
+        "allowPrivateClassPropertyAccess": true,
+        "allowProtectedClassPropertyAccess": true
+      }
+    ],
+    "typed": true,
+    "assignment": {
+      "confidence": "high",
+      "note": "q-lint-crit2-single-placements",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -987,6 +1113,7 @@
     "id": "@typescript-eslint/no-dynamic-delete",
     "ruleset": "immutability",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version leaves a delete keyed by a template literal alone, where ESLint's version reports it (measured, oxlint 1.87, typescript-eslint 8.71.2)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -999,7 +1126,8 @@
   {
     "id": "@typescript-eslint/no-empty-object-type",
     "ruleset": "type-safety",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "typescript/no-empty-object-type",
     "options": [
       {
         "allowInterfaces": "with-single-extends"
@@ -1280,6 +1408,7 @@
     "id": "@typescript-eslint/no-inferrable-types",
     "ruleset": "redundancy",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports a type annotation its initializer implies, on a const and on a defaulted parameter, but fixes none of it, where ESLint's version removes it (q-lint-slice2-autofix; measured, oxlint 1.87, typescript-eslint 8.71.2)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -1309,7 +1438,8 @@
   {
     "id": "@typescript-eslint/no-invalid-void-type",
     "ruleset": "type-safety",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "typescript/no-invalid-void-type",
     "options": [],
     "typed": false,
     "assignment": {
@@ -1363,6 +1493,19 @@
     }
   },
   {
+    "id": "@typescript-eslint/no-namespace",
+    "ruleset": "conventions",
+    "engine": "oxlint",
+    "oxlintName": "typescript/no-namespace",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "q-lint-crit2-type-safety-scope",
+      "by": "owner-2026-10-30"
+    }
+  },
+  {
     "id": "@typescript-eslint/no-non-null-asserted-optional-chain",
     "ruleset": "correctness",
     "engine": "oxlint",
@@ -1386,9 +1529,13 @@
     "options": [],
     "typed": false,
     "ignores": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -1465,6 +1612,18 @@
     }
   },
   {
+    "id": "@typescript-eslint/no-unnecessary-qualifier",
+    "ruleset": "redundancy",
+    "engine": "eslint",
+    "options": [],
+    "typed": true,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "@typescript-eslint/no-unnecessary-template-expression",
     "ruleset": "redundancy",
     "engine": "eslint",
@@ -1522,15 +1681,14 @@
   },
   {
     "id": "@typescript-eslint/no-unnecessary-type-parameters",
-    "ruleset": "redundancy",
+    "ruleset": "type-safety",
     "engine": "eslint",
     "options": [],
     "typed": true,
     "assignment": {
-      "confidence": "low",
-      "alternative": "type-safety",
-      "note": "single-use type parameter is unnecessary, but is often a disguised unsafe cast",
-      "by": "agent-D"
+      "confidence": "high",
+      "note": "q-lint-crit2-type-safety-scope",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -1592,7 +1750,8 @@
   {
     "id": "@typescript-eslint/no-unsafe-function-type",
     "ruleset": "type-safety",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "typescript/no-unsafe-function-type",
     "options": [],
     "typed": false,
     "assignment": {
@@ -1629,9 +1788,13 @@
     "options": [],
     "typed": true,
     "ignores": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -1685,6 +1848,19 @@
     }
   },
   {
+    "id": "@typescript-eslint/parameter-properties",
+    "ruleset": "conventions",
+    "engine": "oxlint",
+    "oxlintName": "typescript/parameter-properties",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "q-lint-crit2-type-safety-scope",
+      "by": "owner-2026-10-30"
+    }
+  },
+  {
     "id": "@typescript-eslint/prefer-as-const",
     "ruleset": "modern-js",
     "engine": "oxlint",
@@ -1701,7 +1877,8 @@
   {
     "id": "@typescript-eslint/prefer-enum-initializers",
     "ruleset": "correctness",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "typescript/prefer-enum-initializers",
     "options": [],
     "typed": false,
     "assignment": {
@@ -1727,7 +1904,8 @@
   {
     "id": "@typescript-eslint/prefer-literal-enum-member",
     "ruleset": "type-safety",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "typescript/prefer-literal-enum-member",
     "options": [],
     "typed": false,
     "assignment": {
@@ -1740,10 +1918,16 @@
   {
     "id": "@typescript-eslint/prefer-namespace-keyword",
     "ruleset": "modern-js",
-    "engine": "oxlint",
-    "oxlintName": "typescript/prefer-namespace-keyword",
+    "engine": "eslint",
+    "eslintBecause": "it runs only in declaration files, by files of its own, and the oxlint build runs no rule scoped by files",
     "options": [],
     "typed": false,
+    "files": [
+      "**/*.d.ts",
+      "**/*.d.*.ts",
+      "**/*.d.mts",
+      "**/*.d.cts"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "agent-D"
@@ -1758,6 +1942,30 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-D"
+    }
+  },
+  {
+    "id": "@typescript-eslint/prefer-readonly",
+    "ruleset": "immutability",
+    "engine": "eslint",
+    "options": [],
+    "typed": true,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
+    "id": "@typescript-eslint/prefer-string-starts-ends-with",
+    "ruleset": "modern-js",
+    "engine": "eslint",
+    "options": [],
+    "typed": true,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -1847,9 +2055,44 @@
     }
   },
   {
+    "id": "@typescript-eslint/use-unknown-in-catch-callback-variable",
+    "ruleset": "type-safety",
+    "engine": "eslint",
+    "options": [],
+    "typed": true,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
+    "id": "accessor-pairs",
+    "ruleset": "correctness",
+    "engine": "oxlint",
+    "oxlintName": "accessor-pairs",
+    "options": [],
+    "typed": false,
+    "ignores": [
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/__tests__/**",
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
+    ],
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "array-callback-return",
     "ruleset": "correctness",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version leaves a reduce callback that returns nothing alone, where ESLint's version reports it (measured, oxlint 1.87, ESLint 10.12)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -1920,6 +2163,20 @@
     }
   },
   {
+    "id": "compat/compat",
+    "ruleset": "browser-targets",
+    "engine": "eslint",
+    "options": [
+      "chrome >= 111, edge >= 111, firefox >= 114, safari >= 16.4, ios_saf >= 16.4"
+    ],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-compat-compat",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
     "id": "consistent-return",
     "ruleset": "correctness",
     "engine": "eslint",
@@ -1974,13 +2231,26 @@
   {
     "id": "default-param-last",
     "ruleset": "conventions",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "default-param-last",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "low",
       "note": "API-shape preference, rarely a bug; needs \"consistency\"",
       "by": "critique-r1"
+    }
+  },
+  {
+    "id": "e18e/prefer-get-or-insert",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-e18e-prefer-get-or-insert",
+      "by": "owner-2026-10-24"
     }
   },
   {
@@ -2059,9 +2329,13 @@
     ],
     "typed": false,
     "ignores": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -2079,14 +2353,18 @@
     ],
     "typed": true,
     "files": [
-      "**/*.ts"
+      "**/*.{ts,mts,cts}"
     ],
     "ignores": [
-      "**/use[A-Z]*.ts",
-      "**/use-*.ts",
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/use[A-Z]*.{ts,mts,cts}",
+      "**/use-*.{ts,mts,cts}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -2111,14 +2389,18 @@
     "options": [],
     "typed": true,
     "files": [
-      "**/*.ts"
+      "**/*.{ts,mts,cts}"
     ],
     "ignores": [
-      "**/use[A-Z]*.ts",
-      "**/use-*.ts",
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/use[A-Z]*.{ts,mts,cts}",
+      "**/use-*.{ts,mts,cts}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -2133,9 +2415,13 @@
     "typed": false,
     "ignores": [
       "**/*{ErrorBoundary,error-boundary}*.{ts,tsx,js,jsx}",
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -2163,15 +2449,14 @@
   },
   {
     "id": "functional/prefer-property-signatures",
-    "ruleset": "immutability",
+    "ruleset": "type-safety",
     "engine": "eslint",
     "options": [],
     "typed": true,
     "assignment": {
-      "confidence": "low",
-      "alternative": "type-safety",
-      "note": "property signatures allow readonly and avoid method-signature bivariance",
-      "by": "critique-r1"
+      "confidence": "high",
+      "note": "q-lint-crit2-type-safety-scope",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -2355,6 +2640,18 @@
     }
   },
   {
+    "id": "house/no-reduce-accumulator-copy",
+    "ruleset": "performance",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "house/no-section-banner",
     "ruleset": "comments",
     "engine": "eslint",
@@ -2424,6 +2721,54 @@
       "confidence": "high",
       "note": "q-r2-class-helper-ruleset: a libs ruleset of its own in the styling domain, for teams composing classes through a helper (lib-structure)",
       "by": "owner-2026-10-14"
+    }
+  },
+  {
+    "id": "hydration-proof/no-storage-in-initial-render",
+    "ruleset": "react-ssr",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-hydration-proof-no-storage-in-initial-render",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "hydration-proof/no-timezone-without-explicit-timezone",
+    "ruleset": "react-ssr",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-hydration-proof-no-timezone-without-explicit-timezone",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "hydration-proof/no-window-render-branch",
+    "ruleset": "react-ssr",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-hydration-proof-no-window-render-branch",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "hydration-proof/require-stable-server-snapshot",
+    "ruleset": "react-ssr",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-hydration-proof-require-stable-server-snapshot",
+      "by": "owner-2026-10-24"
     }
   },
   {
@@ -2658,6 +3003,90 @@
     "assignment": {
       "confidence": "high",
       "by": "critique-r1"
+    }
+  },
+  {
+    "id": "jest-dom/prefer-checked",
+    "ruleset": "jest-dom",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-jest-dom-prefer-checked",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "jest-dom/prefer-empty",
+    "ruleset": "jest-dom",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-jest-dom-prefer-empty",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "jest-dom/prefer-in-document",
+    "ruleset": "jest-dom",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-jest-dom-prefer-in-document",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "jest-dom/prefer-pressed",
+    "ruleset": "jest-dom",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-jest-dom-prefer-pressed",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "jest-dom/prefer-required",
+    "ruleset": "jest-dom",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-jest-dom-prefer-required",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "jest-dom/prefer-to-have-attribute",
+    "ruleset": "jest-dom",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-jest-dom-prefer-to-have-attribute",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "jest-dom/prefer-to-have-class",
+    "ruleset": "jest-dom",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-jest-dom-prefer-to-have-class",
+      "by": "owner-2026-10-24"
     }
   },
   {
@@ -3080,23 +3509,26 @@
   {
     "id": "max-lines",
     "ruleset": "complexity",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "max-lines",
     "options": [
       {
         "max": 200
       }
     ],
     "typed": false,
-    "files": [
-      "**/*.{tsx,jsx}"
-    ],
     "ignores": [
+      "**/*.{js,mjs,cjs,ts,mts,cts,vue,svelte,astro}",
       "**/use[A-Z]*.{tsx,jsx}",
       "**/use-*.{tsx,jsx}",
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -3122,7 +3554,8 @@
   {
     "id": "n/handle-callback-err",
     "ruleset": "correctness",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "node/handle-callback-err",
     "options": [],
     "typed": false,
     "assignment": {
@@ -3169,13 +3602,14 @@
   },
   {
     "id": "n/no-unpublished-bin",
-    "ruleset": "node",
+    "ruleset": "modules",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "plugin"
+      "note": "q-lint-crit2-single-placements",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -3430,6 +3864,19 @@
     }
   },
   {
+    "id": "no-array-constructor",
+    "ruleset": "redundancy",
+    "engine": "oxlint",
+    "oxlintName": "no-array-constructor",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "q-lint-crit2-modern-js-scope",
+      "by": "owner-2026-10-30"
+    }
+  },
+  {
     "id": "no-async-promise-executor",
     "ruleset": "correctness",
     "engine": "oxlint",
@@ -3551,7 +3998,8 @@
   {
     "id": "no-constructor-return",
     "ruleset": "correctness",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "no-constructor-return",
     "options": [],
     "typed": false,
     "assignment": {
@@ -3573,16 +4021,15 @@
   },
   {
     "id": "no-debugger",
-    "ruleset": "redundancy",
+    "ruleset": "correctness",
     "engine": "oxlint",
     "oxlintName": "no-debugger",
     "options": [],
     "typed": false,
     "assignment": {
-      "confidence": "low",
-      "alternative": "correctness",
-      "note": "leftover debug statement; pauses execution when devtools are open",
-      "by": "agent-C"
+      "confidence": "high",
+      "note": "q-lint-crit2-bug-checks-in-tidying-groups",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -3643,6 +4090,19 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-C"
+    }
+  },
+  {
+    "id": "no-empty",
+    "ruleset": "correctness",
+    "engine": "oxlint",
+    "oxlintName": "no-empty",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -3744,7 +4204,8 @@
   {
     "id": "no-extra-label",
     "ruleset": "redundancy",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "no-extra-label",
     "options": [],
     "typed": false,
     "assignment": {
@@ -3875,6 +4336,7 @@
     "id": "no-lone-blocks",
     "ruleset": "redundancy",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version leaves alone a block that is a function's only statement, where ESLint's version reports it (measured, oxlint 1.87, ESLint 10.12)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -3920,7 +4382,7 @@
   },
   {
     "id": "no-new",
-    "ruleset": "redundancy",
+    "ruleset": "correctness",
     "engine": "oxlint",
     "oxlintName": "no-new",
     "options": [],
@@ -3930,10 +4392,9 @@
       "because": "r2-d72: functional/no-expression-statements reports a new expression used as a statement too, where types are known, outside test files"
     },
     "assignment": {
-      "confidence": "low",
-      "alternative": "correctness",
-      "note": "discarded constructor result = side-effect-only new; smell more than bug",
-      "by": "agent-C"
+      "confidence": "high",
+      "note": "q-lint-crit2-bug-checks-in-tidying-groups",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -3946,6 +4407,19 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-C"
+    }
+  },
+  {
+    "id": "no-new-wrappers",
+    "ruleset": "correctness",
+    "engine": "oxlint",
+    "oxlintName": "no-new-wrappers",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -3973,6 +4447,19 @@
     }
   },
   {
+    "id": "no-object-constructor",
+    "ruleset": "redundancy",
+    "engine": "oxlint",
+    "oxlintName": "no-object-constructor",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "q-lint-crit2-modern-js-scope",
+      "by": "owner-2026-10-30"
+    }
+  },
+  {
     "id": "no-param-reassign",
     "ruleset": "immutability",
     "engine": "oxlint",
@@ -3987,7 +4474,8 @@
   {
     "id": "no-promise-executor-return",
     "ruleset": "correctness",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "no-promise-executor-return",
     "options": [],
     "typed": false,
     "assignment": {
@@ -4021,7 +4509,7 @@
   },
   {
     "id": "no-restricted-syntax",
-    "ruleset": "type-safety",
+    "ruleset": "conventions",
     "engine": "eslint",
     "options": [
       {
@@ -4031,15 +4519,16 @@
     ],
     "typed": false,
     "assignment": {
-      "confidence": "low",
-      "note": "configurable meta-rule; ruleset depends entirely on the configured selectors",
-      "by": "critique-r1"
+      "confidence": "high",
+      "note": "q-lint-crit2-type-safety-scope",
+      "by": "owner-2026-10-30"
     }
   },
   {
     "id": "no-return-assign",
     "ruleset": "correctness",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "no-return-assign",
     "options": [],
     "typed": false,
     "coveredBy": {
@@ -4093,6 +4582,32 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-C"
+    }
+  },
+  {
+    "id": "no-self-compare",
+    "ruleset": "correctness",
+    "engine": "oxlint",
+    "oxlintName": "no-self-compare",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
+    "id": "no-sequences",
+    "ruleset": "correctness",
+    "engine": "oxlint",
+    "oxlintName": "no-sequences",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -4161,6 +4676,7 @@
     "id": "no-throw-literal",
     "ruleset": "correctness",
     "engine": "eslint",
+    "eslintBecause": "oxlint cannot tell which files have type information, so beside @typescript-eslint/only-throw-error its copy would report twice there (q-r5-only-throw-error)",
     "options": [],
     "typed": false,
     "splitByTypesWith": {
@@ -4302,7 +4818,7 @@
   },
   {
     "id": "no-unused-expressions",
-    "ruleset": "redundancy",
+    "ruleset": "correctness",
     "engine": "oxlint",
     "oxlintName": "no-unused-expressions",
     "options": [],
@@ -4313,7 +4829,8 @@
     },
     "assignment": {
       "confidence": "high",
-      "by": "agent-C"
+      "note": "q-lint-crit2-bug-checks-in-tidying-groups",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -4353,13 +4870,24 @@
     ],
     "typed": false,
     "ignores": [
-      "**/*.stories.{ts,tsx}",
-      "**/*.config.{ts,js,mjs,cjs}",
-      "**/scripts/**"
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
       "by": "agent-C"
+    }
+  },
+  {
+    "id": "no-useless-assignment",
+    "ruleset": "redundancy",
+    "engine": "oxlint",
+    "oxlintName": "no-useless-assignment",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -4403,7 +4931,8 @@
   {
     "id": "no-useless-computed-key",
     "ruleset": "redundancy",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "no-useless-computed-key",
     "options": [],
     "typed": false,
     "assignment": {
@@ -4463,6 +4992,7 @@
     "id": "no-useless-return",
     "ruleset": "redundancy",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports a trailing return but fixes none of it, where ESLint's version removes it (q-lint-slice2-autofix; measured, oxlint 1.87, ESLint 10.12)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -4527,7 +5057,8 @@
   {
     "id": "object-shorthand",
     "ruleset": "modern-js",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "object-shorthand",
     "options": [
       "properties"
     ],
@@ -5131,13 +5662,37 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
       "note": "rc-playwright-no-element-handle",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "playwright/no-focused-test",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-playwright-no-focused-test",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "playwright/no-identical-title",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-playwright-no-identical-title",
       "by": "owner-2026-10-24"
     }
   },
@@ -5154,19 +5709,55 @@
     }
   },
   {
+    "id": "playwright/no-unnecessary-assertions",
+    "ruleset": "playwright",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-playwright-no-unnecessary-assertions",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
     "id": "playwright/no-wait-for-selector",
     "ruleset": "playwright",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
       "note": "rc-playwright-no-wait-for-selector",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "playwright/prefer-hooks-on-top",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-playwright-prefer-hooks-on-top",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "playwright/prefer-web-first-assertions",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-playwright-prefer-web-first-assertions",
       "by": "owner-2026-10-24"
     }
   },
@@ -5179,6 +5770,18 @@
     "assignment": {
       "confidence": "high",
       "note": "rc-playwright-require-to-pass-timeout",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "playwright/require-to-throw-message",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-playwright-require-to-throw-message",
       "by": "owner-2026-10-24"
     }
   },
@@ -5197,7 +5800,8 @@
   {
     "id": "prefer-arrow-callback",
     "ruleset": "modern-js",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "prefer-arrow-callback",
     "options": [
       {
         "allowNamedFunctions": true
@@ -5242,7 +5846,8 @@
   {
     "id": "prefer-exponentiation-operator",
     "ruleset": "modern-js",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "prefer-exponentiation-operator",
     "options": [],
     "typed": false,
     "assignment": {
@@ -5267,7 +5872,8 @@
   {
     "id": "prefer-numeric-literals",
     "ruleset": "modern-js",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "prefer-numeric-literals",
     "options": [],
     "typed": false,
     "assignment": {
@@ -5276,9 +5882,23 @@
     }
   },
   {
+    "id": "prefer-object-has-own",
+    "ruleset": "modern-js",
+    "engine": "oxlint",
+    "oxlintName": "prefer-object-has-own",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "prefer-object-spread",
     "ruleset": "modern-js",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "prefer-object-spread",
     "options": [],
     "typed": false,
     "assignment": {
@@ -5289,7 +5909,8 @@
   {
     "id": "prefer-promise-reject-errors",
     "ruleset": "correctness",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "prefer-promise-reject-errors",
     "options": [],
     "typed": false,
     "assignment": {
@@ -5300,7 +5921,8 @@
   {
     "id": "prefer-regex-literals",
     "ruleset": "redundancy",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "prefer-regex-literals",
     "options": [],
     "typed": false,
     "assignment": {
@@ -5324,7 +5946,8 @@
   {
     "id": "prefer-spread",
     "ruleset": "modern-js",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "prefer-spread",
     "options": [],
     "typed": false,
     "assignment": {
@@ -5382,22 +6005,22 @@
   },
   {
     "id": "promise/no-promise-in-callback",
-    "ruleset": "correctness",
+    "ruleset": "modern-js",
     "engine": "oxlint",
     "oxlintName": "promise/no-promise-in-callback",
     "options": [],
     "typed": false,
     "assignment": {
-      "confidence": "low",
-      "alternative": "modern-js",
-      "note": "mixing callbacks and promises loses errors; also a style/migration concern",
-      "by": "agent-C"
+      "confidence": "high",
+      "note": "q-lint-crit2-single-placements",
+      "by": "owner-2026-10-30"
     }
   },
   {
     "id": "promise/param-names",
     "ruleset": "naming",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "promise/param-names",
     "options": [],
     "typed": false,
     "assignment": {
@@ -5415,6 +6038,19 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-C"
+    }
+  },
+  {
+    "id": "radix",
+    "ruleset": "correctness",
+    "engine": "oxlint",
+    "oxlintName": "radix",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -5574,9 +6210,13 @@
     "options": [],
     "typed": false,
     "ignores": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -5608,13 +6248,17 @@
     "options": [],
     "typed": false,
     "ignores": [
-      "**/*.stories.{ts,tsx,js,jsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**",
       "**/playwright/**",
       "**/e2e/**",
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -5832,6 +6476,7 @@
     "id": "react/jsx-curly-brace-presence",
     "ruleset": "redundancy",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports a braced string prop holding an escape and unbraces it, which a JSX attribute then reads as written, where ESLint's version leaves it alone (measured, oxlint 1.87, eslint-plugin-react 7.37.5)",
     "options": [
       {
         "props": "never",
@@ -5857,7 +6502,7 @@
     ],
     "typed": false,
     "ignores": [
-      "**/*.stories.{ts,tsx,js,jsx}"
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -5924,17 +6569,6 @@
     }
   },
   {
-    "id": "react/no-adjacent-inline-elements",
-    "ruleset": "react",
-    "engine": "eslint",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "plugin"
-    }
-  },
-  {
     "id": "react/no-array-index-key",
     "ruleset": "react",
     "engine": "oxlint",
@@ -5959,14 +6593,15 @@
   },
   {
     "id": "react/no-children-prop",
-    "ruleset": "react",
+    "ruleset": "conventions",
     "engine": "eslint",
     "eslintBecause": "oxlint refuses every option ESLint's version takes ({ allowFunctions }), and then loads no part of the config (measured, oxlint 1.87)",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "plugin"
+      "note": "q-lint-crit2-no-children-prop",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -6239,7 +6874,7 @@
   },
   {
     "id": "regexp/no-dupe-disjunctions",
-    "ruleset": "redundancy",
+    "ruleset": "correctness",
     "engine": "eslint",
     "options": [
       {
@@ -6248,10 +6883,9 @@
     ],
     "typed": false,
     "assignment": {
-      "confidence": "low",
-      "alternative": "correctness",
-      "note": "duplicate alternatives are dead code but often a typo, and can add backtracking",
-      "by": "agent-D"
+      "confidence": "high",
+      "note": "q-lint-crit2-bug-checks-in-tidying-groups",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -7185,9 +7819,13 @@
     ],
     "typed": false,
     "ignores": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -7203,6 +7841,18 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-B"
+    }
+  },
+  {
+    "id": "sonarjs/composite-assertions",
+    "ruleset": "tests",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -7406,9 +8056,13 @@
     "options": [],
     "typed": false,
     "ignores": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -7591,9 +8245,13 @@
     ],
     "typed": false,
     "ignores": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -7777,6 +8435,18 @@
     }
   },
   {
+    "id": "sonarjs/no-debounce-throttle-in-render",
+    "ruleset": "react",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "sonarjs/no-debug-commands-in-ui-tests",
     "ruleset": "tests",
     "engine": "eslint",
@@ -7801,6 +8471,18 @@
     }
   },
   {
+    "id": "sonarjs/no-duplicate-parameterized-test-case",
+    "ruleset": "tests",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "sonarjs/no-element-overwrite",
     "ruleset": "correctness",
     "engine": "eslint",
@@ -7820,6 +8502,18 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-B"
+    }
+  },
+  {
+    "id": "sonarjs/no-empty-parameterized-test-dataset",
+    "ruleset": "tests",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -8279,9 +8973,13 @@
     "options": [],
     "typed": false,
     "ignores": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "low",
@@ -8687,6 +9385,18 @@
     }
   },
   {
+    "id": "sonarjs/synchronous-exception-assertions",
+    "ruleset": "tests",
+    "engine": "eslint",
+    "options": [],
+    "typed": true,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "sonarjs/table-header",
     "ruleset": "accessibility",
     "engine": "eslint",
@@ -8820,7 +9530,7 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -8835,7 +9545,7 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -8850,7 +9560,7 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -8865,7 +9575,7 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -8880,7 +9590,7 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -8895,7 +9605,7 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -8910,7 +9620,7 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -8925,7 +9635,7 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -8940,7 +9650,7 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -8955,7 +9665,7 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -8970,7 +9680,7 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -8985,7 +9695,7 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -9000,12 +9710,25 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
       "confidence": "high",
       "by": "plugin"
+    }
+  },
+  {
+    "id": "symbol-description",
+    "ruleset": "conventions",
+    "engine": "oxlint",
+    "oxlintName": "symbol-description",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -9019,13 +9742,13 @@
     ],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "ignores": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -9040,10 +9763,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9057,10 +9780,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9080,10 +9803,10 @@
     ],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9097,10 +9820,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9114,10 +9837,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "coveredBy": {
       "rule": "sonarjs/no-debug-commands-in-ui-tests",
@@ -9135,13 +9858,13 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "ignores": [
-      "**/*.stories.{ts,tsx,js,jsx,mjs}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/.storybook/**"
     ],
     "assignment": {
@@ -9156,10 +9879,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9173,10 +9896,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9194,10 +9917,10 @@
     ],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9211,10 +9934,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9228,10 +9951,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9245,10 +9968,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9262,10 +9985,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9279,10 +10002,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9296,10 +10019,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9313,10 +10036,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9330,10 +10053,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9347,10 +10070,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9364,10 +10087,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9381,10 +10104,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9479,10 +10202,10 @@
     ],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9496,10 +10219,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9513,10 +10236,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9530,10 +10253,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9547,10 +10270,10 @@
     "options": [],
     "typed": false,
     "files": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-      "**/*.stories.{ts,tsx,js,jsx,mjs}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -9765,7 +10488,8 @@
   {
     "id": "unicorn/error-message",
     "ruleset": "correctness",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/error-message",
     "options": [],
     "typed": false,
     "assignment": {
@@ -10028,6 +10752,18 @@
     }
   },
   {
+    "id": "unicorn/no-async-iterator-callback",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "unicorn/no-async-promise-finally",
     "ruleset": "correctness",
     "engine": "eslint",
@@ -10060,6 +10796,9 @@
     "engine": "eslint",
     "options": [],
     "typed": false,
+    "ignores": [
+      "**/src/index.*"
+    ],
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
@@ -10078,15 +10817,14 @@
   },
   {
     "id": "unicorn/no-break-in-nested-loop",
-    "ruleset": "complexity",
+    "ruleset": "correctness",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
-      "confidence": "low",
-      "alternative": "correctness",
-      "note": "break/continue target ambiguity in nested loops",
-      "by": "agent-A"
+      "confidence": "high",
+      "note": "q-lint-crit2-bug-checks-in-tidying-groups",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -10120,6 +10858,18 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
+    }
+  },
+  {
+    "id": "unicorn/no-conflicting-constraints",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -10260,20 +11010,6 @@
     }
   },
   {
-    "id": "unicorn/no-hex-escape",
-    "ruleset": "modern-js",
-    "engine": "oxlint",
-    "oxlintName": "unicorn/no-hex-escape",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "low",
-      "alternative": "UNPLACED",
-      "note": "deprecated alias of prefer-unicode-code-point-escapes",
-      "by": "agent-A"
-    }
-  },
-  {
     "id": "unicorn/no-impossible-length-comparison",
     "ruleset": "correctness",
     "engine": "eslint",
@@ -10282,6 +11018,18 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
+    }
+  },
+  {
+    "id": "unicorn/no-incomplete-accessor-override",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -10302,13 +11050,29 @@
     "options": [],
     "typed": false,
     "ignores": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
+    }
+  },
+  {
+    "id": "unicorn/no-ineffective-csp-directives",
+    "ruleset": "security",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -10335,6 +11099,30 @@
     }
   },
   {
+    "id": "unicorn/no-invalid-boolean-attribute-value",
+    "ruleset": "browser",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
+    "id": "unicorn/no-invalid-dom-token",
+    "ruleset": "browser",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "unicorn/no-invalid-fetch-options",
     "ruleset": "correctness",
     "engine": "oxlint",
@@ -10358,6 +11146,42 @@
     }
   },
   {
+    "id": "unicorn/no-invalid-integrity",
+    "ruleset": "security",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
+    "id": "unicorn/no-invalid-intl-options",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
+    "id": "unicorn/no-invalid-property-descriptor",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "unicorn/no-invalid-remove-event-listener",
     "ruleset": "correctness",
     "engine": "oxlint",
@@ -10367,6 +11191,54 @@
     "assignment": {
       "confidence": "high",
       "by": "critique-r1"
+    }
+  },
+  {
+    "id": "unicorn/no-invalid-response-options",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
+    "id": "unicorn/no-invalid-style-set-property",
+    "ruleset": "browser",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
+    "id": "unicorn/no-invalid-temporal-arithmetic",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
+    "id": "unicorn/no-invalid-url-protocol-comparison",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -10400,24 +11272,26 @@
   },
   {
     "id": "unicorn/no-late-current-target-access",
-    "ruleset": "browser",
+    "ruleset": "correctness",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "agent-A"
+      "note": "q-lint-crit2-late-event-rules",
+      "by": "owner-2026-10-30"
     }
   },
   {
     "id": "unicorn/no-late-event-control",
-    "ruleset": "browser",
+    "ruleset": "correctness",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "agent-A"
+      "note": "q-lint-crit2-late-event-rules",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -10517,7 +11391,8 @@
   {
     "id": "unicorn/no-object-as-default-parameter",
     "ruleset": "correctness",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/no-object-as-default-parameter",
     "options": [],
     "typed": false,
     "assignment": {
@@ -10550,6 +11425,18 @@
     }
   },
   {
+    "id": "unicorn/no-prevent-default-in-passive-listener",
+    "ruleset": "browser",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "unicorn/no-redundant-comparison",
     "ruleset": "redundancy",
     "engine": "eslint",
@@ -10567,9 +11454,13 @@
     "options": [],
     "typed": false,
     "ignores": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "low",
@@ -10616,15 +11507,14 @@
   },
   {
     "id": "unicorn/no-subtraction-comparison",
-    "ruleset": "redundancy",
+    "ruleset": "correctness",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
-      "confidence": "low",
-      "alternative": "correctness",
-      "note": "a - b > 0 -> a > b; subtraction can mis-handle non-numbers",
-      "by": "agent-A"
+      "confidence": "high",
+      "note": "q-lint-crit2-bug-checks-in-tidying-groups",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -10826,6 +11716,18 @@
     }
   },
   {
+    "id": "unicorn/no-unsafe-json-serialization",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "unicorn/no-unsafe-promise-all-settled-values",
     "ruleset": "correctness",
     "engine": "eslint",
@@ -10859,6 +11761,30 @@
     }
   },
   {
+    "id": "unicorn/no-unused-builtin-method-return",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
+    "id": "unicorn/no-unused-iterator-helper",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "unicorn/no-unused-properties",
     "ruleset": "redundancy",
     "engine": "eslint",
@@ -10867,6 +11793,18 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
+    }
+  },
+  {
+    "id": "unicorn/no-url-in-search-params",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -10988,7 +11926,8 @@
   {
     "id": "unicorn/no-useless-promise-resolve-reject",
     "ruleset": "redundancy",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/no-useless-promise-resolve-reject",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11009,15 +11948,15 @@
     }
   },
   {
-    "id": "unicorn/no-useless-spread",
+    "id": "unicorn/no-useless-set-construction",
     "ruleset": "redundancy",
-    "engine": "oxlint",
-    "oxlintName": "unicorn/no-useless-spread",
+    "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "agent-A"
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -11033,6 +11972,18 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
+    }
+  },
+  {
+    "id": "unicorn/no-using-resource-escape",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -11070,14 +12021,15 @@
   },
   {
     "id": "unicorn/prefer-add-event-listener",
-    "ruleset": "browser",
+    "ruleset": "conventions",
     "engine": "eslint",
     "eslintBecause": "oxlint refuses every option ESLint's version takes ({ excludedPackages }), and then loads no part of the config (measured, oxlint 1.87)",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "agent-A"
+      "note": "q-lint-crit2-single-placements",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -11118,6 +12070,7 @@
     "id": "unicorn/prefer-array-flat",
     "ruleset": "modern-js",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports [].concat(...lists) but fixes none of it, where ESLint's version rewrites it to .flat() (q-lint-slice2-autofix; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11127,14 +12080,15 @@
   },
   {
     "id": "unicorn/prefer-array-flat-map",
-    "ruleset": "modern-js",
+    "ruleset": "redundancy",
     "engine": "oxlint",
     "oxlintName": "unicorn/prefer-array-flat-map",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "agent-A"
+      "note": "q-lint-crit2-modern-js-scope",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -11150,13 +12104,14 @@
   },
   {
     "id": "unicorn/prefer-array-from-map",
-    "ruleset": "modern-js",
+    "ruleset": "redundancy",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "agent-A"
+      "note": "q-lint-crit2-modern-js-scope",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -11174,6 +12129,7 @@
     "id": "unicorn/prefer-array-index-of",
     "ruleset": "redundancy",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports findIndex(x => x === v) but fixes none of it, where ESLint's version rewrites it to indexOf (q-lint-slice2-autofix; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11220,11 +12176,25 @@
     "id": "unicorn/prefer-array-some",
     "ruleset": "redundancy",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports filter(...).length > 0 but fixes none of it, where ESLint's version rewrites it to some() (q-lint-slice2-autofix; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
       "by": "critique-r1"
+    }
+  },
+  {
+    "id": "unicorn/prefer-at",
+    "ruleset": "modern-js",
+    "engine": "eslint",
+    "eslintBecause": "oxlint's version reports the last item of a NodeList or HTMLCollection, which has no .at(), and its fix there throws at run time or does not compile, where ESLint's version leaves DOM collections alone (q-lint-uni-prefer-at-node-lists; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -11234,9 +12204,13 @@
     "options": [],
     "typed": false,
     "ignores": [
-      "**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
       "**/__tests__/**",
-      "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+      "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+      "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
     ],
     "assignment": {
       "confidence": "high",
@@ -11246,7 +12220,8 @@
   {
     "id": "unicorn/prefer-blob-reading-methods",
     "ruleset": "browser",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-blob-reading-methods",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11279,7 +12254,8 @@
   {
     "id": "unicorn/prefer-code-point",
     "ruleset": "modern-js",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-code-point",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11302,6 +12278,7 @@
     "id": "unicorn/prefer-date-now",
     "ruleset": "modern-js",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports new Date() - start but fixes none of it, where ESLint's version rewrites it to Date.now() (q-lint-slice2-autofix; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11313,6 +12290,7 @@
     "id": "unicorn/prefer-default-parameters",
     "ruleset": "modern-js",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports a fallback for a parameter typed any, unknown or nullable, where ESLint's version, with type information, leaves it alone, since a default replaces undefined alone and the fallback replaces more (measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11332,6 +12310,18 @@
     }
   },
   {
+    "id": "unicorn/prefer-dispose",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "third sweep: the modern-js rules ship off",
+      "by": "owner-2026-10-11"
+    }
+  },
+  {
     "id": "unicorn/prefer-dom-node-append",
     "ruleset": "browser",
     "engine": "eslint",
@@ -11344,19 +12334,21 @@
   },
   {
     "id": "unicorn/prefer-dom-node-html-methods",
-    "ruleset": "browser",
+    "offByDefault": true,
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "agent-A"
+      "note": "q-lint-jsdom-off-rules-fix: shipped off, its fix withheld",
+      "by": "owner-2026-10-30"
     }
   },
   {
     "id": "unicorn/prefer-dom-node-remove",
     "ruleset": "browser",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports parent.removeChild(child) but fixes none of it, where ESLint's version rewrites it to child.remove() (q-lint-slice2-autofix; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11411,9 +12403,22 @@
     }
   },
   {
+    "id": "unicorn/prefer-error-is-error",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "third sweep: the modern-js rules ship off",
+      "by": "owner-2026-10-11"
+    }
+  },
+  {
     "id": "unicorn/prefer-export-from",
     "ruleset": "modules",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports an import that is then exported but fixes none of it, where ESLint's version rewrites it to export … from (q-lint-slice2-autofix; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11430,6 +12435,18 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
+    }
+  },
+  {
+    "id": "unicorn/prefer-get-or-insert-computed",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "third sweep: the modern-js rules ship off",
+      "by": "owner-2026-10-11"
     }
   },
   {
@@ -11458,13 +12475,14 @@
   },
   {
     "id": "unicorn/prefer-has-check",
-    "ruleset": "modern-js",
+    "ruleset": "redundancy",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "agent-A"
+      "note": "q-lint-crit2-modern-js-scope",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -11505,6 +12523,7 @@
     "id": "unicorn/prefer-includes",
     "ruleset": "modern-js",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version leaves .some(x => x === v) alone and fixes no indexOf comparison, where ESLint's version reports the one and fixes the other (measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11514,15 +12533,14 @@
   },
   {
     "id": "unicorn/prefer-includes-over-repeated-comparisons",
-    "ruleset": "complexity",
+    "ruleset": "modern-js",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
-      "confidence": "low",
-      "alternative": "modern-js",
-      "note": "x===a||x===b -> [a,b].includes(x)",
-      "by": "agent-A"
+      "confidence": "high",
+      "note": "q-lint-crit2-modern-js-scope",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -11534,6 +12552,18 @@
     "assignment": {
       "confidence": "high",
       "by": "critique-r1"
+    }
+  },
+  {
+    "id": "unicorn/prefer-iterator-concat",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "third sweep: the modern-js rules ship off",
+      "by": "owner-2026-10-11"
     }
   },
   {
@@ -11572,9 +12602,22 @@
     }
   },
   {
+    "id": "unicorn/prefer-iterator-zip",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-unicorn-prefer-iterator-zip",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
     "id": "unicorn/prefer-keyboard-event-key",
     "ruleset": "browser",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version leaves keyCode read from a parameter typed KeyboardEvent alone, where ESLint's version reports it (measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11583,14 +12626,27 @@
     }
   },
   {
-    "id": "unicorn/prefer-location-assign",
-    "ruleset": "browser",
+    "id": "unicorn/prefer-literal-ascii",
+    "ruleset": "conventions",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "agent-A"
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
+    "id": "unicorn/prefer-location-assign",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "q-lint-jsdom-off-rules-fix: shipped off, its fix withheld",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -11608,24 +12664,26 @@
   },
   {
     "id": "unicorn/prefer-map-from-entries",
-    "ruleset": "modern-js",
+    "ruleset": "conventions",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "agent-A"
+      "note": "q-lint-crit2-modern-js-scope",
+      "by": "owner-2026-10-30"
     }
   },
   {
     "id": "unicorn/prefer-math-abs",
-    "ruleset": "modern-js",
+    "ruleset": "redundancy",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "agent-A"
+      "note": "q-lint-crit2-modern-js-scope",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -11644,7 +12702,8 @@
   {
     "id": "unicorn/prefer-math-trunc",
     "ruleset": "modern-js",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-math-trunc",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11680,6 +12739,7 @@
     "id": "unicorn/prefer-modern-math-apis",
     "ruleset": "modern-js",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports Math.sqrt(a * a + b * b) and Math.log(x) * Math.LOG10E but fixes none of it, where ESLint's version rewrites them to Math.hypot and Math.log10 (q-lint-slice2-autofix; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11691,6 +12751,7 @@
     "id": "unicorn/prefer-native-coercion-functions",
     "ruleset": "redundancy",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports v => String(v) but fixes none of it, where ESLint's version rewrites it to String (q-lint-slice2-autofix; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11727,6 +12788,7 @@
     "id": "unicorn/prefer-number-properties",
     "ruleset": "modern-js",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports isNaN but fixes none of it, where ESLint's version rewrites it to Number.isNaN (q-lint-slice2-autofix; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11748,21 +12810,21 @@
   },
   {
     "id": "unicorn/prefer-object-destructuring-defaults",
-    "ruleset": "modern-js",
+    "ruleset": "conventions",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
-      "confidence": "low",
-      "alternative": "declarative",
-      "note": "destructuring defaults vs {...defaults, ...obj}",
-      "by": "agent-A"
+      "confidence": "high",
+      "note": "q-lint-crit2-modern-js-scope",
+      "by": "owner-2026-10-30"
     }
   },
   {
     "id": "unicorn/prefer-object-from-entries",
     "ruleset": "modern-js",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports a reduce that spreads each entry into an object but fixes none of it, where ESLint's version rewrites it to Object.fromEntries (q-lint-slice2-autofix; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11772,13 +12834,14 @@
   },
   {
     "id": "unicorn/prefer-object-iterable-methods",
-    "ruleset": "modern-js",
+    "ruleset": "redundancy",
     "engine": "eslint",
     "options": [],
     "typed": false,
     "assignment": {
       "confidence": "high",
-      "by": "agent-A"
+      "note": "q-lint-crit2-modern-js-scope",
+      "by": "owner-2026-10-30"
     }
   },
   {
@@ -11795,7 +12858,8 @@
   {
     "id": "unicorn/prefer-optional-catch-binding",
     "ruleset": "modern-js",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-optional-catch-binding",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11826,6 +12890,18 @@
     }
   },
   {
+    "id": "unicorn/prefer-promise-try",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "third sweep: the modern-js rules ship off",
+      "by": "owner-2026-10-11"
+    }
+  },
+  {
     "id": "unicorn/prefer-promise-with-resolvers",
     "ruleset": "modern-js",
     "engine": "eslint",
@@ -11839,7 +12915,8 @@
   {
     "id": "unicorn/prefer-query-selector",
     "ruleset": "browser",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-query-selector",
     "options": [],
     "typed": false,
     "assignment": {
@@ -11856,6 +12933,18 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
+    }
+  },
+  {
+    "id": "unicorn/prefer-regexp-escape",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "third sweep: the modern-js rules ship off",
+      "by": "owner-2026-10-11"
     }
   },
   {
@@ -11967,6 +13056,19 @@
     }
   },
   {
+    "id": "unicorn/prefer-single-call",
+    "ruleset": "redundancy",
+    "engine": "eslint",
+    "eslintBecause": "oxlint's version merges two calls to a class's own push into one, which a one-value push reads as its first value alone, where ESLint's version leaves a class instance's calls alone (q-lint-uni-single-call-custom-push; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
+    }
+  },
+  {
     "id": "unicorn/prefer-single-object-destructuring",
     "ruleset": "redundancy",
     "engine": "eslint",
@@ -12042,6 +13144,7 @@
     "id": "unicorn/prefer-string-replace-all",
     "ruleset": "modern-js",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports the replace call that escapes a string for a RegExp and fixes it to replaceAll, where ESLint's version leaves that call to unicorn/prefer-regexp-escape (measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -12053,6 +13156,7 @@
     "id": "unicorn/prefer-string-slice",
     "ruleset": "modern-js",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version reports substr but fixes none of it, where ESLint's version rewrites it to slice (q-lint-slice2-autofix; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -12063,7 +13167,8 @@
   {
     "id": "unicorn/prefer-string-trim-start-end",
     "ruleset": "modern-js",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-string-trim-start-end",
     "options": [],
     "typed": false,
     "assignment": {
@@ -12085,6 +13190,30 @@
     }
   },
   {
+    "id": "unicorn/prefer-temporal",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "third sweep: the modern-js rules ship off",
+      "by": "owner-2026-10-11"
+    }
+  },
+  {
+    "id": "unicorn/prefer-temporal-conversion",
+    "ruleset": "redundancy",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "q-lint-crit2-modern-js-scope",
+      "by": "owner-2026-10-30"
+    }
+  },
+  {
     "id": "unicorn/prefer-toggle-attribute",
     "ruleset": "browser",
     "engine": "eslint",
@@ -12099,6 +13228,7 @@
     "id": "unicorn/prefer-type-error",
     "ruleset": "correctness",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version leaves an Error thrown after an instanceof check alone, where ESLint's version reports it and fixes it to a TypeError (measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -12106,6 +13236,30 @@
       "alternative": "UNPLACED",
       "note": "error-type semantics for type checks",
       "by": "agent-A"
+    }
+  },
+  {
+    "id": "unicorn/prefer-uint8array-base64",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "third sweep: the modern-js rules ship off",
+      "by": "owner-2026-10-11"
+    }
+  },
+  {
+    "id": "unicorn/prefer-uint8array-hex",
+    "offByDefault": true,
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-unicorn-prefer-uint8array-hex",
+      "by": "owner-2026-10-24"
     }
   },
   {
@@ -12205,18 +13359,6 @@
     }
   },
   {
-    "id": "unicorn/require-post-message-target-origin",
-    "ruleset": "browser",
-    "engine": "oxlint",
-    "oxlintName": "unicorn/require-post-message-target-origin",
-    "options": [],
-    "typed": false,
-    "assignment": {
-      "confidence": "high",
-      "by": "agent-A"
-    }
-  },
-  {
     "id": "unicorn/require-proxy-trap-boolean-return",
     "ruleset": "correctness",
     "engine": "eslint",
@@ -12225,6 +13367,18 @@
     "assignment": {
       "confidence": "high",
       "by": "agent-A"
+    }
+  },
+  {
+    "id": "unicorn/require-text-decoder-streaming",
+    "ruleset": "correctness",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "owner-2026-10-11, candidates page",
+      "by": "accepted-spec-2026-10-26"
     }
   },
   {
@@ -12242,7 +13396,8 @@
   {
     "id": "unicorn/throw-new-error",
     "ruleset": "conventions",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/throw-new-error",
     "options": [],
     "typed": false,
     "assignment": {
@@ -12635,6 +13790,18 @@
     "assignment": {
       "confidence": "high",
       "note": "rc-zod-no-transform-in-record-key",
+      "by": "owner-2026-10-24"
+    }
+  },
+  {
+    "id": "zod/prefer-trim-before-string-length-checks",
+    "ruleset": "zod",
+    "engine": "eslint",
+    "options": [],
+    "typed": false,
+    "assignment": {
+      "confidence": "high",
+      "note": "rc-zod-prefer-trim-before-string-length-checks",
       "by": "owner-2026-10-24"
     }
   },

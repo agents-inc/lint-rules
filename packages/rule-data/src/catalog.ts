@@ -243,9 +243,9 @@ function eslintNamingOf({ id, oxlintName, oxlintPlugin }: GeneratedRoute): Pick<
 /** Routing writes a relation, a mark or an allowance left to another rule only where the canonical list records one; absent, it is none. */
 function parseShippedRule(id: string, shipped: GeneratedShippedRule | null): ShippedRule | null {
   if (shipped === null) return null
-  const { ruleset, alwaysOn, whenSuppressions, coveredBy, coveredInOxlintBy, splitByTypesWith, readsRuntimeGlobals, allowancesLeftTo, ...scope } = shipped
+  const { ruleset, alwaysOn, offByDefault, whenSuppressions, editorRuleset, coveredBy, coveredInOxlintBy, splitByTypesWith, readsRuntimeGlobals, allowancesLeftTo, ...scope } = shipped
   return {
-    ...parseTurnedOnBy(id, { ruleset, alwaysOn, whenSuppressions }),
+    ...parseTurnedOnBy(id, { ruleset, alwaysOn, offByDefault, whenSuppressions, editorRuleset }),
     ...scope,
     coveredBy: coveredBy === undefined ? null : coveredBy,
     coveredInOxlintBy: coveredInOxlintBy === undefined ? null : coveredInOxlintBy,

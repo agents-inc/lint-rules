@@ -7,6 +7,7 @@ import {
   type TestFileOptions,
   type TurnedOnBy,
   type WhenSuppressions,
+  editorRulesetOf,
   inEachSuppressionMode,
   parseTurnedOnBy,
 } from '../turned-on-by.ts'
@@ -29,8 +30,16 @@ export type RuleRelation = { readonly rule: string; readonly because: string }
 /** An entry of the rule's options left to another rule, and why, as `data/rules.json` records it. */
 export type CanonicalAllowanceLeftTo = AllowanceLeftTo & Pick<RuleRelation, 'because'>
 
-/** The test files, the files under `__tests__`, and Vitest's type tests (`*.test-d.ts`): the files a rule's test-file setting is for. */
-const TEST_FILE_GLOBS: readonly string[] = ['**/*.{test,spec}.{ts,tsx,js,jsx}', '**/__tests__/**', '**/*.{test,spec}-d.{ts,tsx,js,jsx}']
+/** The test files, the files under `__tests__`, Vitest's type tests (`*.test-d.ts`) and test runners' setup files by their usual names: the files a rule's test-file setting is for. */
+const TEST_FILE_GLOBS: readonly string[] = [
+  '**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+  '**/__tests__/**',
+  '**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+  '**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+  '**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+  '**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+  '**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+]
 
 /**
  * A route's `shipped` as the generated routing writes it: each relation is the other rule's ID, and
@@ -50,13 +59,16 @@ export type RoutingEntry = Omit<RuleRoute, 'shipped'> & { shipped: RoutedShipped
 /** One entry of `data/rules.json`: a rule we ship on, in its ruleset or always, on its engine. */
 export type CanonicalRule = {
   id: string
-  /** The ruleset that turns the rule on. Absent exactly when `alwaysOn` is true. */
+  /** The ruleset that turns the rule on. Absent exactly when `alwaysOn` or `offByDefault` is true. */
   ruleset?: string
   /** `true`: on whatever rulesets a consumer lists. */
   alwaysOn?: boolean
+  /** `true`: shipped off, on only where a consumer names it in `rules` or a `fileOverrides` entry's `rules`. */
+  offByDefault?: boolean
   /**
-   * Present on the rules `allowSuppressions` decides, whatever rulesets are listed: routing ships
-   * this in place of `ruleset` and `alwaysOn`, which canonical-list.test.ts still requires one of.
+   * Present on the rules `allowSuppressions` decides: routing ships this in place of `ruleset` and
+   * `alwaysOn`, which canonical-list.test.ts still requires one of, and the ruleset as the rule's
+   * editor ruleset.
    */
   whenSuppressions?: WhenSuppressions<CanonicalSuppressionModeSetting, TestFileOptions>
   engine: Engine
@@ -174,13 +186,15 @@ function relatedRuleIdsOf({ coveredBy, coveredInOxlintBy, splitByTypesWith }: Re
   }
 }
 
-function turnedOnByOf({ id, ruleset, alwaysOn, whenSuppressions, options }: Readonly<CanonicalRule>): TurnedOnBy {
-  if (whenSuppressions === undefined) return parseTurnedOnBy(id, { ruleset, alwaysOn })
+/** A rule `allowSuppressions` decides keeps the ruleset it belongs to as its editor ruleset. */
+function turnedOnByOf({ id, ruleset, alwaysOn, offByDefault, whenSuppressions, options }: Readonly<CanonicalRule>): TurnedOnBy {
+  if (whenSuppressions === undefined) return parseTurnedOnBy(id, { ruleset, alwaysOn, offByDefault })
   return {
     whenSuppressions: {
       ...inEachSuppressionMode(whenSuppressions, (setting) => resolvedSettingOf(setting, options)),
       ...testFileSettingWithGlobs(whenSuppressions.bannedInTestFiles),
     },
+    ...editorRulesetOf(ruleset),
   }
 }
 
