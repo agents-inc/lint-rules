@@ -7,7 +7,18 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "whenSuppressions": {
+        "banned": "off",
+        "allowed": {
+          "options": []
+        }
+      },
+      "editorRuleset": "comments",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@eslint-community/eslint-comments/no-aggregating-enable",
@@ -27,7 +38,18 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "whenSuppressions": {
+        "banned": "off",
+        "allowed": {
+          "options": []
+        }
+      },
+      "editorRuleset": "comments",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@eslint-community/eslint-comments/no-restricted-disable",
@@ -77,7 +99,50 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "whenSuppressions": {
+        "banned": "off",
+        "allowed": {
+          "options": [
+            {
+              "ignore": [
+                "eslint-enable",
+                "eslint-env",
+                "exported",
+                "global",
+                "globals"
+              ],
+              "additionalDirectives": [
+                "eslint-disable",
+                "oxlint-disable",
+                "oxlint-disable-line",
+                "oxlint-disable-next-line"
+              ]
+            }
+          ]
+        }
+      },
+      "editorRuleset": "comments",
+      "options": [
+        {
+          "ignore": [
+            "eslint-enable",
+            "eslint-env",
+            "exported",
+            "global",
+            "globals"
+          ],
+          "additionalDirectives": [
+            "eslint-disable",
+            "oxlint-disable",
+            "oxlint-disable-line",
+            "oxlint-disable-next-line"
+          ]
+        }
+      ],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@eslint-react/dom-no-dangerously-set-innerhtml",
@@ -1633,7 +1698,7 @@
     ],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "react",
+      "ruleset": "correctness",
       "options": [],
       "files": null,
       "ignores": null
@@ -2533,7 +2598,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "tanstack-query",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@tanstack/router/create-route-property-order",
@@ -2579,9 +2649,9 @@
   },
   {
     "id": "@typescript-eslint/array-type",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "typescript/array-type",
+    "oxlintPlugin": "typescript",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -2662,9 +2732,13 @@
         },
         "bannedInTestFiles": {
           "files": [
-            "**/*.{test,spec}.{ts,tsx,js,jsx}",
+            "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
             "**/__tests__/**",
-            "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+            "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+            "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+            "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+            "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+            "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
           ],
           "options": [
             {
@@ -2675,6 +2749,7 @@
           ]
         }
       },
+      "editorRuleset": "type-safety",
       "options": [
         {
           "ts-expect-error": true,
@@ -2805,9 +2880,9 @@
   },
   {
     "id": "@typescript-eslint/consistent-type-assertions",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "typescript/consistent-type-assertions",
+    "oxlintPlugin": "typescript",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -2833,9 +2908,9 @@
   },
   {
     "id": "@typescript-eslint/consistent-type-definitions",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "typescript/consistent-type-definitions",
+    "oxlintPlugin": "typescript",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -2870,14 +2945,19 @@
       "typescript-eslint/consistent-type-exports",
       "typescript/consistent-type-exports"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "conventions",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@typescript-eslint/consistent-type-imports",
-    "engine": "oxlint",
-    "oxlintName": "typescript/consistent-type-imports",
-    "oxlintPlugin": "typescript",
-    "typed": false,
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": true,
     "eslintAliases": [],
     "oxlintSpellings": [
       "@typescript-eslint/consistent-type-imports",
@@ -2887,7 +2967,16 @@
       "typescript-eslint/consistent-type-imports",
       "typescript/consistent-type-imports"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "conventions",
+      "options": [
+        {
+          "disallowTypeAnnotations": false
+        }
+      ],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@typescript-eslint/default-param-last",
@@ -2914,7 +3003,17 @@
       "typescript-eslint/dot-notation",
       "typescript/dot-notation"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "redundancy",
+      "options": [
+        {
+          "allowPrivateClassPropertyAccess": true,
+          "allowProtectedClassPropertyAccess": true
+        }
+      ],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@typescript-eslint/explicit-function-return-type",
@@ -3358,9 +3457,9 @@
   },
   {
     "id": "@typescript-eslint/no-empty-object-type",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "typescript/no-empty-object-type",
+    "oxlintPlugin": "typescript",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -3765,9 +3864,9 @@
   },
   {
     "id": "@typescript-eslint/no-invalid-void-type",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "typescript/no-invalid-void-type",
+    "oxlintPlugin": "typescript",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -3915,7 +4014,12 @@
       "typescript-eslint/no-namespace",
       "typescript/no-namespace"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "conventions",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@typescript-eslint/no-non-null-asserted-nullish-coalescing",
@@ -3977,9 +4081,13 @@
       "options": [],
       "files": null,
       "ignores": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -4167,7 +4275,12 @@
       "typescript-eslint/no-unnecessary-qualifier",
       "typescript/no-unnecessary-qualifier"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "redundancy",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@typescript-eslint/no-unnecessary-template-expression",
@@ -4295,7 +4408,7 @@
       "typescript/no-unnecessary-type-parameters"
     ],
     "shipped": {
-      "ruleset": "redundancy",
+      "ruleset": "type-safety",
       "options": [],
       "files": null,
       "ignores": null
@@ -4423,9 +4536,9 @@
   },
   {
     "id": "@typescript-eslint/no-unsafe-function-type",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "typescript/no-unsafe-function-type",
+    "oxlintPlugin": "typescript",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -4507,9 +4620,13 @@
       "options": [],
       "files": null,
       "ignores": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -4717,7 +4834,12 @@
       "typescript-eslint/parameter-properties",
       "typescript/parameter-properties"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "conventions",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@typescript-eslint/prefer-as-const",
@@ -4753,9 +4875,9 @@
   },
   {
     "id": "@typescript-eslint/prefer-enum-initializers",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "typescript/prefer-enum-initializers",
+    "oxlintPlugin": "typescript",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -4848,9 +4970,9 @@
   },
   {
     "id": "@typescript-eslint/prefer-literal-enum-member",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "typescript/prefer-literal-enum-member",
+    "oxlintPlugin": "typescript",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -4870,9 +4992,9 @@
   },
   {
     "id": "@typescript-eslint/prefer-namespace-keyword",
-    "engine": "oxlint",
-    "oxlintName": "typescript/prefer-namespace-keyword",
-    "oxlintPlugin": "typescript",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -4886,7 +5008,12 @@
     "shipped": {
       "ruleset": "modern-js",
       "options": [],
-      "files": null,
+      "files": [
+        "**/*.d.ts",
+        "**/*.d.*.ts",
+        "**/*.d.mts",
+        "**/*.d.cts"
+      ],
       "ignores": null
     }
   },
@@ -4961,7 +5088,12 @@
       "typescript-eslint/prefer-readonly",
       "typescript/prefer-readonly"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "immutability",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@typescript-eslint/prefer-readonly-parameter-types",
@@ -5046,7 +5178,12 @@
       "typescript-eslint/prefer-string-starts-ends-with",
       "typescript/prefer-string-starts-ends-with"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "modern-js",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "@typescript-eslint/prefer-ts-expect-error",
@@ -5342,7 +5479,12 @@
       "typescript-eslint/use-unknown-in-catch-callback-variable",
       "typescript/use-unknown-in-catch-callback-variable"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "type-safety",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "accessor-pairs",
@@ -5356,7 +5498,20 @@
       "eslint-plugin-eslint/accessor-pairs",
       "eslint/accessor-pairs"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": [
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/__tests__/**",
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
+      ]
+    }
   },
   {
     "id": "array-callback-return",
@@ -5533,6 +5688,23 @@
     "shipped": null
   },
   {
+    "id": "compat/compat",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": {
+      "ruleset": "browser-targets",
+      "options": [
+        "chrome >= 111, edge >= 111, firefox >= 114, safari >= 16.4, ios_saf >= 16.4"
+      ],
+      "files": null,
+      "ignores": null
+    }
+  },
+  {
     "id": "complexity",
     "engine": "oxlint",
     "oxlintName": "complexity",
@@ -5665,9 +5837,9 @@
   },
   {
     "id": "default-param-last",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "default-param-last",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -5856,7 +6028,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "e18e/prefer-includes",
@@ -6151,9 +6328,13 @@
       ],
       "files": null,
       "ignores": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -6183,14 +6364,18 @@
         }
       ],
       "files": [
-        "**/*.ts"
+        "**/*.{ts,mts,cts}"
       ],
       "ignores": [
-        "**/use[A-Z]*.ts",
-        "**/use-*.ts",
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/use[A-Z]*.{ts,mts,cts}",
+        "**/use-*.{ts,mts,cts}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -6251,14 +6436,18 @@
       "ruleset": "declarative",
       "options": [],
       "files": [
-        "**/*.ts"
+        "**/*.{ts,mts,cts}"
       ],
       "ignores": [
-        "**/use[A-Z]*.ts",
-        "**/use-*.ts",
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/use[A-Z]*.{ts,mts,cts}",
+        "**/use-*.{ts,mts,cts}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -6276,9 +6465,13 @@
       "files": null,
       "ignores": [
         "**/*{ErrorBoundary,error-boundary}*.{ts,tsx,js,jsx}",
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -6334,7 +6527,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "immutability",
+      "ruleset": "type-safety",
       "options": [],
       "files": null,
       "ignores": null
@@ -6615,6 +6808,21 @@
     }
   },
   {
+    "id": "house/no-reduce-accumulator-copy",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
+    "typed": false,
+    "eslintAliases": [],
+    "oxlintSpellings": [],
+    "shipped": {
+      "ruleset": "performance",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
+  },
+  {
     "id": "house/no-section-banner",
     "engine": "eslint",
     "oxlintName": null,
@@ -6807,7 +7015,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "react-ssr",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "hydration-proof/no-timezone-without-explicit-timezone",
@@ -6817,7 +7030,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "react-ssr",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "hydration-proof/no-unstable-id",
@@ -6837,7 +7055,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "react-ssr",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "hydration-proof/require-deterministic-list-order",
@@ -6857,7 +7080,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "react-ssr",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "id-denylist",
@@ -7735,7 +7963,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "jest-dom",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "jest-dom/prefer-empty",
@@ -7745,7 +7978,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "jest-dom",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "jest-dom/prefer-enabled-disabled",
@@ -7775,7 +8013,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "jest-dom",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "jest-dom/prefer-pressed",
@@ -7785,7 +8028,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "jest-dom",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "jest-dom/prefer-required",
@@ -7795,7 +8043,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "jest-dom",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "jest-dom/prefer-to-have-attribute",
@@ -7805,7 +8058,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "jest-dom",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "jest-dom/prefer-to-have-class",
@@ -7815,7 +8073,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "jest-dom",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "jest-dom/prefer-to-have-style",
@@ -9690,9 +9953,9 @@
   },
   {
     "id": "max-lines",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "max-lines",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -9707,16 +9970,19 @@
           "max": 200
         }
       ],
-      "files": [
-        "**/*.{tsx,jsx}"
-      ],
+      "files": null,
       "ignores": [
+        "**/*.{js,mjs,cjs,ts,mts,cts,vue,svelte,astro}",
         "**/use[A-Z]*.{tsx,jsx}",
         "**/use-*.{tsx,jsx}",
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -9842,9 +10108,9 @@
   },
   {
     "id": "n/handle-callback-err",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "node/handle-callback-err",
+    "oxlintPlugin": "node",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -10077,7 +10343,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "node",
+      "ruleset": "modules",
       "options": [],
       "files": null,
       "ignores": null
@@ -10495,7 +10761,12 @@
       "typescript-eslint/no-array-constructor",
       "typescript/no-array-constructor"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "redundancy",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "no-async-promise-executor",
@@ -10714,9 +10985,9 @@
   },
   {
     "id": "no-constructor-return",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "no-constructor-return",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -10777,7 +11048,7 @@
       "no-debugger"
     ],
     "shipped": {
-      "ruleset": "redundancy",
+      "ruleset": "correctness",
       "options": [],
       "files": null,
       "ignores": null
@@ -10948,7 +11219,12 @@
       "eslint/no-empty",
       "no-empty"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "no-empty-character-class",
@@ -11138,9 +11414,9 @@
   },
   {
     "id": "no-extra-label",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "no-extra-label",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -11606,7 +11882,7 @@
       "no-new"
     ],
     "shipped": {
-      "ruleset": "redundancy",
+      "ruleset": "correctness",
       "options": [],
       "files": null,
       "ignores": null,
@@ -11658,7 +11934,12 @@
       "eslint/no-new-wrappers",
       "no-new-wrappers"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "no-nonoctal-decimal-escape",
@@ -11710,7 +11991,12 @@
       "eslint/no-object-constructor",
       "no-object-constructor"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "redundancy",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "no-octal",
@@ -11767,9 +12053,9 @@
   },
   {
     "id": "no-promise-executor-return",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "no-promise-executor-return",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -11929,7 +12215,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "type-safety",
+      "ruleset": "conventions",
       "options": [
         {
           "selector": "TSEnumDeclaration",
@@ -11942,9 +12228,9 @@
   },
   {
     "id": "no-return-assign",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "no-return-assign",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -12049,7 +12335,12 @@
       "eslint/no-self-compare",
       "no-self-compare"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "no-sequences",
@@ -12063,7 +12354,12 @@
       "eslint/no-sequences",
       "no-sequences"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "no-setter-return",
@@ -12465,7 +12761,7 @@
       "typescript/no-unused-expressions"
     ],
     "shipped": {
-      "ruleset": "redundancy",
+      "ruleset": "correctness",
       "options": [],
       "files": null,
       "ignores": null,
@@ -12538,9 +12834,7 @@
       ],
       "files": null,
       "ignores": [
-        "**/*.stories.{ts,tsx}",
-        "**/*.config.{ts,js,mjs,cjs}",
-        "**/scripts/**"
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -12576,7 +12870,12 @@
       "eslint/no-useless-assignment",
       "no-useless-assignment"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "redundancy",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "no-useless-backreference",
@@ -12637,9 +12936,9 @@
   },
   {
     "id": "no-useless-computed-key",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "no-useless-computed-key",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -12837,9 +13136,9 @@
   },
   {
     "id": "object-shorthand",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "object-shorthand",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -13974,9 +14273,9 @@
       "ruleset": "playwright",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -14009,7 +14308,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "playwright/no-force-option",
@@ -14049,7 +14353,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "playwright/no-magic-timeouts",
@@ -14204,7 +14513,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "playwright",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "playwright/no-unsafe-references",
@@ -14268,9 +14582,9 @@
       "ruleset": "playwright",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -14333,7 +14647,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "playwright/prefer-locator",
@@ -14423,7 +14742,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "playwright/require-annotation-reason",
@@ -14488,7 +14812,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "playwright/require-top-level-describe",
@@ -14557,9 +14886,9 @@
   },
   {
     "id": "prefer-arrow-callback",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "prefer-arrow-callback",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -14619,9 +14948,9 @@
   },
   {
     "id": "prefer-exponentiation-operator",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "prefer-exponentiation-operator",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -14657,9 +14986,9 @@
   },
   {
     "id": "prefer-numeric-literals",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "prefer-numeric-literals",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -14686,13 +15015,18 @@
       "eslint/prefer-object-has-own",
       "prefer-object-has-own"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "modern-js",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "prefer-object-spread",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "prefer-object-spread",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -14709,9 +15043,9 @@
   },
   {
     "id": "prefer-promise-reject-errors",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "prefer-promise-reject-errors",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -14728,9 +15062,9 @@
   },
   {
     "id": "prefer-regex-literals",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "prefer-regex-literals",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -14766,9 +15100,9 @@
   },
   {
     "id": "prefer-spread",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "prefer-spread",
+    "oxlintPlugin": "eslint",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -14944,7 +15278,7 @@
       "promise/no-promise-in-callback"
     ],
     "shipped": {
-      "ruleset": "correctness",
+      "ruleset": "modern-js",
       "options": [],
       "files": null,
       "ignores": null
@@ -14978,9 +15312,9 @@
   },
   {
     "id": "promise/param-names",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "promise/param-names",
+    "oxlintPlugin": "promise",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -15076,7 +15410,12 @@
       "eslint/radix",
       "radix"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "react-hook-form/destructuring-formstate",
@@ -15433,9 +15772,13 @@
       "options": [],
       "files": null,
       "ignores": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -15459,6 +15802,7 @@
           "options": []
         }
       },
+      "editorRuleset": "react",
       "options": [],
       "files": null,
       "ignores": null
@@ -15482,13 +15826,17 @@
       "options": [],
       "files": null,
       "ignores": [
-        "**/*.stories.{ts,tsx,js,jsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**",
         "**/playwright/**",
         "**/e2e/**",
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -16311,7 +16659,7 @@
       ],
       "files": null,
       "ignores": [
-        "**/*.stories.{ts,tsx,js,jsx}"
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -16603,12 +16951,7 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": {
-      "ruleset": "react",
-      "options": [],
-      "files": null,
-      "ignores": null
-    }
+    "shipped": null
   },
   {
     "id": "react/no-array-index-key",
@@ -16659,7 +17002,7 @@
       "react/no-children-prop"
     ],
     "shipped": {
-      "ruleset": "react",
+      "ruleset": "conventions",
       "options": [],
       "files": null,
       "ignores": null
@@ -17503,7 +17846,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "redundancy",
+      "ruleset": "correctness",
       "options": [
         {
           "reportExponentialBacktracking": "none"
@@ -19125,9 +19468,13 @@
       ],
       "files": null,
       "ignores": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -19164,7 +19511,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "tests",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "sonarjs/concise-regex",
@@ -19513,9 +19865,13 @@
       "options": [],
       "files": null,
       "ignores": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -19840,9 +20196,13 @@
       ],
       "files": null,
       "ignores": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -20143,7 +20503,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "react",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "sonarjs/no-debug-commands-in-ui-tests",
@@ -20203,7 +20568,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "tests",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "sonarjs/no-duplicate-string",
@@ -20313,7 +20683,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "tests",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "sonarjs/no-empty-test-file",
@@ -21243,9 +21618,13 @@
       "options": [],
       "files": null,
       "ignores": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -21998,7 +22377,12 @@
     "typed": true,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "tests",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "sonarjs/synchronous-suite-callback",
@@ -22339,7 +22723,7 @@
       "ruleset": "storybook",
       "options": [],
       "files": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ],
       "ignores": null
@@ -22357,7 +22741,7 @@
       "ruleset": "storybook",
       "options": [],
       "files": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ],
       "ignores": null
@@ -22375,7 +22759,7 @@
       "ruleset": "storybook",
       "options": [],
       "files": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ],
       "ignores": null
@@ -22393,7 +22777,7 @@
       "ruleset": "storybook",
       "options": [],
       "files": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ],
       "ignores": null
@@ -22411,7 +22795,7 @@
       "ruleset": "storybook",
       "options": [],
       "files": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ],
       "ignores": null
@@ -22429,7 +22813,7 @@
       "ruleset": "storybook",
       "options": [],
       "files": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ],
       "ignores": null
@@ -22457,7 +22841,7 @@
       "ruleset": "storybook",
       "options": [],
       "files": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ],
       "ignores": null
@@ -22475,7 +22859,7 @@
       "ruleset": "storybook",
       "options": [],
       "files": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ],
       "ignores": null
@@ -22493,7 +22877,7 @@
       "ruleset": "storybook",
       "options": [],
       "files": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ],
       "ignores": null
@@ -22531,7 +22915,7 @@
       "ruleset": "storybook",
       "options": [],
       "files": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ],
       "ignores": null
@@ -22549,7 +22933,7 @@
       "ruleset": "storybook",
       "options": [],
       "files": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ],
       "ignores": null
@@ -22567,7 +22951,7 @@
       "ruleset": "storybook",
       "options": [],
       "files": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ],
       "ignores": null
@@ -22585,7 +22969,7 @@
       "ruleset": "storybook",
       "options": [],
       "files": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ],
       "ignores": null
@@ -22613,7 +22997,12 @@
       "eslint/symbol-description",
       "symbol-description"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "conventions",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "testing-library/await-async-events",
@@ -22631,13 +23020,13 @@
         }
       ],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ]
     }
@@ -22654,10 +23043,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -22674,10 +23063,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -22710,10 +23099,10 @@
         }
       ],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -22730,10 +23119,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -22760,10 +23149,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null,
       "coveredBy": "sonarjs/no-debug-commands-in-ui-tests"
@@ -22781,13 +23170,13 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": [
-        "**/*.stories.{ts,tsx,js,jsx,mjs}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/.storybook/**"
       ]
     }
@@ -22804,10 +23193,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -22824,10 +23213,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -22848,10 +23237,10 @@
         }
       ],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -22868,10 +23257,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -22888,10 +23277,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -22908,10 +23297,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -22928,10 +23317,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -22948,10 +23337,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -22968,10 +23357,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -22988,10 +23377,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -23008,10 +23397,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -23028,10 +23417,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -23058,10 +23447,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -23078,10 +23467,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -23179,10 +23568,10 @@
         }
       ],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -23199,10 +23588,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -23219,10 +23608,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -23239,10 +23628,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -23259,10 +23648,10 @@
       "ruleset": "testing-library",
       "options": [],
       "files": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}",
-        "**/*.stories.{ts,tsx,js,jsx,mjs}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ],
       "ignores": null
     }
@@ -23674,9 +24063,9 @@
   },
   {
     "id": "unicorn/error-message",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "unicorn/error-message",
+    "oxlintPlugin": "unicorn",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -23961,6 +24350,7 @@
           "options": []
         }
       },
+      "editorRuleset": "comments",
       "options": [],
       "files": null,
       "ignores": null
@@ -24201,7 +24591,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-async-promise-finally",
@@ -24262,7 +24657,9 @@
       "ruleset": "modules",
       "options": [],
       "files": null,
-      "ignores": null
+      "ignores": [
+        "**/src/index.*"
+      ]
     }
   },
   {
@@ -24299,7 +24696,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "complexity",
+      "ruleset": "correctness",
       "options": [],
       "files": null,
       "ignores": null
@@ -24368,7 +24765,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-confusing-array-splice",
@@ -24632,12 +25034,7 @@
       "eslint-plugin-unicorn/no-hex-escape",
       "unicorn/no-hex-escape"
     ],
-    "shipped": {
-      "ruleset": "modern-js",
-      "options": [],
-      "files": null,
-      "ignores": null
-    }
+    "shipped": null
   },
   {
     "id": "unicorn/no-immediate-mutation",
@@ -24675,7 +25072,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-incorrect-query-selector",
@@ -24705,9 +25107,13 @@
       "options": [],
       "files": null,
       "ignores": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -24719,7 +25125,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "security",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-instanceof-array",
@@ -24775,7 +25186,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "browser",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-invalid-character-comparison",
@@ -24795,7 +25211,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "browser",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-invalid-fetch-options",
@@ -24838,7 +25259,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "security",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-invalid-intl-options",
@@ -24848,7 +25274,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-invalid-property-descriptor",
@@ -24858,7 +25289,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-invalid-remove-event-listener",
@@ -24886,7 +25322,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-invalid-style-set-property",
@@ -24896,7 +25337,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "browser",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-invalid-temporal-arithmetic",
@@ -24906,7 +25352,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-invalid-url-protocol-comparison",
@@ -24916,7 +25367,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-invalid-well-known-symbol-methods",
@@ -24974,7 +25430,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "browser",
+      "ruleset": "correctness",
       "options": [],
       "files": null,
       "ignores": null
@@ -24989,7 +25445,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "browser",
+      "ruleset": "correctness",
       "options": [],
       "files": null,
       "ignores": null
@@ -25284,9 +25740,9 @@
   },
   {
     "id": "unicorn/no-object-as-default-parameter",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "unicorn/no-object-as-default-parameter",
+    "oxlintPlugin": "unicorn",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -25338,7 +25794,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "browser",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-process-exit",
@@ -25381,9 +25842,13 @@
       "options": [],
       "files": null,
       "ignores": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -25467,7 +25932,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "redundancy",
+      "ruleset": "correctness",
       "options": [],
       "files": null,
       "ignores": null
@@ -25899,7 +26364,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-unsafe-promise-all-settled-values",
@@ -25964,7 +26434,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-unused-iterator-helper",
@@ -25974,7 +26449,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-unused-properties",
@@ -25999,7 +26479,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-useless-boolean-cast",
@@ -26209,9 +26694,9 @@
   },
   {
     "id": "unicorn/no-useless-promise-resolve-reject",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "unicorn/no-useless-promise-resolve-reject",
+    "oxlintPlugin": "unicorn",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -26258,7 +26743,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "redundancy",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-useless-spread",
@@ -26271,12 +26761,7 @@
       "eslint-plugin-unicorn/no-useless-spread",
       "unicorn/no-useless-spread"
     ],
-    "shipped": {
-      "ruleset": "redundancy",
-      "options": [],
-      "files": null,
-      "ignores": null
-    }
+    "shipped": null
   },
   {
     "id": "unicorn/no-useless-switch-case",
@@ -26328,7 +26813,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/no-xor-as-exponentiation",
@@ -26436,7 +26926,7 @@
       "unicorn/prefer-add-event-listener"
     ],
     "shipped": {
-      "ruleset": "browser",
+      "ruleset": "conventions",
       "options": [],
       "files": null,
       "ignores": null
@@ -26520,7 +27010,7 @@
       "unicorn/prefer-array-flat-map"
     ],
     "shipped": {
-      "ruleset": "modern-js",
+      "ruleset": "redundancy",
       "options": [],
       "files": null,
       "ignores": null
@@ -26550,7 +27040,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "modern-js",
+      "ruleset": "redundancy",
       "options": [],
       "files": null,
       "ignores": null
@@ -26654,16 +27144,21 @@
   },
   {
     "id": "unicorn/prefer-at",
-    "engine": "oxlint",
-    "oxlintName": "unicorn/prefer-at",
-    "oxlintPlugin": "unicorn",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
       "eslint-plugin-unicorn/prefer-at",
       "unicorn/prefer-at"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "modern-js",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-await",
@@ -26678,9 +27173,13 @@
       "options": [],
       "files": null,
       "ignores": [
-        "**/*.{test,spec}.{ts,tsx,js,jsx}",
+        "**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
         "**/__tests__/**",
-        "**/*.{test,spec}-d.{ts,tsx,js,jsx}"
+        "**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}",
+        "**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"
       ]
     }
   },
@@ -26699,9 +27198,9 @@
   },
   {
     "id": "unicorn/prefer-blob-reading-methods",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-blob-reading-methods",
+    "oxlintPlugin": "unicorn",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -26773,9 +27272,9 @@
   },
   {
     "id": "unicorn/prefer-code-point",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-code-point",
+    "oxlintPlugin": "unicorn",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -26873,7 +27372,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-dom-node-append",
@@ -26902,7 +27406,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "browser",
+      "offByDefault": true,
       "options": [],
       "files": null,
       "ignores": null
@@ -26997,7 +27501,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-escaped-irregular-whitespace",
@@ -27063,7 +27572,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-global-number-constants",
@@ -27117,7 +27631,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "modern-js",
+      "ruleset": "redundancy",
       "options": [],
       "files": null,
       "ignores": null
@@ -27208,7 +27722,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "complexity",
+      "ruleset": "modern-js",
       "options": [],
       "files": null,
       "ignores": null
@@ -27237,7 +27751,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-iterator-helpers",
@@ -27292,7 +27811,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-json-import",
@@ -27330,7 +27854,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "conventions",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-location-assign",
@@ -27341,7 +27870,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "browser",
+      "offByDefault": true,
       "options": [],
       "files": null,
       "ignores": null
@@ -27374,7 +27903,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "modern-js",
+      "ruleset": "conventions",
       "options": [],
       "files": null,
       "ignores": null
@@ -27389,7 +27918,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "modern-js",
+      "ruleset": "redundancy",
       "options": [],
       "files": null,
       "ignores": null
@@ -27425,9 +27954,9 @@
   },
   {
     "id": "unicorn/prefer-math-trunc",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-math-trunc",
+    "oxlintPlugin": "unicorn",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -27624,7 +28153,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "modern-js",
+      "ruleset": "conventions",
       "options": [],
       "files": null,
       "ignores": null
@@ -27657,7 +28186,7 @@
     "eslintAliases": [],
     "oxlintSpellings": [],
     "shipped": {
-      "ruleset": "modern-js",
+      "ruleset": "redundancy",
       "options": [],
       "files": null,
       "ignores": null
@@ -27680,9 +28209,9 @@
   },
   {
     "id": "unicorn/prefer-optional-catch-binding",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-optional-catch-binding",
+    "oxlintPlugin": "unicorn",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -27744,7 +28273,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-promise-with-resolvers",
@@ -27776,9 +28310,9 @@
   },
   {
     "id": "unicorn/prefer-query-selector",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-query-selector",
+    "oxlintPlugin": "unicorn",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -27828,7 +28362,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-regexp-test",
@@ -28009,16 +28548,21 @@
   },
   {
     "id": "unicorn/prefer-single-call",
-    "engine": "oxlint",
-    "oxlintName": "unicorn/prefer-single-call",
-    "oxlintPlugin": "unicorn",
+    "engine": "eslint",
+    "oxlintName": null,
+    "oxlintPlugin": null,
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
       "eslint-plugin-unicorn/prefer-single-call",
       "unicorn/prefer-single-call"
     ],
-    "shipped": null
+    "shipped": {
+      "ruleset": "redundancy",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-single-object-destructuring",
@@ -28197,9 +28741,9 @@
   },
   {
     "id": "unicorn/prefer-string-trim-start-end",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-string-trim-start-end",
+    "oxlintPlugin": "unicorn",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -28249,7 +28793,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-temporal-conversion",
@@ -28259,7 +28808,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "redundancy",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-ternary",
@@ -28348,7 +28902,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-uint8array-hex",
@@ -28358,7 +28917,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "offByDefault": true,
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/prefer-unary-minus",
@@ -28577,12 +29141,7 @@
       "eslint-plugin-unicorn/require-post-message-target-origin",
       "unicorn/require-post-message-target-origin"
     ],
-    "shipped": {
-      "ruleset": "browser",
-      "options": [],
-      "files": null,
-      "ignores": null
-    }
+    "shipped": null
   },
   {
     "id": "unicorn/require-proxy-trap-boolean-return",
@@ -28607,7 +29166,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "correctness",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "unicorn/single-line-block-comment-style",
@@ -28685,9 +29249,9 @@
   },
   {
     "id": "unicorn/throw-new-error",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "unicorn/throw-new-error",
+    "oxlintPlugin": "unicorn",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
@@ -30946,7 +31510,12 @@
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [],
-    "shipped": null
+    "shipped": {
+      "ruleset": "zod",
+      "options": [],
+      "files": null,
+      "ignores": null
+    }
   },
   {
     "id": "zod/prefer-tuple-over-array-length",

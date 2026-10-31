@@ -7,8 +7,9 @@
       "@eslint-react": "5.26.5",
       "@tanstack/query": "5.104.5",
       "@tanstack/router": "1.162.0",
-      "@typescript-eslint": "8.71.1",
+      "@typescript-eslint": "8.71.2",
       "check-file": "3.3.2",
+      "compat": "7.0.2",
       "css-modules": "2.12.0",
       "e18e": "0.8.1",
       "functional": "10.0.1",
@@ -3867,6 +3868,14 @@
       }
     },
     {
+      "id": "compat/compat",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
       "id": "complexity",
       "oxlint": {
         "oxlintName": "complexity",
@@ -4666,6 +4675,14 @@
     },
     {
       "id": "house/no-placeholder-only-field",
+      "oxlint": null,
+      "eslint": {
+        "deprecated": false,
+        "typed": false
+      }
+    },
+    {
+      "id": "house/no-reduce-accumulator-copy",
       "oxlint": null,
       "eslint": {
         "deprecated": false,

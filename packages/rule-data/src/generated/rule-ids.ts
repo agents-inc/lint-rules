@@ -323,6 +323,7 @@ export type RuleId =
   | "check-file/folder-naming-convention"
   | "check-file/no-index"
   | "class-methods-use-this"
+  | "compat/compat"
   | "complexity"
   | "consistent-return"
   | "consistent-this"
@@ -403,6 +404,7 @@ export type RuleId =
   | "house/no-manual-effect-error-tag"
   | "house/no-nested-interactive"
   | "house/no-placeholder-only-field"
+  | "house/no-reduce-accumulator-copy"
   | "house/no-section-banner"
   | "house/no-side-effect-in-state-updater"
   | "house/no-suppressions"
@@ -2072,6 +2074,9 @@ export type RuleId =
   | "zod/schema-error-property-style"
 
 export type SuppressionRuleId =
+  | "@eslint-community/eslint-comments/disable-enable-pair"
+  | "@eslint-community/eslint-comments/no-duplicate-disable"
+  | "@eslint-community/eslint-comments/require-description"
   | "@typescript-eslint/ban-ts-comment"
   | "house/no-suppressions"
   | "react-hooks/rule-suppression"
