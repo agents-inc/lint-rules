@@ -12,36 +12,35 @@ import {
 import {
   DEFAULT_PARAM_LAST,
   defaultParamFirstSourceFiles,
-  NO_REDECLARE,
-  OURS_SETTING_NO_REDECLARE_WITH_AN_OPTION_OXLINT_REFUSES,
   OURS_SETTING_THE_DEFAULT_PARAM_LAST_EXTENSION,
-  redeclaringSourceFiles,
-  TEAM_ESLINT_RULES_TURNING_NO_REDECLARE_ON,
   TEAM_OXLINT_CONFIG_TURNING_DEFAULT_PARAM_LAST_ON,
-  TEAM_OXLINT_CONFIG_TURNING_NO_REDECLARE_ON,
 } from './__tests__/cases/both-engines-grid.ts'
 import {
-  maxParamsAndEmptyFunctionSourceFiles,
+  maxParamsAndUselessConstructorSourceFiles,
   maxParamsSourceFiles,
   maxParamsSourceFilesAtTheRootAndInSrc,
   maxParamsSourceFilesAtTheRootInSrcAndBelowIt,
   maxParamsSourceFilesInLegacyAndSrc,
   maxParamsSourceFilesUnderEachEntry,
-  NO_EMPTY_FUNCTION,
+  NO_USELESS_CONSTRUCTOR,
+  OURS_SETTING_NO_UNUSED_VARS_AND_TYPESCRIPT_ESLINTS_IN_AN_ENTRY_WITH_AN_OPTION_OXLINT_DROPS,
   OURS_STATING_BOTH_MAX_PARAMS_NAMES,
   OURS_STATING_BOTH_MAX_PARAMS_NAMES_BESIDE_AN_ENTRY_TURNING_MAX_PARAMS_OFF,
   OURS_STATING_BOTH_MAX_PARAMS_NAMES_BESIDE_ONE_ALONE,
   OURS_STATING_BOTH_MAX_PARAMS_NAMES_IN_AN_ENTRY_OVER_THE_ROOT_SRC_FOLDERS_TS_FILES,
   OURS_STATING_BOTH_MAX_PARAMS_NAMES_IN_AN_ENTRY_OVER_THE_ROOTS_TS_FILES,
   OURS_STATING_BOTH_NAMES_OF_TWO_PAIRS,
-  OURS_STATING_BOTH_NO_REDECLARE_NAMES_THE_EXTENSION_WITH_AN_OPTION_OXLINT_REFUSES,
   OURS_STATING_BOTH_NO_UNUSED_VARS_NAMES,
+  OURS_STATING_BOTH_NO_UNUSED_VARS_NAMES_THE_EXTENSION_WITH_AN_OPTION_OXLINT_DROPS,
   OURS_TURNING_MAX_PARAMS_OFF_AND_TYPESCRIPT_ESLINTS_ON,
   OURS_TURNING_MAX_PARAMS_OFF_AND_TYPESCRIPT_ESLINTS_ON_IN_AN_ENTRY,
-  OURS_TURNING_NO_REDECLARE_OFF_AND_TYPESCRIPT_ESLINTS_ON,
-  OURS_TURNING_NO_REDECLARE_OFF_AND_TYPESCRIPT_ESLINTS_ON_BESIDE_AN_ENTRY_STATING_TYPESCRIPT_ESLINTS_ALONE,
-  OURS_TURNING_NO_REDECLARE_OFF_AND_TYPESCRIPT_ESLINTS_ON_IN_AN_ENTRY,
-  TEAM_ESLINT_RULES_TURNING_MAX_PARAMS_AND_NO_EMPTY_FUNCTION_ON,
+  OURS_TURNING_NO_UNUSED_VARS_OFF_AND_TYPESCRIPT_ESLINTS_ON,
+  OURS_TURNING_NO_UNUSED_VARS_OFF_AND_TYPESCRIPT_ESLINTS_ON_BESIDE_AN_ENTRY_STATING_TYPESCRIPT_ESLINTS_ALONE,
+  OURS_TURNING_NO_UNUSED_VARS_OFF_AND_TYPESCRIPT_ESLINTS_ON_IN_AN_ENTRY,
+  TEAM_ESLINT_RULES_TURNING_MAX_PARAMS_AND_NO_USELESS_CONSTRUCTOR_ON,
+  TEAM_ESLINT_RULES_TURNING_NO_UNUSED_VARS_ON,
+  TEAM_OXLINT_CONFIG_TURNING_NO_UNUSED_VARS_ON,
+  unusedParameterAndConstantSourceFiles,
   unusedParameterSourceFiles,
 } from './__tests__/cases/twin-pairs-both-named.ts'
 import { setUpCorpusRuns } from './__tests__/corpus-runs.ts'
@@ -154,35 +153,30 @@ for (const twinCase of TWIN_CASES) {
   })
 }
 
-// No config we write gives oxlint options its rule refuses: the entry's option exists only in
-// typescript-eslint's no-redeclare, so ESLint runs it on the TS files in legacy/** and oxlint's copy is
-// off there; the JS files keep the top level's setting, which oxlint runs.
-describe("no-redeclare in every file, and typescript-eslint's in legacy/** with an option oxlint's refuses, in a project whose package.json lists oxlint", () => {
+// No config we write gives oxlint an option its rule drops: oxlint's no-unused-vars loads the entry's
+// option and does not honour it, so ESLint runs typescript-eslint's on the TS files in legacy/** and
+// oxlint's copy is off there; the JS files keep the top level's setting, which oxlint runs.
+describe("no-unused-vars under args none in every file, and typescript-eslint's under args all in legacy/** with an option oxlint's does not honour, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
-    sources: redeclaringSourceFiles,
-    ours: OURS_SETTING_NO_REDECLARE_WITH_AN_OPTION_OXLINT_REFUSES,
+    sources: unusedParameterAndConstantSourceFiles,
+    ours: OURS_SETTING_NO_UNUSED_VARS_AND_TYPESCRIPT_ESLINTS_IN_AN_ENTRY_WITH_AN_OPTION_OXLINT_DROPS,
     teamEslintRules: {},
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
-    keepsOxlintRefusals: true,
   })
-  const files = Object.keys(redeclaringSourceFiles)
+  const files = Object.keys(unusedParameterAndConstantSourceFiles)
   const owed = {
-    'legacy/a.ts': { 'no-redeclare': ['legacy/a.ts:4 @typescript-eslint/no-redeclare'] },
-    'legacy/b.js': { 'no-redeclare': ['legacy/b.js:1 eslint(no-redeclare)'] },
-    'src/a.ts': { 'no-redeclare': ['src/a.ts:1 eslint(no-redeclare)', 'src/a.ts:3 eslint(no-redeclare)'] },
-    'src/b.js': { 'no-redeclare': ['src/b.js:1 eslint(no-redeclare)'] },
+    'legacy/a.ts': { 'no-unused-vars': ['legacy/a.ts:1 @typescript-eslint/no-unused-vars', 'legacy/a.ts:4 @typescript-eslint/no-unused-vars'] },
+    'legacy/b.js': { 'no-unused-vars': ['legacy/b.js:4 eslint(no-unused-vars)'] },
+    'src/a.ts': { 'no-unused-vars': ['src/a.ts:4 eslint(no-unused-vars)'] },
+    'src/b.js': { 'no-unused-vars': ['src/b.js:4 eslint(no-unused-vars)'] },
   }
 
-  it('is in configs oxlint loads, in the agent build and the editor merges', () => {
-    expect(runs().oxlintRefusals).toStrictEqual([])
-  })
-
   it('is reported once in each file by the agent build, with the setting the highest layer stating either name gives', () => {
-    expect(findingsByFileAndRule(runs().agent, files, [NO_REDECLARE])).toStrictEqual(owed)
+    expect(findingsByFileAndRule(runs().agent, files, [NO_UNUSED_VARS])).toStrictEqual(owed)
   })
 
   it('is reported once in each file merged into empty team configs, with the setting the highest layer stating either name gives', () => {
-    expect(findingsByFileAndRule(runs().mergedIntoEmptyTeamConfigs, files, [NO_REDECLARE])).toStrictEqual(owed)
+    expect(findingsByFileAndRule(runs().mergedIntoEmptyTeamConfigs, files, [NO_UNUSED_VARS])).toStrictEqual(owed)
   })
 })
 
@@ -239,20 +233,20 @@ describe("typescript-eslint's default-param-last, set in our rules beside ignore
   })
 })
 
-describe("no-redeclare in every file, and typescript-eslint's in legacy/** with an option oxlint's refuses, beside a team turning no-redeclare on in both engines", () => {
+describe("no-unused-vars under args none in every file, and typescript-eslint's under args all in legacy/** with an option oxlint's does not honour, beside a team turning no-unused-vars on in both engines", () => {
   const runs = setUpBothEnginesRuns({
-    sources: redeclaringSourceFiles,
-    ours: OURS_SETTING_NO_REDECLARE_WITH_AN_OPTION_OXLINT_REFUSES,
-    teamEslintRules: TEAM_ESLINT_RULES_TURNING_NO_REDECLARE_ON,
-    teamOxlintConfig: TEAM_OXLINT_CONFIG_TURNING_NO_REDECLARE_ON,
+    sources: unusedParameterAndConstantSourceFiles,
+    ours: OURS_SETTING_NO_UNUSED_VARS_AND_TYPESCRIPT_ESLINTS_IN_AN_ENTRY_WITH_AN_OPTION_OXLINT_DROPS,
+    teamEslintRules: TEAM_ESLINT_RULES_TURNING_NO_UNUSED_VARS_ON,
+    teamOxlintConfig: TEAM_OXLINT_CONFIG_TURNING_NO_UNUSED_VARS_ON,
   })
-  const files = Object.keys(redeclaringSourceFiles)
+  const files = Object.keys(unusedParameterAndConstantSourceFiles)
 
   it("is reported, merged into the team's configs, the team's alone, the team setting it, from one engine", () => {
     const { agent, teamAlone, mergedIntoTheTeamsConfigs } = runs()
 
-    expect(findingsByFileAndRule(mergedIntoTheTeamsConfigs, files, [NO_REDECLARE])).toStrictEqual(
-      owedBesideTheTeam(findingsByFileAndRule(agent, files, [NO_REDECLARE]), findingsByFileAndRule(teamAlone, files, [NO_REDECLARE]), [NO_REDECLARE.rule]),
+    expect(findingsByFileAndRule(mergedIntoTheTeamsConfigs, files, [NO_UNUSED_VARS])).toStrictEqual(
+      owedBesideTheTeam(findingsByFileAndRule(agent, files, [NO_UNUSED_VARS]), findingsByFileAndRule(teamAlone, files, [NO_UNUSED_VARS]), [NO_UNUSED_VARS.rule]),
     )
   })
 })
@@ -368,52 +362,47 @@ describe("max-params and typescript-eslint's in an entry over ./src/*.ts, in a p
   })
 })
 
-// ESLint runs typescript-eslint's setting on the TS files, where under ignoreDeclarationMerge the
-// twice-declared interface is no finding; oxlint runs the core rule's setting on the JS files.
-describe("no-redeclare and typescript-eslint's in our top level, typescript-eslint's with an option oxlint's refuses, in a project whose package.json lists oxlint", () => {
+// ESLint runs typescript-eslint's setting on the TS files, where under args all the unused parameter
+// is a finding; oxlint runs the core rule's setting on the JS files.
+describe("no-unused-vars under args none and typescript-eslint's under args all in our top level, typescript-eslint's with an option oxlint's does not honour, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
-    sources: redeclaringSourceFiles,
-    ours: OURS_STATING_BOTH_NO_REDECLARE_NAMES_THE_EXTENSION_WITH_AN_OPTION_OXLINT_REFUSES,
+    sources: unusedParameterAndConstantSourceFiles,
+    ours: OURS_STATING_BOTH_NO_UNUSED_VARS_NAMES_THE_EXTENSION_WITH_AN_OPTION_OXLINT_DROPS,
     teamEslintRules: {},
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
-    keepsOxlintRefusals: true,
   })
-  const files = Object.keys(redeclaringSourceFiles)
+  const files = Object.keys(unusedParameterAndConstantSourceFiles)
   const owed = {
-    'legacy/a.ts': { 'no-redeclare': ['legacy/a.ts:4 @typescript-eslint/no-redeclare'] },
-    'legacy/b.js': { 'no-redeclare': ['legacy/b.js:1 eslint(no-redeclare)'] },
-    'src/a.ts': { 'no-redeclare': ['src/a.ts:4 @typescript-eslint/no-redeclare'] },
-    'src/b.js': { 'no-redeclare': ['src/b.js:1 eslint(no-redeclare)'] },
+    'legacy/a.ts': { 'no-unused-vars': ['legacy/a.ts:1 @typescript-eslint/no-unused-vars', 'legacy/a.ts:4 @typescript-eslint/no-unused-vars'] },
+    'legacy/b.js': { 'no-unused-vars': ['legacy/b.js:4 eslint(no-unused-vars)'] },
+    'src/a.ts': { 'no-unused-vars': ['src/a.ts:1 @typescript-eslint/no-unused-vars', 'src/a.ts:4 @typescript-eslint/no-unused-vars'] },
+    'src/b.js': { 'no-unused-vars': ['src/b.js:4 eslint(no-unused-vars)'] },
   }
 
-  it('is in configs oxlint loads, in the agent build and the editor merges', () => {
-    expect(runs().oxlintRefusals).toStrictEqual([])
+  it("is reported once in each file by the agent build, with typescript-eslint's setting on the TS files and no-unused-vars' on the JS files", () => {
+    expect(findingsByFileAndRule(runs().agent, files, [NO_UNUSED_VARS])).toStrictEqual(owed)
   })
 
-  it("is reported once in each file by the agent build, with typescript-eslint's setting on the TS files and no-redeclare's on the JS files", () => {
-    expect(findingsByFileAndRule(runs().agent, files, [NO_REDECLARE])).toStrictEqual(owed)
-  })
-
-  it("is reported once in each file merged into empty team configs, with typescript-eslint's setting on the TS files and no-redeclare's on the JS files", () => {
-    expect(findingsByFileAndRule(runs().mergedIntoEmptyTeamConfigs, files, [NO_REDECLARE])).toStrictEqual(owed)
+  it("is reported once in each file merged into empty team configs, with typescript-eslint's setting on the TS files and no-unused-vars' on the JS files", () => {
+    expect(findingsByFileAndRule(runs().mergedIntoEmptyTeamConfigs, files, [NO_UNUSED_VARS])).toStrictEqual(owed)
   })
 })
 
 // Each pair takes typescript-eslint's setting on the TS file and the core rule's on the JS file, oxlint
 // running both core rules.
-describe("max-params at max 3 and typescript-eslint's at max 2, and no-empty-function on and typescript-eslint's off, in our top level, beside a team ESLint config turning both core rules on, in a project whose package.json lists oxlint", () => {
+describe("max-params at max 3 and typescript-eslint's at max 2, and no-useless-constructor on and typescript-eslint's off, in our top level, beside a team ESLint config turning both core rules on, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
-    sources: maxParamsAndEmptyFunctionSourceFiles,
+    sources: maxParamsAndUselessConstructorSourceFiles,
     ourRulesets: COMPLEXITY,
     ours: OURS_STATING_BOTH_NAMES_OF_TWO_PAIRS,
-    teamEslintRules: TEAM_ESLINT_RULES_TURNING_MAX_PARAMS_AND_NO_EMPTY_FUNCTION_ON,
+    teamEslintRules: TEAM_ESLINT_RULES_TURNING_MAX_PARAMS_AND_NO_USELESS_CONSTRUCTOR_ON,
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
   })
-  const files = Object.keys(maxParamsAndEmptyFunctionSourceFiles)
-  const rules = [MAX_PARAMS, NO_EMPTY_FUNCTION]
+  const files = Object.keys(maxParamsAndUselessConstructorSourceFiles)
+  const rules = [MAX_PARAMS, NO_USELESS_CONSTRUCTOR]
   const owed = {
-    'src/a.ts': { 'max-params': ['src/a.ts:4 eslint(max-params)', 'src/a.ts:7 eslint(max-params)'], 'no-empty-function': [] },
-    'src/b.js': { 'max-params': ['src/b.js:7 eslint(max-params)'], 'no-empty-function': ['src/b.js:10 eslint(no-empty-function)'] },
+    'src/a.ts': { 'max-params': ['src/a.ts:4 eslint(max-params)', 'src/a.ts:7 eslint(max-params)'], 'no-useless-constructor': [] },
+    'src/b.js': { 'max-params': ['src/b.js:7 eslint(max-params)'], 'no-useless-constructor': ['src/b.js:10 eslint(no-useless-constructor)'] },
   }
 
   it('are linted by every ESLint run with no fatal message', () => {
@@ -444,7 +433,7 @@ describe("max-params off and typescript-eslint's at max 2 in our top level, over
     sources: maxParamsSourceFiles,
     ourRulesets: COMPLEXITY,
     ours: OURS_TURNING_MAX_PARAMS_OFF_AND_TYPESCRIPT_ESLINTS_ON,
-    teamEslintRules: TEAM_ESLINT_RULES_TURNING_MAX_PARAMS_AND_NO_EMPTY_FUNCTION_ON,
+    teamEslintRules: TEAM_ESLINT_RULES_TURNING_MAX_PARAMS_AND_NO_USELESS_CONSTRUCTOR_ON,
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
   })
   const owedInTheTsFile = { 'src/a.ts': { 'max-params': ['src/a.ts:4 eslint(max-params)', 'src/a.ts:7 eslint(max-params)'] } }
@@ -485,7 +474,7 @@ describe("max-params off and typescript-eslint's at max 2 in an entry of ours on
   const runs = setUpBothEnginesRuns({
     sources: maxParamsSourceFilesInLegacyAndSrc,
     ours: OURS_TURNING_MAX_PARAMS_OFF_AND_TYPESCRIPT_ESLINTS_ON_IN_AN_ENTRY,
-    teamEslintRules: TEAM_ESLINT_RULES_TURNING_MAX_PARAMS_AND_NO_EMPTY_FUNCTION_ON,
+    teamEslintRules: TEAM_ESLINT_RULES_TURNING_MAX_PARAMS_AND_NO_USELESS_CONSTRUCTOR_ON,
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
   })
   const owedButInTheEntrysJsFile = {
@@ -535,7 +524,7 @@ describe("max-params at max 3 and typescript-eslint's at max 2 in our top level,
     sources: maxParamsSourceFilesInLegacyAndSrc,
     ourRulesets: COMPLEXITY,
     ours: OURS_STATING_BOTH_MAX_PARAMS_NAMES_BESIDE_AN_ENTRY_TURNING_MAX_PARAMS_OFF,
-    teamEslintRules: TEAM_ESLINT_RULES_TURNING_MAX_PARAMS_AND_NO_EMPTY_FUNCTION_ON,
+    teamEslintRules: TEAM_ESLINT_RULES_TURNING_MAX_PARAMS_AND_NO_USELESS_CONSTRUCTOR_ON,
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
   })
   const files = Object.keys(maxParamsSourceFilesInLegacyAndSrc)
@@ -567,8 +556,7 @@ describe("max-params at max 3 and typescript-eslint's at max 2 in our top level,
   })
 })
 
-// On TS files oxlint runs no-unused-vars at typescript-eslint's args all, within the core rule's own
-// ignores. Which engine reports the pair in scripts/ is left open: these tests pin oxlint's part.
+// On TS files oxlint runs no-unused-vars at typescript-eslint's args all, scripts/ included.
 describe("no-unused-vars under args none and typescript-eslint's under args all in our top level, over the redundancy ruleset, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: unusedParameterSourceFiles,
@@ -583,24 +571,24 @@ describe("no-unused-vars under args none and typescript-eslint's under args all 
     expect(runs().eslintFatalMessages).toStrictEqual([])
   })
 
-  it("is reported by oxlint, in the agent build, in the TS file of src alone: never in scripts/, which no-unused-vars' own ignores leave out", () => {
-    expect(filesReportingIn(runs().agent, files, NO_UNUSED_VARS, 'oxlint')).toStrictEqual(['src/a.ts'])
+  it('is reported by oxlint, in the agent build, in the TS files alone, the one in scripts/ included', () => {
+    expect(filesReportingIn(runs().agent, files, NO_UNUSED_VARS, 'oxlint')).toStrictEqual(['src/a.ts', 'scripts/s.ts'])
   })
 
-  it("is reported by oxlint, merged into empty team configs, in the TS file of src alone: never in scripts/, which no-unused-vars' own ignores leave out", () => {
-    expect(filesReportingIn(runs().mergedIntoEmptyTeamConfigs, files, NO_UNUSED_VARS, 'oxlint')).toStrictEqual(['src/a.ts'])
+  it('is reported by oxlint, merged into empty team configs, in the TS files alone, the one in scripts/ included', () => {
+    expect(filesReportingIn(runs().mergedIntoEmptyTeamConfigs, files, NO_UNUSED_VARS, 'oxlint')).toStrictEqual(['src/a.ts', 'scripts/s.ts'])
   })
 })
 
 // ESLint runs typescript-eslint's on the TS files alone, and no rule of ours runs on the JS files.
-describe("no-redeclare off and typescript-eslint's on in our top level, typescript-eslint's with an option oxlint's refuses, beside a team turning no-redeclare on in both engines, in a project whose package.json lists oxlint", () => {
+describe("no-unused-vars off and typescript-eslint's under args all in our top level, typescript-eslint's with an option oxlint's does not honour, beside a team turning no-unused-vars on in both engines, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
-    sources: redeclaringSourceFiles,
-    ours: OURS_TURNING_NO_REDECLARE_OFF_AND_TYPESCRIPT_ESLINTS_ON,
-    teamEslintRules: TEAM_ESLINT_RULES_TURNING_NO_REDECLARE_ON,
-    teamOxlintConfig: TEAM_OXLINT_CONFIG_TURNING_NO_REDECLARE_ON,
+    sources: unusedParameterAndConstantSourceFiles,
+    ours: OURS_TURNING_NO_UNUSED_VARS_OFF_AND_TYPESCRIPT_ESLINTS_ON,
+    teamEslintRules: TEAM_ESLINT_RULES_TURNING_NO_UNUSED_VARS_ON,
+    teamOxlintConfig: TEAM_OXLINT_CONFIG_TURNING_NO_UNUSED_VARS_ON,
   })
-  const files = Object.keys(redeclaringSourceFiles)
+  const files = Object.keys(unusedParameterAndConstantSourceFiles)
 
   it('is linted by every ESLint run with no fatal message', () => {
     expect(runs().eslintFatalMessages).toStrictEqual([])
@@ -608,70 +596,70 @@ describe("no-redeclare off and typescript-eslint's on in our top level, typescri
 
   // Our part reports the pair in the TS files alone, so the test below reads both sides of the merge.
   it("is reported by the agent build once in each TS file, at typescript-eslint's setting, and in no JS file", () => {
-    expect(findingsByFileAndRule(runs().agent, files, [NO_REDECLARE])).toStrictEqual({
-      'legacy/a.ts': { 'no-redeclare': ['legacy/a.ts:4 @typescript-eslint/no-redeclare'] },
-      'legacy/b.js': { 'no-redeclare': [] },
-      'src/a.ts': { 'no-redeclare': ['src/a.ts:4 @typescript-eslint/no-redeclare'] },
-      'src/b.js': { 'no-redeclare': [] },
+    expect(findingsByFileAndRule(runs().agent, files, [NO_UNUSED_VARS])).toStrictEqual({
+      'legacy/a.ts': { 'no-unused-vars': ['legacy/a.ts:1 @typescript-eslint/no-unused-vars', 'legacy/a.ts:4 @typescript-eslint/no-unused-vars'] },
+      'legacy/b.js': { 'no-unused-vars': [] },
+      'src/a.ts': { 'no-unused-vars': ['src/a.ts:1 @typescript-eslint/no-unused-vars', 'src/a.ts:4 @typescript-eslint/no-unused-vars'] },
+      'src/b.js': { 'no-unused-vars': [] },
     })
   })
 
   it("is reported, merged into the team's configs, the team's alone, the team setting it", () => {
     const { agent, teamAlone, mergedIntoTheTeamsConfigs } = runs()
 
-    expect(findingsByFileAndRule(mergedIntoTheTeamsConfigs, files, [NO_REDECLARE])).toStrictEqual(
-      owedBesideTheTeam(findingsByFileAndRule(agent, files, [NO_REDECLARE]), findingsByFileAndRule(teamAlone, files, [NO_REDECLARE]), [NO_REDECLARE.rule]),
+    expect(findingsByFileAndRule(mergedIntoTheTeamsConfigs, files, [NO_UNUSED_VARS])).toStrictEqual(
+      owedBesideTheTeam(findingsByFileAndRule(agent, files, [NO_UNUSED_VARS]), findingsByFileAndRule(teamAlone, files, [NO_UNUSED_VARS]), [NO_UNUSED_VARS.rule]),
     )
   })
 })
 
 // ESLint runs typescript-eslint's on the entry's TS file alone.
-describe("no-redeclare off and typescript-eslint's on in an entry of ours on legacy/**, typescript-eslint's with an option oxlint's refuses, beside a team turning no-redeclare on in both engines, in a project whose package.json lists oxlint", () => {
+describe("no-unused-vars off and typescript-eslint's under args all in an entry of ours on legacy/**, typescript-eslint's with an option oxlint's does not honour, beside a team turning no-unused-vars on in both engines, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
-    sources: redeclaringSourceFiles,
-    ours: OURS_TURNING_NO_REDECLARE_OFF_AND_TYPESCRIPT_ESLINTS_ON_IN_AN_ENTRY,
-    teamEslintRules: TEAM_ESLINT_RULES_TURNING_NO_REDECLARE_ON,
-    teamOxlintConfig: TEAM_OXLINT_CONFIG_TURNING_NO_REDECLARE_ON,
+    sources: unusedParameterAndConstantSourceFiles,
+    ours: OURS_TURNING_NO_UNUSED_VARS_OFF_AND_TYPESCRIPT_ESLINTS_ON_IN_AN_ENTRY,
+    teamEslintRules: TEAM_ESLINT_RULES_TURNING_NO_UNUSED_VARS_ON,
+    teamOxlintConfig: TEAM_OXLINT_CONFIG_TURNING_NO_UNUSED_VARS_ON,
   })
-  const files = Object.keys(redeclaringSourceFiles)
+  const files = Object.keys(unusedParameterAndConstantSourceFiles)
 
   it('is linted by every ESLint run with no fatal message', () => {
     expect(runs().eslintFatalMessages).toStrictEqual([])
   })
 
   it("is reported by the agent build once in the entry's TS file, at typescript-eslint's setting, and in no other file", () => {
-    expect(findingsByFileAndRule(runs().agent, files, [NO_REDECLARE])).toStrictEqual({
-      'legacy/a.ts': { 'no-redeclare': ['legacy/a.ts:4 @typescript-eslint/no-redeclare'] },
-      'legacy/b.js': { 'no-redeclare': [] },
-      'src/a.ts': { 'no-redeclare': [] },
-      'src/b.js': { 'no-redeclare': [] },
+    expect(findingsByFileAndRule(runs().agent, files, [NO_UNUSED_VARS])).toStrictEqual({
+      'legacy/a.ts': { 'no-unused-vars': ['legacy/a.ts:1 @typescript-eslint/no-unused-vars', 'legacy/a.ts:4 @typescript-eslint/no-unused-vars'] },
+      'legacy/b.js': { 'no-unused-vars': [] },
+      'src/a.ts': { 'no-unused-vars': [] },
+      'src/b.js': { 'no-unused-vars': [] },
     })
   })
 
   it("is reported, merged into the team's configs, the team's alone, the team setting it", () => {
     const { agent, teamAlone, mergedIntoTheTeamsConfigs } = runs()
 
-    expect(findingsByFileAndRule(mergedIntoTheTeamsConfigs, files, [NO_REDECLARE])).toStrictEqual(
-      owedBesideTheTeam(findingsByFileAndRule(agent, files, [NO_REDECLARE]), findingsByFileAndRule(teamAlone, files, [NO_REDECLARE]), [NO_REDECLARE.rule]),
+    expect(findingsByFileAndRule(mergedIntoTheTeamsConfigs, files, [NO_UNUSED_VARS])).toStrictEqual(
+      owedBesideTheTeam(findingsByFileAndRule(agent, files, [NO_UNUSED_VARS]), findingsByFileAndRule(teamAlone, files, [NO_UNUSED_VARS]), [NO_UNUSED_VARS.rule]),
     )
   })
 })
 
-// Our top level runs no-redeclare nowhere, so oxlint's copy takes no setting in the entry, and ESLint
+// Our top level runs no-unused-vars nowhere, so oxlint's copy takes no setting in the entry, and ESLint
 // runs typescript-eslint's on every file there, JS included.
-describe("no-redeclare off and typescript-eslint's on in our top level, and an entry of ours on legacy/** stating typescript-eslint's alone, in a project whose package.json lists oxlint", () => {
+describe("no-unused-vars off and typescript-eslint's under args all in our top level, and an entry of ours on legacy/** stating typescript-eslint's alone under args none, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
-    sources: redeclaringSourceFiles,
-    ours: OURS_TURNING_NO_REDECLARE_OFF_AND_TYPESCRIPT_ESLINTS_ON_BESIDE_AN_ENTRY_STATING_TYPESCRIPT_ESLINTS_ALONE,
+    sources: unusedParameterAndConstantSourceFiles,
+    ours: OURS_TURNING_NO_UNUSED_VARS_OFF_AND_TYPESCRIPT_ESLINTS_ON_BESIDE_AN_ENTRY_STATING_TYPESCRIPT_ESLINTS_ALONE,
     teamEslintRules: {},
     teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG,
   })
-  const files = Object.keys(redeclaringSourceFiles)
+  const files = Object.keys(unusedParameterAndConstantSourceFiles)
   const owed = {
-    'legacy/a.ts': { 'no-redeclare': ['legacy/a.ts:4 @typescript-eslint/no-redeclare'] },
-    'legacy/b.js': { 'no-redeclare': ['legacy/b.js:2 @typescript-eslint/no-redeclare'] },
-    'src/a.ts': { 'no-redeclare': ['src/a.ts:4 @typescript-eslint/no-redeclare'] },
-    'src/b.js': { 'no-redeclare': [] },
+    'legacy/a.ts': { 'no-unused-vars': ['legacy/a.ts:4 @typescript-eslint/no-unused-vars'] },
+    'legacy/b.js': { 'no-unused-vars': ['legacy/b.js:4 @typescript-eslint/no-unused-vars'] },
+    'src/a.ts': { 'no-unused-vars': ['src/a.ts:1 @typescript-eslint/no-unused-vars', 'src/a.ts:4 @typescript-eslint/no-unused-vars'] },
+    'src/b.js': { 'no-unused-vars': [] },
   }
 
   it('is linted by every ESLint run with no fatal message', () => {
@@ -679,10 +667,10 @@ describe("no-redeclare off and typescript-eslint's on in our top level, and an e
   })
 
   it("is reported by the agent build by typescript-eslint's, once in each file of the entry and in the TS file outside it, and not in the JS file outside it", () => {
-    expect(findingsByFileAndRule(runs().agent, files, [NO_REDECLARE])).toStrictEqual(owed)
+    expect(findingsByFileAndRule(runs().agent, files, [NO_UNUSED_VARS])).toStrictEqual(owed)
   })
 
   it("is reported merged into empty team configs by typescript-eslint's, once in each file of the entry and in the TS file outside it, and not in the JS file outside it", () => {
-    expect(findingsByFileAndRule(runs().mergedIntoEmptyTeamConfigs, files, [NO_REDECLARE])).toStrictEqual(owed)
+    expect(findingsByFileAndRule(runs().mergedIntoEmptyTeamConfigs, files, [NO_UNUSED_VARS])).toStrictEqual(owed)
   })
 })

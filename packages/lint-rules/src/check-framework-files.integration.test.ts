@@ -7,7 +7,7 @@ import {
   DEBUGGER_STATEMENT,
   exportedConstant,
   moduleText,
-  REDUNDANCY,
+  REPORTING_RULESETS,
   suppressionOfTheNextLine,
   SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED,
   unusedSuppressionMessageOf,
@@ -32,7 +32,7 @@ describe('check on changed Vue, Svelte and Astro components', () => {
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, {
       repo: 'committed',
-      files: checkedPackageFiles(REDUNDANCY, { ignores: [IGNORED_FOLDER], ...SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED }),
+      files: checkedPackageFiles(REPORTING_RULESETS, { ignores: [IGNORED_FOLDER], ...SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED }),
     })
     for (const { extension, scripting } of COMPONENT_FILE_KINDS) {
       project.write(`src/a.${extension}`, moduleText(...scripting(WITH_A_DEBUGGER)))
@@ -111,7 +111,7 @@ describe('check on changed components, where a file override naming a component 
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, {
       repo: 'committed',
-      files: checkedPackageFiles(REDUNDANCY, { fileOverrides: [{ files: [ALLOWED_BY_NAME], allowSuppressions: true }] }),
+      files: checkedPackageFiles(REPORTING_RULESETS, { fileOverrides: [{ files: [ALLOWED_BY_NAME], allowSuppressions: true }] }),
     })
     project.write(`src/${ALLOWED_BY_NAME}`, moduleText(...AN_UNUSED_SUPPRESSION))
     project.write('src/other.vue', moduleText(...AN_UNUSED_SUPPRESSION))

@@ -229,35 +229,43 @@ describe('no-cond-assign, covered by sonarjs/no-nested-assignment, on an assignm
   })
 })
 
-// ESLint runs both rules of each pair below, in every build.
-const EVERY_BUILD: readonly Build[] = [AGENT_BUILD, EDITOR_MERGES_LISTING_OXLINT, ESLINT_MERGE_LISTING_NO_OXLINT]
-const RETURN_ASSIGNMENT = 'no-return-assign'
-const RETURN_ASSIGNMENT_NAMES: ReadonlySet<string> = new Set([RETURN_ASSIGNMENT, NESTED_ASSIGNMENT])
+const RETURN_ASSIGNMENT_NAMES: ReadonlySet<string> = new Set(['no-return-assign', 'eslint(no-return-assign)', NESTED_ASSIGNMENT])
+const RETURN_ASSIGNMENT_BUILDS = [
+  { ...AGENT_BUILD, coveredsName: 'eslint(no-return-assign)' },
+  { ...EDITOR_MERGES_LISTING_OXLINT, coveredsName: 'eslint(no-return-assign)' },
+  { ...ESLINT_MERGE_LISTING_NO_OXLINT, coveredsName: 'no-return-assign' },
+]
 
 describe('no-return-assign, covered by sonarjs/no-nested-assignment, on an assignment a return statement returns', () => {
-  it.each(EVERY_BUILD)("draws sonarjs's report alone where complexity is listed, in $build", async ({ configsFor }) => {
+  it.each(RETURN_ASSIGNMENT_BUILDS)("draws sonarjs's report alone where complexity is listed, in $build", async ({ configsFor }) => {
     expect(await findingsOfIn(configsFor(WITH_AND_WITHOUT_COMPLEXITY.withTheCover), RETURN_FILE, RETURN_ASSIGNMENT_NAMES)).toStrictEqual([`${RETURN_FILE}:3 ${NESTED_ASSIGNMENT}`])
   })
 
-  it.each(EVERY_BUILD)('draws its own report where complexity is not listed, in $build', async ({ configsFor }) => {
-    expect(await findingsOfIn(configsFor(WITH_AND_WITHOUT_COMPLEXITY.withoutTheCover), RETURN_FILE, RETURN_ASSIGNMENT_NAMES)).toStrictEqual([`${RETURN_FILE}:3 ${RETURN_ASSIGNMENT}`])
+  it.each(RETURN_ASSIGNMENT_BUILDS)('draws its own report where complexity is not listed, in $build', async ({ configsFor, coveredsName }) => {
+    expect(await findingsOfIn(configsFor(WITH_AND_WITHOUT_COMPLEXITY.withoutTheCover), RETURN_FILE, RETURN_ASSIGNMENT_NAMES)).toStrictEqual([`${RETURN_FILE}:3 ${coveredsName}`])
   })
 })
+
+function arrowAndSequenceFindingsOf(rule: string): string[] {
+  return [`${ARROW_AND_SEQUENCE_FILE}:2 ${rule}`, `${ARROW_AND_SEQUENCE_FILE}:5 ${rule}`]
+}
 
 // sonarjs's rule skips an assignment that is an arrow function's body or part of a sequence, on purpose.
 describe('no-return-assign, covered by sonarjs/no-nested-assignment, on an assignment an arrow function returns and one ending a returned sequence', () => {
-  const runs = setUpCoverRuns({ builds: EVERY_BUILD, rulesets: WITH_AND_WITHOUT_COMPLEXITY, file: ARROW_AND_SEQUENCE_FILE, names: RETURN_ASSIGNMENT_NAMES })
-  const itsOwnReports = [`${ARROW_AND_SEQUENCE_FILE}:2 ${RETURN_ASSIGNMENT}`, `${ARROW_AND_SEQUENCE_FILE}:5 ${RETURN_ASSIGNMENT}`]
+  const runs = setUpCoverRuns({ builds: RETURN_ASSIGNMENT_BUILDS, rulesets: WITH_AND_WITHOUT_COMPLEXITY, file: ARROW_AND_SEQUENCE_FILE, names: RETURN_ASSIGNMENT_NAMES })
 
-  it.each(EVERY_BUILD)('draws its own report on each where complexity is not listed, in $build', ({ build }) => {
-    expect(runMadeFor(runs(), build).withoutTheCover).toStrictEqual(itsOwnReports)
+  it.each(RETURN_ASSIGNMENT_BUILDS)('draws its own report on each where complexity is not listed, in $build', ({ build, coveredsName }) => {
+    expect(runMadeFor(runs(), build).withoutTheCover).toStrictEqual(arrowAndSequenceFindingsOf(coveredsName))
   })
 
   // KNOWN GAP: where complexity is listed nothing reports either; the owner's card my-return-assign-arrows decides.
-  it.fails.each(EVERY_BUILD)('draws a report on each where complexity is listed, in $build', ({ build }) => {
-    expect(runMadeFor(runs(), build).withTheCover).toStrictEqual(itsOwnReports)
+  it.fails.each(RETURN_ASSIGNMENT_BUILDS)('draws a report on each where complexity is listed, in $build', ({ build, coveredsName }) => {
+    expect(runMadeFor(runs(), build).withTheCover).toStrictEqual(arrowAndSequenceFindingsOf(coveredsName))
   })
 })
+
+// ESLint runs both rules of each pair below, in every build.
+const EVERY_BUILD: readonly Build[] = [AGENT_BUILD, EDITOR_MERGES_LISTING_OXLINT, ESLINT_MERGE_LISTING_NO_OXLINT]
 
 const DEBUGGING_UTILS = 'testing-library/no-debugging-utils'
 const DEBUG_COMMANDS = 'sonarjs/no-debug-commands-in-ui-tests'

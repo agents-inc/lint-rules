@@ -41,7 +41,9 @@ const twinFixtureFileByCoreRule = JSON.parse(readFileSync(join(FIXTURES_DIR, TWI
 
 // The twinned moved rules, in order, each with where the run proving it is: a test below holds them to typescript-eslint and the catalog.
 const TWINNED_MOVED_RULES: ReadonlyArray<TwinPair & { readonly where: string }> = [
+  { core: 'default-param-last', twin: '@typescript-eslint/default-param-last', where: '' },
   { core: 'max-params', twin: '@typescript-eslint/max-params', where: '' },
+  { core: 'no-array-constructor', twin: '@typescript-eslint/no-array-constructor', where: '' },
   { core: 'no-dupe-class-members', twin: '@typescript-eslint/no-dupe-class-members', where: '' },
   { core: 'no-shadow', twin: '@typescript-eslint/no-shadow', where: '' },
   { core: 'no-unused-expressions', twin: '@typescript-eslint/no-unused-expressions', where: WHERE_EVERY_COVER_IS_OFF },
@@ -49,6 +51,7 @@ const TWINNED_MOVED_RULES: ReadonlyArray<TwinPair & { readonly where: string }> 
   { core: 'no-unused-vars', twin: '@typescript-eslint/no-unused-vars', where: '' },
   { core: 'no-useless-constructor', twin: '@typescript-eslint/no-useless-constructor', where: '' },
   { core: 'prefer-destructuring', twin: '@typescript-eslint/prefer-destructuring', where: '' },
+  { core: 'prefer-promise-reject-errors', twin: '@typescript-eslint/prefer-promise-reject-errors', where: '' },
 ]
 
 const fallback = setUpEngineRun(

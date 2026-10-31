@@ -8,6 +8,7 @@ import {
   A_DISABLE_ON_ONE_LINE_ABOVE_A_DEBUGGER,
   A_DISABLE_OVER_SEVERAL_LINES_ABOVE_A_DEBUGGER,
   A_LITERAL_THROWN,
+  A_LOOSE_EQUALITY,
   AN_ENABLE_CLOSING_NOTHING,
   AN_ENABLE_CLOSING_NOTHING_WITH_A_DEBUGGER_ADDED,
   A_SUPPRESSION_OF_NOTHING,
@@ -20,6 +21,7 @@ import {
   A_SELECTOR_ESLINT_THROWS_ON_MESSAGE,
   A_SYNTAX_ERROR,
   ANOTHER_COPY_OF_THE_PACKAGE,
+  aRuleDisabledTwiceOver,
   aSuppressionPartlyUnused,
   ENABLES_CLOSING_NOTHING_ABOVE_A_DEBUGGER,
   GUARDED_BY_A_USELESS_CATCH,
@@ -34,7 +36,7 @@ import {
   THROWING_ESLINT_CONFIG,
   withACharacterAddedToTheFirstLine,
 } from './__tests__/cases/check-sources.ts'
-import { NO_CONSOLE_OPTION_OXLINT_REFUSES, OXLINT_REFUSAL_OF_AN_OPTION } from './__tests__/cases/oxlint-refusals.ts'
+import { MAX_PARAMS, MAX_PARAMS_OPTION_OXLINT_REFUSES, OXLINT_REFUSAL_OF_AN_OPTION } from './__tests__/cases/oxlint-refusals.ts'
 import {
   A_PAIR_AROUND_A_STRING_HOLDING_AN_ENABLE,
   A_PAIR_AROUND_A_TEMPLATE_HOLDING_AN_ENABLE,
@@ -63,6 +65,7 @@ import {
 import {
   A_TSCONFIG_TAKING_IN_THE_REPO,
   blockDisable,
+  blockEnable,
   CHECK_ESLINT_FAILED,
   CHECK_INTERRUPTED,
   checkConfigText,
@@ -81,7 +84,7 @@ import {
   notCheckedByOxlint,
   NOTHING_TO_CHECK,
   PACKAGE_JSON_FILE,
-  REDUNDANCY,
+  REPORTING_RULESETS,
   type SuppressionForm,
   SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED,
   unusedSuppressionMessageOf,
@@ -102,7 +105,7 @@ import { refuseATsconfigRootDirThatIsNoFolder } from './core/tsconfig-root-dir-f
 allowEveryTestForParallelLoad()
 
 const REDUNDANCY_AND_NAMING = { quality: ['redundancy', 'naming'] } as const
-const REDUNDANCY_AND_MODERN_JS = { quality: ['redundancy', 'modern-js'] } as const
+const CORRECTNESS_REDUNDANCY_AND_MODERN_JS = { quality: ['correctness', 'redundancy', 'modern-js'] } as const
 const REDUNDANCY_AND_CORRECTNESS = { quality: ['redundancy', 'correctness'] } as const
 const CORRECTNESS_AND_REACT = { quality: ['correctness'], libs: { ui: ['react'] } } as const
 const CORRECTNESS_AND_MODULES = { quality: ['correctness', 'modules'] } as const
@@ -116,7 +119,7 @@ describe('check on the files and lines changed since the last commit', () => {
 
   const runs = setUpCheckAfterTheAgent(
     {
-      ...checkedPackageFiles(REDUNDANCY, { ignores: ['src/generated/**'] }),
+      ...checkedPackageFiles(REPORTING_RULESETS, { ignores: ['src/generated/**'] }),
       'eslint.config.mjs': THROWING_ESLINT_CONFIG,
       '.oxlintrc.json': OXLINT_CONFIG_TURNING_NO_DEBUGGER_OFF,
       'src/.oxlintrc.json': OXLINT_CONFIG_TURNING_NO_DEBUGGER_OFF,
@@ -224,7 +227,7 @@ describe('check on moved files', () => {
     const project = createGitProject(tempProjects, {
       repo: 'committed',
       files: {
-        ...checkedPackageFiles(REDUNDANCY),
+        ...checkedPackageFiles(REPORTING_RULESETS),
         'src/git-moved.ts': moduleText(exportedConstant('gitMoved'), DEBUGGER_STATEMENT, exportedConstant('gitMovedAfter')),
         'src/plain-moved.ts': moduleText(exportedConstant('plainMoved'), DEBUGGER_STATEMENT, exportedConstant('plainMovedAfter')),
       },
@@ -266,7 +269,7 @@ describe('check on moved files', () => {
 describe('check on deleted files', () => {
   const run = setUpCheckAfterTheAgent(
     {
-      ...checkedPackageFiles(REDUNDANCY),
+      ...checkedPackageFiles(REPORTING_RULESETS),
       'src/deleted-from-disk.ts': moduleText(exportedConstant('deletedFromDisk'), DEBUGGER_STATEMENT),
       'src/deleted-by-git.ts': moduleText(exportedConstant('deletedByGit'), DEBUGGER_STATEMENT),
       'src/kept.ts': moduleText(exportedConstant('kept')),
@@ -294,7 +297,7 @@ describe('check in a repo with no commits', () => {
     const project = createGitProject(tempProjects, {
       repo: 'no commits',
       files: {
-        ...checkedPackageFiles(REDUNDANCY),
+        ...checkedPackageFiles(REPORTING_RULESETS),
         '.gitignore': 'src/ignored-by-git.ts\n',
         'src/staged.ts': moduleText(exportedConstant('staged'), DEBUGGER_STATEMENT),
         'src/untracked.ts': moduleText(exportedConstant('untracked'), DEBUGGER_STATEMENT),
@@ -320,7 +323,7 @@ describe('check with no changed JS or TS file, then with only the config changed
   const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const project = createGitProject(tempProjects, {
       repo: 'committed',
-      files: { ...checkedPackageFiles(REDUNDANCY), 'README.md': '# A project\n', 'src/a.ts': moduleText(exportedConstant('a')) },
+      files: { ...checkedPackageFiles(REPORTING_RULESETS), 'README.md': '# A project\n', 'src/a.ts': moduleText(exportedConstant('a')) },
     })
     project.append('README.md', 'A line the agent added.\n')
     const statusBefore = gitStatusOf(project)
@@ -383,7 +386,7 @@ describe('what check leaves behind', () => {
   const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
     const project = createGitProject(tempProjects, {
       repo: 'committed',
-      files: { ...checkedPackageFiles(REDUNDANCY, {}, `${APP}/`), [`${APP}/src/committed.ts`]: moduleText(exportedConstant('committed')) },
+      files: { ...checkedPackageFiles(REPORTING_RULESETS, {}, `${APP}/`), [`${APP}/src/committed.ts`]: moduleText(exportedConstant('committed')) },
     })
     const configFolder = project.pathOf(APP)
     const runFolder = project.pathOf(RUN_FROM)
@@ -424,7 +427,7 @@ describe('what check leaves behind', () => {
     const interrupted = await runLeaving(signalledWith('SIGINT'))
     const terminated = await runLeaving(signalledWith('SIGTERM'))
     const committedConfig = project.read(`${APP}/${CONFIG_FILE}`)
-    project.write(`${APP}/${CONFIG_FILE}`, checkConfigText(REDUNDANCY, { rules: { 'no-restricted-syntax': ['error', A_SELECTOR_ESLINT_THROWS_ON] } }))
+    project.write(`${APP}/${CONFIG_FILE}`, checkConfigText(REPORTING_RULESETS, { rules: { 'no-restricted-syntax': ['error', A_SELECTOR_ESLINT_THROWS_ON] } }))
     const engineFailure = await runLeaving(toTheEnd)
     project.write(`${APP}/${CONFIG_FILE}`, committedConfig)
 
@@ -510,7 +513,7 @@ describe('what check leaves behind', () => {
 
 describe('two checks started together in one project', () => {
   const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY) })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS) })
     project.write('src/a.ts', moduleText(exportedConstant('a'), DEBUGGER_STATEMENT))
     const both = await Promise.all([checkInTheBackground(project.dir), checkInTheBackground(project.dir)])
     return { both, leftovers: tempConfigsIn(project.dir) }
@@ -550,26 +553,26 @@ describe('check where it cannot run', () => {
   const OLD_NODE = nodeBelowTheFloor()
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const notARepo = createGitProject(tempProjects, { repo: 'not a repo', files: checkedPackageFiles(REDUNDANCY) })
+    const notARepo = createGitProject(tempProjects, { repo: 'not a repo', files: checkedPackageFiles(REPORTING_RULESETS) })
     const noConfig = createGitProject(tempProjects, {
       repo: 'committed',
       files: { [PACKAGE_JSON_FILE]: packageJsonText(buildPackageJson()), 'src/a.ts': moduleText(exportedConstant('a')) },
     })
-    noConfig.writeAbove(CONFIG_FILE, checkConfigText(REDUNDANCY))
+    noConfig.writeAbove(CONFIG_FILE, checkConfigText(REPORTING_RULESETS))
     const configError = createGitProject(tempProjects, {
       repo: 'committed',
       files: { [PACKAGE_JSON_FILE]: packageJsonText(buildPackageJson()), [CONFIG_FILE]: checkConfigTextHanding(REFUSED_SETTINGS) },
     })
-    const notInstalled = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY), linkedPackages: [INSTALLED_OXLINT] })
+    const notInstalled = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS), linkedPackages: [INSTALLED_OXLINT] })
     const otherCopyDir = realpathSync(tempProjects.create({ files: ANOTHER_COPY_OF_THE_PACKAGE }))
     const otherCopy = createGitProject(tempProjects, {
       repo: 'committed',
-      files: checkedPackageFiles(REDUNDANCY),
+      files: checkedPackageFiles(REPORTING_RULESETS),
       linkedPackages: [{ name: THIS_PACKAGE.name, dir: otherCopyDir }, INSTALLED_OXLINT],
     })
-    const gitFails = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY) })
+    const gitFails = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS) })
     gitFails.write('.git/index', 'not an index\n')
-    const oldNode = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY) })
+    const oldNode = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS) })
     const initOnOldNode = createGitProject(tempProjects, { repo: 'not a repo', files: { [PACKAGE_JSON_FILE]: packageJsonText(buildPackageJson()) } })
     return {
       notARepo: { dir: notARepo.dir, run: runCheck(notARepo.dir) },
@@ -680,7 +683,7 @@ describe('check where a file override lists no file', () => {
   // through, and ESLint refuses the block check builds for that entry's component files.
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
     function checkedWith(files: readonly string[]): CliRun {
-      const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, suppressionsOffIn(files)) })
+      const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS, suppressionsOffIn(files)) })
       project.write('src/a.ts', moduleText(exportedConstant('a'), DEBUGGER_STATEMENT))
       return runCheck(project.dir)
     }
@@ -701,7 +704,7 @@ describe('check where the config exports a copy of the ESLint part defineLintRul
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, {
       repo: 'committed',
-      files: { [PACKAGE_JSON_FILE]: packageJsonText(buildPackageJson()), [CONFIG_FILE]: checkConfigTextExportingACopy(REDUNDANCY), 'src/a.ts': moduleText(exportedConstant('a')) },
+      files: { [PACKAGE_JSON_FILE]: packageJsonText(buildPackageJson()), [CONFIG_FILE]: checkConfigTextExportingACopy(REPORTING_RULESETS), 'src/a.ts': moduleText(exportedConstant('a')) },
     })
     const nothingChanged = runCheck(project.dir)
     project.append('src/a.ts', `${exportedConstant('b')}\n`)
@@ -742,7 +745,7 @@ describe('a wrong call', () => {
   const WRONG_CALLS = [['check', '--help'], ['check', 'foo'], [], ['foo'], ['--help'], ['init', 'x']]
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const checked = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY) })
+    const checked = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS) })
     const notInitialised = createGitProject(tempProjects, { repo: 'committed', files: { [PACKAGE_JSON_FILE]: packageJsonText(buildPackageJson()) } })
     const wrongCalls = WRONG_CALLS.map((args) => ({ args, run: runCli(notInitialised.dir, args) }))
     const entriesAfterTheWrongCalls = entriesUnder(notInitialised.dir).filter((entry) => !entry.startsWith('.git'))
@@ -777,7 +780,7 @@ type RunFromCase = { readonly from: string; readonly ran: () => CliRun }
 
 describe('check in a monorepo package, after changes in it, in another package and at the repo root', () => {
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: { ...A_TSCONFIG_TAKING_IN_THE_REPO, ...checkedPackageFiles(REDUNDANCY, {}, `${NESTED_PACKAGE}/`) } })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: { ...A_TSCONFIG_TAKING_IN_THE_REPO, ...checkedPackageFiles(REPORTING_RULESETS, {}, `${NESTED_PACKAGE}/`) } })
     project.write(`${NESTED_PACKAGE}/src/in-the-package.ts`, moduleText(exportedConstant('inThePackage'), DEBUGGER_STATEMENT))
     project.write('packages/b/src/in-another-package.ts', moduleText(exportedConstant('inAnotherPackage'), DEBUGGER_STATEMENT))
     project.write('scripts/at-the-root.ts', moduleText(exportedConstant('atTheRoot'), DEBUGGER_STATEMENT))
@@ -811,7 +814,7 @@ describe('check in a package whose folder, at the repo root, and a changed file 
   const PACKAGE = '..pkg'
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: { ...A_TSCONFIG_TAKING_IN_THE_REPO, ...checkedPackageFiles(REDUNDANCY, {}, `${PACKAGE}/`) } })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: { ...A_TSCONFIG_TAKING_IN_THE_REPO, ...checkedPackageFiles(REPORTING_RULESETS, {}, `${PACKAGE}/`) } })
     project.write(`${PACKAGE}/..x.ts`, moduleText(exportedConstant('dotDotX'), DEBUGGER_STATEMENT))
     project.write(`${PACKAGE}/src/in-the-package.ts`, moduleText(exportedConstant('inThePackage'), DEBUGGER_STATEMENT))
     project.write('scripts/at-the-root.ts', moduleText(exportedConstant('atTheRoot'), DEBUGGER_STATEMENT))
@@ -841,13 +844,13 @@ describe('check in a package whose folder, at the repo root, and a changed file 
 })
 
 describe('check on suppression comments', () => {
-  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY_AND_MODERN_JS, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
+  const run = setUpCheckAfterTheAgent(checkedPackageFiles(CORRECTNESS_REDUNDANCY_AND_MODERN_JS, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
     project.write('src/allowed/unused.ts', moduleText(...SUPPRESSIONS_TWO_UNUSED))
     project.write('src/banned-unused.ts', moduleText(...A_SUPPRESSION_OF_NOTHING))
     project.write('src/banned-over-a-finding.ts', moduleText(...A_SUPPRESSION_OVER_A_FINDING))
   })
 
-  it('reports an unused suppression of an ESLint-run rule and of an oxlint-run rule, each once, where suppressions are allowed, and not one that suppressed a finding', () => {
+  it('reports an unused suppression of an ESLint-run rule and of an oxlint-run rule, each once, where suppressions are allowed, and not one that suppressed a finding, and each comment as giving no reason', () => {
     const { stdout } = run()
     const messages = findingMessagesIn(stdout)
 
@@ -855,7 +858,13 @@ describe('check on suppression comments', () => {
       findings: findingsInFile(stdout, 'src/allowed/unused.ts'),
       messages: ['src/allowed/unused.ts:2 unused suppression', 'src/allowed/unused.ts:4 unused suppression'].map((finding) => messages.get(finding)),
     }).toStrictEqual({
-      findings: ['src/allowed/unused.ts:2 unused suppression', 'src/allowed/unused.ts:4 unused suppression'],
+      findings: [
+        'src/allowed/unused.ts:2 @eslint-community/eslint-comments/require-description',
+        'src/allowed/unused.ts:2 unused suppression',
+        'src/allowed/unused.ts:4 @eslint-community/eslint-comments/require-description',
+        'src/allowed/unused.ts:4 unused suppression',
+        'src/allowed/unused.ts:6 @eslint-community/eslint-comments/require-description',
+      ],
       messages: [unusedSuppressionMessageOf('no-var'), unusedSuppressionMessageOf('no-debugger')],
     })
   })
@@ -946,7 +955,7 @@ describe('check on findings oxlint gives at several places, an agent having adde
 // exit 1, else 2.
 
 describe('check where oxlint refuses an option the team gave a rule', () => {
-  const REFUSED_OPTION = { rules: { 'no-console': ['error', NO_CONSOLE_OPTION_OXLINT_REFUSES] } } as const
+  const REFUSED_OPTION = { rules: { [MAX_PARAMS]: ['error', MAX_PARAMS_OPTION_OXLINT_REFUSES] } } as const
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
     function runAfterAdding(files: Readonly<Record<string, string>>): CliRun {
@@ -989,13 +998,13 @@ describe('check where ESLint throws as it lints each file, on a selector it cann
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
     function runWhereNoDebuggerIs(setting: 'warn' | 'error'): { readonly result: CliRun; readonly notChecked: readonly string[] } {
-      const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, { rules: { ...ESLINT_THROWING, 'no-debugger': setting } }) })
+      const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS, { rules: { ...ESLINT_THROWING, 'no-debugger': setting } }) })
       project.write('src/a.ts', moduleText(exportedConstant('a')))
       project.write('src/b.ts', moduleText(exportedConstant('b'), DEBUGGER_STATEMENT))
       const notChecked = FILES.map((file) => notCheckedByEslint(file, eslintMessageWhileLinting(A_SELECTOR_ESLINT_THROWS_ON_MESSAGE, project.pathOf(file))))
       return { result: runCheck(project.dir), notChecked }
     }
-    const refusing = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, { rules: { 'no-restricted-syntax': ['error', AN_OPTION_ESLINT_REFUSES] } }) })
+    const refusing = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS, { rules: { 'no-restricted-syntax': ['error', AN_OPTION_ESLINT_REFUSES] } }) })
     refusing.write('src/a.ts', moduleText(exportedConstant('a')))
     return { oxlintWarns: runWhereNoDebuggerIs('warn'), oxlintErrs: runWhereNoDebuggerIs('error'), refusedBeforeLinting: runCheck(refusing.dir) }
   })
@@ -1035,19 +1044,23 @@ describe('check where ESLint throws as it lints each file, on a selector it cann
 })
 
 describe("check on suppression comments in oxlint's own form", () => {
-  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
+  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REPORTING_RULESETS, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
     project.write('src/allowed/oxlint-form.ts', moduleText(...OXLINT_FORM_SUPPRESSIONS_ONE_UNUSED))
     project.write('src/banned-oxlint-form.ts', moduleText(...OXLINT_FORM_SUPPRESSIONS_ONE_UNUSED))
   })
 
-  it('reports the one that suppresses nothing, once, and not the one over a finding, where suppressions are allowed', () => {
+  it('reports the one that suppresses nothing, once, and not the one over a finding, and each comment as giving no reason, where suppressions are allowed', () => {
     const { stdout } = run()
 
     expect({
       findings: findingsInFile(stdout, 'src/allowed/oxlint-form.ts'),
       message: findingMessagesIn(stdout).get('src/allowed/oxlint-form.ts:2 unused suppression'),
     }).toStrictEqual({
-      findings: ['src/allowed/oxlint-form.ts:2 unused suppression'],
+      findings: [
+        'src/allowed/oxlint-form.ts:2 @eslint-community/eslint-comments/require-description',
+        'src/allowed/oxlint-form.ts:2 unused suppression',
+        'src/allowed/oxlint-form.ts:4 @eslint-community/eslint-comments/require-description',
+      ],
       message: unusedSuppressionMessageOf('no-debugger'),
     })
   })
@@ -1062,7 +1075,7 @@ describe("check on suppression comments in oxlint's own form", () => {
 
 describe("check counting the changed files outside its config folder", () => {
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: { ...A_TSCONFIG_TAKING_IN_THE_REPO, ...checkedPackageFiles(REDUNDANCY, {}, `${NESTED_PACKAGE}/`) } })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: { ...A_TSCONFIG_TAKING_IN_THE_REPO, ...checkedPackageFiles(REPORTING_RULESETS, {}, `${NESTED_PACKAGE}/`) } })
     project.write('README.md', moduleText(DEBUGGER_STATEMENT))
     project.write('packages/b/settings.json', `${JSON.stringify({ debugger: true })}\n`)
     project.write('scripts/at-the-root.ts', moduleText(exportedConstant('atTheRoot')))
@@ -1075,7 +1088,7 @@ describe("check counting the changed files outside its config folder", () => {
 })
 
 describe('check on block suppression comments, and on enable comments that turn back on nothing', () => {
-  const run = setUpCheckAfterTheAgent({ ...checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), 'src/legacy.ts': moduleText(...AN_ENABLE_CLOSING_NOTHING) }, (project) => {
+  const run = setUpCheckAfterTheAgent({ ...checkedPackageFiles(REPORTING_RULESETS, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), 'src/legacy.ts': moduleText(...AN_ENABLE_CLOSING_NOTHING) }, (project) => {
     project.write('src/legacy.ts', moduleText(...AN_ENABLE_CLOSING_NOTHING_WITH_A_DEBUGGER_ADDED))
     project.write('src/allowed/stray-enables.ts', moduleText(...ENABLES_CLOSING_NOTHING_ABOVE_A_DEBUGGER))
     project.write('src/allowed/eslint-open.ts', moduleText(blockDisable('eslint', 'no-debugger'), exportedConstant('open')))
@@ -1093,7 +1106,7 @@ describe('check on block suppression comments, and on enable comments that turn 
     expect(findingsInFile(run().stdout, 'src/allowed/stray-enables.ts')).toStrictEqual(['src/allowed/stray-enables.ts:6 no-debugger'])
   })
 
-  it('reports a block pair that silenced nothing once, at its disable comment, in either form, as it does a disable comment left open, and none over a finding', () => {
+  it('reports a block pair that silenced nothing once as unused, at its disable comment, in either form, as it does a disable comment left open, which disable-enable-pair also reports there, and none over a finding, and each disable comment, in either form, as giving no reason', () => {
     const { stdout } = run()
     const unused = ['src/allowed/eslint-open.ts:1 unused suppression', 'src/allowed/eslint-pair.ts:1 unused suppression', 'src/allowed/oxlint-pair.ts:1 unused suppression']
     const messages = findingMessagesIn(stdout)
@@ -1102,7 +1115,19 @@ describe('check on block suppression comments, and on enable comments that turn 
       findings: ['src/allowed/eslint-open.ts', 'src/allowed/eslint-pair.ts', 'src/allowed/oxlint-pair.ts'].flatMap((file) => findingsInFile(stdout, file)),
       messages: unused.map((finding) => messages.get(finding)),
       overAFinding: findingsInFile(stdout, 'src/allowed/pair-over-a-finding.ts'),
-    }).toStrictEqual({ findings: unused, messages: unused.map(() => unusedSuppressionMessageOf('no-debugger')), overAFinding: [] })
+    }).toStrictEqual({
+      findings: [
+        'src/allowed/eslint-open.ts:1 @eslint-community/eslint-comments/disable-enable-pair',
+        'src/allowed/eslint-open.ts:1 @eslint-community/eslint-comments/require-description',
+        'src/allowed/eslint-open.ts:1 unused suppression',
+        'src/allowed/eslint-pair.ts:1 @eslint-community/eslint-comments/require-description',
+        'src/allowed/eslint-pair.ts:1 unused suppression',
+        'src/allowed/oxlint-pair.ts:1 @eslint-community/eslint-comments/require-description',
+        'src/allowed/oxlint-pair.ts:1 unused suppression',
+      ],
+      messages: unused.map(() => unusedSuppressionMessageOf('no-debugger')),
+      overAFinding: ['src/allowed/pair-over-a-finding.ts:1 @eslint-community/eslint-comments/require-description'],
+    })
   })
 })
 
@@ -1110,7 +1135,7 @@ describe('check on unused pairs beside comment-like text in a string or a templa
   // Comment-like text inside a string is no comment: read as one, check refused the run or placed the
   // pair where ESLint does not.
 
-  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
+  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REPORTING_RULESETS, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
     project.write('src/allowed/string.ts', moduleText(...A_PAIR_AROUND_A_STRING_HOLDING_AN_ENABLE))
     project.write('src/allowed/template.ts', moduleText(...A_PAIR_AROUND_A_TEMPLATE_HOLDING_AN_ENABLE))
     project.write('src/allowed/string-before.ts', moduleText(...A_PAIR_BELOW_A_STRING_HOLDING_A_DISABLE))
@@ -1118,16 +1143,20 @@ describe('check on unused pairs beside comment-like text in a string or a templa
     project.write('src/other.ts', moduleText(exportedConstant('other'), DEBUGGER_STATEMENT))
   })
 
-  it('reports each pair once, at its disable comment, as it does the pair below a string with no comment text, beside the finding in another file, and exits 1', () => {
+  it('reports each pair once as unused and once as giving no reason, at its disable comment, as it does the pair below a string with no comment text, beside the finding in another file, and exits 1', () => {
     const { exitCode, stderr, stdout } = run()
 
     expect({ exitCode, stderr, findings: findingsIn(stdout) }).toStrictEqual({
       exitCode: EXIT.findings,
       stderr: '',
       findings: [
+        'src/allowed/no-string.ts:2 @eslint-community/eslint-comments/require-description',
         'src/allowed/no-string.ts:2 unused suppression',
+        'src/allowed/string-before.ts:2 @eslint-community/eslint-comments/require-description',
         'src/allowed/string-before.ts:2 unused suppression',
+        'src/allowed/string.ts:1 @eslint-community/eslint-comments/require-description',
         'src/allowed/string.ts:1 unused suppression',
+        'src/allowed/template.ts:1 @eslint-community/eslint-comments/require-description',
         'src/allowed/template.ts:1 unused suppression',
         'src/other.ts:2 no-debugger',
       ],
@@ -1168,7 +1197,7 @@ describe('check where another writer changes suppression comments after oxlint r
 
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const outOfDateComments = outOfDate()
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED) })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED) })
     for (const { file, form } of IN_PLACE) project.write(file, moduleText(...aSuppressionPartlyUnused(form)))
     for (const { file, asOxlintReadIt } of outOfDateComments) project.write(file, moduleText(...asOxlintReadIt))
     project.write('src/other.ts', moduleText(exportedConstant('other'), DEBUGGER_STATEMENT))
@@ -1176,7 +1205,7 @@ describe('check where another writer changes suppression comments after oxlint r
     return { result, textsNow: outOfDateComments.map(({ file }) => project.read(file)), nextRun: runCheck(project.dir) }
   })
 
-  it("reports none of the comments it read out of date, in either form, and refuses nothing: reports the comments nobody changed and the finding in another file, keeps the writer's text, and exits 1", () => {
+  it("reports no unused suppression it read out of date, in either form, and refuses nothing: reports the comments nobody changed, each comment's missing reason at the line ESLint read it, and the finding in another file, keeps the writer's text, and exits 1", () => {
     const { result, textsNow } = run()
     const messages = findingMessagesIn(result.stdout)
 
@@ -1189,7 +1218,17 @@ describe('check where another writer changes suppression comments after oxlint r
     }).toStrictEqual({
       exitCode: EXIT.findings,
       stderr: '',
-      findings: ['src/allowed/eslint-in-place.ts:2 unused suppression', 'src/allowed/oxlint-in-place.ts:2 unused suppression', 'src/other.ts:2 no-debugger'],
+      findings: [
+        'src/allowed/eslint-in-place.ts:2 @eslint-community/eslint-comments/require-description',
+        'src/allowed/eslint-in-place.ts:2 unused suppression',
+        'src/allowed/eslint-moved.ts:2 @eslint-community/eslint-comments/require-description',
+        'src/allowed/oxlint-in-place.ts:2 @eslint-community/eslint-comments/require-description',
+        'src/allowed/oxlint-in-place.ts:2 unused suppression',
+        'src/allowed/oxlint-moved.ts:2 @eslint-community/eslint-comments/require-description',
+        'src/allowed/oxlint-shifted.ts:2 @eslint-community/eslint-comments/require-description',
+        'src/allowed/oxlint-under-a-string.ts:2 @eslint-community/eslint-comments/require-description',
+        'src/other.ts:2 no-debugger',
+      ],
       inPlaceMessages: [unusedSuppressionMessageOf('no-console'), unusedSuppressionMessageOf('no-console')],
       textsNow: outOfDate().map(({ writersText }) => writersText),
     })
@@ -1199,21 +1238,27 @@ describe('check where another writer changes suppression comments after oxlint r
     const { stdout } = run().nextRun
 
     expect(outOfDate().flatMap(({ file }) => findingsInFile(stdout, file))).toStrictEqual([
+      'src/allowed/eslint-moved.ts:3 @eslint-community/eslint-comments/require-description',
       'src/allowed/eslint-moved.ts:3 unused suppression',
+      'src/allowed/oxlint-moved.ts:3 @eslint-community/eslint-comments/require-description',
       'src/allowed/oxlint-moved.ts:3 unused suppression',
+      'src/allowed/oxlint-shifted.ts:2 @eslint-community/eslint-comments/require-description',
       'src/allowed/oxlint-shifted.ts:2 unused suppression',
+      'src/allowed/oxlint-under-a-string.ts:3 @eslint-community/eslint-comments/require-description',
       'src/allowed/oxlint-under-a-string.ts:3 unused suppression',
     ])
   })
 })
 
 describe('check on a block eslint-disable comment over several lines, where suppressions are allowed', () => {
-  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
-    project.write('src/allowed/several-lines.ts', moduleText(...A_DISABLE_OVER_SEVERAL_LINES_ABOVE_A_DEBUGGER))
-    project.write('src/allowed/one-line.ts', moduleText(...A_DISABLE_ON_ONE_LINE_ABOVE_A_DEBUGGER))
+  // Each comment is switched back on below the debugger, so disable-enable-pair has nothing to report.
+  const SWITCHED_BACK_ON = blockEnable({ form: 'eslint', ruleName: null })
+  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REPORTING_RULESETS, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
+    project.write('src/allowed/several-lines.ts', moduleText(...A_DISABLE_OVER_SEVERAL_LINES_ABOVE_A_DEBUGGER, SWITCHED_BACK_ON))
+    project.write('src/allowed/one-line.ts', moduleText(...A_DISABLE_ON_ONE_LINE_ABOVE_A_DEBUGGER, SWITCHED_BACK_ON))
   })
 
-  it("reports a name on a later line of it that suppresses nothing, at that name's line, and not the name that suppressed the debugger, as it reports the one-line form at its line", () => {
+  it("reports a name on a later line of it that suppresses nothing, at that name's line, and not the name that suppressed the debugger, as it reports the one-line form at its line, and each comment as giving no reason at its first line", () => {
     const { stdout } = run()
 
     expect({
@@ -1221,9 +1266,54 @@ describe('check on a block eslint-disable comment over several lines, where supp
       message: findingMessagesIn(stdout).get('src/allowed/several-lines.ts:3 unused suppression'),
       oneLine: findingsInFile(stdout, 'src/allowed/one-line.ts'),
     }).toStrictEqual({
-      severalLines: ['src/allowed/several-lines.ts:3 unused suppression'],
+      severalLines: ['src/allowed/several-lines.ts:1 @eslint-community/eslint-comments/require-description', 'src/allowed/several-lines.ts:3 unused suppression'],
       message: unusedSuppressionMessageOf('no-console'),
-      oneLine: ['src/allowed/one-line.ts:1 unused suppression'],
+      oneLine: ['src/allowed/one-line.ts:1 @eslint-community/eslint-comments/require-description', 'src/allowed/one-line.ts:1 unused suppression'],
     })
+  })
+})
+
+// no-duplicate-disable reports the second comment whichever engine runs the rule; for a rule ESLint runs,
+// ESLint also calls that comment unused, as the block above it suppressed the finding (measured, ESLint 10.12,
+// eslint-comments 4.8.1; the owner accepted both reports: "Ship it").
+describe('check on a rule disabled a second time over a finding', () => {
+  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY_AND_CORRECTNESS, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
+    project.write('src/allowed/eslint-run.ts', moduleText(...aRuleDisabledTwiceOver('eqeqeq', A_LOOSE_EQUALITY)))
+    project.write('src/allowed/oxlint-run.ts', moduleText(...aRuleDisabledTwiceOver('no-debugger', DEBUGGER_STATEMENT)))
+    project.write('src/banned-eslint-run.ts', moduleText(...aRuleDisabledTwiceOver('eqeqeq', A_LOOSE_EQUALITY)))
+  })
+
+  it('reports the second comment as a duplicate and as unused, for a rule ESLint runs, where suppressions are allowed, and each comment as giving no reason', () => {
+    const { stdout } = run()
+
+    expect({
+      findings: findingsInFile(stdout, 'src/allowed/eslint-run.ts'),
+      message: findingMessagesIn(stdout).get('src/allowed/eslint-run.ts:3 unused suppression'),
+    }).toStrictEqual({
+      findings: [
+        'src/allowed/eslint-run.ts:1 @eslint-community/eslint-comments/require-description',
+        'src/allowed/eslint-run.ts:3 @eslint-community/eslint-comments/no-duplicate-disable',
+        'src/allowed/eslint-run.ts:3 @eslint-community/eslint-comments/require-description',
+        'src/allowed/eslint-run.ts:3 unused suppression',
+      ],
+      message: unusedSuppressionMessageOf('eqeqeq'),
+    })
+  })
+
+  it('reports the second comment as a duplicate and not as unused, for a rule oxlint runs, where suppressions are allowed, and each comment as giving no reason', () => {
+    expect(findingsInFile(run().stdout, 'src/allowed/oxlint-run.ts')).toStrictEqual([
+      'src/allowed/oxlint-run.ts:1 @eslint-community/eslint-comments/require-description',
+      'src/allowed/oxlint-run.ts:3 @eslint-community/eslint-comments/no-duplicate-disable',
+      'src/allowed/oxlint-run.ts:3 @eslint-community/eslint-comments/require-description',
+    ])
+  })
+
+  it('reports neither where suppressions are banned: the ban of each comment, and the finding they no longer hide', () => {
+    expect(findingsInFile(run().stdout, 'src/banned-eslint-run.ts')).toStrictEqual([
+      'src/banned-eslint-run.ts:1 house/no-suppressions',
+      'src/banned-eslint-run.ts:3 house/no-suppressions',
+      'src/banned-eslint-run.ts:4 eqeqeq',
+      'src/banned-eslint-run.ts:5 house/no-suppressions',
+    ])
   })
 })

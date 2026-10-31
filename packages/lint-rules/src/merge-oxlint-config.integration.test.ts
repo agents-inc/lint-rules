@@ -88,29 +88,29 @@ const OUR_RULES = {
 } as const satisfies OurRules
 
 // A rule of a plugin oxlint does not run by default: the merge lists react for it.
-const OUR_REACT_RULE_ID = 'react/jsx-key'
+const OUR_REACT_RULE_ID = 'react/no-string-refs'
 const OUR_REACT_RULE = { [OUR_REACT_RULE_ID]: 'error' } as const satisfies OurRules
-const OUR_REACT_FINDING = 'src/f.tsx:1 react(jsx-key)'
+const OUR_REACT_FINDING = 'src/f.tsx:1 react(no-string-refs)'
 const REACT_CATEGORY_FINDING = 'src/f.tsx:1 react(jsx-no-duplicate-props)'
 const REACT_FINDINGS = [OUR_REACT_FINDING, REACT_CATEGORY_FINDING]
 // The same two react rules on a .jsx file, which a team override for .tsx files does not match.
-const OUR_REACT_FINDING_OUTSIDE_TSX = 'src/g.jsx:1 react(jsx-key)'
+const OUR_REACT_FINDING_OUTSIDE_TSX = 'src/g.jsx:1 react(no-string-refs)'
 const REACT_FINDINGS_OUTSIDE_TSX = [OUR_REACT_FINDING_OUTSIDE_TSX, 'src/g.jsx:1 react(jsx-no-duplicate-props)']
 // A core rule our part does not state, which oxlint's default correctness category turns on.
 const CORE_CATEGORY_FINDING = 'src/h.ts:1 eslint(no-compare-neg-zero)'
 // The react category rule our part does not state, and our react rule, in each file of the react project.
 const DUPLICATE_PROPS = 'react(jsx-no-duplicate-props)'
-const JSX_KEY = 'react(jsx-key)'
+const NO_STRING_REFS = 'react(no-string-refs)'
 const DUPLICATE_PROPS_IN = {
   lib: 'lib/m.tsx:1 react(jsx-no-duplicate-props)',
   test: 'src/f.test.tsx:1 react(jsx-no-duplicate-props)',
   tsx: 'src/f.tsx:1 react(jsx-no-duplicate-props)',
 } as const
 const OUR_REACT_FINDINGS_IN_EVERY_FILE = [
-  'lib/m.tsx:1 react(jsx-key)',
-  'src/f.test.tsx:1 react(jsx-key)',
-  'src/f.tsx:1 react(jsx-key)',
-  'src/g.jsx:1 react(jsx-key)',
+  'lib/m.tsx:1 react(no-string-refs)',
+  'src/f.test.tsx:1 react(no-string-refs)',
+  'src/f.tsx:1 react(no-string-refs)',
+  'src/g.jsx:1 react(no-string-refs)',
 ]
 const REACT_RULE = 'react/jsx-no-duplicate-props'
 const NO_UNDEF = 'eslint(no-undef)'
@@ -243,8 +243,9 @@ function findingsOf(findings: readonly string[], code: string): string[] {
   return findings.filter((finding) => finding.endsWith(code))
 }
 
+// In the signals' order: oxlint prints one line's findings in an order that follows how the config states its rules.
 function among(findings: readonly string[], signals: readonly string[]): string[] {
-  return findings.filter((finding) => signals.includes(finding))
+  return signals.flatMap((signal) => findings.filter((finding) => finding === signal))
 }
 
 /** The files the real oxlint CLI reports the code in over the folder layout project, with the config given written to the file given. */
@@ -556,7 +557,7 @@ describe('a rule our part does not state, of a plugin the team config lists in o
     }).toStrictEqual({ teamAlone, mergedBeyondIt: [] })
   })
 
-  // Where an override lists react, the correctness category the team turns on holds our jsx-key, so
+  // Where an override lists react, the correctness category the team turns on holds our no-string-refs, so
   // it is the team's in every file, reported as the team's config alone reports it; where none lists
   // react, the category holds none of react's rules, and ours runs in every file.
   it.each(listingsInOverrides)(
@@ -566,8 +567,8 @@ describe('a rule our part does not state, of a plugin the team config lists in o
 
       expect({
         lostInMerged: findingsOf(findings.teamAlone, DUPLICATE_PROPS).filter((finding) => !findings.merged.includes(finding)),
-        jsxKey: findingsOf(findings.merged, JSX_KEY),
-      }).toStrictEqual({ lostInMerged: [], jsxKey: listsReact ? findingsOf(findings.teamAlone, JSX_KEY) : OUR_REACT_FINDINGS_IN_EVERY_FILE })
+        noStringRefs: findingsOf(findings.merged, NO_STRING_REFS),
+      }).toStrictEqual({ lostInMerged: [], noStringRefs: listsReact ? findingsOf(findings.teamAlone, NO_STRING_REFS) : OUR_REACT_FINDINGS_IN_EVERY_FILE })
     },
   )
 })
@@ -609,7 +610,7 @@ describe("our runtimes, merged into a team oxlint config that sets no env, besid
       { file: 'browser-entry.oxlint.config.mts', config: buildTeamOxlintConfig() },
       {
         rules: { 'no-undef': 'error' },
-        fileOverrides: [{ files: ['lib/**'], rules: { 'unicorn/prefer-add-event-listener': 'off', 'unicorn/require-post-message-target-origin': 'off' } }],
+        fileOverrides: [{ files: ['lib/**'], rules: { 'unicorn/dom-node-dataset': 'off', 'unicorn/no-transition-all': 'off' } }],
       },
       THE_BROWSER_PROJECT_IN_TWO_FOLDERS,
       { editorRulesets: { runtimes: ['browser'] } },
@@ -631,7 +632,7 @@ describe("our runtimes in an entry of ours alone, which turns the runtime's rule
             files: ['lib/**'],
             agentRulesets: { runtimes: ['browser'] },
             editorRulesets: { runtimes: ['browser'] },
-            rules: { 'unicorn/prefer-add-event-listener': 'off', 'unicorn/require-post-message-target-origin': 'off' },
+            rules: { 'unicorn/dom-node-dataset': 'off', 'unicorn/no-transition-all': 'off' },
           },
         ],
       },

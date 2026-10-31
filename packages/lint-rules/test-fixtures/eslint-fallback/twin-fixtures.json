@@ -1,10 +1,13 @@
 {
+  "default-param-last": "src/default-param-last.ts",
   "max-params": "src/max-params.ts",
+  "no-array-constructor": "src/no-array-constructor.ts",
   "no-dupe-class-members": "src/no-dupe-class-members.ts",
   "no-shadow": "src/no-shadow.ts",
   "no-unused-expressions": "src/no-unused-expressions.ts",
   "no-unused-private-class-members": "src/no-unused-private-class-members.ts",
   "no-unused-vars": "src/no-unused-vars.ts",
   "no-useless-constructor": "src/no-useless-constructor.ts",
-  "prefer-destructuring": "src/prefer-destructuring.ts"
+  "prefer-destructuring": "src/prefer-destructuring.ts",
+  "prefer-promise-reject-errors": "src/prefer-promise-reject-errors.ts"
 }

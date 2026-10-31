@@ -8,8 +8,10 @@ import {
   disableNextLineOverADebugger,
   disableOfTheBanOverAClassicLoop,
   disableOverAClassicLoop,
+  disableOverAClassicLoopSwitchedBackOn,
   inlineConfigTurningTheBanOff,
   namedDisableOverAClassicLoop,
+  namedDisableOverAClassicLoopSwitchedBackOn,
   SAME_LINE_DISABLE_LINE,
   sameLineDisableOfTheBan,
   suppressionOfARuleNobodyDefines,
@@ -37,6 +39,8 @@ const THE_LOOP_RULE = 'house/no-classic-loops'
 const THE_DEBUGGER_RULE = 'no-debugger'
 const TS_COMMENT_BAN = '@typescript-eslint/ban-ts-comment'
 const BLANKET_DISABLE_RULE = 'unicorn/no-abusive-eslint-disable'
+const DISABLE_ENABLE_PAIR_RULE = '@eslint-community/eslint-comments/disable-enable-pair'
+const REASON_RULE = '@eslint-community/eslint-comments/require-description'
 const NOBODYS_RULE = 'nobody/rule'
 const ESLINT_WARNING = 1
 const ESLINT_ERROR = 2
@@ -51,8 +55,24 @@ function banReportsOnLines1And3(): ErrorAt[] {
   return [buildEslintError(THE_BAN, 1), buildEslintError(THE_BAN, 3)]
 }
 
-function blanketDisableOnLine1(): ErrorAt[] {
-  return [buildErrorOnItsRoutedEngine(BLANKET_DISABLE_RULE, 1)]
+function noReasonOnLine1(): ErrorAt[] {
+  return [buildErrorOnItsRoutedEngine(REASON_RULE, 1)]
+}
+
+function blanketDisableWithNoReasonOnLine1(): ErrorAt[] {
+  return [buildErrorOnItsRoutedEngine(REASON_RULE, 1), buildErrorOnItsRoutedEngine(BLANKET_DISABLE_RULE, 1)]
+}
+
+function unpairedDisableWithNoReasonOnLine1(): ErrorAt[] {
+  return [buildErrorOnItsRoutedEngine(DISABLE_ENABLE_PAIR_RULE, 1), buildErrorOnItsRoutedEngine(REASON_RULE, 1)]
+}
+
+function unpairedBlanketDisableWithNoReasonOnLine1(): ErrorAt[] {
+  return [
+    buildErrorOnItsRoutedEngine(DISABLE_ENABLE_PAIR_RULE, 1),
+    buildErrorOnItsRoutedEngine(REASON_RULE, 1),
+    buildErrorOnItsRoutedEngine(BLANKET_DISABLE_RULE, 1),
+  ]
 }
 
 function banAndLoop(): ErrorAt[] {
@@ -191,8 +211,11 @@ describe('the ban, on as shipped, against comments that would silence it', () =>
 })
 
 // allowSuppressions: true turns the ban off, so ESLint reads directives again, and turns
-// unicorn/no-abusive-eslint-disable on, so a blanket disable still draws one error, from oxlint.
-// Both @ts-ignore and @ts-nocheck stay banned; @ts-expect-error passes with a description.
+// unicorn/no-abusive-eslint-disable on, so a blanket disable still draws one error, from oxlint,
+// disable-enable-pair, so a disable never switched back on draws one from ESLint, and require-description,
+// so a disable with no reason after `--` draws one from ESLint. The disables over a loop here are switched
+// back on, and give no reason. Both @ts-ignore and @ts-nocheck stay banned; @ts-expect-error passes with a
+// description.
 describe('suppressions allowed by allowSuppressions: true', () => {
   const allowed = setUpEngineRun(
     FIXTURES_DIR,
@@ -201,8 +224,8 @@ describe('suppressions allowed by allowSuppressions: true', () => {
         buildConsumerLintRules(projectDir, {}, { allowSuppressions: true, rules: { 'house/no-classic-loops': 'error' } }),
       ),
     {
-      'src/disable-over-a-loop.ts': disableOverAClassicLoop,
-      'src/named-disable-over-a-loop.ts': namedDisableOverAClassicLoop,
+      'src/disable-over-a-loop.ts': disableOverAClassicLoopSwitchedBackOn,
+      'src/named-disable-over-a-loop.ts': namedDisableOverAClassicLoopSwitchedBackOn,
       'src/ts-ignore.ts': tsIgnore,
       'src/described-ts-expect-error.ts': describedTsExpectError,
       'src/bare-ts-expect-error.ts': bareTsExpectError,
@@ -220,13 +243,21 @@ describe('suppressions allowed by allowSuppressions: true', () => {
   })
 
   it.each([
-    { comment: 'a blanket /* eslint-disable */ over clean code', file: 'forms/eslint-disable.ts', errors: blanketDisableOnLine1 },
     {
-      comment: 'a blanket /* eslint-disable */ once, and not the loop it silences',
-      file: 'src/disable-over-a-loop.ts',
-      errors: blanketDisableOnLine1,
+      comment: 'a blanket /* eslint-disable */ over clean code three times: as blanket, as never switched back on, and as giving no reason',
+      file: 'forms/eslint-disable.ts',
+      errors: unpairedBlanketDisableWithNoReasonOnLine1,
     },
-    { comment: 'nothing for an /* eslint-disable */ naming the rule it silences', file: 'src/named-disable-over-a-loop.ts', errors: noErrors },
+    {
+      comment: 'a blanket /* eslint-disable */ switched back on twice, as blanket and as giving no reason, and not the loop it silences',
+      file: 'src/disable-over-a-loop.ts',
+      errors: blanketDisableWithNoReasonOnLine1,
+    },
+    {
+      comment: 'an /* eslint-disable */ naming the rule it silences, switched back on, only as giving no reason',
+      file: 'src/named-disable-over-a-loop.ts',
+      errors: noReasonOnLine1,
+    },
     { comment: 'a // @ts-ignore', file: 'src/ts-ignore.ts', errors: tsCommentBanOnLine1 },
     { comment: 'a // @ts-nocheck', file: 'forms/ts-nocheck.ts', errors: tsCommentBanOnLine1 },
     { comment: 'a // @ts-expect-error with no description', file: 'src/bare-ts-expect-error.ts', errors: tsCommentBanOnLine1 },
@@ -235,10 +266,10 @@ describe('suppressions allowed by allowSuppressions: true', () => {
     expect(allowed.errorsOn(file)).toStrictEqual(errors())
   })
 
-  // The blanket disable's report is oxlint's, so ESLint reports nothing on the file: not the loop the
+  // The blanket disable's report is oxlint's, so ESLint reports only the missing reason on the file: not the loop the
   // directive silences, and no warning that it has no effect.
-  it('adds no warning of its own to a blanket /* eslint-disable */: ESLint reads the directive', () => {
-    expect(allowed.eslintMessagesOn('src/disable-over-a-loop.ts')).toStrictEqual([])
+  it('adds no warning of its own to a blanket /* eslint-disable */ switched back on: ESLint reads the directive', () => {
+    expect(allowed.eslintMessagesOn('src/disable-over-a-loop.ts')).toStrictEqual([{ ruleId: REASON_RULE, severity: ESLINT_ERROR, line: 1 }])
   })
 })
 
@@ -319,10 +350,12 @@ describe('suppressions allowed for legacy/** only, by a file override', () => {
     expect(legacyAllowed.eslintRulesNotFound()).toStrictEqual([])
   })
 
+  // disable-enable-pair and require-description are rules allowSuppressions turns on, so they report the disables
+  // legacy/** never switches back on and gives no reason, as unicorn's rule reports the blanket one there.
   it.each([
-    { file: 'legacy/named-disable-over-a-loop.ts', errors: noErrors },
+    { file: 'legacy/named-disable-over-a-loop.ts', errors: unpairedDisableWithNoReasonOnLine1 },
     { file: 'src/named-disable-over-a-loop.ts', errors: banAndLoop },
-    { file: 'legacy/disable-over-a-loop.ts', errors: blanketDisableOnLine1 },
+    { file: 'legacy/disable-over-a-loop.ts', errors: unpairedBlanketDisableWithNoReasonOnLine1 },
     { file: 'src/disable-over-a-loop.ts', errors: banAndLoop },
     { file: 'legacy/described-ts-expect-error.ts', errors: noErrors },
     { file: 'src/described-ts-expect-error.ts', errors: tsCommentBanOnLine1 },
@@ -419,9 +452,10 @@ describe('suppressions allowed at the top level and banned for strict/** by a fi
     expect(strictBanned.eslintRulesNotFound()).toStrictEqual([])
   })
 
-  // strict/disable-over-a-loop.ts: the ban's error and not unicorn's beside it.
+  // strict/disable-over-a-loop.ts: the ban's error and not unicorn's, disable-enable-pair's or require-description's
+  // beside it.
   it.each([
-    { file: 'src/named-disable-over-a-loop.ts', errors: noErrors },
+    { file: 'src/named-disable-over-a-loop.ts', errors: unpairedDisableWithNoReasonOnLine1 },
     { file: 'strict/named-disable-over-a-loop.ts', errors: banAndLoop },
     { file: 'strict/disable-over-a-loop.ts', errors: banAndLoop },
     { file: 'src/described-ts-expect-error.ts', errors: noErrors },

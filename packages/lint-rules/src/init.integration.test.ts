@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { A_LITERAL_THROWN, AN_IMPORT_BELOW_CODE, AN_IMPORT_OF_OUR_PACKAGE, NAMED_IMPORTS_OUT_OF_ORDER, NAMED_IMPORTS_SORTED, UNITS } from './__tests__/cases/check-sources.ts'
 import { ESLINT_CONFIG_TEXT, OXLINT_CONFIG_TEXT } from './__tests__/cases/consumer-files-as-plan-md-shows.ts'
 import { PACKAGE_JSON_EDITS, PACKAGE_JSON_LISTING_US } from './__tests__/cases/init-package-json-edits.ts'
+import { PLAYWRIGHT_TESTS_REPORTED } from './__tests__/cases/rules-shipped-off.ts'
 import { autofixedFilesIn, findingsIn, findingsInFile } from './__tests__/check-output.ts'
 import { CLI_FILE, EXIT, runCheck, runCommandLine, runInit, RUNS_IN_THE_BACKGROUND, searchPathWithoutOurBin } from './__tests__/cli-runs.ts'
 import { importInNode, INSTALLED_TYPES_NODE, typeCheck } from './__tests__/config-file-loads.ts'
@@ -16,7 +17,7 @@ import {
   moduleText,
   NESTED_PACKAGE,
   PACKAGE_JSON_FILE,
-  REDUNDANCY,
+  REPORTING_RULESETS,
 } from './__tests__/factories/check-factories.ts'
 import {
   BUN,
@@ -52,6 +53,15 @@ const A_PACKAGE_WITH_TYPES = buildInitPackageJson({ devDependencies: TYPES_NODE_
 const PACKAGE_JSON_WITH_TYPES = npmPackageJsonText(A_PACKAGE_WITH_TYPES)
 const NO_UNPUBLISHED_IMPORT = 'n/no-unpublished-import'
 const USES_DEV_FILE = 'src/uses-dev.ts'
+
+/** init's exit code, then check's, the findings it printed, the files it autofixed, and the added files' texts once it ran. */
+type CheckAfterInit = {
+  readonly init: number | null
+  readonly exitCode: number | null
+  readonly findings: readonly string[]
+  readonly autofixed: readonly string[]
+  readonly texts: Readonly<Record<string, string>>
+}
 
 describe('init in a package in a git repo', () => {
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
@@ -264,15 +274,6 @@ describe('the sorting rulesets, opt-in: check in a project as init left it, besi
   const FIRST_FILE = 'src/first.ts'
   const ADDED_FILES = { [UNITS_FILE]: moduleText(...UNITS), [IMPORTS_FILE]: moduleText(...NAMED_IMPORTS_OUT_OF_ORDER), [FIRST_FILE]: moduleText(...AN_IMPORT_BELOW_CODE) }
 
-  /** init's exit code, then check's, the findings it printed, the files it autofixed, and the added files' texts once it ran. */
-  type CheckAfterInit = {
-    readonly init: number | null
-    readonly exitCode: number | null
-    readonly findings: readonly string[]
-    readonly autofixed: readonly string[]
-    readonly texts: Readonly<Record<string, string>>
-  }
-
   /** check in a package init ran in, its config then replaced by the text given (null: kept as init wrote it), once an agent added the three files. */
   function checkAfterInit(tempProjects: TempProjects, configAfterInit: string | null): CheckAfterInit {
     const project = createGitProject(tempProjects, { repo: 'committed', files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_WITH_TYPES } })
@@ -311,6 +312,46 @@ describe('the sorting rulesets, opt-in: check in a project as init left it, besi
       findings: [`${FIRST_FILE}:2 import-x/first`, `${UNITS_FILE}:1 perfectionist/sort-arrays`],
       autofixed: [IMPORTS_FILE],
       texts: { ...ADDED_FILES, [IMPORTS_FILE]: moduleText(...NAMED_IMPORTS_SORTED) },
+    })
+  })
+})
+
+describe("the Playwright example init writes, opt-in: check in a project as init left it, beside one whose team uncommented it", () => {
+  const ADDED_PATHS = PLAYWRIGHT_TESTS_REPORTED.map(({ file }) => file)
+  const AS_WRITTEN = Object.fromEntries(PLAYWRIGHT_TESTS_REPORTED.map(({ file, source }) => [file, source]))
+
+  /** check in a package init ran in, its config then replaced by the text given (null: kept as init wrote it), once an agent added the Playwright tests. */
+  function checkAfterInit(tempProjects: TempProjects, configAfterInit: string | null): CheckAfterInit {
+    const project = createGitProject(tempProjects, { repo: 'committed', files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_WITH_TYPES } })
+    const init = runInit(project.dir)
+    if (configAfterInit !== null) project.write(CONFIG_FILE, configAfterInit)
+    for (const { file, source } of PLAYWRIGHT_TESTS_REPORTED) project.write(file, source)
+    const check = runCheck(project.dir)
+    return {
+      init: init.exitCode,
+      exitCode: check.exitCode,
+      findings: findingsIn(check.stdout),
+      autofixed: autofixedFilesIn(check.stdout),
+      texts: Object.fromEntries(ADDED_PATHS.map((file) => [file, project.read(file)])),
+    }
+  }
+
+  const runs = setUpRunsBeforeTheSuite((tempProjects) => ({
+    asInitLeftIt: checkAfterInit(tempProjects, null),
+    exampleUncommented: checkAfterInit(tempProjects, initConfigTextListing(initListsOfTheCatalog(), 'uncommented')),
+  }))
+
+  it('reports none of the Playwright rules we ship off where the config is as init wrote it, and rewrites no test', () => {
+    expect(runs().asInitLeftIt).toStrictEqual({ init: EXIT.clean, exitCode: EXIT.clean, findings: [], autofixed: [], texts: AS_WRITTEN })
+  })
+
+  it('reports each of them in the Playwright tests once the team uncomments the example, and rewrites no test, web-first included', () => {
+    expect(runs().exampleUncommented).toStrictEqual({
+      init: EXIT.clean,
+      exitCode: EXIT.findings,
+      findings: PLAYWRIGHT_TESTS_REPORTED.map(({ file, line, rule }) => `${file}:${line} ${rule}`),
+      autofixed: [],
+      texts: AS_WRITTEN,
     })
   })
 })
@@ -461,7 +502,7 @@ describe('the command init names, as an agent runs it, for npm and bun', () => {
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
     // Its config committed, so check has nothing to check.
-    const installed = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY) })
+    const installed = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS) })
     installed.linkAbove(BIN, CLI_FILE)
     const notInstalled = createGitProject(tempProjects, { repo: 'committed', files: { [PACKAGE_JSON_FILE]: PACKAGE_JSON_WITH_TYPES }, linkedPackages: [] })
     return MANAGERS.map(({ kind, runner }) => {

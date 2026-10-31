@@ -24,7 +24,7 @@ import {
   moduleText,
   NODE_MODULES_IGNORED_BY_GIT,
   packageTsconfigText,
-  REDUNDANCY,
+  REPORTING_RULESETS,
   TAKING_IN_SRC,
   WEB_PACKAGE,
 } from './__tests__/factories/check-factories.ts'
@@ -39,7 +39,7 @@ allowEveryTestForParallelLoad()
 
 const MONOREPO_RULESETS = { quality: ['redundancy', 'correctness', 'modules'] } as const
 const REDUNDANCY_AND_CORRECTNESS = { quality: ['redundancy', 'correctness'] } as const
-const CORRECTNESS = { quality: ['correctness'] } as const
+const MODULES_ALONE = { quality: ['modules'] } as const
 const LISTED_BY_API = 'listed-by-api'
 const LISTED_BY_NONE = 'listed-by-none'
 // A TS file no tsconfig takes in: each package's tsconfig takes in src alone.
@@ -167,9 +167,9 @@ describe("check in a monorepo whose other package holds a config of its own, lea
     const project = createGitProject(tempProjects, {
       repo: 'committed',
       files: {
-        ...checkedPackageFiles(REDUNDANCY, {}, `${WEB_PACKAGE}/`),
+        ...checkedPackageFiles(REPORTING_RULESETS, {}, `${WEB_PACKAGE}/`),
         ...monorepoPackageFiles(WEB_PACKAGE, TAKING_IN_SRC),
-        ...checkedPackageFiles(CORRECTNESS, {}, `${API_PACKAGE}/`),
+        ...checkedPackageFiles(MODULES_ALONE, {}, `${API_PACKAGE}/`),
         ...monorepoPackageFiles(API_PACKAGE, TAKING_IN_SRC),
       },
     })
@@ -310,9 +310,9 @@ describe("check in a monorepo where nothing outside the config's folder changed,
   const NESTED = 'packages/a'
 
   const runs = setUpRunsBeforeTheSuite((tempProjects) => {
-    const nested = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, {}, `${NESTED}/`) })
+    const nested = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS, {}, `${NESTED}/`) })
     nested.write(`${NESTED}/src/a.ts`, moduleText(exportedConstant('a'), DEBUGGER_STATEMENT))
-    const atTheTop = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY) })
+    const atTheTop = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS) })
     atTheTop.write(`${NESTED}/src/a.ts`, moduleText(exportedConstant('a'), DEBUGGER_STATEMENT))
     return { nested: runCheck(nested.pathOf(NESTED)), atTheTop: runCheck(atTheTop.pathOf(NESTED)) }
   })
@@ -390,7 +390,7 @@ describe('check run in a package of a monorepo whose git top level holds a legac
       files: {
         ...NODE_MODULES_IGNORED_BY_GIT,
         ...aLegacyEslintignoreIn(),
-        ...checkedPackageFiles(REDUNDANCY, {}, `${WEB_PACKAGE}/`),
+        ...checkedPackageFiles(REPORTING_RULESETS, {}, `${WEB_PACKAGE}/`),
         ...monorepoPackageFiles(WEB_PACKAGE, TAKING_IN_SRC),
         ...monorepoPackageFiles(API_PACKAGE, TAKING_IN_SRC),
       },
@@ -424,7 +424,7 @@ describe('check run in a package of a monorepo whose config folder holds a legac
       files: {
         ...NODE_MODULES_IGNORED_BY_GIT,
         ...aLegacyEslintignoreIn(`${WEB_PACKAGE}/`),
-        ...checkedPackageFiles(REDUNDANCY, {}, `${WEB_PACKAGE}/`),
+        ...checkedPackageFiles(REPORTING_RULESETS, {}, `${WEB_PACKAGE}/`),
         ...monorepoPackageFiles(WEB_PACKAGE, TAKING_IN_SRC),
         ...monorepoPackageFiles(API_PACKAGE, TAKING_IN_SRC),
       },

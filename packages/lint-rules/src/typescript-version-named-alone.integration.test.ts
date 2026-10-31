@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { setUpBothEnginesRuns } from './__tests__/both-engines-runs.ts'
-import { FILES_WITH_AN_UNUSED_VARIABLE, NO_UNUSED_VARS, UNUSED_VARS_SETTING, unusedVariableFiles } from './__tests__/cases/unused-variables-in-js-and-ts-files.ts'
+import {
+  FILES_WITH_AN_UNUSED_VARIABLE,
+  NO_UNUSED_VARS,
+  STORY_WITH_AN_UNUSED_VARIABLE,
+  UNUSED_VARS_SETTING,
+  unusedVariableFiles,
+} from './__tests__/cases/unused-variables-in-js-and-ts-files.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, setUpConsumerEslintCliRun } from './__tests__/consumer-cli-runs.ts'
 import { EMPTY_TEAM_ESLINT_MODULE_FILE, projectMergingOurEslintPartText } from './__tests__/factories/consumer-project-factories.ts'
 import { buildConsumerSettings, REDUNDANCY_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
@@ -58,19 +64,25 @@ describe('the same files, our rules naming the plain no-unused-vars, in a projec
     expect(eslintFatalMessagesOf(run())).toStrictEqual([])
   })
 
-  it('is reported in src/ alone, the ruleset keeping it out of scripts/ and the config file on TS and JS files alike', () => {
+  it("is reported once in every file, those in scripts/ and a tool's config file included: by typescript-eslint's version in each TS file, and by the plain rule in each JS file", () => {
     expect(findingsByFileAndRule(eslintEngineFindingsOf(run()), FILES_WITH_AN_UNUSED_VARIABLE, [NO_UNUSED_VARS])).toStrictEqual({
       'src/a.ts': { [NO_UNUSED_VARS.rule]: [`src/a.ts:1 ${TYPESCRIPT_VERSION}`] },
       'src/a.js': { [NO_UNUSED_VARS.rule]: [`src/a.js:1 ${PLAIN_RULE}`] },
-      'scripts/a.ts': { [NO_UNUSED_VARS.rule]: [] },
-      'scripts/a.js': { [NO_UNUSED_VARS.rule]: [] },
-      'tool.config.js': { [NO_UNUSED_VARS.rule]: [] },
+      'scripts/a.ts': { [NO_UNUSED_VARS.rule]: [`scripts/a.ts:1 ${TYPESCRIPT_VERSION}`] },
+      'scripts/a.js': { [NO_UNUSED_VARS.rule]: [`scripts/a.js:1 ${PLAIN_RULE}`] },
+      'tool.config.js': { [NO_UNUSED_VARS.rule]: [`tool.config.js:1 ${PLAIN_RULE}`] },
+    })
+  })
+
+  it('is not reported in a story, which the ruleset ships it ignoring', () => {
+    expect(findingsByFileAndRule(eslintEngineFindingsOf(run()), [STORY_WITH_AN_UNUSED_VARIABLE], [NO_UNUSED_VARS])).toStrictEqual({
+      [STORY_WITH_AN_UNUSED_VARIABLE]: { [NO_UNUSED_VARS.rule]: [] },
     })
   })
 })
 
 // Beside oxlint each file reports once (measured, oxlint 1.87): oxlint's no-unused-vars with our
-// setting where the ruleset ships it, and typescript-eslint's version in the files it ships ignoring.
+// setting wherever the ruleset ships it, scripts/ and a tool's config file included.
 describe("the same files, our rules naming typescript-eslint's no-unused-vars alone, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({
     sources: unusedVariableFiles,
@@ -82,9 +94,9 @@ describe("the same files, our rules naming typescript-eslint's no-unused-vars al
   const owed = {
     'src/a.ts': { [NO_UNUSED_VARS.rule]: [`src/a.ts:1 ${OXLINT_CODE}`] },
     'src/a.js': { [NO_UNUSED_VARS.rule]: [`src/a.js:1 ${OXLINT_CODE}`] },
-    'scripts/a.ts': { [NO_UNUSED_VARS.rule]: [`scripts/a.ts:1 ${TYPESCRIPT_VERSION}`] },
-    'scripts/a.js': { [NO_UNUSED_VARS.rule]: [`scripts/a.js:1 ${TYPESCRIPT_VERSION}`] },
-    'tool.config.js': { [NO_UNUSED_VARS.rule]: [`tool.config.js:1 ${TYPESCRIPT_VERSION}`] },
+    'scripts/a.ts': { [NO_UNUSED_VARS.rule]: [`scripts/a.ts:1 ${OXLINT_CODE}`] },
+    'scripts/a.js': { [NO_UNUSED_VARS.rule]: [`scripts/a.js:1 ${OXLINT_CODE}`] },
+    'tool.config.js': { [NO_UNUSED_VARS.rule]: [`tool.config.js:1 ${OXLINT_CODE}`] },
   }
 
   it('are linted by every ESLint run with no fatal message', () => {

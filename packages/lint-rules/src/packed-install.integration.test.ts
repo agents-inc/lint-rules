@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { TYPESCRIPT_ESLINT_PACKAGES } from './__tests__/cases/typescript-eslint-packages.ts'
 import { findingsIn, notCheckedIn } from './__tests__/check-output.ts'
 import { type CliRun, EXIT, runCommandLine, searchPathWithoutOurBin } from './__tests__/cli-runs.ts'
 import { describeFinding, type EslintCliResult, eslintFindingsIn, type OxlintCliReport, oxlintFindingsIn } from './__tests__/engine-clis.ts'
@@ -11,6 +12,7 @@ import { buildTsconfig } from './__tests__/factories/tsconfig-factories.ts'
 import { createGitProject } from './__tests__/git-projects.ts'
 import { packagesNpmOverridesAPeerFor } from './__tests__/npm-install-output.ts'
 import { npmInstallIn, type ProcessRun, runIn, tarballPackedFrom } from './__tests__/npm-runs.ts'
+import { packagesInstalledFor, readManifest, typescriptEslintInstallsAmong, typescriptEslintListings } from './__tests__/package-manifests.ts'
 import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import type { ProjectFiles, TempProjects } from './__tests__/temp-projects.ts'
 
@@ -26,6 +28,7 @@ const PACKED_INSTALL: RunsBeforeTheSuiteOptions = { timeoutMs: 900_000, whatFail
 const MODULE_NOT_FOUND = 'Cannot find module'
 const OUR_PACKAGE = '@agents-inc/lint-rules'
 const OUR_BIN = 'agents-inc-lint'
+const TYPESCRIPT_ESLINT = 'typescript-eslint'
 const CHECK = 'check'
 // ESLint exits 2 where its config fails to load; oxlint, 1.
 const ESLINT_CONFIG_FAILED = 2
@@ -120,6 +123,12 @@ function packedInstallBeside(tempProjects: TempProjects, engines: Engines): Pack
   return { projectDir, install, eslint, oxlint, check }
 }
 
+function typescriptEslintVersionOursLists(ourDir: string): string {
+  const version = typescriptEslintListings(readManifest(join(ourDir, 'package.json')))[TYPESCRIPT_ESLINT]
+  if (version === undefined) throw new Error(`${OUR_PACKAGE}, as installed, lists no ${TYPESCRIPT_ESLINT}`)
+  return version
+}
+
 type CheckOutcome = { readonly exitCode: number | null; readonly findings: readonly string[]; readonly notChecked: readonly string[]; readonly stderr: string }
 
 function checkOutcomeOf({ exitCode, stdout, stderr }: CliRun): CheckOutcome {
@@ -137,6 +146,14 @@ describe("this package, packed and installed by npm into a fresh project beside 
 
   it('overrides the ESLint peer range only of the plugins whose range stops at ESLint 9: not of jsx-a11y, whose fork we install', () => {
     expect(packagesNpmOverridesAPeerFor(runs().install.output)).toStrictEqual(PLUGINS_NPM_OVERRIDES_A_PEER_FOR)
+  })
+
+  it('installs one copy of each typescript-eslint package, at the version ours lists typescript-eslint at', () => {
+    const ourDir = join(runs().projectDir, 'node_modules', OUR_PACKAGE)
+    const version = typescriptEslintVersionOursLists(ourDir)
+    const copies = typescriptEslintInstallsAmong(packagesInstalledFor(ourDir)).map((installed) => `${installed.name}@${installed.version}`)
+
+    expect(copies.toSorted()).toStrictEqual(TYPESCRIPT_ESLINT_PACKAGES.map((name) => `${name}@${version}`))
   })
 
   it('prints no "Cannot find module" in the install or in either engine\'s run', () => {

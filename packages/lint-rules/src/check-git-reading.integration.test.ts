@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { findingsIn } from './__tests__/check-output.ts'
 import { EXIT, runCheck } from './__tests__/cli-runs.ts'
-import { checkedPackageFiles, DEBUGGER_STATEMENT, exportedConstant, moduleText, NOTHING_TO_CHECK, REDUNDANCY } from './__tests__/factories/check-factories.ts'
+import { checkedPackageFiles, DEBUGGER_STATEMENT, exportedConstant, moduleText, NOTHING_TO_CHECK, REPORTING_RULESETS } from './__tests__/factories/check-factories.ts'
 import { createGitProject, type GitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
@@ -24,7 +24,7 @@ describe('check on a changed file whose name, as a git pathspec, is a pattern', 
     const project = createGitProject(tempProjects, {
       repo: 'committed',
       files: {
-        ...checkedPackageFiles(REDUNDANCY),
+        ...checkedPackageFiles(REPORTING_RULESETS),
         [ROUTE]: moduleText(exportedConstant('route'), DEBUGGER_STATEMENT),
         [MATCHED_BY_THE_PATTERN]: moduleText(exportedConstant('matched')),
       },
@@ -43,7 +43,7 @@ describe('check where the OS temp folder is in a folder it may not write, as /tm
   const emptyFolder = setUpEmptyFolders()
 
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY) })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS) })
     project.write('src/a.ts', moduleText(exportedConstant('a'), DEBUGGER_STATEMENT))
     const tempFolder = join(emptyFolder(), 'tmp')
     mkdirSync(tempFolder)
@@ -68,7 +68,7 @@ describe('check in a repo whose objects git finds only through GIT_ALTERNATE_OBJ
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, {
       repo: 'committed',
-      files: { ...checkedPackageFiles(REDUNDANCY), 'src/a.ts': moduleText(exportedConstant('a'), DEBUGGER_STATEMENT) },
+      files: { ...checkedPackageFiles(REPORTING_RULESETS), 'src/a.ts': moduleText(exportedConstant('a'), DEBUGGER_STATEMENT) },
     })
     project.append('src/a.ts', moduleText(DEBUGGER_STATEMENT))
     const objects = project.pathOf('.git/objects')
@@ -103,7 +103,7 @@ describe('check in a repo that has a commit but no index file, as `git clone --n
 
 describe('check where no changed file is one to lint', () => {
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY, { ignores: ['src/generated/**'] }) })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS, { ignores: ['src/generated/**'] }) })
     project.write('src/generated/gen.ts', moduleText(DEBUGGER_STATEMENT))
     symlinkSync('missing.ts', project.pathOf('src/link-to-no-file.ts'))
     return runCheck(project.dir)
@@ -118,7 +118,7 @@ describe('check where no changed file is one to lint', () => {
 function committedWithoutAnIndex(tempProjects: TempProjects): GitProject {
   const project = createGitProject(tempProjects, {
     repo: 'committed',
-    files: { ...checkedPackageFiles(REDUNDANCY), 'src/a.ts': moduleText(exportedConstant('a'), DEBUGGER_STATEMENT) },
+    files: { ...checkedPackageFiles(REPORTING_RULESETS), 'src/a.ts': moduleText(exportedConstant('a'), DEBUGGER_STATEMENT) },
   })
   project.remove('.git/index')
   return project

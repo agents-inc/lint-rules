@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { checkSignalledTwiceWhileOxlintHoldsOn, EXIT, RUNS_IN_THE_BACKGROUND, tempConfigsIn } from './__tests__/cli-runs.ts'
-import { CHECK_INTERRUPTED, checkedPackageFiles, DEBUGGER_STATEMENT, exportedConstant, moduleText, REDUNDANCY } from './__tests__/factories/check-factories.ts'
+import { CHECK_INTERRUPTED, checkedPackageFiles, DEBUGGER_STATEMENT, exportedConstant, moduleText, REPORTING_RULESETS } from './__tests__/factories/check-factories.ts'
 import { createGitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
@@ -12,7 +12,7 @@ allowEveryTestForParallelLoad()
 
 describe('check signalled again while a child it asked to stop holds on', () => {
   const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
-    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REDUNDANCY) })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS) })
     project.write('src/a.ts', moduleText(exportedConstant('a'), DEBUGGER_STATEMENT))
     const markers = { holding: join(project.dir, '..', 'oxlint-holding-on'), askedToStop: join(project.dir, '..', 'oxlint-asked-to-stop') }
     const signalledTwice = await checkSignalledTwiceWhileOxlintHoldsOn(project.dir, markers, ['SIGINT', 'SIGTERM'])

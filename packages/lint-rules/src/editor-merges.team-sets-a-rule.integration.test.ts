@@ -1,29 +1,34 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import {
-  ARRAY_TYPE,
-  ARRAY_TYPE_SOURCE,
+  ALT_TEXT,
   BLOCK_TURNING_NO_DEBUGGER_OFF,
   COMMENT_AS_JSX_TEXT_AND_DEBUGGER_SOURCE,
   DEBUGGER_SOURCE,
   ESLINT_REACT_IMPORT,
   FLOATING_PROMISE_SOURCE,
   FLOATING_PROMISES,
+  IMAGE_WITHOUT_ALT_TEXT_AND_DEBUGGER_SOURCE,
+  INFERRABLE_TYPES_SOURCE,
+  JSX_A11Y_FORK_IMPORT,
   JSX_NO_COMMENT_TEXTNODES,
   MAX_LINES,
   NO_DEBUGGER,
   NO_DUPLICATE_ENUM_VALUES,
+  NO_INFERRABLE_TYPES,
   NO_THIS_ALIAS,
   NO_UNREACHABLE_LOOP,
   NO_UNUSED_EXPRESSIONS,
   NO_UNUSED_VARS,
   NO_VAR,
   NO_WARNING_COMMENTS,
-  OURS_ARRAY_TYPE_AND_NO_VAR,
+  OURS_ALT_TEXT_AND_DEBUGGER,
   OURS_COMMENT_TEXTNODES_AND_DEBUGGER,
   OURS_DEBUGGER,
   OURS_DEBUGGER_AND_MAX_LINES,
   OURS_FLOATING_PROMISES,
+  OURS_NO_INFERRABLE_TYPES_AND_NO_VAR,
   OURS_NO_THIS_ALIAS,
+  OURS_NO_THIS_ALIAS_AND_DUPLICATE_ENUM_VALUES,
   OURS_TYPESCRIPT_ESLINT_UNUSED_VARS,
   OURS_TYPESCRIPT_ESLINT_UNUSED_VARS_AND_DEBUGGER,
   OURS_UNREACHABLE_LOOP,
@@ -31,20 +36,23 @@ import {
   OURS_WARNING_COMMENTS_AND_DEBUGGER,
   TEAMS_ESLINT_ESLINT_REACT_UNDER_REACT,
   TEAMS_ESLINT_MAX_LINES_IN_LEGACY,
+  TEAMS_ESLINT_ORIGINAL_JSX_A11Y_UNDER_A11Y,
   TEAMS_ESLINT_TWIN_OF_NO_UNUSED_VARS,
   TEAMS_ESLINT_WARNING_COMMENTS,
   TEAMS_JSON_OXLINT_CONFIG,
-  TEAMS_OXLINT_ARRAY_TYPE,
-  TEAMS_OXLINT_ARRAY_TYPE_IN_A_LINE_IT_SKIPS,
+  TEAMS_OXLINT_CORRECTNESS_ON_LISTING_IMPORT_AND_TYPESCRIPT_FOR_LEGACY,
   TEAMS_OXLINT_DEBUGGER_OFF_IN_LEGACY,
   TEAMS_OXLINT_EXTENDING_AN_OBJECT_TURNING_NO_VAR_ON,
   TEAMS_OXLINT_LEAVING_EVERY_KEY_OUT,
+  TEAMS_OXLINT_NO_INFERRABLE_TYPES,
+  TEAMS_OXLINT_NO_INFERRABLE_TYPES_IN_A_LINE_IT_SKIPS,
   TEAMS_OXLINT_NO_UNUSED_VARS,
   TEAMS_OXLINT_WARNING_COMMENTS,
   TEAMS_OXLINT_WRITING_CORRECTNESS_ON,
   TEAMS_OXLINT_WRITING_NURSERY_ON,
   teamsJsonOxlintConfigExtendingByPathFiles,
   teamsOxlintCorrectnessErrors,
+  teamsOxlintCorrectnessOnListingTypescriptForLegacyBeside,
   teamsOxlintListingTypescriptForLegacyBeside,
   teamsOxlintStyleCategoryListing,
   teamsOxlintStyleCategoryListingTypescriptForLegacyBeside,
@@ -89,6 +97,7 @@ allowEveryTestForParallelLoad()
 
 const TYPESCRIPT_ESLINT = installedPackage('typescript-eslint')
 const ESLINT_REACT = installedPackage('@eslint-react/eslint-plugin')
+const JSX_A11Y_FORK = installedPackage('eslint-plugin-jsx-a11y-x')
 const SOURCE_FILE = 'src/a.ts'
 const LEGACY_FILE = 'legacy/a.ts'
 // max-lines ships for TSX files alone.
@@ -130,32 +139,32 @@ describe("a rule the team's ESLint config alone sets, which oxlint runs for us: 
   })
 })
 
-describe("a rule the team's oxlint config alone sets, which ESLint runs for us: array-type under generic", () => {
+describe("a rule the team's oxlint config alone sets, which ESLint runs for us: no-inferrable-types, ignoring parameters", () => {
   const runs = setUpConsumerCliRuns(
-    projectListingOxlint(OURS_ARRAY_TYPE_AND_NO_VAR, { eslintBlockSources: [], oxlint: TEAMS_OXLINT_ARRAY_TYPE }, { [SOURCE_FILE]: ARRAY_TYPE_SOURCE }),
+    projectListingOxlint(OURS_NO_INFERRABLE_TYPES_AND_NO_VAR, { eslintBlockSources: [], oxlint: TEAMS_OXLINT_NO_INFERRABLE_TYPES }, { [SOURCE_FILE]: INFERRABLE_TYPES_SOURCE }),
     CONSUMER_CONFIG_FILES.oxlint,
     [TYPESCRIPT_ESLINT],
   )
 
-  // Ours alone, array-simple reports line 1, which generic leaves alone.
+  // Ours alone also reports line 2, which ignoreParameters leaves alone.
   it("is reported by oxlint alone, under the team's options; and no-var, which the team sets nowhere, once, by ESLint", () => {
-    expect(findingsOf(runs(), [SOURCE_FILE], [ARRAY_TYPE, NO_VAR])).toStrictEqual({
-      [SOURCE_FILE]: { '@typescript-eslint/array-type': ['src/a.ts:2 typescript(array-type)'], 'no-var': ['src/a.ts:3 no-var'] },
+    expect(findingsOf(runs(), [SOURCE_FILE], [NO_INFERRABLE_TYPES, NO_VAR])).toStrictEqual({
+      [SOURCE_FILE]: { '@typescript-eslint/no-inferrable-types': ['src/a.ts:1 typescript(no-inferrable-types)'], 'no-var': ['src/a.ts:3 no-var'] },
     })
   })
 })
 
 // The line makes the rule the team's though oxlint skips it (owner 2026-10-22), so both merges drop ours.
-describe("a rule the team's oxlint config states in a line oxlint skips, its plugin listed nowhere, which ESLint runs for us: array-type", () => {
+describe("a rule the team's oxlint config states in a line oxlint skips, its plugin listed nowhere, which ESLint runs for us: no-inferrable-types", () => {
   const runs = setUpConsumerCliRuns(
-    projectListingOxlint(OURS_ARRAY_TYPE_AND_NO_VAR, { eslintBlockSources: [], oxlint: TEAMS_OXLINT_ARRAY_TYPE_IN_A_LINE_IT_SKIPS }, { [SOURCE_FILE]: ARRAY_TYPE_SOURCE }),
+    projectListingOxlint(OURS_NO_INFERRABLE_TYPES_AND_NO_VAR, { eslintBlockSources: [], oxlint: TEAMS_OXLINT_NO_INFERRABLE_TYPES_IN_A_LINE_IT_SKIPS }, { [SOURCE_FILE]: INFERRABLE_TYPES_SOURCE }),
     CONSUMER_CONFIG_FILES.oxlint,
     [TYPESCRIPT_ESLINT],
   )
 
   it("is reported by nobody, as the team's configs alone report it; and no-var, which the team sets nowhere, once, by ESLint", () => {
-    expect(findingsOf(runs(), [SOURCE_FILE], [ARRAY_TYPE, NO_VAR])).toStrictEqual({
-      [SOURCE_FILE]: { '@typescript-eslint/array-type': [], 'no-var': ['src/a.ts:3 no-var'] },
+    expect(findingsOf(runs(), [SOURCE_FILE], [NO_INFERRABLE_TYPES, NO_VAR])).toStrictEqual({
+      [SOURCE_FILE]: { '@typescript-eslint/no-inferrable-types': [], 'no-var': ['src/a.ts:3 no-var'] },
     })
   })
 })
@@ -215,74 +224,72 @@ describe("rules a preset the team's ESLint config spreads sets: typescript-eslin
 
 describe("a rule an object the team's oxlint config extends sets, which ESLint runs for us: no-var", () => {
   const runs = setUpConsumerCliRuns(
-    projectListingOxlint(OURS_ARRAY_TYPE_AND_NO_VAR, { eslintBlockSources: [], oxlint: TEAMS_OXLINT_EXTENDING_AN_OBJECT_TURNING_NO_VAR_ON }, { [SOURCE_FILE]: ARRAY_TYPE_SOURCE }),
+    projectListingOxlint(OURS_NO_INFERRABLE_TYPES_AND_NO_VAR, { eslintBlockSources: [], oxlint: TEAMS_OXLINT_EXTENDING_AN_OBJECT_TURNING_NO_VAR_ON }, { [SOURCE_FILE]: INFERRABLE_TYPES_SOURCE }),
     CONSUMER_CONFIG_FILES.oxlint,
     [TYPESCRIPT_ESLINT],
   )
 
-  it("is reported by oxlint alone, at the team's severity; and array-type, which the team sets nowhere, once, by ESLint", () => {
-    expect(findingsOf(runs(), [SOURCE_FILE], [NO_VAR, ARRAY_TYPE])).toStrictEqual({
-      [SOURCE_FILE]: { 'no-var': ['src/a.ts:3 eslint(no-var)'], '@typescript-eslint/array-type': ['src/a.ts:1 @typescript-eslint/array-type'] },
+  it("is reported by oxlint alone, at the team's severity; and no-inferrable-types, which the team sets nowhere, once, by ESLint", () => {
+    expect(findingsOf(runs(), [SOURCE_FILE], [NO_VAR, NO_INFERRABLE_TYPES])).toStrictEqual({
+      [SOURCE_FILE]: { 'no-var': ['src/a.ts:3 eslint(no-var)'], '@typescript-eslint/no-inferrable-types': ['src/a.ts:1 @typescript-eslint/no-inferrable-types', 'src/a.ts:2 @typescript-eslint/no-inferrable-types'] },
     })
   })
 })
 
-describe("array-type, which ESLint runs for us, beside a team oxlint config turning on the style category it is in", () => {
+describe("no-inferrable-types, which ESLint runs for us, beside a team oxlint config turning on the style category it is in", () => {
   const listingTypescript = setUpConsumerCliRuns(
-    projectListingOxlint(OURS_ARRAY_TYPE_AND_NO_VAR, { eslintBlockSources: [], oxlint: teamsOxlintStyleCategoryListing(['typescript']) }, { [SOURCE_FILE]: ARRAY_TYPE_SOURCE }),
+    projectListingOxlint(OURS_NO_INFERRABLE_TYPES_AND_NO_VAR, { eslintBlockSources: [], oxlint: teamsOxlintStyleCategoryListing(['typescript']) }, { [SOURCE_FILE]: INFERRABLE_TYPES_SOURCE }),
     CONSUMER_CONFIG_FILES.oxlint,
     [TYPESCRIPT_ESLINT],
   )
   const listingUnicorn = setUpConsumerCliRuns(
-    projectListingOxlint(OURS_ARRAY_TYPE_AND_NO_VAR, { eslintBlockSources: [], oxlint: teamsOxlintStyleCategoryListing(['unicorn']) }, { [SOURCE_FILE]: ARRAY_TYPE_SOURCE }),
+    projectListingOxlint(OURS_NO_INFERRABLE_TYPES_AND_NO_VAR, { eslintBlockSources: [], oxlint: teamsOxlintStyleCategoryListing(['unicorn']) }, { [SOURCE_FILE]: INFERRABLE_TYPES_SOURCE }),
     CONSUMER_CONFIG_FILES.oxlint,
     [TYPESCRIPT_ESLINT],
   )
   const listingTypescriptForLegacyAlone = setUpConsumerCliRuns(
     projectListingOxlint(
-      OURS_ARRAY_TYPE_AND_NO_VAR,
+      OURS_NO_INFERRABLE_TYPES_AND_NO_VAR,
       { eslintBlockSources: [], oxlint: teamsOxlintStyleCategoryListingTypescriptForLegacyBeside(['unicorn']) },
-      { [SOURCE_FILE]: ARRAY_TYPE_SOURCE, [LEGACY_FILE]: ARRAY_TYPE_SOURCE },
+      { [SOURCE_FILE]: INFERRABLE_TYPES_SOURCE, [LEGACY_FILE]: INFERRABLE_TYPES_SOURCE },
     ),
     CONSUMER_CONFIG_FILES.oxlint,
     [TYPESCRIPT_ESLINT],
   )
   const listingTypescriptForLegacyBesideNoRootPlugin = setUpConsumerCliRuns(
     projectListingOxlint(
-      OURS_ARRAY_TYPE_AND_NO_VAR,
+      OURS_NO_INFERRABLE_TYPES_AND_NO_VAR,
       { eslintBlockSources: [], oxlint: teamsOxlintStyleCategoryListingTypescriptForLegacyBeside([]) },
-      { [SOURCE_FILE]: ARRAY_TYPE_SOURCE, [LEGACY_FILE]: ARRAY_TYPE_SOURCE },
+      { [SOURCE_FILE]: INFERRABLE_TYPES_SOURCE, [LEGACY_FILE]: INFERRABLE_TYPES_SOURCE },
     ),
     CONSUMER_CONFIG_FILES.oxlint,
     [TYPESCRIPT_ESLINT],
   )
 
   it("is the team's, reported by oxlint alone under its default options, where the team lists typescript at its root", () => {
-    expect(findingsOf(listingTypescript(), [SOURCE_FILE], [ARRAY_TYPE])).toStrictEqual({
-      [SOURCE_FILE]: { '@typescript-eslint/array-type': ['src/a.ts:1 typescript(array-type)'] },
+    expect(findingsOf(listingTypescript(), [SOURCE_FILE], [NO_INFERRABLE_TYPES])).toStrictEqual({
+      [SOURCE_FILE]: { '@typescript-eslint/no-inferrable-types': ['src/a.ts:1 typescript(no-inferrable-types)', 'src/a.ts:2 typescript(no-inferrable-types)'] },
     })
   })
 
   it('stays ours, reported by ESLint alone, where the team lists typescript nowhere, so the category runs none of its rules', () => {
-    expect(findingsOf(listingUnicorn(), [SOURCE_FILE], [ARRAY_TYPE])).toStrictEqual({
-      [SOURCE_FILE]: { '@typescript-eslint/array-type': ['src/a.ts:1 @typescript-eslint/array-type'] },
+    expect(findingsOf(listingUnicorn(), [SOURCE_FILE], [NO_INFERRABLE_TYPES])).toStrictEqual({
+      [SOURCE_FILE]: { '@typescript-eslint/no-inferrable-types': ['src/a.ts:1 @typescript-eslint/no-inferrable-types', 'src/a.ts:2 @typescript-eslint/no-inferrable-types'] },
     })
   })
 
-  // The category runs array-type in legacy/** alone; outside it the team's setting decides too, so nobody reports it there.
+  // The category runs no-inferrable-types in legacy/** alone; outside it the team's setting decides too, so nobody reports it there.
   it("is the team's in every file where one override alone lists typescript beside a root listing unicorn: oxlint's in legacy/**, and nobody's outside it", () => {
-    expect(findingsOf(listingTypescriptForLegacyAlone(), [SOURCE_FILE, LEGACY_FILE], [ARRAY_TYPE])).toStrictEqual({
-      [SOURCE_FILE]: { '@typescript-eslint/array-type': [] },
-      [LEGACY_FILE]: { '@typescript-eslint/array-type': ['legacy/a.ts:1 typescript(array-type)'] },
+    expect(findingsOf(listingTypescriptForLegacyAlone(), [SOURCE_FILE, LEGACY_FILE], [NO_INFERRABLE_TYPES])).toStrictEqual({
+      [SOURCE_FILE]: { '@typescript-eslint/no-inferrable-types': [] },
+      [LEGACY_FILE]: { '@typescript-eslint/no-inferrable-types': ['legacy/a.ts:1 typescript(no-inferrable-types)', 'legacy/a.ts:2 typescript(no-inferrable-types)'] },
     })
   })
 
-  // The team writes the category on and lists typescript: the rule is the team's, though under a root
-  // listing no plugin oxlint runs the category in no file.
-  it("is the team's, and nobody's in any file, where one override alone lists typescript beside a root listing no plugin", () => {
-    expect(findingsOf(listingTypescriptForLegacyBesideNoRootPlugin(), [SOURCE_FILE, LEGACY_FILE], [ARRAY_TYPE])).toStrictEqual({
-      [SOURCE_FILE]: { '@typescript-eslint/array-type': [] },
-      [LEGACY_FILE]: { '@typescript-eslint/array-type': [] },
+  it('stays ours, reported once in each file, by ESLint, where one override alone lists typescript beside a root listing no plugin, under which oxlint runs the category in no file', () => {
+    expect(findingsOf(listingTypescriptForLegacyBesideNoRootPlugin(), [SOURCE_FILE, LEGACY_FILE], [NO_INFERRABLE_TYPES])).toStrictEqual({
+      [SOURCE_FILE]: { '@typescript-eslint/no-inferrable-types': ['src/a.ts:1 @typescript-eslint/no-inferrable-types', 'src/a.ts:2 @typescript-eslint/no-inferrable-types'] },
+      [LEGACY_FILE]: { '@typescript-eslint/no-inferrable-types': ['legacy/a.ts:1 @typescript-eslint/no-inferrable-types', 'legacy/a.ts:2 @typescript-eslint/no-inferrable-types'] },
     })
   })
 })
@@ -524,6 +531,75 @@ describe("no-this-alias, which ESLint runs for us, beside a team oxlint config w
   })
 })
 
+// Correctness on and typescript listed in overrides alone: oxlint runs typescript's correctness rules in a file only
+// where an override matching it lists plugins other than every plugin listed for the file (measured, oxlint 1.87).
+describe("no-this-alias, which ESLint runs for us, and no-duplicate-enum-values, which oxlint runs for us, beside a team oxlint config writing correctness on and listing typescript in overrides alone", () => {
+  const listingTypescriptAlone = setUpMergedAndTeamAloneCliRuns(
+    projectListingOxlint(
+      OURS_NO_THIS_ALIAS_AND_DUPLICATE_ENUM_VALUES,
+      { eslintBlockSources: [], oxlint: teamsOxlintCorrectnessOnListingTypescriptForLegacyBeside([]) },
+      { [SOURCE_FILE]: THIS_ALIAS_AND_DUPLICATE_ENUM_SOURCE, [LEGACY_FILE]: THIS_ALIAS_AND_DUPLICATE_ENUM_SOURCE },
+    ),
+    MERGED_AND_TEAM_ALONE,
+    [TYPESCRIPT_ESLINT],
+  )
+  const listingTwoSetsForLegacy = setUpMergedAndTeamAloneCliRuns(
+    projectListingOxlint(
+      OURS_NO_THIS_ALIAS_AND_DUPLICATE_ENUM_VALUES,
+      { eslintBlockSources: [], oxlint: TEAMS_OXLINT_CORRECTNESS_ON_LISTING_IMPORT_AND_TYPESCRIPT_FOR_LEGACY },
+      { [LEGACY_FILE]: THIS_ALIAS_AND_DUPLICATE_ENUM_SOURCE },
+    ),
+    MERGED_AND_TEAM_ALONE,
+    [TYPESCRIPT_ESLINT],
+  )
+
+  it('stays ours, each reported once in every file by the engine running it for us, where one override alone lists typescript beside a root listing no plugin, under which the team\'s configs alone report neither', () => {
+    const { merged, teamAlone } = listingTypescriptAlone()
+
+    expect({
+      merged: findingsOf(merged, [SOURCE_FILE, LEGACY_FILE], [NO_THIS_ALIAS, NO_DUPLICATE_ENUM_VALUES]),
+      teamAlone: findingsOf(teamAlone, [SOURCE_FILE, LEGACY_FILE], [NO_THIS_ALIAS, NO_DUPLICATE_ENUM_VALUES]),
+    }).toStrictEqual({
+      merged: {
+        [SOURCE_FILE]: {
+          '@typescript-eslint/no-this-alias': ['src/a.ts:4 @typescript-eslint/no-this-alias'],
+          '@typescript-eslint/no-duplicate-enum-values': ['src/a.ts:8 typescript(no-duplicate-enum-values)'],
+        },
+        [LEGACY_FILE]: {
+          '@typescript-eslint/no-this-alias': ['legacy/a.ts:4 @typescript-eslint/no-this-alias'],
+          '@typescript-eslint/no-duplicate-enum-values': ['legacy/a.ts:8 typescript(no-duplicate-enum-values)'],
+        },
+      },
+      teamAlone: {
+        [SOURCE_FILE]: { '@typescript-eslint/no-this-alias': [], '@typescript-eslint/no-duplicate-enum-values': [] },
+        [LEGACY_FILE]: { '@typescript-eslint/no-this-alias': [], '@typescript-eslint/no-duplicate-enum-values': [] },
+      },
+    })
+  })
+
+  it("is the team's, each reported once, by oxlint, as the team's configs alone report them, where two overrides listing different plugins match the file", () => {
+    const { merged, teamAlone } = listingTwoSetsForLegacy()
+
+    expect({
+      merged: findingsOf(merged, [LEGACY_FILE], [NO_THIS_ALIAS, NO_DUPLICATE_ENUM_VALUES]),
+      teamAlone: findingsOf(teamAlone, [LEGACY_FILE], [NO_THIS_ALIAS, NO_DUPLICATE_ENUM_VALUES]),
+    }).toStrictEqual({
+      merged: {
+        [LEGACY_FILE]: {
+          '@typescript-eslint/no-this-alias': ['legacy/a.ts:4 typescript(no-this-alias)'],
+          '@typescript-eslint/no-duplicate-enum-values': ['legacy/a.ts:8 typescript(no-duplicate-enum-values)'],
+        },
+      },
+      teamAlone: {
+        [LEGACY_FILE]: {
+          '@typescript-eslint/no-this-alias': ['legacy/a.ts:4 typescript(no-this-alias)'],
+          '@typescript-eslint/no-duplicate-enum-values': ['legacy/a.ts:8 typescript(no-duplicate-enum-values)'],
+        },
+      },
+    })
+  })
+})
+
 // A key under a prefix where the team registers one of our plugins names two rules of ours: antfu's
 // config registers @eslint-react under react, where our eslint-plugin-react rules sit. Both are the team's.
 describe("eslint-plugin-react's jsx-no-comment-textnodes, which oxlint runs for us, set by a team ESLint block under react, where the team registers @eslint-react", () => {
@@ -546,6 +622,36 @@ describe("eslint-plugin-react's jsx-no-comment-textnodes, which oxlint runs for 
     }).toStrictEqual({
       merged: { [TSX_SOURCE_FILE]: { 'react/jsx-no-comment-textnodes': ['src/a.tsx:1 react/jsx-no-comment-textnodes'] } },
       teamAlone: { [TSX_SOURCE_FILE]: { 'react/jsx-no-comment-textnodes': ['src/a.tsx:1 react/jsx-no-comment-textnodes'] } },
+    })
+  })
+
+  it('leaves no-debugger, which the team sets nowhere, reported once, by oxlint', () => {
+    expect(findingsOf(runs().merged, [TSX_SOURCE_FILE], [NO_DEBUGGER])).toStrictEqual({ [TSX_SOURCE_FILE]: { 'no-debugger': ['src/a.tsx:3 eslint(no-debugger)'] } })
+  })
+})
+
+// The original eslint-plugin-jsx-a11y our fork replaced counts as ours under whatever prefix the team
+// registers it (q-gap-lint-a11y-original-prefix): its key names our rule, which is then the team's.
+describe("jsx-a11y's alt-text, which oxlint runs for us, set by a team ESLint block under a11y, where the team registers the original eslint-plugin-jsx-a11y", () => {
+  const runs = setUpMergedAndTeamAloneCliRuns(
+    projectListingOxlint(
+      OURS_ALT_TEXT_AND_DEBUGGER,
+      { eslintBlockSources: [TEAMS_ESLINT_ORIGINAL_JSX_A11Y_UNDER_A11Y], eslintImports: [JSX_A11Y_FORK_IMPORT], oxlint: EMPTY_TEAM_OXLINT_CONFIG },
+      { [TSX_SOURCE_FILE]: IMAGE_WITHOUT_ALT_TEXT_AND_DEBUGGER_SOURCE },
+    ),
+    MERGED_AND_TEAM_ALONE,
+    [TYPESCRIPT_ESLINT, JSX_A11Y_FORK],
+  )
+
+  it("is reported as the team's configs alone report it: once, by ESLint under the team's key, and by no oxlint rule of ours", () => {
+    const { merged, teamAlone } = runs()
+
+    expect({
+      merged: findingsOf(merged, [TSX_SOURCE_FILE], [ALT_TEXT]),
+      teamAlone: findingsOf(teamAlone, [TSX_SOURCE_FILE], [ALT_TEXT]),
+    }).toStrictEqual({
+      merged: { [TSX_SOURCE_FILE]: { 'jsx-a11y/alt-text': ['src/a.tsx:1 a11y/alt-text'] } },
+      teamAlone: { [TSX_SOURCE_FILE]: { 'jsx-a11y/alt-text': ['src/a.tsx:1 a11y/alt-text'] } },
     })
   })
 
@@ -586,9 +692,9 @@ describe("a rule a team's JSON oxlint config sets through a config it extends by
   const extendingAFile = setUpConsumerCliRuns(
     {
       'package.json': packageJsonText(buildPackageJsonListingOxlint()),
-      ...projectNamingEachConfigText(buildConsumerSettings({}, { rules: OURS_ARRAY_TYPE_AND_NO_VAR }), { eslintBlockSources: [], oxlint: null }),
+      ...projectNamingEachConfigText(buildConsumerSettings({}, { rules: OURS_NO_INFERRABLE_TYPES_AND_NO_VAR }), { eslintBlockSources: [], oxlint: null }),
       ...teamsJsonOxlintConfigExtendingByPathFiles('present'),
-      [SOURCE_FILE]: ARRAY_TYPE_SOURCE,
+      [SOURCE_FILE]: INFERRABLE_TYPES_SOURCE,
     },
     TEAMS_JSON_OXLINT_CONFIG,
     [TYPESCRIPT_ESLINT],
@@ -596,17 +702,17 @@ describe("a rule a team's JSON oxlint config sets through a config it extends by
   const extendingNoFile = setUpConsumerCliRuns(
     {
       'package.json': packageJsonText(buildPackageJsonListingOxlint()),
-      ...projectNamingEachConfigText(buildConsumerSettings({}, { rules: OURS_ARRAY_TYPE_AND_NO_VAR }), { eslintBlockSources: [], oxlint: null }),
+      ...projectNamingEachConfigText(buildConsumerSettings({}, { rules: OURS_NO_INFERRABLE_TYPES_AND_NO_VAR }), { eslintBlockSources: [], oxlint: null }),
       ...teamsJsonOxlintConfigExtendingByPathFiles('missing'),
-      [SOURCE_FILE]: ARRAY_TYPE_SOURCE,
+      [SOURCE_FILE]: INFERRABLE_TYPES_SOURCE,
     },
     TEAMS_JSON_OXLINT_CONFIG,
     [TYPESCRIPT_ESLINT],
   )
 
-  it("is the team's, reported by oxlint alone: no-var; and array-type, which the team sets nowhere, once, by ESLint", () => {
-    expect(findingsOf(extendingAFile(), [SOURCE_FILE], [NO_VAR, ARRAY_TYPE])).toStrictEqual({
-      [SOURCE_FILE]: { 'no-var': ['src/a.ts:3 eslint(no-var)'], '@typescript-eslint/array-type': ['src/a.ts:1 @typescript-eslint/array-type'] },
+  it("is the team's, reported by oxlint alone: no-var; and no-inferrable-types, which the team sets nowhere, once, by ESLint", () => {
+    expect(findingsOf(extendingAFile(), [SOURCE_FILE], [NO_VAR, NO_INFERRABLE_TYPES])).toStrictEqual({
+      [SOURCE_FILE]: { 'no-var': ['src/a.ts:3 eslint(no-var)'], '@typescript-eslint/no-inferrable-types': ['src/a.ts:1 @typescript-eslint/no-inferrable-types', 'src/a.ts:2 @typescript-eslint/no-inferrable-types'] },
     })
   })
 

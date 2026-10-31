@@ -13,6 +13,7 @@ import {
   OUR_CORPUS_RULES,
   OUR_CORPUS_RULES_BUT_ARRAY_TYPE,
   OUR_CORPUS_RULES_BUT_EQEQEQ,
+  type OurRulesets,
   PREFER_CONST,
 } from './__tests__/cases/both-engines-corpus.ts'
 import { setUpCorpusRuns } from './__tests__/corpus-runs.ts'
@@ -27,18 +28,20 @@ allowEveryTestForParallelLoad()
 
 // Every file type the corpus holds but a .vue file with a plain script.
 const FILES_OF_EVERY_TYPE = ['a.ts', 'a.js', 'src/b.mjs', 'src/b.cjs', 'src/c.tsx', 'src/types.d.ts', 'src/c.vue', 'src/c.svelte', 'src/c.astro']
+// The agent build runs ban-ts-comment whatever is listed; editors, only where type-safety is.
+const TYPE_SAFETY_FOR_EDITORS: OurRulesets = { editorRulesets: { quality: ['type-safety'] } }
 
 const FILE_TYPE_CASES: readonly CorpusCase[] = [
   {
-    how: 'our settings turn the corpus rules on in every file, ban-ts-comment always on beside them',
-    ourRulesets: NO_RULESETS,
+    how: 'our settings turn the corpus rules on in every file, ban-ts-comment beside them, type-safety listed for editors',
+    ourRulesets: TYPE_SAFETY_FOR_EDITORS,
     ours: { rules: OUR_CORPUS_RULES },
     files: FILES_OF_EVERY_TYPE,
     rules: [...CORPUS_RULES, BAN_TS_COMMENT],
   },
   {
-    how: 'our ignores name every .js file and take back src/: **/*.js, !src/',
-    ourRulesets: NO_RULESETS,
+    how: 'our ignores name every .js file and take back src/, type-safety listed for editors: **/*.js, !src/',
+    ourRulesets: TYPE_SAFETY_FOR_EDITORS,
     ours: { rules: OUR_CORPUS_RULES, ignores: ['**/*.js', '!src/'] },
     files: ['src/b.mjs', 'src/b.cjs', 'src/a.js', 'src/a.ts', 'a.js'],
     rules: [BAN_TS_COMMENT, EQEQEQ, NO_VAR],

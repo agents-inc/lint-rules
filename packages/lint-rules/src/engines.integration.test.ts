@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { catalog } from '@workspace/rule-data'
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
 import { describe, expect, it } from 'vitest'
+import { unshippedRuleRefusal } from './__tests__/cases/rules-we-do-not-ship.ts'
 import { suppressionOfARuleNobodyDefines } from './__tests__/cases/suppression-comments.ts'
 import { setUpEngineRun } from './__tests__/engine-run.ts'
 import { pluginRegisteredUnder } from './__tests__/eslint-config-reads.ts'
@@ -23,8 +24,8 @@ const SUPPRESSES_A_RULE_NOBODY_DEFINES_FILE = 'nobody-suppression.ts'
 
 // Rules oxlint runs: the diagnostic code is oxlint's own spelling of the rule.
 const FIRES_IN_OXLINT = [
-  // Not shipped on: turned on through `rules`, and written `node/` in the oxlint config.
-  { rule: 'n/no-exports-assign', file: 'exports-assign.cjs', code: 'node(no-exports-assign)' },
+  // Written `typescript/` in the oxlint config.
+  { rule: '@typescript-eslint/no-require-imports', file: 'require-imports.cjs', code: 'typescript(no-require-imports)' },
   // A for…of whose body always returns runs once.
   { rule: 'no-unreachable-loop', file: 'unreachable-loop.ts', code: 'eslint(no-unreachable-loop)' },
 ]
@@ -46,9 +47,7 @@ const LOOP_BANNING_RULES = ['functional/no-loop-statements', 'house/no-classic-l
 
 type OxlintPrintedConfig = { rules: Record<string, unknown> }
 
-const fullConfig = setUpEngineRun(FIXTURES_DIR, (projectDir) =>
-  defineLintRules(buildEveryRulesetLintRules(projectDir, { rules: { 'n/no-exports-assign': 'error' } })),
-)
+const fullConfig = setUpEngineRun(FIXTURES_DIR, (projectDir) => defineLintRules(buildEveryRulesetLintRules(projectDir)))
 
 function oxlintPrintedConfig(): OxlintPrintedConfig {
   return JSON.parse(fullConfig.oxlintPrint().stdout) as OxlintPrintedConfig
@@ -157,29 +156,28 @@ describe('house/require-class-helper, turned on through rules', () => {
   })
 })
 
-// Opt-in upstream; oxlint has neither. Each fixture holds a call each
-// rule reports and, below it, one it leaves alone.
-describe('the rules eslint-plugin-unicorn 78 adds, turned on through rules', () => {
-  const unicorn78Rules = setUpEngineRun(FIXTURES_DIR, (projectDir) =>
-    defineLintRules(
-      buildConsumerLintRules(projectDir, {}, {
-        rules: { 'unicorn/no-repeated-call-wrappers': 'error', 'unicorn/no-unnecessary-default-arguments': 'error' },
-      }),
-    ),
+// Opt-in upstream; oxlint does not have it. The fixture holds a call it reports and, below it, one it
+// leaves alone.
+describe('the rule eslint-plugin-unicorn 78 adds that we ship, turned on through rules', () => {
+  const repeatedCallWrappers = setUpEngineRun(FIXTURES_DIR, (projectDir) =>
+    defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { 'unicorn/no-repeated-call-wrappers': 'error' } })),
   )
 
-  it('are loaded by ESLint with no fatal message on any file', () => {
-    expect(unicorn78Rules.eslintFatalMessages()).toStrictEqual([])
+  it('is loaded by ESLint with no fatal message on any file', () => {
+    expect(repeatedCallWrappers.eslintFatalMessages()).toStrictEqual([])
   })
 
-  it('fire no-unnecessary-default-arguments once, on the argument that matches its default', () => {
-    expect(unicorn78Rules.errorsOn('unnecessary-default-arguments.ts')).toStrictEqual([
-      buildEslintError('unicorn/no-unnecessary-default-arguments', 5),
-    ])
+  it('fires once, on the function every call wraps alike', () => {
+    expect(repeatedCallWrappers.errorsOn('repeated-call-wrappers.ts')).toStrictEqual([buildEslintError('unicorn/no-repeated-call-wrappers', 1)])
   })
+})
 
-  it('fire no-repeated-call-wrappers once, on the function every call wraps alike', () => {
-    expect(unicorn78Rules.errorsOn('repeated-call-wrappers.ts')).toStrictEqual([buildEslintError('unicorn/no-repeated-call-wrappers', 1)])
+// We do not ship it, so a team turns it on in its own ESLint config (owner, q-lint-unshipped-rules-channel).
+describe('the rule eslint-plugin-unicorn 78 adds that we do not ship, named in our rules', () => {
+  it('is refused', () => {
+    const naming = buildConsumerLintRules(FIXTURES_DIR, {}, { rules: { 'unicorn/no-unnecessary-default-arguments': 'error' } })
+
+    expect(() => defineLintRules(naming)).toThrow(unshippedRuleRefusal('rules', 'unicorn/no-unnecessary-default-arguments'))
   })
 })
 

@@ -7,7 +7,7 @@ import {
   emittingAWarning,
   exportedConstant,
   moduleText,
-  REDUNDANCY,
+  REPORTING_RULESETS,
 } from './__tests__/factories/check-factories.ts'
 import { createGitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
@@ -28,12 +28,12 @@ const A_DEPRECATION = 'Type Stripping options in this config are deprecated'
 
 describe('check where the config it imports has Node warn', () => {
   const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
-    const config = `${checkConfigText(REDUNDANCY)}${moduleText(
+    const config = `${checkConfigText(REPORTING_RULESETS)}${moduleText(
       emittingAWarning('ExperimentalWarning', NODES_TYPE_STRIPPING_WARNING),
       emittingAWarning('ExperimentalWarning', ANOTHER_EXPERIMENT),
       emittingAWarning('DeprecationWarning', A_DEPRECATION),
     )}`
-    const project = createGitProject(tempProjects, { repo: 'committed', files: { ...checkedPackageFiles(REDUNDANCY), [CONFIG_FILE]: config } })
+    const project = createGitProject(tempProjects, { repo: 'committed', files: { ...checkedPackageFiles(REPORTING_RULESETS), [CONFIG_FILE]: config } })
     project.write('src/a.ts', moduleText(exportedConstant('a')))
     return checkInTheBackground(project.dir)
   }, RUNS_IN_THE_BACKGROUND)
