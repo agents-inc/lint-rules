@@ -1,4 +1,4 @@
-// Preloaded into each child a test spawns in Stryker's initial run (see child-process-bridge.ts).
+// Preloaded into each child a test spawns in Stryker's initial run (see vitest.setup.ts).
 import { randomUUID } from 'node:crypto'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'

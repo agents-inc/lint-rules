@@ -9,7 +9,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, inject } from 'vitest'
 const FINAL_COVERAGE = new URL('./final-coverage.json', import.meta.url)
 
 const namespace = {}
-// eslint-disable-next-line unicorn/no-global-object-property-assignment -- the bridge reads Stryker's namespace from globalThis.__stryker__ (strykerNamespace in child-process-bridge.ts) and refuses to run without it, so the stand-in puts it where Stryker's setup file does
+// eslint-disable-next-line unicorn/no-global-object-property-assignment -- the bridge reads Stryker's namespace from globalThis.__stryker__ and refuses to run without it, so the stand-in puts it where Stryker's setup file does
 globalThis.__stryker__ = namespace
 
 if (inject('mode') === 'mutant') {

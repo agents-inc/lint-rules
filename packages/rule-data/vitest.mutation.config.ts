@@ -8,6 +8,6 @@ export default mergeConfig(
   baseConfig,
   defineConfig({
     root: fileURLToPath(new URL('.', import.meta.url)),
-    test: { setupFiles: ['../lint-rules/mutation-testing/child-process-bridge.ts'] },
+    test: { setupFiles: ['../lint-rules/mutation-testing/vitest.setup.ts'] },
   }),
 )

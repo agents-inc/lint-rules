@@ -40,37 +40,31 @@ const CHILD_COVERAGE_DIR_PREFIX = 'stryker-child-coverage-'
 const CHILD_COVERAGE_HOOK = new URL('./child-coverage-hook.mjs', import.meta.url).href
 const GIT_FOLDER_OF_THE_REPO_COPY = new URL('../../../.git', import.meta.url)
 
-// eslint-disable-next-line functional/no-expression-statements -- without a .git folder in Stryker's copy, oxlint reads the repo's .gitignore, which ignores the copy, and finds no file to lint
 mkdirSync(GIT_FOLDER_OF_THE_REPO_COPY, { recursive: true })
 handActiveMutantToChildren()
 beforeAll(handActiveMutantToChildren)
 if (inject('mode') === 'dry-run') creditChildCoverageToTests()
 
-// eslint-disable-next-line functional/no-return-void -- it hands the mutant over in the environment, which is all a child inherits: a value it returned would reach no child
 function handActiveMutantToChildren(): void {
   handToChildren(ACTIVE_MUTANT_ENV, strykerNamespace().activeMutant)
 }
 
-// eslint-disable-next-line functional/no-return-void -- it registers vitest's hooks, whose credits reach Stryker only written to its namespace
 function creditChildCoverageToTests(): void {
   const childCoverageDir = folderChildrenWriteTheirCoverageTo()
   const staticBeforeHooks = staticCoverageAsTheSuiteStarts()
   const testsRun = new Set<string>()
   const coveredByHooks: Coverage[] = []
 
-  // eslint-disable-next-line functional/no-return-void -- what the children of the file's hooks covered must reach afterAll, and vitest hands nothing a hook returns to another hook
   beforeEach(() => {
-    // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements -- afterAll credits it to every test, and vitest's hooks share nothing but this closure
+    // eslint-disable-next-line functional/immutable-data -- afterAll credits it to every test, and vitest's hooks share nothing but this closure
     coveredByHooks.push(coverageChildrenWroteSinceLastRead(childCoverageDir))
   })
-  // eslint-disable-next-line functional/no-return-void -- the credit reaches Stryker only written to its namespace: vitest reads nothing an afterEach returns
   afterEach(() => {
     const testId = testNamedByStryker()
-    // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements -- afterAll credits every test that ran, and vitest's hooks share nothing but this closure
+    // eslint-disable-next-line functional/immutable-data -- afterAll credits every test that ran, and vitest's hooks share nothing but this closure
     testsRun.add(testId)
     creditToTest(testId, coverageChildrenWroteSinceLastRead(childCoverageDir))
   })
-  // eslint-disable-next-line functional/no-return-void -- the credit reaches Stryker only written to its namespace: vitest reads nothing an afterAll returns
   afterAll(() => {
     const coveredByTheFilesHooks = coverageSum([...coveredByHooks, coverageChildrenWroteLast(childCoverageDir), staticCoverageTakenSince(staticBeforeHooks())])
     for (const testId of testsRun) creditToTest(testId, coveredByTheFilesHooks)
@@ -89,18 +83,15 @@ function folderChildrenWriteTheirCoverageTo(): string {
 function staticCoverageAsTheSuiteStarts(): () => Coverage {
   // eslint-disable-next-line functional/no-let -- TS2588: a const cannot be assigned in the beforeAll that takes the snapshot. setUpRunsBeforeTheSuite (src/__tests__/runs-before-the-suite.ts) has this shape but sets up temp projects too, and the bridge imports nothing of the repo's
   let staticBeforeHooks: Coverage = {}
-  // eslint-disable-next-line functional/no-return-void -- the snapshot must reach afterAll, and vitest hands nothing a hook returns to another hook
   beforeAll(() => {
-    // eslint-disable-next-line functional/no-expression-statements -- TS2588, as on the let above
     staticBeforeHooks = { ...workerCoverage().static }
   })
   return () => staticBeforeHooks
 }
 
-// eslint-disable-next-line functional/no-return-void -- it writes the credit where Stryker reads it, its namespace: a credit it returned would reach no one
 function creditToTest(testId: string, covered: Coverage): void {
   const { perTest } = workerCoverage()
-  // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements -- Stryker reads each test's coverage from its namespace alone, and a test that covered nothing in the worker has no map there yet
+  // eslint-disable-next-line functional/immutable-data -- Stryker reads each test's coverage from its namespace alone, and a test that covered nothing in the worker has no map there yet
   perTest[testId] ??= {}
   writeInPlace(perTest[testId], coverageSum([perTest[testId], covered]))
 }
@@ -114,14 +105,14 @@ function staticCoverageTakenSince(before: Coverage): Coverage {
 }
 
 /** Leaves one of Stryker's maps holding exactly the counts given, a mutant it no longer counts left out. */
-// eslint-disable-next-line functional/no-return-void, functional/prefer-immutable-types -- the counts reach Stryker only written into its namespace, where its instrumented code looks this map up again on every hit; a Readonly map takes no write: TS2542
+// eslint-disable-next-line functional/prefer-immutable-types -- the counts reach Stryker only written into its namespace, where its instrumented code looks this map up again on every hit; a Readonly map takes no write: TS2542
 function writeInPlace(strykersCounts: HitCounts, counts: Coverage): void {
   for (const mutantId of Object.keys(strykersCounts)) {
-    // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements, @typescript-eslint/no-dynamic-delete -- in Stryker's map, a plain object, which only delete takes a key out of
+    // eslint-disable-next-line functional/immutable-data, @typescript-eslint/no-dynamic-delete -- in Stryker's map, a plain object, which only delete takes a key out of
     if (!Object.hasOwn(counts, mutantId)) delete strykersCounts[mutantId]
   }
   for (const [mutantId, hits] of Object.entries(counts)) {
-    // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements -- in Stryker's map, which its instrumented code keeps writing to
+    // eslint-disable-next-line functional/immutable-data -- in Stryker's map, which its instrumented code keeps writing to
     strykersCounts[mutantId] = hits
   }
 }
@@ -129,7 +120,7 @@ function writeInPlace(strykersCounts: HitCounts, counts: Coverage): void {
 /** Stryker's coverage map. The worker holds none until the instrumented code's first hit makes one. */
 function workerCoverage(): MutantCoverage {
   const namespace = strykerNamespace()
-  // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements -- a map made here and not kept in the namespace is one Stryker never reads: a test file whose own process covers nothing would credit no test
+  // eslint-disable-next-line functional/immutable-data -- a map made here and not kept in the namespace is one Stryker never reads: a test file whose own process covers nothing would credit no test
   namespace.mutantCoverage ??= { static: {}, perTest: {} }
   return namespace.mutantCoverage
 }
@@ -146,11 +137,10 @@ function testNamedByStryker(): string {
   return currentTestId
 }
 
-// eslint-disable-next-line functional/no-return-void -- it writes the environment, which is all a child inherits: a value it returned would reach no child
 function handToChildren(variable: string, value: string | undefined): void {
-  // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements, @typescript-eslint/no-dynamic-delete -- assigning undefined stores the string "undefined", which a child would read as a mutant id
+  // eslint-disable-next-line functional/immutable-data, @typescript-eslint/no-dynamic-delete -- assigning undefined stores the string "undefined", which a child would read as a mutant id
   if (value === undefined) delete process.env[variable]
-  // eslint-disable-next-line functional/immutable-data, functional/no-expression-statements -- a child inherits the environment and nothing else of the worker's
+  // eslint-disable-next-line functional/immutable-data -- a child inherits the environment and nothing else of the worker's
   else process.env[variable] = value
 }
 

@@ -47,12 +47,12 @@ type BridgeRun = {
 }
 
 // Where the bridge sits in the copy of the repo Stryker runs in, so the .git folder it makes lands at the copy's root.
-const BRIDGE_IN_THE_COPY = 'packages/lint-rules/mutation-testing/child-process-bridge.ts'
+const BRIDGE_IN_THE_COPY = 'packages/lint-rules/mutation-testing/vitest.setup.ts'
 const BRIDGE = `./${BRIDGE_IN_THE_COPY}`
 const STRYKER_SETUP_STAND_IN = './stryker-setup-stand-in.mjs'
 // The bridge and its hook as they stand, beside the stand-ins for what Stryker loads around them and the test file.
 const SANDBOX_FILES = {
-  [BRIDGE_IN_THE_COPY]: new URL('../child-process-bridge.ts', import.meta.url),
+  [BRIDGE_IN_THE_COPY]: new URL('../vitest.setup.ts', import.meta.url),
   'packages/lint-rules/mutation-testing/child-coverage-hook.mjs': new URL('../child-coverage-hook.mjs', import.meta.url),
   [STRYKER_SETUP_STAND_IN]: new URL('./bridge-sandbox/stryker-setup-stand-in.mjs', import.meta.url),
   'instrumented-module-stand-in.mjs': new URL('./bridge-sandbox/instrumented-module-stand-in.mjs', import.meta.url),

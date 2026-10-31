@@ -7,6 +7,6 @@ export default mergeConfig(
   baseConfig,
   defineConfig({
     root: fileURLToPath(new URL('.', import.meta.url)),
-    test: { setupFiles: ['./mutation-testing/child-process-bridge.ts'] },
+    test: { setupFiles: ['./mutation-testing/vitest.setup.ts'] },
   }),
 )
