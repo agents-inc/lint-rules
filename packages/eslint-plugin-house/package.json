@@ -12,12 +12,12 @@
     "./repo-own-plugin": "./src/repo-own-plugin.ts"
   },
   "dependencies": {
-    "@typescript-eslint/utils": "8.71.1"
+    "@typescript-eslint/utils": "8.71.2"
   },
   "devDependencies": {
     "@types/node": "22.20.5",
-    "@typescript-eslint/parser": "8.71.1",
-    "@typescript-eslint/rule-tester": "8.71.1",
+    "@typescript-eslint/parser": "8.71.2",
+    "@typescript-eslint/rule-tester": "8.71.2",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "10.12.0",
     "typescript": "6.0.3",

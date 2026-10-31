@@ -36,7 +36,7 @@
   "peerDependencies": {
     "typescript": ">=4.8.4 <6.1.0"
   },
-  "//dependencies": "@typescript-eslint/utils is imported by eslint-plugin-house, which the build inlines. Undeclared here, tsdown tries to inline it too and the declaration build fails (MISSING_EXPORT from typescript.d.ts).",
+  "//dependencies": "Every @typescript-eslint package sits at typescript-eslint's version, or npm installs a second, newer copy that the plugins' ^ ranges take. @typescript-eslint/utils is also imported by eslint-plugin-house, which the build inlines. Undeclared here, tsdown tries to inline it too and the declaration build fails (MISSING_EXPORT from typescript.d.ts).",
   "dependencies": {
     "@e18e/eslint-plugin": "0.8.1",
     "@eslint-community/eslint-plugin-eslint-comments": "4.8.1",
@@ -45,11 +45,21 @@
     "@shadcn/lint": "0.2.3",
     "@tanstack/eslint-plugin-query": "5.104.5",
     "@tanstack/eslint-plugin-router": "1.162.0",
-    "@typescript-eslint/utils": "8.71.1",
+    "@typescript-eslint/eslint-plugin": "8.71.2",
+    "@typescript-eslint/parser": "8.71.2",
+    "@typescript-eslint/project-service": "8.71.2",
+    "@typescript-eslint/scope-manager": "8.71.2",
+    "@typescript-eslint/tsconfig-utils": "8.71.2",
+    "@typescript-eslint/type-utils": "8.71.2",
+    "@typescript-eslint/types": "8.71.2",
+    "@typescript-eslint/typescript-estree": "8.71.2",
+    "@typescript-eslint/utils": "8.71.2",
+    "@typescript-eslint/visitor-keys": "8.71.2",
     "@vitest/eslint-plugin": "1.6.27",
     "eslint": "10.12.0",
     "eslint-import-resolver-typescript": "4.4.5",
     "eslint-plugin-check-file": "3.3.2",
+    "eslint-plugin-compat": "7.0.2",
     "eslint-plugin-css-modules": "2.12.0",
     "eslint-plugin-functional": "10.0.1",
     "eslint-plugin-hydration-proof": "1.0.1",
@@ -74,7 +84,7 @@
     "eslint-plugin-zod": "5.2.2",
     "globals": "17.13.0",
     "oxlint": "1.87.0",
-    "typescript-eslint": "8.71.1"
+    "typescript-eslint": "8.71.2"
   },
   "//devDependencies": "The @workspace packages are inlined by the build (tsdown deps.alwaysBundle); under dependencies a consumer's install would try to fetch them.",
   "devDependencies": {

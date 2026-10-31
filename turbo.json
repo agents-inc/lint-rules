@@ -17,8 +17,11 @@
       "cache": false
     },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "//#report-leftover-stryker-copies"],
       "outputs": []
+    },
+    "//#report-leftover-stryker-copies": {
+      "cache": false
     }
   }
 }

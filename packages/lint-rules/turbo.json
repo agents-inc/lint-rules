@@ -2,9 +2,10 @@
   "$schema": "https://turbo.build/schema.json",
   "extends": ["//"],
   "tasks": {
-    // dist.test.ts reads this package's own dist, so the suite needs this package built.
+    // dist.test.ts reads this package's own dist, so the suite needs this package built. $TURBO_EXTENDS$ keeps the
+    // root's dependencies, the report of leftover Stryker copies among them; without it this list replaces them.
     "test": {
-      "dependsOn": ["build"],
+      "dependsOn": ["$TURBO_EXTENDS$", "build"],
       "outputs": []
     }
   }

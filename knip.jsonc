@@ -11,7 +11,7 @@
         "oxlint.config.mts",
         // `stryker run <file>` loads them by path; knip's Stryker plugin knows only stryker.config.*.
         "stryker.*.config.mjs",
-        // Run as `node scripts/…`, from no package.json script.
+        // mutate-changed-lines.mts is run as `node scripts/…`, from no package.json script.
         "scripts/*.mts",
       ],
       // Written by the agents-inc CLI, not this repo's source.

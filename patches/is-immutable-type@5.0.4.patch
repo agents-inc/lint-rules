@@ -1,0 +1,470 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index 6759bed9c36c616e915e2336081fe3477dbf3559..4edefa883dd1a440a11419f4f553f919445e99bf 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -123,23 +123,163 @@ function getTypeData(type, typeNode) {
+     };
+ }
+ /**
+- * Cache a value by its type
++ * One key per type, type node and immutability limit asked about, so the cache keeps each answer under the question
++ * it answers. A type belongs to one program's checker, so no key is shared between programs. The recursion identity,
++ * which every instantiation of one generic shares (Pick<A, "a"> and Pick<B, "b">), keys nothing beyond one call.
+  */
+-function cacheData(program, cache, typeData, value) {
+-    const checker = program.getTypeChecker();
+-    const identity = checker.getRecursionIdentity(typeData.type);
+-    if (typeData.typeNode !== null) {
+-        cache.set(typeData.typeNode, value);
++const answerKeys = new WeakMap();
++function answerKeyOf(typeData, maxImmutability) {
++    const ofType = entryOf(answerKeys, typeData.type, createAnswerKeysOfType);
++    const byLimit = typeData.typeNode === null
++        ? ofType.askedAlone
++        : entryOf(ofType.askedThroughNode, typeData.typeNode, () => new Map());
++    return entryOf(byLimit, maxImmutability, () => ({}));
++}
++function createAnswerKeysOfType() {
++    return { askedAlone: new Map(), askedThroughNode: new WeakMap() };
++}
++function entryOf(map, key, create) {
++    if (!map.has(key)) {
++        map.set(key, create());
+     }
+-    cache.set(identity, value);
++    return map.get(key);
++}
++/**
++ * One call's pieces of work, innermost last: each works out one type, from its triage until every task it pushed is
++ * done. A piece of work that read an answer of work around it still in progress (a recursion ended early, a partial
++ * answer, an answer kept for this call alone, or the loop's last answer where other work produced it) answers for this
++ * call alone, as does all work around it out to the work it read; the rest answer for every call, as working each out
++ * alone would.
++ */
++function createWorkInProgress() {
++    return { open: [], workOf: new WeakMap(), markedBy: new Map(), answers: new Map(), previousAnswerBy: undefined };
+ }
+ /**
+- * Get a value by its cashed type.
++ * Start working out a type the cache has no answer for, marking it under each key a recursive reference to it is
++ * found by: its type node where it has one, else its recursion identity.
+  */
+-function getCachedData(program, cache, typeData) {
+-    const checker = program.getTypeChecker();
+-    const identity = typeData.typeNode ?? checker.getRecursionIdentity(typeData.type);
+-    return cache.get(identity);
++function startWork(parameters, typeData, stackLength) {
++    const { open, workOf, markedBy } = parameters.workInProgress;
++    const identity = parameters.program.getTypeChecker().getRecursionIdentity(typeData.type);
++    const work = {
++        typeData,
++        stackLength,
++        depth: open.length,
++        outer: open[open.length - 1],
++        isOpen: true,
++        dependsOnDepth: open.length,
++        dependsOn: undefined,
++        markKeys: typeData.typeNode === null ? [identity] : [typeData.typeNode, identity],
++    };
++    for (const key of work.markKeys) {
++        entryOf(markedBy, key, () => []).push(work);
++    }
++    open.push(work);
++    workOf.set(typeData, work);
++}
++function unmark(parameters, work) {
++    const { markedBy } = parameters.workInProgress;
++    for (const key of work.markKeys) {
++        const marks = markedBy.get(key);
++        marks.splice(marks.indexOf(work), 1);
++        if (marks.length === 0) {
++            markedBy.delete(key);
++        }
++    }
++    work.markKeys = [];
++}
++/**
++ * End each piece of work whose tasks are all done. Its answer goes to the cache unless it depends on work around it.
++ */
++function finishWork(parameters, stackLength) {
++    const { open, workOf, answers } = parameters.workInProgress;
++    while (open.length > 0 && open[open.length - 1].stackLength >= stackLength) {
++        const work = open.pop();
++        work.isOpen = false;
++        workOf.delete(work.typeData);
++        if (work.dependsOnDepth < work.depth) {
++            work.dependsOn = open[work.dependsOnDepth];
++            work.outer.dependsOnDepth = Math.min(work.outer.dependsOnDepth, work.dependsOnDepth);
++            continue;
++        }
++        work.dependsOn = work;
++        const key = answerKeyOf(work.typeData, parameters.immutabilityLimits.max);
++        const answer = answers.get(key);
++        if (answer !== undefined) {
++            answers.delete(key);
++            parameters.cache.set(key, answer.value);
++        }
++    }
++}
++/**
++ * The innermost work reads what the given pieces of work produced, so it depends on the innermost open work that
++ * produced it too.
++ */
++function dependOn(parameters, works) {
++    const { open } = parameters.workInProgress;
++    const reader = open[open.length - 1];
++    reader.dependsOnDepth = Math.min(reader.dependsOnDepth, Math.max(...works.map(openDepthOf)));
++}
++function openDepthOf(work) {
++    let mut_work = work.isOpen ? work : work.dependsOn;
++    while (!mut_work.isOpen) {
++        mut_work = mut_work.outer;
++    }
++    return mut_work.depth;
++}
++/**
++ * The work the loop's last answer was worked out in, which the check-done step reads.
++ */
++function notePreviousAnswerBy(parameters) {
++    const { open } = parameters.workInProgress;
++    parameters.workInProgress.previousAnswerBy = open[open.length - 1];
++}
++/**
++ * The check-done step reads the loop's last answer, which other work can have produced (an earlier sibling, when every
++ * child of the type refers back to it); the work it checks then depends on that work.
++ */
++function dependOnPreviousAnswer(parameters) {
++    const { open, previousAnswerBy } = parameters.workInProgress;
++    if (previousAnswerBy !== undefined && !isWithin(previousAnswerBy, open[open.length - 1])) {
++        dependOn(parameters, [previousAnswerBy]);
++    }
++}
++function isWithin(work, enclosing) {
++    let mut_work = work;
++    while (mut_work !== undefined && mut_work !== enclosing) {
++        mut_work = mut_work.outer;
++    }
++    return mut_work === enclosing;
++}
++/**
++ * Keep an answer, partial or final, of a type being worked out; its first ends its mark, since the loop writes each
++ * partial answer as it goes. An answer read from the cache is kept already.
++ */
++function cacheData(parameters, typeData, value) {
++    const work = parameters.workInProgress.workOf.get(typeData);
++    if (work === undefined || value === exports.Immutability.Calculating) {
++        return;
++    }
++    unmark(parameters, work);
++    parameters.workInProgress.answers.set(answerKeyOf(typeData, parameters.immutabilityLimits.max), { value, work });
++}
++/**
++ * Calculating for a type a reference to which is being worked out, so recursion ends; else the answer kept for it.
++ */
++function getCachedData(parameters, typeData) {
++    const { markedBy, answers } = parameters.workInProgress;
++    const marks = markedBy.get(typeData.typeNode ?? parameters.program.getTypeChecker().getRecursionIdentity(typeData.type));
++    if (marks !== undefined) {
++        dependOn(parameters, marks);
++        return exports.Immutability.Calculating;
++    }
++    const key = answerKeyOf(typeData, parameters.immutabilityLimits.max);
++    const answerOfThisCall = answers.get(key);
++    if (answerOfThisCall !== undefined) {
++        dependOn(parameters, [answerOfThisCall.work]);
++        return answerOfThisCall.value;
++    }
++    return parameters.cache.get(key);
+ }
+ /**
+  * Does the given type/typeNode match the given specifier.
+@@ -407,6 +547,7 @@ function getTypeImmutabilityHelper(program, td, overrides, useCache, maxImmutabi
+         program,
+         overrides,
+         cache,
++        workInProgress: createWorkInProgress(),
+         immutabilityLimits: {
+             min: exports.Immutability.Mutable,
+             max: maxImmutability,
+@@ -441,15 +582,18 @@ function getTypeImmutabilityHelper(program, td, overrides, useCache, maxImmutabi
+                 break;
+             }
+             case TaskStateStage.CheckDone: {
++                dependOnPreviousAnswer(parameters);
+                 taskCheckDone(mut_state, mut_PreviousImmutability);
+                 mut_state = mut_state.taskState;
+                 break;
+             }
+         }
+         if (mut_state.immutability !== exports.Immutability.Calculating) {
+-            cacheData(program, cache, mut_state.typeData, mut_state.immutability);
++            cacheData(parameters, mut_state.typeData, mut_state.immutability);
+             mut_PreviousImmutability = mut_state.immutability;
++            notePreviousAnswerBy(parameters);
+         }
++        finishWork(parameters, mut_stack.length);
+     } while (mut_stack.length > 0);
+     // A top-level result of `Calculating` means the type is purely
+     // self-referential: every constraint reduced to a recursive back-reference
+@@ -514,22 +658,23 @@ function getOverride(parameters, typeData) {
+  * Process the state and create any new next task that need to be used to process it.
+  */
+ function taskTriage(parameters, mut_stack, mut_state) {
+-    const cached = getCachedData(parameters.program, parameters.cache, mut_state.typeData);
++    const cached = getCachedData(parameters, mut_state.typeData);
+     if (cached !== undefined) {
+         mut_state.immutability = cached;
+         return;
+     }
++    startWork(parameters, mut_state.typeData, mut_stack.length);
+     const override = getOverride(parameters, mut_state.typeData);
+     if (override?.to !== undefined) {
+         // Early escape if we don't need to check the override from.
+         if (override.from === undefined) {
+             mut_state.immutability = override.to;
+-            cacheData(parameters.program, parameters.cache, mut_state.typeData, mut_state.immutability);
++            cacheData(parameters, mut_state.typeData, mut_state.immutability);
+             return;
+         }
+         mut_stack.push(createApplyOverrideTaskState(mut_state, override));
+     }
+-    cacheData(parameters.program, parameters.cache, mut_state.typeData, mut_state.immutability);
++    cacheData(parameters, mut_state.typeData, mut_state.immutability);
+     if (tsApiUtils.isUnionType(mut_state.typeData.type)) {
+         handleTypeUnion(parameters, mut_stack, mut_state);
+         return;
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 3bd08083cd4d1593c7a433bd7655ac5c54d9d9bb..71d00395da0a56e84595975a66e9e37738d83200 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -121,23 +121,163 @@ function getTypeData(type, typeNode) {
+     };
+ }
+ /**
+- * Cache a value by its type
++ * One key per type, type node and immutability limit asked about, so the cache keeps each answer under the question
++ * it answers. A type belongs to one program's checker, so no key is shared between programs. The recursion identity,
++ * which every instantiation of one generic shares (Pick<A, "a"> and Pick<B, "b">), keys nothing beyond one call.
+  */
+-function cacheData(program, cache, typeData, value) {
+-    const checker = program.getTypeChecker();
+-    const identity = checker.getRecursionIdentity(typeData.type);
+-    if (typeData.typeNode !== null) {
+-        cache.set(typeData.typeNode, value);
++const answerKeys = new WeakMap();
++function answerKeyOf(typeData, maxImmutability) {
++    const ofType = entryOf(answerKeys, typeData.type, createAnswerKeysOfType);
++    const byLimit = typeData.typeNode === null
++        ? ofType.askedAlone
++        : entryOf(ofType.askedThroughNode, typeData.typeNode, () => new Map());
++    return entryOf(byLimit, maxImmutability, () => ({}));
++}
++function createAnswerKeysOfType() {
++    return { askedAlone: new Map(), askedThroughNode: new WeakMap() };
++}
++function entryOf(map, key, create) {
++    if (!map.has(key)) {
++        map.set(key, create());
+     }
+-    cache.set(identity, value);
++    return map.get(key);
++}
++/**
++ * One call's pieces of work, innermost last: each works out one type, from its triage until every task it pushed is
++ * done. A piece of work that read an answer of work around it still in progress (a recursion ended early, a partial
++ * answer, an answer kept for this call alone, or the loop's last answer where other work produced it) answers for this
++ * call alone, as does all work around it out to the work it read; the rest answer for every call, as working each out
++ * alone would.
++ */
++function createWorkInProgress() {
++    return { open: [], workOf: new WeakMap(), markedBy: new Map(), answers: new Map(), previousAnswerBy: undefined };
+ }
+ /**
+- * Get a value by its cashed type.
++ * Start working out a type the cache has no answer for, marking it under each key a recursive reference to it is
++ * found by: its type node where it has one, else its recursion identity.
+  */
+-function getCachedData(program, cache, typeData) {
+-    const checker = program.getTypeChecker();
+-    const identity = typeData.typeNode ?? checker.getRecursionIdentity(typeData.type);
+-    return cache.get(identity);
++function startWork(parameters, typeData, stackLength) {
++    const { open, workOf, markedBy } = parameters.workInProgress;
++    const identity = parameters.program.getTypeChecker().getRecursionIdentity(typeData.type);
++    const work = {
++        typeData,
++        stackLength,
++        depth: open.length,
++        outer: open[open.length - 1],
++        isOpen: true,
++        dependsOnDepth: open.length,
++        dependsOn: undefined,
++        markKeys: typeData.typeNode === null ? [identity] : [typeData.typeNode, identity],
++    };
++    for (const key of work.markKeys) {
++        entryOf(markedBy, key, () => []).push(work);
++    }
++    open.push(work);
++    workOf.set(typeData, work);
++}
++function unmark(parameters, work) {
++    const { markedBy } = parameters.workInProgress;
++    for (const key of work.markKeys) {
++        const marks = markedBy.get(key);
++        marks.splice(marks.indexOf(work), 1);
++        if (marks.length === 0) {
++            markedBy.delete(key);
++        }
++    }
++    work.markKeys = [];
++}
++/**
++ * End each piece of work whose tasks are all done. Its answer goes to the cache unless it depends on work around it.
++ */
++function finishWork(parameters, stackLength) {
++    const { open, workOf, answers } = parameters.workInProgress;
++    while (open.length > 0 && open[open.length - 1].stackLength >= stackLength) {
++        const work = open.pop();
++        work.isOpen = false;
++        workOf.delete(work.typeData);
++        if (work.dependsOnDepth < work.depth) {
++            work.dependsOn = open[work.dependsOnDepth];
++            work.outer.dependsOnDepth = Math.min(work.outer.dependsOnDepth, work.dependsOnDepth);
++            continue;
++        }
++        work.dependsOn = work;
++        const key = answerKeyOf(work.typeData, parameters.immutabilityLimits.max);
++        const answer = answers.get(key);
++        if (answer !== undefined) {
++            answers.delete(key);
++            parameters.cache.set(key, answer.value);
++        }
++    }
++}
++/**
++ * The innermost work reads what the given pieces of work produced, so it depends on the innermost open work that
++ * produced it too.
++ */
++function dependOn(parameters, works) {
++    const { open } = parameters.workInProgress;
++    const reader = open[open.length - 1];
++    reader.dependsOnDepth = Math.min(reader.dependsOnDepth, Math.max(...works.map(openDepthOf)));
++}
++function openDepthOf(work) {
++    let mut_work = work.isOpen ? work : work.dependsOn;
++    while (!mut_work.isOpen) {
++        mut_work = mut_work.outer;
++    }
++    return mut_work.depth;
++}
++/**
++ * The work the loop's last answer was worked out in, which the check-done step reads.
++ */
++function notePreviousAnswerBy(parameters) {
++    const { open } = parameters.workInProgress;
++    parameters.workInProgress.previousAnswerBy = open[open.length - 1];
++}
++/**
++ * The check-done step reads the loop's last answer, which other work can have produced (an earlier sibling, when every
++ * child of the type refers back to it); the work it checks then depends on that work.
++ */
++function dependOnPreviousAnswer(parameters) {
++    const { open, previousAnswerBy } = parameters.workInProgress;
++    if (previousAnswerBy !== undefined && !isWithin(previousAnswerBy, open[open.length - 1])) {
++        dependOn(parameters, [previousAnswerBy]);
++    }
++}
++function isWithin(work, enclosing) {
++    let mut_work = work;
++    while (mut_work !== undefined && mut_work !== enclosing) {
++        mut_work = mut_work.outer;
++    }
++    return mut_work === enclosing;
++}
++/**
++ * Keep an answer, partial or final, of a type being worked out; its first ends its mark, since the loop writes each
++ * partial answer as it goes. An answer read from the cache is kept already.
++ */
++function cacheData(parameters, typeData, value) {
++    const work = parameters.workInProgress.workOf.get(typeData);
++    if (work === undefined || value === Immutability.Calculating) {
++        return;
++    }
++    unmark(parameters, work);
++    parameters.workInProgress.answers.set(answerKeyOf(typeData, parameters.immutabilityLimits.max), { value, work });
++}
++/**
++ * Calculating for a type a reference to which is being worked out, so recursion ends; else the answer kept for it.
++ */
++function getCachedData(parameters, typeData) {
++    const { markedBy, answers } = parameters.workInProgress;
++    const marks = markedBy.get(typeData.typeNode ?? parameters.program.getTypeChecker().getRecursionIdentity(typeData.type));
++    if (marks !== undefined) {
++        dependOn(parameters, marks);
++        return Immutability.Calculating;
++    }
++    const key = answerKeyOf(typeData, parameters.immutabilityLimits.max);
++    const answerOfThisCall = answers.get(key);
++    if (answerOfThisCall !== undefined) {
++        dependOn(parameters, [answerOfThisCall.work]);
++        return answerOfThisCall.value;
++    }
++    return parameters.cache.get(key);
+ }
+ /**
+  * Does the given type/typeNode match the given specifier.
+@@ -405,6 +545,7 @@ function getTypeImmutabilityHelper(program, td, overrides, useCache, maxImmutabi
+         program,
+         overrides,
+         cache,
++        workInProgress: createWorkInProgress(),
+         immutabilityLimits: {
+             min: Immutability.Mutable,
+             max: maxImmutability,
+@@ -439,15 +580,18 @@ function getTypeImmutabilityHelper(program, td, overrides, useCache, maxImmutabi
+                 break;
+             }
+             case TaskStateStage.CheckDone: {
++                dependOnPreviousAnswer(parameters);
+                 taskCheckDone(mut_state, mut_PreviousImmutability);
+                 mut_state = mut_state.taskState;
+                 break;
+             }
+         }
+         if (mut_state.immutability !== Immutability.Calculating) {
+-            cacheData(program, cache, mut_state.typeData, mut_state.immutability);
++            cacheData(parameters, mut_state.typeData, mut_state.immutability);
+             mut_PreviousImmutability = mut_state.immutability;
++            notePreviousAnswerBy(parameters);
+         }
++        finishWork(parameters, mut_stack.length);
+     } while (mut_stack.length > 0);
+     // A top-level result of `Calculating` means the type is purely
+     // self-referential: every constraint reduced to a recursive back-reference
+@@ -512,22 +656,23 @@ function getOverride(parameters, typeData) {
+  * Process the state and create any new next task that need to be used to process it.
+  */
+ function taskTriage(parameters, mut_stack, mut_state) {
+-    const cached = getCachedData(parameters.program, parameters.cache, mut_state.typeData);
++    const cached = getCachedData(parameters, mut_state.typeData);
+     if (cached !== undefined) {
+         mut_state.immutability = cached;
+         return;
+     }
++    startWork(parameters, mut_state.typeData, mut_stack.length);
+     const override = getOverride(parameters, mut_state.typeData);
+     if (override?.to !== undefined) {
+         // Early escape if we don't need to check the override from.
+         if (override.from === undefined) {
+             mut_state.immutability = override.to;
+-            cacheData(parameters.program, parameters.cache, mut_state.typeData, mut_state.immutability);
++            cacheData(parameters, mut_state.typeData, mut_state.immutability);
+             return;
+         }
+         mut_stack.push(createApplyOverrideTaskState(mut_state, override));
+     }
+-    cacheData(parameters.program, parameters.cache, mut_state.typeData, mut_state.immutability);
++    cacheData(parameters, mut_state.typeData, mut_state.immutability);
+     if (isUnionType(mut_state.typeData.type)) {
+         handleTypeUnion(parameters, mut_stack, mut_state);
+         return;
