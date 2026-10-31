@@ -4115,7 +4115,115 @@ export class Runner {
 }
 `
 
-// Enough cases that a walk back through them recursing once for each case runs out of stack.
+// `return` does not compile in a namespace body either, as at a file's top level.
+export const throwingDefaultInANamespaceBody = `type Engine = 'eslint' | 'oxlint'
+
+declare function readEngine(): Engine
+
+export namespace Bins {
+  const engine = readEngine()
+
+  export let bin = ''
+
+  switch (engine) {
+    case 'eslint':
+      bin = 'eslint'
+      break
+    case 'oxlint':
+      bin = 'oxlint'
+      break
+    default:
+      throw new Error('no such engine')
+  }
+}
+`
+
+export const neverBindingThenThrowInANamespaceBody = `type Engine = 'eslint' | 'oxlint'
+
+declare function readEngine(): Engine
+
+export namespace Bins {
+  const engine = readEngine()
+
+  export let bin = ''
+
+  switch (engine) {
+    case 'eslint':
+      bin = 'eslint'
+      break
+    case 'oxlint':
+      bin = 'oxlint'
+      break
+    default: {
+      const unhandled: never = engine
+      throw new Error(String(unhandled))
+    }
+  }
+}
+`
+
+export const throwingDefaultOnACallInANamespaceBody = `type Engine = 'eslint' | 'oxlint'
+
+declare function readEngine(): Engine
+
+export namespace Bins {
+  export let bin = ''
+
+  switch (readEngine()) {
+    case 'eslint':
+      bin = 'eslint'
+      break
+    case 'oxlint':
+      bin = 'oxlint'
+      break
+    default:
+      throw new Error('no such engine')
+  }
+}
+`
+
+// The body of the last namespace a dotted name declares.
+export const throwingDefaultInADottedNamespaceBody = `type Engine = 'eslint' | 'oxlint'
+
+declare function readEngine(): Engine
+
+export namespace Tools.Bins {
+  const engine = readEngine()
+
+  export let bin = ''
+
+  switch (engine) {
+    case 'eslint':
+      bin = 'eslint'
+      break
+    case 'oxlint':
+      bin = 'oxlint'
+      break
+    default:
+      throw new Error('no such engine')
+  }
+}
+`
+
+// A function in a namespace returns as any function does.
+export const throwingDefaultInAFunctionInANamespaceBody = `type Engine = 'eslint' | 'oxlint'
+
+export namespace Bins {
+  export function binOf(engine: Engine): string {
+    switch (engine) {
+      case 'eslint':
+        return 'eslint'
+      case 'oxlint':
+        return 'oxlint'
+      default:
+        throw new Error('no such engine')
+    }
+  }
+}
+`
+
+// Enough cases that a walk back through them recursing through a callback for each case runs out of stack; one making a
+// plain call for each runs out only past about 8,000 (measured).
 const KEYS_BEFORE_THE_LAST = 6_000
 
 const keysBeforeTheLast = Array.from({ length: KEYS_BEFORE_THE_LAST }, (_, index) => `k${index}`)

@@ -1,3 +1,5 @@
+import { describe } from 'vitest'
+
 import {
   caseBlockFallingIntoAThrowingDefault,
   caseFallingIntoAThrowingDefault,
@@ -58,6 +60,7 @@ import {
   neverBindingThenThrow,
   neverBindingThenThrowAtTheTopLevelOfAFile,
   neverBindingThenThrowInAClassStaticBlock,
+  neverBindingThenThrowInANamespaceBody,
   neverBindingThenThrowInASetter,
   neverDefaultAfterEveryCase,
   neverDefaultAfterEveryCaseOfABrandedUnion,
@@ -150,12 +153,16 @@ import {
   throwingDefaultDeclaringTheObjectOfThePropertyItsSwitchTests,
   throwingDefaultInABlock,
   throwingDefaultInAClassStaticBlock,
+  throwingDefaultInADottedNamespaceBody,
   throwingDefaultInAFunctionInAClassStaticBlock,
+  throwingDefaultInAFunctionInANamespaceBody,
+  throwingDefaultInANamespaceBody,
   throwingDefaultInASetter,
   throwingDefaultOfABlockThenAThrow,
   throwingDefaultOnACall,
   throwingDefaultOnACallAtTheTopLevelOfAFile,
   throwingDefaultOnACallDeclaringANameTheCallReads,
+  throwingDefaultOnACallInANamespaceBody,
   throwingDefaultOnACallInASwitchAfterAReturn,
   throwingDefaultOnACallOfParametersNamedSwitchedOn,
   throwingDefaultOnACallTakingAFunctionWithAParameter,
@@ -263,6 +270,19 @@ import { repoOwnPlugin } from '../repo-own-plugin.ts'
 
 const rule = repoOwnPlugin.rules['no-throwing-default-in-exhaustive-switch']
 
+// TypeScript reads the switch's value at the default by looking each member of its union up among the cases one by one,
+// so the rule's two questions there grow with the square of the cases: about 2 s for the switch of thousands alone, and
+// past vitest's default 5 s with the other packages' suites running beside it (measured).
+const THOUSANDS_OF_CASES_TIMEOUT_MS = 60_000
+
+// Ahead of the cases below: run after them, it takes about 3 s rather than 2 (measured).
+describe('on a switch of thousands of cases', { timeout: THOUSANDS_OF_CASES_TIMEOUT_MS }, () => {
+  houseTypedRuleTester.run('no-throwing-default-in-exhaustive-switch', rule, {
+    valid: [buildValidCase('stays silent on a throwing default the last of thousands of cases falls into', caseFallingIntoAThrowingDefaultAfterThousandsOfCases)],
+    invalid: [],
+  })
+})
+
 // No invalid case declares `output` or `suggestions`, so the tester fails any fix the rule offers.
 houseTypedRuleTester.run('no-throwing-default-in-exhaustive-switch', rule, {
   valid: [
@@ -320,7 +340,6 @@ houseTypedRuleTester.run('no-throwing-default-in-exhaustive-switch', rule, {
     ),
     buildValidCase('stays silent on a throwing default a case falls into after defining a callback that loops testing 1', caseFallingIntoAThrowingDefaultPastACallbackLoopingOnOne),
     buildValidCase('stays silent on a throwing default a case falls into after calling a callback with its own try', caseFallingIntoAThrowingDefaultPastACallbackWithATry),
-    buildValidCase('stays silent on a throwing default the last of thousands of cases falls into', caseFallingIntoAThrowingDefaultAfterThousandsOfCases),
     buildValidCase('stays silent on a throwing default a case falls into after defining a method that loops testing 1', caseFallingIntoAThrowingDefaultPastAMethodLoopingOnOne),
     buildValidCase('stays silent on a throwing default a case falls into after defining a class whose static block loops testing 1', caseFallingIntoAThrowingDefaultPastAStaticBlockLoopingOnOne),
     buildValidCase(
@@ -606,6 +625,7 @@ houseTypedRuleTester.run('no-throwing-default-in-exhaustive-switch', rule, {
     buildValidCase("stays silent on a default at a file's top level that binds the value to never before it throws", neverBindingThenThrowAtTheTopLevelOfAFile),
     buildValidCase('stays silent on a default in a class static block that binds the value to never before it throws', neverBindingThenThrowInAClassStaticBlock),
     buildValidCase('stays silent on a default in a setter that binds the value to never before it throws', neverBindingThenThrowInASetter),
+    buildValidCase('stays silent on a default in a namespace body that binds the value to never before it throws', neverBindingThenThrowInANamespaceBody),
     buildValidCase('stays silent on a default that binds the value to never in the second of two declarators before it throws', neverBindingAfterAnotherDeclaratorThenThrow),
     buildValidCase(
       'stays silent on a throwing default declaring the name its switch tests, in a switch after a return, where TypeScript takes the value at its declared type',
@@ -1035,6 +1055,20 @@ houseTypedRuleTester.run('no-throwing-default-in-exhaustive-switch', rule, {
       throwingDefaultOnACallAtTheTopLevelOfAFile,
       { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConstWhereNothingReturns', line: 14, data: { value: 'readEngine()' } }] },
     ),
+    buildInvalidCase('reports a throwing default in a namespace body, naming the value to bind before the throw', throwingDefaultInANamespaceBody, {
+      errors: [{ messageId: 'throwingDefaultWhereNothingReturns', line: 17, data: { discriminant: 'engine' } }],
+    }),
+    buildInvalidCase('reports a throwing default in the body of a namespace with a dotted name, naming the value to bind before the throw', throwingDefaultInADottedNamespaceBody, {
+      errors: [{ messageId: 'throwingDefaultWhereNothingReturns', line: 17, data: { discriminant: 'engine' } }],
+    }),
+    buildInvalidCase(
+      'reports a throwing default on a call in a namespace body, naming the call to hold in a const and bind before the throw',
+      throwingDefaultOnACallInANamespaceBody,
+      { errors: [{ messageId: 'throwingDefaultOnAValueToHoldInAConstWhereNothingReturns', line: 15, data: { value: 'readEngine()' } }] },
+    ),
+    buildInvalidCase('reports a throwing default in a function in a namespace body, naming the value to bind and return', throwingDefaultInAFunctionInANamespaceBody, {
+      errors: [{ messageId: 'throwingDefault', line: 10, data: { discriminant: 'engine' } }],
+    }),
     buildInvalidCase('reports a default of a block and then a throw, naming the value to bind', throwingDefaultOfABlockThenAThrow, {
       errors: [{ messageId: 'throwingDefault', line: 11, data: { discriminant: 'engine' } }],
     }),

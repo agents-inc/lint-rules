@@ -219,11 +219,10 @@ function bodyItRunsIn(node: Readonly<ts.Node>): ts.Node {
   return isABody ? parent : bodyItRunsIn(parent)
 }
 
-// A file's top level, a class static block or a setter, where `return unhandled` does not compile. A namespace body is
-// not a file's top level.
+// A file's top level, a namespace body, a class static block or a setter, where `return unhandled` does not compile.
 function isWhereNothingReturns(switchStatement: Readonly<ts.SwitchStatement>): boolean {
   const body = bodyItRunsIn(switchStatement)
-  return ts.isSourceFile(body) || ts.isClassStaticBlockDeclaration(body) || ts.isSetAccessorDeclaration(body)
+  return ts.isSourceFile(body) || ts.isModuleBlock(body) || ts.isClassStaticBlockDeclaration(body) || ts.isSetAccessorDeclaration(body)
 }
 
 function endingOfANeverDefaultIn(switchStatement: Readonly<ts.SwitchStatement>): Ending {

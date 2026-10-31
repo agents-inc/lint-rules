@@ -59,6 +59,7 @@ const CASES_WITH_NO_DEFAULT_THROWING_IN_PLACE_OF_A_NEVER_DEFAULT: readonly CaseN
   'neverBindingThenThrow',
   'neverBindingThenThrowAtTheTopLevelOfAFile',
   'neverBindingThenThrowInAClassStaticBlock',
+  'neverBindingThenThrowInANamespaceBody',
   'neverBindingThenThrowInASetter',
   'neverDefaultAfterEveryCase',
   'neverDefaultAfterEveryCaseOfABrandedUnion',
@@ -611,12 +612,20 @@ describe('no-throwing-default-in-exhaustive-switch, against TypeScript', () => {
       expect(reportsOn(cases.throwingDefaultAtTheTopLevelOfAFile)).toStrictEqual([{ ruleId: RULE_ID, line: 16, message: messageSuggestingTheBindingBeforeTheThrow('engine') }])
     })
 
+    it('reads in full in a namespace body, where nothing can be returned, naming the value to bind before the throw', () => {
+      expect(reportsOn(cases.throwingDefaultInANamespaceBody)).toStrictEqual([{ ruleId: RULE_ID, line: 17, message: messageSuggestingTheBindingBeforeTheThrow('engine') }])
+    })
+
     it('reads in full where TypeScript narrows no part of the value to never, naming the value to hold in a const', () => {
       expect(reportsOn(cases.throwingDefaultOnACall)).toStrictEqual([{ ruleId: RULE_ID, line: 11, message: messageSuggestingAConst('engineOf(path)') }])
     })
 
     it('reads in full where TypeScript narrows no part of the value to never and nothing can be returned', () => {
       expect(reportsOn(cases.throwingDefaultOnACallAtTheTopLevelOfAFile)).toStrictEqual([{ ruleId: RULE_ID, line: 14, message: messageSuggestingAConstBoundBeforeTheThrow('readEngine()') }])
+    })
+
+    it('reads in full in a namespace body where TypeScript narrows no part of the value to never, naming the value to hold in a const and bind before the throw', () => {
+      expect(reportsOn(cases.throwingDefaultOnACallInANamespaceBody)).toStrictEqual([{ ruleId: RULE_ID, line: 15, message: messageSuggestingAConstBoundBeforeTheThrow('readEngine()') }])
     })
   })
 
