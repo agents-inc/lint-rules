@@ -16,6 +16,7 @@ const HOUSE_RULE_NAMES = [
   'no-manual-effect-error-tag',
   'no-nested-interactive',
   'no-placeholder-only-field',
+  'no-reduce-accumulator-copy',
   'no-section-banner',
   'no-side-effect-in-state-updater',
   'no-suppressions',
@@ -27,7 +28,7 @@ const HOUSE_RULE_NAMES = [
 const REPO_OWN_RULE_NAMES = ['no-throwing-default-in-exhaustive-switch']
 
 describe('housePlugin', () => {
-  it('registers the eighteen house rules and nothing else', () => {
+  it('registers the nineteen house rules and nothing else', () => {
     expect(Object.keys(housePlugin.rules).toSorted()).toStrictEqual(HOUSE_RULE_NAMES)
   })
 

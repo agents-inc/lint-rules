@@ -12,6 +12,7 @@ import { noFocusableContentInAriaHidden } from './rules/no-focusable-content-in-
 import { noManualEffectErrorTag } from './rules/no-manual-effect-error-tag.ts'
 import { noNestedInteractive } from './rules/no-nested-interactive.ts'
 import { noPlaceholderOnlyField } from './rules/no-placeholder-only-field.ts'
+import { noReduceAccumulatorCopy } from './rules/no-reduce-accumulator-copy.ts'
 import { noSectionBanner } from './rules/no-section-banner.ts'
 import { noSideEffectInStateUpdater } from './rules/no-side-effect-in-state-updater.ts'
 import { noSuppressions } from './rules/no-suppressions.ts'
@@ -35,6 +36,7 @@ export const housePlugin = {
     'no-manual-effect-error-tag': noManualEffectErrorTag,
     'no-nested-interactive': noNestedInteractive,
     'no-placeholder-only-field': noPlaceholderOnlyField,
+    'no-reduce-accumulator-copy': noReduceAccumulatorCopy,
     'no-section-banner': noSectionBanner,
     'no-side-effect-in-state-updater': noSideEffectInStateUpdater,
     'no-suppressions': noSuppressions,
