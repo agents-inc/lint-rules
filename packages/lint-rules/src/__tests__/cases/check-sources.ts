@@ -1,4 +1,5 @@
 import {
+  blockDisable,
   blockEnable,
   blockPairAround,
   DEBUGGER_STATEMENT,
@@ -71,22 +72,26 @@ export const ANOTHER_COPY_OF_THE_PACKAGE = {
   'index.mjs': moduleText("throw new Error('the other copy of @agents-inc/lint-rules was imported')"),
 }
 
-/** object-shorthand, ESLint, on line 2: `{ n: n }` becomes `{ n }`. */
-export const SHORTHAND_FIRST = ['export function first(n: number) {', '  return { n: n }', '}']
-export const SHORTHAND_SECOND = ['export function second(m: number) {', '  return { m: m }', '}']
-export const SHORTHAND_SECOND_FIXED = ['export function second(m: number) {', '  return { m }', '}']
+/** unicorn/prefer-date-now, ESLint, on line 2: `new Date().getTime()` becomes `Date.now()`. */
+export const TIME_READ_FIRST = ['export function first(n: number) {', '  return new Date().getTime() + n', '}']
+export const TIME_READ_SECOND = ['export function second(m: number) {', '  return new Date().getTime() + m', '}']
+export const TIME_READ_SECOND_FIXED = ['export function second(m: number) {', '  return Date.now() + m', '}']
 
-/** A type over three lines, no finding. */
-export const IDS_AS_A_SET = ['export type Ids = Set<', '  number', '>']
+/** Lists concatenated onto a list holding an item, over three lines: no finding. */
+export const IDS_CONCATENATED_ONTO_A_LIST = ['export const ids = [0].concat(', '  ...[[1], [2]],', ')']
 
-/** @typescript-eslint/array-type, ESLint, from line 1 to 3: its fix, `number[]`, deletes lines 2 and 3. */
-export const IDS_AS_AN_ARRAY = ['export type Ids = Array<', '  number', '>']
-export const IDS_FIXED = 'export type Ids = number[]'
+/** unicorn/prefer-array-flat, ESLint, from line 1 to 3: its fix, `.flat()`, deletes lines 2 and 3. */
+export const IDS_CONCATENATED_ONTO_NOTHING = ['export const ids = [].concat(', '  ...[[1], [2]],', ')']
+export const IDS_FLATTENED = 'export const ids = [[1], [2]].flat()'
 export const NAMES = 'export type Names = string[]'
 
 /** object-shorthand on line 2. */
 export const WRAP = ['export function wrap(m: number) {', '  return { m: m }', '}']
 export const WRAP_FIXED = ['export function wrap(m: number) {', '  return { m }', '}']
+
+/** unicorn/prefer-date-now, ESLint, on line 2. */
+export const STAMP = ['export function stamp(m: number) {', '  return new Date().getTime() + m', '}']
+export const STAMP_FIXED = ['export function stamp(m: number) {', '  return Date.now() + m', '}']
 
 export const ATTEMPT = ['export function attempt(task: () => void) {', '  task()', '}']
 
@@ -273,6 +278,17 @@ export const A_DISABLE_OVER_SEVERAL_LINES_ABOVE_A_DEBUGGER = ['/* eslint-disable
 
 /** The same comment on one line. */
 export const A_DISABLE_ON_ONE_LINE_ABOVE_A_DEBUGGER = [`/* eslint-disable no-debugger, ${A_RULE_REPORTING_NOTHING} */`, DEBUGGER_STATEMENT]
+
+/** A loose equality: eqeqeq, which ESLint runs, at its line. */
+export const A_LOOSE_EQUALITY = 'export const isMissing = (value: unknown): boolean => value == null'
+
+/**
+ * The rule named turned off by a block comment (line 1), again by a next-line comment (line 3) over the
+ * line given (line 4), which it reports, and back on (line 5).
+ */
+export function aRuleDisabledTwiceOver(ruleName: string, reported: string): string[] {
+  return [blockDisable('eslint', ruleName), exportedConstant('before'), suppressionOfTheNextLine('eslint', ruleName), reported, blockEnable({ form: 'eslint', ruleName })]
+}
 
 /** The lines given, after another writer added a character to the first: every later byte moves one on. */
 export function withACharacterAddedToTheFirstLine([first, ...rest]: readonly string[]): string[] {

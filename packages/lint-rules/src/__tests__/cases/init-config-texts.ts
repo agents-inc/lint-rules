@@ -75,7 +75,91 @@ const config = defineLintRules({
 
   rules: {},
 
-  fileOverrides: [],
+  fileOverrides: [
+    // Opt-in, so off: uncomment to turn these on for your Playwright tests, matched by folder as here or by file name.
+    // {
+    //   files: ['e2e/**'],
+    //   rules: {
+    //     'playwright/no-focused-test': 'error',
+    //     'playwright/no-identical-title': 'error',
+    //     'playwright/prefer-hooks-on-top': 'error',
+    //     'playwright/prefer-web-first-assertions': 'error',
+    //     'playwright/require-to-throw-message': 'error',
+    //   },
+    // },
+  ],
+})
+
+export const { eslint, oxlint } = config.editorRulesets
+`
+
+/** TEXT_WITH_OPT_IN_RULESETS as a team leaves it once it uncomments the Playwright example. */
+export const TEXT_WITH_OPT_IN_RULESETS_AND_THE_PLAYWRIGHT_EXAMPLE_UNCOMMENTED = `/// <reference types="node" />
+import { defineLintRules } from '@agents-inc/lint-rules'
+
+const config = defineLintRules({
+  tsconfigRootDir: import.meta.dirname,
+
+  // What \`check\` runs on the lines sub-agents change.
+  agentRulesets: {
+    // Opt-in, so not listed: 'strict-design-tokens', 'strict-naming'
+    quality: [
+      'naming',
+      'correctness',
+    ],
+    libs: {
+      ui: ['react'],
+      // Opt-in, so not listed: 'playwright'
+      testing: ['vitest', 'testing-library'],
+      // Opt-in, so not listed: 'tokens'
+      styling: [],
+    },
+    runtimes: [
+      'node',
+      'browser',
+    ],
+    languages: [
+      'json',
+    ],
+  },
+
+  // What people's editors show once your team merges it into its own lint configs: add rulesets here.
+  editorRulesets: {
+    quality: [],
+    libs: {},
+    runtimes: [],
+    languages: [],
+  },
+
+  ignores: [
+    '**/build/**',
+    '**/coverage/**',
+    '**/dist/**',
+    '**/.next/**',
+    '**/.yarn/**',
+    '**/generated/**',
+    '**/__generated__/**',
+    '**/*.d.ts',
+    '**/*.gen.*',
+    '**/*.min.js',
+    '**/mockServiceWorker.js',
+  ],
+
+  rules: {},
+
+  fileOverrides: [
+    // Opt-in, so off: uncomment to turn these on for your Playwright tests, matched by folder as here or by file name.
+    {
+      files: ['e2e/**'],
+      rules: {
+        'playwright/no-focused-test': 'error',
+        'playwright/no-identical-title': 'error',
+        'playwright/prefer-hooks-on-top': 'error',
+        'playwright/prefer-web-first-assertions': 'error',
+        'playwright/require-to-throw-message': 'error',
+      },
+    },
+  ],
 })
 
 export const { eslint, oxlint } = config.editorRulesets
@@ -139,7 +223,19 @@ const config = defineLintRules({
 
   rules: {},
 
-  fileOverrides: [],
+  fileOverrides: [
+    // Opt-in, so off: uncomment to turn these on for your Playwright tests, matched by folder as here or by file name.
+    // {
+    //   files: ['e2e/**'],
+    //   rules: {
+    //     'playwright/no-focused-test': 'error',
+    //     'playwright/no-identical-title': 'error',
+    //     'playwright/prefer-hooks-on-top': 'error',
+    //     'playwright/prefer-web-first-assertions': 'error',
+    //     'playwright/require-to-throw-message': 'error',
+    //   },
+    // },
+  ],
 })
 
 export const { eslint, oxlint } = config.editorRulesets
@@ -222,7 +318,19 @@ const config = defineLintRules({
 
   rules: {},
 
-  fileOverrides: [],
+  fileOverrides: [
+    // Opt-in, so off: uncomment to turn these on for your Playwright tests, matched by folder as here or by file name.
+    // {
+    //   files: ['e2e/**'],
+    //   rules: {
+    //     'playwright/no-focused-test': 'error',
+    //     'playwright/no-identical-title': 'error',
+    //     'playwright/prefer-hooks-on-top': 'error',
+    //     'playwright/prefer-web-first-assertions': 'error',
+    //     'playwright/require-to-throw-message': 'error',
+    //   },
+    // },
+  ],
 })
 
 export const { eslint, oxlint } = config.editorRulesets
@@ -288,7 +396,19 @@ const config = defineLintRules({
 
   rules: {},
 
-  fileOverrides: [],
+  fileOverrides: [
+    // Opt-in, so off: uncomment to turn these on for your Playwright tests, matched by folder as here or by file name.
+    // {
+    //   files: ['e2e/**'],
+    //   rules: {
+    //     'playwright/no-focused-test': 'error',
+    //     'playwright/no-identical-title': 'error',
+    //     'playwright/prefer-hooks-on-top': 'error',
+    //     'playwright/prefer-web-first-assertions': 'error',
+    //     'playwright/require-to-throw-message': 'error',
+    //   },
+    // },
+  ],
 })
 
 export const { eslint, oxlint } = config.editorRulesets

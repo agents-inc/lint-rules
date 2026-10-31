@@ -15,6 +15,8 @@ import {
   packagesInstalledFor,
   pathsNpmPacks,
   readLockedWorkspaces,
+  typescriptEslintInstallsAmong,
+  typescriptEslintListings,
   workspaceDirsOf,
 } from './package-manifests.ts'
 import { setUpTempProjects } from './temp-projects.ts'
@@ -204,6 +206,49 @@ describe('dependenciesNotPinned', () => {
       'any: *',
       'tagged: latest',
       'linked: workspace:*',
+    ])
+  })
+})
+
+describe('typescriptEslintListings', () => {
+  it('keeps typescript-eslint and each @typescript-eslint dependency at its version, and not a devDependency, a peer or a name that only contains theirs', () => {
+    const manifest = buildManifest('shipped', {
+      dependencies: {
+        'typescript-eslint': '8.0.0',
+        '@typescript-eslint/utils': '8.0.0',
+        '@typescript-eslint/types': '8.0.1',
+        typescript: '6.0.0',
+        'eslint-plugin-typescript-eslint-extras': '1.0.0',
+        '@typescript-eslint-community/a-plugin': '1.0.0',
+      },
+      devDependencies: { '@typescript-eslint/rule-tester': '8.0.0' },
+      peerDependencies: { '@typescript-eslint/parser': '^8.0.0' },
+    })
+
+    expect(typescriptEslintListings(manifest)).toStrictEqual({ 'typescript-eslint': '8.0.0', '@typescript-eslint/utils': '8.0.0', '@typescript-eslint/types': '8.0.1' })
+  })
+
+  it('keeps nothing from a manifest listing no dependencies', () => {
+    expect(typescriptEslintListings(buildManifest('shipped'))).toStrictEqual({})
+  })
+})
+
+describe('typescriptEslintInstallsAmong', () => {
+  it('keeps each install of typescript-eslint and of an @typescript-eslint package, every copy, in the order given', () => {
+    const packages = [
+      { name: '@typescript-eslint/types', version: '8.0.0', nodeRange: null },
+      { name: '@typescript-eslint/types', version: '8.1.0', nodeRange: null },
+      { name: 'eslint', version: '10.0.0', nodeRange: '^22.0.0' },
+      { name: 'typescript-eslint', version: '8.0.0', nodeRange: null },
+      { name: '@typescript-eslint-community/a-plugin', version: '1.0.0', nodeRange: null },
+      { name: '@typescript-eslint/types', version: '8.0.0', nodeRange: null },
+    ]
+
+    expect(typescriptEslintInstallsAmong(packages)).toStrictEqual([
+      { name: '@typescript-eslint/types', version: '8.0.0', nodeRange: null },
+      { name: '@typescript-eslint/types', version: '8.1.0', nodeRange: null },
+      { name: 'typescript-eslint', version: '8.0.0', nodeRange: null },
+      { name: '@typescript-eslint/types', version: '8.0.0', nodeRange: null },
     ])
   })
 })

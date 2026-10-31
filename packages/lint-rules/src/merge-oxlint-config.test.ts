@@ -34,10 +34,10 @@ type Statement = readonly [key: string, entry: DummyRuleMap[string]]
 type PartOfTheMerge = 'ours' | "the team's" | 'none of these'
 
 const OXLINT_DEFAULT_PLUGINS = ['oxc', 'typescript', 'unicorn']
-const ARRAY_TYPE = '@typescript-eslint/array-type'
-const JSX_KEY = 'react/jsx-key'
+const NO_INFERRABLE_TYPES = '@typescript-eslint/no-inferrable-types'
+const NO_STRING_REFS = 'react/no-string-refs'
 const NO_DEBUGGER = 'no-debugger'
-// ESLint runs it for us, in .tsx and .jsx files but tests, and oxlint has it too.
+// oxlint runs it for us in .tsx and .jsx files but tests: every other file is in its ignores.
 const MAX_LINES = 'max-lines'
 // A core rule oxlint runs for us, in a category no team config here turns on.
 const NO_WARNING_COMMENTS = 'no-warning-comments'
@@ -48,6 +48,7 @@ const NO_NON_NULL_ASSERTION = '@typescript-eslint/no-non-null-assertion'
 const BARE_NAME_OF_A_TYPE_AWARE_RULE = 'prefer-string-starts-ends-with'
 const TYPESCRIPTS_RULE_OF_THAT_NAME = 'typescript/prefer-string-starts-ends-with'
 const TEST_TSX_FILES = ['**/*.test.tsx']
+const COMMENTS_AND_REACT = { quality: ['comments'], libs: { ui: ['react'] } } as const satisfies Partial<LintRules['editorRulesets']>
 // A team root listing the plugin of every rule our parts in these specs state, oxlint's or ESLint's,
 // so the merge lists no plugin the team's root does not, and writes no compensation.
 const ROOT_LISTING_EVERY_PLUGIN_OF_OURS: OxlintConfig['plugins'] = ['oxc', 'promise', 'react', 'typescript', 'unicorn']
@@ -59,11 +60,10 @@ const REACT_VERSION = '18.3.0'
 const TEAMS_REACT_VERSION = '16.2.0'
 const TEAM_LINK_COMPONENT = 'Link'
 const TEAM_NEXT_ROOT_DIRS = ['apps/web']
-// Each is no object where oxlint takes one, and oxlint alone refuses it (measured, oxlint 1.87).
+// Each is no object where oxlint takes one, and oxlint alone refuses it (measured, oxlint 1.87). settings null, or a
+// plugin's settings null, the merge refuses itself (merge-other-engine-config.refusals.test.ts).
 const SETTINGS_OXLINT_REFUSES = [
-  { what: 'they are null', settings: null },
   { what: 'they are a string', settings: TEAMS_REACT_VERSION },
-  { what: 'the react settings are null', settings: { react: null } },
   { what: 'the react settings are the version alone', settings: { react: TEAMS_REACT_VERSION } },
   { what: 'the react settings are an array', settings: { react: [TEAMS_REACT_VERSION] } },
 ]
@@ -217,7 +217,7 @@ function oxlintNamesOfRulesOurPartRuns({ layers }: OxlintPart): string[] {
 describe('mergeOxlintConfig, given a team config setting every key', () => {
   const fields = {
     ignores: ['dist/**'],
-    rules: { 'no-debugger': 'error', [NO_WARNING_COMMENTS]: 'error', [ARRAY_TYPE]: 'error' },
+    rules: { 'no-debugger': 'error', [NO_WARNING_COMMENTS]: 'error', [NO_INFERRABLE_TYPES]: 'error' },
     fileOverrides: [{ files: ['legacy/**'], rules: { 'no-debugger': 'off' } }],
   } satisfies SharedFields
   function merged(): OxlintConfig {
@@ -264,11 +264,11 @@ describe('mergeOxlintConfig, given a team config setting every key', () => {
     expect(ignorePatternsOf(merged())).toStrictEqual(TEAM_CONFIG.ignorePatterns)
   })
 
-  // Our part runs react-hooks/rule-suppression and unicorn/no-abusive-eslint-disable, as the editor parts
-  // allow suppressions, and the team's root lists neither plugin: the compensations for listing them come first.
+  // For the rulesets listed, our part runs rules of plugins the team's root does not list: the
+  // compensations for listing them come first.
   it("puts ours first in line, in a first extended config, then the team's overrides, and nothing after them", () => {
-    const config = merged()
-    const parts = ourEditorParts(fields)
+    const parts = ourEditorParts(fields, { editorRulesets: COMMENTS_AND_REACT })
+    const config = mergeOxlintConfig(TEAM_CONFIG, parts.oxlint, NO_TEAM_ESLINT_CONFIG)
     const { overrides: firstInLine = [] } = firstExtendedObjectOf(config)
 
     expect({
@@ -302,7 +302,7 @@ describe('mergeOxlintConfig, given a team config setting every key', () => {
   it('states, in no oxlint spelling, an ESLint-run rule of ours that oxlint has', () => {
     const applied = oxlintConfigForFile(merged(), 'src/a.ts').rules
 
-    expect(routeOf(ARRAY_TYPE).oxlintSpellings.filter((spelling) => Object.hasOwn(applied, spelling))).toStrictEqual([])
+    expect(routeOf(NO_INFERRABLE_TYPES).oxlintSpellings.filter((spelling) => Object.hasOwn(applied, spelling))).toStrictEqual([])
   })
 
   // Our top-level rules turning a rule off remove only ours.
@@ -359,61 +359,61 @@ describe('mergeOxlintConfig, given a team config leaving out plugins', () => {
 // The team's statement of a rule our part states makes the rule the team's in every file, a line oxlint
 // skips for the team included (owner 2026-10-22).
 describe('mergeOxlintConfig, given a team config stating a rule our part runs', () => {
-  const ours = { rules: { [JSX_KEY]: 'error' } } satisfies SharedFields
+  const ours = { rules: { [NO_STRING_REFS]: 'error' } } satisfies SharedFields
 
   it.each([
     {
       where: "at its root, under another spelling, with options of the team's",
-      team: buildTeamOxlintConfig({ plugins: ['react'], rules: { 'react-hooks/jsx-key': ['warn', { checkFragmentShorthand: true }] } }),
+      team: buildTeamOxlintConfig({ plugins: ['react'], rules: { 'react-hooks/no-string-refs': ['warn', { noTemplateLiterals: true }] } }),
     },
     {
       where: 'at the root of a config it extends',
-      team: buildTeamOxlintConfig({ plugins: ['react'], extends: [{ plugins: [], rules: { [JSX_KEY]: 'warn' } }] }),
+      team: buildTeamOxlintConfig({ plugins: ['react'], extends: [{ plugins: [], rules: { [NO_STRING_REFS]: 'warn' } }] }),
     },
   ])('states no statement of ours of it in any override, where the team states it $where', ({ team }) => {
     const config = mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, ours, team)
 
-    expect(statementsOf(overridesInLine(config)).filter(([key]) => ruleIdKeyedBy(key) === JSX_KEY)).toStrictEqual([])
+    expect(statementsOf(overridesInLine(config)).filter(([key]) => ruleIdKeyedBy(key) === NO_STRING_REFS)).toStrictEqual([])
   })
 
   // Its plugin is listed neither at the root nor in the override: nothing of ours runs it, and the team's line,
   // dropped from an override, stays skipped.
   it.each([
-    { where: 'at its root, of a plugin the root does not list', team: buildTeamOxlintConfig({ plugins: ['oxc'], rules: { [JSX_KEY]: 'warn' } }) },
+    { where: 'at its root, of a plugin the root does not list', team: buildTeamOxlintConfig({ plugins: ['oxc'], rules: { [NO_STRING_REFS]: 'warn' } }) },
     {
       where: 'in an override of its own',
-      team: buildTeamOxlintConfig({ plugins: [], overrides: [{ files: TEST_TSX_FILES, rules: { [JSX_KEY]: 'error' } }] }),
+      team: buildTeamOxlintConfig({ plugins: [], overrides: [{ files: TEST_TSX_FILES, rules: { [NO_STRING_REFS]: 'error' } }] }),
     },
     {
       where: 'in an override of a config it extends',
-      team: buildTeamOxlintConfig({ plugins: [], extends: [{ plugins: [], overrides: [{ files: TEST_TSX_FILES, rules: { [JSX_KEY]: 'error' } }] }] }),
+      team: buildTeamOxlintConfig({ plugins: [], extends: [{ plugins: [], overrides: [{ files: TEST_TSX_FILES, rules: { [NO_STRING_REFS]: 'error' } }] }] }),
     },
   ])('turns it on in no merged override, where the team states it $where, a line oxlint skips', ({ team }) => {
     const config = mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, ours, team)
-    const turningItOn = statementsOf(overridesInLine(config)).filter(([key, entry]) => ruleIdKeyedBy(key) === JSX_KEY && severityOfOxlintEntry(entry) !== 'off')
+    const turningItOn = statementsOf(overridesInLine(config)).filter(([key, entry]) => ruleIdKeyedBy(key) === NO_STRING_REFS && severityOfOxlintEntry(entry) !== 'off')
 
     expect(turningItOn).toStrictEqual([])
   })
 
   // Elsewhere, no entry of ours. Where the team lists react in the override alone, the merge lists it at
-  // the root, which runs react's correctness rules in every file, so jsx-key is turned off again where
+  // the root, which runs react's correctness rules in every file, so no-string-refs is turned off again where
   // the team's config alone does not run it (measured, oxlint 1.87).
   it.each([
     {
       where: 'in an override of its own, of a plugin its root lists',
-      team: buildTeamOxlintConfig({ plugins: ['react'], overrides: [{ files: TEST_TSX_FILES, rules: { [JSX_KEY]: 'off' } }] }),
+      team: buildTeamOxlintConfig({ plugins: ['react'], overrides: [{ files: TEST_TSX_FILES, rules: { [NO_STRING_REFS]: 'off' } }] }),
       theTeams: 'off',
       elsewhere: undefined,
     },
     {
       where: 'in an override listing the plugin',
-      team: buildTeamOxlintConfig({ plugins: [], overrides: [{ files: TEST_TSX_FILES, plugins: ['react'], rules: { [JSX_KEY]: ['warn'] } }] }),
+      team: buildTeamOxlintConfig({ plugins: [], overrides: [{ files: TEST_TSX_FILES, plugins: ['react'], rules: { [NO_STRING_REFS]: ['warn'] } }] }),
       theTeams: ['warn'],
       elsewhere: 'off',
     },
     {
       where: 'in an override of a config it extends',
-      team: buildTeamOxlintConfig({ plugins: ['react'], extends: [{ plugins: [], overrides: [{ files: TEST_TSX_FILES, rules: { [JSX_KEY]: 'off' } }] }] }),
+      team: buildTeamOxlintConfig({ plugins: ['react'], extends: [{ plugins: [], overrides: [{ files: TEST_TSX_FILES, rules: { [NO_STRING_REFS]: 'off' } }] }] }),
       theTeams: 'off',
       elsewhere: undefined,
     },
@@ -421,8 +421,8 @@ describe('mergeOxlintConfig, given a team config stating a rule our part runs', 
     const config = mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, ours, team)
 
     expect({
-      inTheTeamsFiles: oxlintConfigForFile(config, 'src/f.test.tsx').rules[JSX_KEY],
-      elsewhere: oxlintConfigForFile(config, 'src/f.tsx').rules[JSX_KEY],
+      inTheTeamsFiles: oxlintConfigForFile(config, 'src/f.test.tsx').rules[NO_STRING_REFS],
+      elsewhere: oxlintConfigForFile(config, 'src/f.tsx').rules[NO_STRING_REFS],
     }).toStrictEqual({ inTheTeamsFiles: theTeams, elsewhere })
   })
 })
@@ -433,8 +433,8 @@ describe('mergeOxlintConfig, given a team config stating a rule our part runs', 
 describe('the overrides mergeOxlintConfig writes, beside a team config that needs no compensation', () => {
   const fields = {
     ignores: ['dist/**'],
-    rules: { [JSX_KEY]: 'error', [NO_NON_NULL_ASSERTION]: 'error', [ARRAY_TYPE]: 'error', [NO_DEBUGGER]: 'off', 'react/jsx-no-duplicate-props': 'off' },
-    fileOverrides: [{ files: ['lib/**'], rules: { [JSX_KEY]: 'off', 'no-compare-neg-zero': 'error' } }],
+    rules: { [NO_STRING_REFS]: 'error', [NO_NON_NULL_ASSERTION]: 'error', [NO_INFERRABLE_TYPES]: 'error', [NO_DEBUGGER]: 'off', 'react/jsx-no-duplicate-props': 'off' },
+    fileOverrides: [{ files: ['lib/**'], rules: { [NO_STRING_REFS]: 'off', 'no-compare-neg-zero': 'error' } }],
   } satisfies SharedFields
   const team = buildTeamOxlintConfig({ plugins: ROOT_LISTING_EVERY_PLUGIN_OF_OURS, categories: { correctness: 'off' } })
   function merged(): OxlintConfig {
@@ -455,57 +455,61 @@ describe('the overrides mergeOxlintConfig writes, beside a team config that need
   it("leave to the team an ESLint-routed rule it sets, where our part only turns it off and where our part runs it", () => {
     const config = mergedEditorOxlintConfig(
       PROJECT_WITH_OXLINT,
-      { rules: { [ARRAY_TYPE]: 'off' } },
-      buildTeamOxlintConfig({ plugins: ['typescript'], rules: { 'typescript/array-type': 'error' } }),
+      { rules: { [NO_INFERRABLE_TYPES]: 'off' } },
+      buildTeamOxlintConfig({ plugins: ['typescript'], rules: { 'typescript/no-inferrable-types': 'error' } }),
     )
     const besideOneItRuns = mergedEditorOxlintConfig(
       PROJECT_WITH_OXLINT,
-      { rules: { [ARRAY_TYPE]: 'error' } },
-      buildTeamOxlintConfig({ plugins: ['typescript'], overrides: [{ files: ['**/*.test.ts'], rules: { 'typescript/array-type': 'error' } }] }),
+      { rules: { [NO_INFERRABLE_TYPES]: 'error' } },
+      buildTeamOxlintConfig({ plugins: ['typescript'], overrides: [{ files: ['**/*.test.ts'], rules: { 'typescript/no-inferrable-types': 'error' } }] }),
     )
 
     expect({
-      turnedOffOnly: entriesOfTheRuleIn(config, 'src/a.ts', ARRAY_TYPE),
-      run: oxlintSeverityFor(besideOneItRuns, 'src/a.test.ts', 'typescript/array-type'),
-    }).toStrictEqual({ turnedOffOnly: { 'typescript/array-type': 'error' }, run: 'error' })
+      turnedOffOnly: entriesOfTheRuleIn(config, 'src/a.ts', NO_INFERRABLE_TYPES),
+      run: oxlintSeverityFor(besideOneItRuns, 'src/a.test.ts', 'typescript/no-inferrable-types'),
+    }).toStrictEqual({ turnedOffOnly: { 'typescript/no-inferrable-types': 'error' }, run: 'error' })
   })
 })
 
 // The team sets the rule, so it is the team's in every file and nothing turns it off across engines.
 describe('mergeOxlintConfig, given a rule our ESLint part runs that oxlint has, which the team turns on at its root', () => {
-  const team = buildTeamOxlintConfig({ plugins: ['typescript'], rules: { 'typescript/array-type': 'error', 'max-lines': ['error', { max: 1 }] } })
+  const team = buildTeamOxlintConfig({ plugins: ['typescript'], rules: { 'typescript/no-inferrable-types': 'error' } })
 
   it("leaves the team's entry where our ESLint part would run it, in our ignores and where an entry of ours turns it off", () => {
     const config = mergedEditorOxlintConfig(
       PROJECT_WITH_OXLINT,
-      { rules: { [ARRAY_TYPE]: 'error' }, ignores: ['dist/**'], fileOverrides: [{ files: ['legacy/**'], rules: { [ARRAY_TYPE]: 'off' } }] },
+      { rules: { [NO_INFERRABLE_TYPES]: 'error' }, ignores: ['dist/**'], fileOverrides: [{ files: ['legacy/**'], rules: { [NO_INFERRABLE_TYPES]: 'off' } }] },
       team,
     )
 
     expect({
-      runByOurEslintPart: entryOfTheRuleIn(config, 'src/a.ts', ARRAY_TYPE),
-      inOurIgnores: entryOfTheRuleIn(config, 'dist/c.ts', ARRAY_TYPE),
-      offInAnEntryOfOurs: entryOfTheRuleIn(config, 'legacy/b.ts', ARRAY_TYPE),
+      runByOurEslintPart: entryOfTheRuleIn(config, 'src/a.ts', NO_INFERRABLE_TYPES),
+      inOurIgnores: entryOfTheRuleIn(config, 'dist/c.ts', NO_INFERRABLE_TYPES),
+      offInAnEntryOfOurs: entryOfTheRuleIn(config, 'legacy/b.ts', NO_INFERRABLE_TYPES),
     }).toStrictEqual({ runByOurEslintPart: 'error', inOurIgnores: 'error', offInAnEntryOfOurs: 'error' })
   })
 
   it("leaves the team's entry where an entry of ours turns it on, and elsewhere", () => {
-    const config = mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, { fileOverrides: [{ files: ['lib/**'], rules: { [ARRAY_TYPE]: 'error' } }] }, team)
+    const config = mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, { fileOverrides: [{ files: ['lib/**'], rules: { [NO_INFERRABLE_TYPES]: 'error' } }] }, team)
 
-    expect({ inTheEntry: entryOfTheRuleIn(config, 'lib/b.ts', ARRAY_TYPE), elsewhere: entryOfTheRuleIn(config, 'src/a.ts', ARRAY_TYPE) }).toStrictEqual({
+    expect({ inTheEntry: entryOfTheRuleIn(config, 'lib/b.ts', NO_INFERRABLE_TYPES), elsewhere: entryOfTheRuleIn(config, 'src/a.ts', NO_INFERRABLE_TYPES) }).toStrictEqual({
       inTheEntry: 'error',
       elsewhere: 'error',
     })
   })
+})
 
-  it("leaves the team's entry in the rule's own files, outside them, and in its own ignores", () => {
+describe('mergeOxlintConfig, given a rule our oxlint part runs outside its ignores, which the team turns on at its root', () => {
+  const team = buildTeamOxlintConfig({ rules: { [MAX_LINES]: ['error', { max: 1 }] } })
+
+  it("leaves the team's entry where ours runs, in a file type its ignores leave out, and in a test file they leave out", () => {
     const config = mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, { rules: { [MAX_LINES]: 'error' } }, team)
 
     expect({
-      inItsFiles: entryOfTheRuleIn(config, 'src/f.tsx', MAX_LINES),
-      outsideItsFiles: entryOfTheRuleIn(config, 'src/a.ts', MAX_LINES),
-      inItsIgnores: entryOfTheRuleIn(config, 'src/f.test.tsx', MAX_LINES),
-    }).toStrictEqual({ inItsFiles: ['error', { max: 1 }], outsideItsFiles: ['error', { max: 1 }], inItsIgnores: ['error', { max: 1 }] })
+      whereOursRuns: entryOfTheRuleIn(config, 'src/f.tsx', MAX_LINES),
+      inAFileTypeItsIgnoresLeaveOut: entryOfTheRuleIn(config, 'src/a.ts', MAX_LINES),
+      inATestFile: entryOfTheRuleIn(config, 'src/f.test.tsx', MAX_LINES),
+    }).toStrictEqual({ whereOursRuns: ['error', { max: 1 }], inAFileTypeItsIgnoresLeaveOut: ['error', { max: 1 }], inATestFile: ['error', { max: 1 }] })
   })
 })
 

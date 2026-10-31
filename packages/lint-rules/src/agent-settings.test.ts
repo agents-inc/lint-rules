@@ -81,8 +81,8 @@ describe('agentSettingsOf', () => {
 // the rule in ESLint.
 describe('the agent build of a project whose package.json lists no oxlint', () => {
   const sameSetsForBoth = buildConsumerLintRules(PROJECT_WITHOUT_OXLINT, {
-    agentRulesets: { quality: ['redundancy'] },
-    editorRulesets: { quality: ['redundancy'] },
+    agentRulesets: { quality: ['correctness', 'redundancy'] },
+    editorRulesets: { quality: ['correctness', 'redundancy'] },
   })
 
   it('runs an oxlint-routed rule in oxlint and not in ESLint, where the editor part runs it in ESLint', () => {

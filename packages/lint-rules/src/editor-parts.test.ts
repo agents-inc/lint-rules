@@ -1,5 +1,5 @@
 import type { Catalog, RuleRoute } from '@workspace/rule-data'
-import { buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
+import { buildShippedRule, buildShippedRuleDecidedBySuppressions } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import { describe, expect, it } from 'vitest'
 import { buildCatalog, buildEslintRoute, buildOxlintRoute, buildPluginRegistry, buildQualityRuleset } from './__tests__/factories/catalog-factories.ts'
 import {
@@ -212,5 +212,40 @@ describe('the stand-ins for oxlint-only rules', () => {
         new RegExp(`^(${CHAINED_OXC}|${DOUBLE_OXC}): stood in for by ${CHAINED_STAND_IN}`, 'u'),
       )
     })
+  })
+})
+
+// Nothing is in a team's editor config unless its editor rulesets list it (owner, 2026-10-27), so a rule
+// allowSuppressions decides runs in the editor parts as a rule of its editor ruleset, at its allowed setting.
+describe('a rule allowSuppressions decides, with an editor ruleset', () => {
+  const ON_WHERE_ALLOWED = 'demo/blanket'
+  const OFF_WHERE_ALLOWED = 'demo/strict'
+  const ALLOWED_OPTIONS = [{ allowWholeFile: true }]
+  const EDITOR_RULESET = 'comments'
+
+  const editorRulesetCatalog = buildCatalog({
+    rulesets: [buildQualityRuleset(EDITOR_RULESET)],
+    rules: [
+      buildEslintRoute(ON_WHERE_ALLOWED, {
+        typed: false,
+        shipped: { ...buildShippedRuleDecidedBySuppressions({ banned: 'off', allowed: { options: ALLOWED_OPTIONS } }), editorRuleset: EDITOR_RULESET },
+      }),
+      buildEslintRoute(OFF_WHERE_ALLOWED, {
+        typed: false,
+        shipped: { ...buildShippedRuleDecidedBySuppressions({ banned: { options: [] }, allowed: 'off' }), editorRuleset: EDITOR_RULESET },
+      }),
+    ],
+  })
+
+  it('runs at its allowed options where the editor rulesets list its ruleset, and one its allowed setting turns off stays off', () => {
+    const { eslint } = editorPartsOf(buildTwoSetLintRules({ editorRulesets: { quality: [EDITOR_RULESET] } }), editorRulesetCatalog, false)
+
+    expect(eslint.layers.rules).toStrictEqual({ [ON_WHERE_ALLOWED]: { severity: 'error', options: ALLOWED_OPTIONS, files: null, ignores: null } })
+  })
+
+  it('runs nowhere where the editor rulesets leave its ruleset out', () => {
+    const { eslint } = editorPartsOf(buildTwoSetLintRules({}), editorRulesetCatalog, false)
+
+    expect(eslint.layers.rules).toStrictEqual({})
   })
 })

@@ -21,11 +21,26 @@ export const CONFIGS_SETTING_NO_TYPESCRIPT_RULE_BY_CATEGORY: readonly CategoryCo
   configFile('allow.oxlintrc.json', "correctness as 'allow', which is off", { categories: { correctness: 'allow' } }),
   configFile('zero.oxlintrc.json', 'correctness as 0, which is off', { categories: { correctness: 0 } }),
   configFile('oxc-alone.oxlintrc.json', 'correctness on for oxc alone, typescript not listed', { plugins: ['oxc'], categories: { correctness: 'warn' } }),
+  configFile('override-alone.oxlintrc.json', 'correctness on, typescript listed by one override alone beside a root listing none', {
+    plugins: [],
+    categories: { correctness: 'warn' },
+    overrides: [{ files: ['src/**'], plugins: ['typescript'] }],
+  }),
 ]
 
 export const CONFIG_SETTING_TYPESCRIPT_RULES_BY_CATEGORY = configFile('typescript.oxlintrc.json', 'correctness on for typescript', {
   plugins: ['typescript'],
   categories: { correctness: 'warn' },
+})
+
+/** Two overrides listing different plugins may match one file, where oxlint runs typescript's correctness rules. */
+export const CONFIG_SETTING_TYPESCRIPT_RULES_BY_CATEGORY_IN_OVERRIDES = configFile('two-overrides.oxlintrc.json', 'correctness on, typescript and import listed by two overrides', {
+  plugins: [],
+  categories: { correctness: 'warn' },
+  overrides: [
+    { files: ['src/**'], plugins: ['import'] },
+    { files: ['src/**'], plugins: ['typescript'] },
+  ],
 })
 
 const CORRECTNESS_ERRORS_FOR_TYPESCRIPT: OxlintConfig = { plugins: ['typescript'], categories: { correctness: 'error' } }

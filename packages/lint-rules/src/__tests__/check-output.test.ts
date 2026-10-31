@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { autofixedFilesIn, findingMessagesIn, findingsIn, findingsInFile, lastLineOf, linesOf, notCheckedIn } from './check-output.ts'
+import { assertNoFindingWasCut, autofixedFilesIn, findingMessagesIn, findingsIn, findingsInFile, lastLineOf, linesOf, notCheckedIn } from './check-output.ts'
 import {
+  CHECK_STDOUT_WITH_EVERY_FINDING_PRINTED,
   CHECK_STDOUT_WITH_EVERY_KIND_OF_LINE,
   CHECK_STDOUT_WITHOUT_AUTOFIXED_LINE,
   CHECK_STDOUT_WITH_A_MALFORMED_AUTOFIXED_LINE,
@@ -71,6 +72,20 @@ describe('lastLineOf', () => {
 
   it('refuses an empty stdout', () => {
     expect(() => lastLineOf('')).toThrow(/printed nothing/u)
+  })
+})
+
+describe('assertNoFindingWasCut', () => {
+  it('refuses a list check cut short, naming the cut line', () => {
+    expect(() => assertNoFindingWasCut(CHECK_STDOUT_WITH_EVERY_KIND_OF_LINE)).toThrow(/\+3 more findings in 2 files\./u)
+  })
+
+  it('refuses a list one finding was cut from', () => {
+    expect(() => assertNoFindingWasCut(CHECK_STDOUT_WITH_NOT_CHECKED_ENTRIES)).toThrow(/\+1 more finding in 1 file\./u)
+  })
+
+  it('lets through a list printed whole, though a file in it was not checked', () => {
+    expect(() => assertNoFindingWasCut(CHECK_STDOUT_WITH_EVERY_FINDING_PRINTED)).not.toThrow()
   })
 })
 

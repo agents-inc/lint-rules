@@ -53,6 +53,8 @@ const LOCKED_FIELDS: readonly DependencyField[] = ['dependencies', 'devDependenc
 const ROOT_WORKSPACE = ''
 const LINE_BREAK = '\n'
 const NPM = 'npm'
+const TYPESCRIPT_ESLINT = 'typescript-eslint'
+const TYPESCRIPT_ESLINT_SCOPE = '@typescript-eslint/'
 
 /** Parse boundary: a package.json on disk. */
 export function readManifest(path: string): Manifest {
@@ -129,6 +131,20 @@ export function dependenciesNotPinned(manifest: Manifest): string[] {
   return Object.entries(listedUnder(manifest, 'dependencies'))
     .filter(([, version]) => valid(version) !== version)
     .map(([name, version]) => `${name}: ${version}`)
+}
+
+/** By name, each dependency that is typescript-eslint or one of its scoped packages; devDependencies and peers are left out. */
+export function typescriptEslintListings(manifest: Manifest): Readonly<Record<string, string>> {
+  return Object.fromEntries(Object.entries(listedUnder(manifest, 'dependencies')).filter(([name]) => isTypescriptEslintPackage(name)))
+}
+
+/** Each install of typescript-eslint or of one of its scoped packages, in the order given. */
+export function typescriptEslintInstallsAmong(packages: readonly InstalledPackage[]): InstalledPackage[] {
+  return packages.filter(({ name }) => isTypescriptEslintPackage(name))
+}
+
+function isTypescriptEslintPackage(name: string): boolean {
+  return name === TYPESCRIPT_ESLINT || name.startsWith(TYPESCRIPT_ESLINT_SCOPE)
 }
 
 function listingsOf(manifest: Manifest): ReadonlyMap<string, string> {

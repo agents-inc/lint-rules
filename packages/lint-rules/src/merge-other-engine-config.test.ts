@@ -3,16 +3,16 @@ import { catalog, routeOf } from '@workspace/rule-data'
 import type { OxlintConfig } from 'oxlint'
 import { describe, expect, it } from 'vitest'
 import {
-  ARRAY_TYPE,
   ESLINT_CONFIG_HOLDING_EVERY_KEY,
   ESLINT_CONFIG_SETTING_NO_RULE_TEXT,
   FILES_THAT_ARE_NO_ESLINT_CONFIG,
   FILES_THAT_ARE_NO_OXLINT_CONFIG,
   filesOf,
-  MAX_LINES,
+  MAX_DEPTH,
   NO_DEBUGGER,
   NO_EMPTY_PATTERN,
   NO_EXPLICIT_ANY,
+  NO_INFERRABLE_TYPES,
   NO_VAR,
   NO_WARNING_COMMENTS,
   OURS_BESIDE_THE_LEGACY_CONFIGS,
@@ -272,15 +272,15 @@ describe("a file named as the team's oxlint config, read by mergeEslintConfig", 
   })
 
   it.each(OXLINT_CONFIGS_HOLDING_EVERY_KEY)(
-    'is read where it is $form: our part drops no-var, which it turns off, and keeps array-type',
+    'is read where it is $form: our part drops no-var, which it turns off, and keeps no-inferrable-types',
     async ({ file }) => {
       const { eslint } = ourPartsIn(projectDir, OURS_RUN_BY_ESLINT)
       const merged = mergeEslintConfig([], eslint, { oxlintConfig: file })
 
       expect({
         noVar: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, NO_VAR),
-        arrayType: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, ARRAY_TYPE),
-      }).toStrictEqual({ noVar: undefined, arrayType: 'error' })
+        noInferrableTypes: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, NO_INFERRABLE_TYPES),
+      }).toStrictEqual({ noVar: undefined, noInferrableTypes: 'error' })
     },
   )
 })
@@ -393,8 +393,8 @@ describe('a team JSON oxlint config, read by mergeEslintConfig', () => {
 
     expect({
       noVar: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, NO_VAR),
-      arrayType: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, ARRAY_TYPE),
-    }).toStrictEqual({ noVar: undefined, arrayType: 'error' })
+      noInferrableTypes: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, NO_INFERRABLE_TYPES),
+    }).toStrictEqual({ noVar: undefined, noInferrableTypes: 'error' })
   })
 
   it('drops from our part a rule a config writing a comma after the last entry of each object and array sets; and keeps the rule the team sets nowhere', async () => {
@@ -403,8 +403,8 @@ describe('a team JSON oxlint config, read by mergeEslintConfig', () => {
 
     expect({
       noVar: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, NO_VAR),
-      arrayType: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, ARRAY_TYPE),
-    }).toStrictEqual({ noVar: undefined, arrayType: 'error' })
+      noInferrableTypes: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, NO_INFERRABLE_TYPES),
+    }).toStrictEqual({ noVar: undefined, noInferrableTypes: 'error' })
   })
 })
 
@@ -419,7 +419,7 @@ describe('both merges, given one pair of team configs, each naming the other', (
     const mergedEslint = mergeEslintConfig(TEAM_ESLINT_BLOCKS_IN_LEGACY, eslint, { oxlintConfig: TEAM_OXLINTRC_SETTING_RULES_IN_LEGACY })
     const mergedOxlint = mergeOxlintConfig(TEAM_OXLINT_CONFIG_IN_LEGACY, oxlint, { eslintConfig: ESLINT_CONFIG })
     const eslintSeverities = await Promise.all(
-      [MAX_LINES, NO_VAR, ARRAY_TYPE].map(async (ruleId) => [ruleId, await ruleSeverityInProjectFor(projectDir, mergedEslint, SOURCE_FILE, ruleId)]),
+      [MAX_DEPTH, NO_VAR, NO_INFERRABLE_TYPES].map(async (ruleId) => [ruleId, await ruleSeverityInProjectFor(projectDir, mergedEslint, SOURCE_FILE, ruleId)]),
     )
 
     expect({
@@ -427,7 +427,7 @@ describe('both merges, given one pair of team configs, each naming the other', (
       runByOurOxlintPart: [NO_WARNING_COMMENTS, NO_DEBUGGER, NO_EMPTY_PATTERN].filter(
         (ruleId) => oxlintSeverityFor(mergedOxlint, SOURCE_FILE, oxlintNameOf(ruleId)) === 'error',
       ),
-    }).toStrictEqual({ runByOurEslintPart: [ARRAY_TYPE], runByOurOxlintPart: [NO_EMPTY_PATTERN] })
+    }).toStrictEqual({ runByOurEslintPart: [NO_INFERRABLE_TYPES], runByOurOxlintPart: [NO_EMPTY_PATTERN] })
   })
 })
 

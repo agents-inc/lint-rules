@@ -9,6 +9,10 @@ export const genericArrayOfASimpleType = `export const list: Array<string> = []
 export const simpleTypeArrayInBrackets = `export const list: string[] = []
 `
 
+/** `@typescript-eslint/no-inferrable-types`: an annotation its literal initializer implies, reported as shipped. */
+export const annotationTheInitializerImplies = `export const count: number = 1
+`
+
 /** `eqeqeq`: reported under `always`, as shipped, and under `smart` too. */
 export const looseNumberCheck = `export function isOne(value: unknown): boolean {
   return value == 1
@@ -34,6 +38,11 @@ export const suppressionOfAnOxcRule = `// eslint-disable-next-line oxc/approx-co
 export const pi = 3.141592653589793
 `
 
+/** Suppresses oxlint's name of unicorn's no-for-each, which the unicorn we install lacks. */
+export const suppressionOfOxlintsUnicornName = `// eslint-disable-next-line unicorn/no-array-for-each
+export const total = 1
+`
+
 /** `@eslint-react/dom-no-dangerously-set-innerhtml`. */
 export const innerHtmlSetDangerously = `export const Html = ({ html }: { readonly html: string }) => <div dangerouslySetInnerHTML={{ __html: html }} />
 `
@@ -42,8 +51,8 @@ export const innerHtmlSetDangerously = `export const Html = ({ html }: { readonl
 export const buttonWithoutAType = `export const Save = () => <button>save</button>
 `
 
-/** `jsx-no-comment-textnodes`, a rule name both eslint-plugin-react and @eslint-react have: each reports it. */
-export const commentAsJsxText = `export const Note = () => <div>// note</div>
+/** `jsx-no-useless-fragment`, a rule name both eslint-plugin-react and @eslint-react have: each reports it. */
+export const uselessFragment = `export const One = () => <><div /></>
 `
 
 /** `prefer-destructuring`, and typescript-eslint's typed extension of it: a property read into a variable of its own name. */

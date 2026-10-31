@@ -1,7 +1,9 @@
+import { join } from 'node:path'
 import { catalog } from '@workspace/rule-data'
 import { describe, expect, it } from 'vitest'
 import {
-  NO_CONSOLE_OPTION_OXLINT_REFUSES,
+  MAX_PARAMS,
+  MAX_PARAMS_OPTION_OXLINT_REFUSES,
   OXLINT_REFUSAL_OF_A_RULE,
   OXLINT_REFUSAL_OF_AN_OPTION,
   RULE_OXLINT_DOES_NOT_HAVE,
@@ -45,11 +47,16 @@ const DIAGNOSTICS_OXLINT_NEVER_WRITES = [
   { shape: 'whose span gives its line as text', diagnostic: { message: 'a message', severity: 'error', filename: 'src/a.ts', labels: [{ span: { offset: 0, length: 8, line: '1' } }] } },
 ]
 
+// What oxlint 1.87 gives as the reason it could not open a file, there for no file and here for one it may not read.
+const NO_FILE_THERE = 'No such file or directory (os error 2)'
+const NOT_PERMITTED = 'Permission denied (os error 13)'
+const NO_FILE_WRITTEN = 'src/gone.ts'
+
 const tempProjects = setUpTempProjects()
 const PROJECT = tempProjects.create({
   files: {
     [REFUSED_CONFIG]: JSON.stringify({ rules: { [RULE_OXLINT_DOES_NOT_HAVE]: 'error' } }),
-    [REFUSED_OPTION_CONFIG]: JSON.stringify({ rules: { 'no-console': ['error', NO_CONSOLE_OPTION_OXLINT_REFUSES] } }),
+    [REFUSED_OPTION_CONFIG]: JSON.stringify({ rules: { [MAX_PARAMS]: ['error', MAX_PARAMS_OPTION_OXLINT_REFUSES] } }),
     [ACCEPTED_CONFIG]: JSON.stringify({ rules: { 'no-debugger': 'error' } }),
     [LINTED_FILE]: moduleText('debugger'),
   },
@@ -119,7 +126,32 @@ describe('oxlintReportFrom', () => {
     })
   })
 
+  it('reads a report where oxlint could not open a file gone since check named it as the other diagnostics alone, for check lists that file itself', () => {
+    const { code, message, severity, filename } = A_WELL_FORMED_DIAGNOSTIC
+    const stdout = JSON.stringify({ diagnostics: [A_WELL_FORMED_DIAGNOSTIC, oxlintCouldNotOpen(join(PROJECT, NO_FILE_WRITTEN), NO_FILE_THERE)] })
+
+    expect(oxlintReportFrom({ stdout, stderr: '' })).toStrictEqual({ diagnostics: [{ code, message, severity, filename, spans: [A_SPAN] }] })
+  })
+
+  it('refuses a report where oxlint could not open a file that is still there, quoting it all, beside a well-formed diagnostic', () => {
+    const stdout = JSON.stringify({ diagnostics: [A_WELL_FORMED_DIAGNOSTIC, oxlintCouldNotOpen(join(PROJECT, LINTED_FILE), NOT_PERMITTED)] })
+
+    expect(() => oxlintReportFrom({ stdout, stderr: '' })).toThrow(new Error(`oxlint failed: ${stdout}`))
+  })
+
+  it('refuses a report holding an entry whose message is a list reading as oxlint could not open a gone file, quoting it all', () => {
+    const { message, ...couldNotOpen } = oxlintCouldNotOpen(join(PROJECT, NO_FILE_WRITTEN), NO_FILE_THERE)
+    const stdout = JSON.stringify({ diagnostics: [A_WELL_FORMED_DIAGNOSTIC, { ...couldNotOpen, message: [message] }] })
+
+    expect(() => oxlintReportFrom({ stdout, stderr: '' })).toThrow(new Error(`oxlint failed: ${stdout}`))
+  })
+
   it('says oxlint printed nothing where it printed nothing', () => {
     expect(() => oxlintReportFrom({ stdout: '', stderr: '' })).toThrow(new Error('oxlint failed: it printed nothing'))
   })
 })
+
+/** oxlint 1.87's entry for a file it could not open: the path and the reason in the message alone, with no file name, code or place. */
+function oxlintCouldNotOpen(path: string, reason: string): { readonly message: string; readonly severity: string; readonly labels: readonly [] } {
+  return { message: `Failed to open file ${path} with error "${reason}"`, severity: 'error', labels: [] }
+}

@@ -1,6 +1,6 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
 import inventory from '@workspace/rule-data/generated/inventory.json' with { type: 'json' }
-import type { OxlintConfig } from 'oxlint'
+import type { OxlintConfig, OxlintOverride } from 'oxlint'
 import { laidOver } from './laid-over.ts'
 import { oxlintPluginListedAs, oxlintRuleKeyedBy } from './oxlint-rule-keys.ts'
 
@@ -11,7 +11,9 @@ import { oxlintPluginListedAs, oxlintRuleKeyedBy } from './oxlint-rule-keys.ts'
 // - A statement sets its rule wherever it stands, at a root or in an override, at any severity, though oxlint skips
 //   one whose plugin is listed neither at the root nor in that override (owner 2026-10-22).
 // - A category on at the root runs its rules whose plugin is eslint or listed anywhere, nursery included
-//   (measured: `nursery: 'warn'` runs import/named), type-aware ones only with `options.typeAware`.
+//   (measured: `nursery: 'warn'` runs import/named), type-aware ones only with `options.typeAware`. Where every
+//   override listing plugins lists one set holding each root plugin, it runs those of the plugins only overrides
+//   list in no file (measured), and they count nowhere (owner 2026-10-29).
 // - A key under a JS plugin's prefix sets the rule of ours that key is an ESLint name of.
 
 /** Keyed by the path `extends` gives. */
@@ -48,10 +50,17 @@ export function ruleIdsTheTeamsOxlintConfigSets(
   const rootPlugins = new Set([ALWAYS_RUNS, ...resolvedRootPluginsOf(team, extendedByPath)])
   const overrides = configs.flatMap(({ overrides: ofTheConfig = [] }) => ofTheConfig)
   const byStatement = [...configs, ...overrides].flatMap(({ rules = {} }) => rulesKeyed(Object.keys(rules), catalog))
-  const pluginsListedAnywhere = new Set([...rootPlugins, ...overrides.flatMap(({ plugins = [] }) => plugins.map(oxlintPluginListedAs))])
-  const byCategory = rulesItsCategoriesRun(resolvedCategoriesOf(team, extendedByPath), pluginsListedAnywhere, areTypeAwareRulesOn(team), catalog)
+  const byCategory = rulesItsCategoriesRun(resolvedCategoriesOf(team, extendedByPath), pluginsItsCategoriesReach(rootPlugins, overrides), areTypeAwareRulesOn(team), catalog)
   const byJsPlugin = ruleIdsKeyedUnderJsPlugins(configs, catalog)
   return [...new Set([...byStatement, ...byCategory].map(({ id }) => id).concat(byJsPlugin))].toSorted()
+}
+
+/** The root's, and those the overrides list unless each lists one set holding every root plugin. eslint is in every set. */
+function pluginsItsCategoriesReach(rootPlugins: ReadonlySet<string>, overrides: readonly OxlintOverride[]): ReadonlySet<string> {
+  const lists = overrides.flatMap(({ plugins }) => (plugins === undefined ? [] : [new Set([ALWAYS_RUNS, ...plugins.map(oxlintPluginListedAs)])]))
+  const [first] = lists
+  const areTheirCategoriesRunNowhere = first !== undefined && rootPlugins.isSubsetOf(first) && lists.every((list) => list.size === first.size && list.isSubsetOf(first))
+  return areTheirCategoriesRunNowhere ? rootPlugins : new Set([...rootPlugins, ...lists.flatMap((list) => [...list])])
 }
 
 /** Each config the config extends, at any depth and in the order listed, before the config itself. */

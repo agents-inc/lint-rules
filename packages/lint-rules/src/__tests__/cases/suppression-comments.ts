@@ -22,6 +22,13 @@ ${classicLoop}`
 export const namedDisableOverAClassicLoop = `/* eslint-disable house/no-classic-loops */
 ${classicLoop}`
 
+// The two disables above, switched back on below the loop, so disable-enable-pair has nothing to report.
+export const disableOverAClassicLoopSwitchedBackOn = `${disableOverAClassicLoop}/* eslint-enable */
+`
+
+export const namedDisableOverAClassicLoopSwitchedBackOn = `${namedDisableOverAClassicLoop}/* eslint-enable house/no-classic-loops */
+`
+
 export const inlineConfigTurningTheBanOff = `/* eslint house/no-suppressions: off, house/no-classic-loops: off */
 ${classicLoop}`
 

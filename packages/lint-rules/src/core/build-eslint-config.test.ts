@@ -1678,3 +1678,39 @@ describe('an entry giving allowSuppressions, where oxlint runs one of the rules 
     expect(blockNamed(config, 'agents-inc/file-overrides/0').rules).toStrictEqual(rules)
   })
 })
+
+describe('the block giving eslint-plugin-hydration-proof its Next.js setting', () => {
+  const HYDRATION_PROOF_RULE = 'hydration-proof/no-timezone-without-explicit-timezone'
+  const hydrationCatalog = buildCatalog({
+    rulesets: [buildQualityRuleset('correctness')],
+    rules: [buildEslintRoute(HYDRATION_PROOF_RULE, { typed: false, shipped: buildShippedRule('correctness') })],
+  })
+  const hydrationRegistry = buildPluginRegistry({ 'hydration-proof': ['no-timezone-without-explicit-timezone'] })
+  const OFF_AT_THE_TOP_LEVEL = { [HYDRATION_PROOF_RULE]: 'off' } satisfies RuleSettingsInput
+
+  function blockNamesWith(fields: Pick<LintRulesInput, 'rules' | 'fileOverrides'>): Array<string | undefined> {
+    return buildEslintConfig(buildLintRules({ quality: ['correctness'] }, fields), hydrationCatalog, hydrationRegistry, buildProjectFacts()).map((block) => block.name)
+  }
+
+  it('comes after the test runner globals and before the file overrides where only an entry turns a hydration-proof rule on', () => {
+    const fileOverrides = [buildFileOverride(['legacy/**'], { rules: { [HYDRATION_PROOF_RULE]: 'warn' } })]
+
+    expect(blockNamesWith({ rules: OFF_AT_THE_TOP_LEVEL, fileOverrides })).toStrictEqual([
+      'agents-inc/base',
+      SVELTE_RUNES_ESLINT_BLOCK_NAME,
+      TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME,
+      'agents-inc/next-js-server-components',
+      'agents-inc/file-overrides/0',
+      'agents-inc/oxlint-rules-off',
+    ])
+  })
+
+  it('is left out where the config turns every hydration-proof rule off', () => {
+    expect(blockNamesWith({ rules: OFF_AT_THE_TOP_LEVEL, fileOverrides: [] })).toStrictEqual([
+      'agents-inc/base',
+      SVELTE_RUNES_ESLINT_BLOCK_NAME,
+      TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME,
+      'agents-inc/oxlint-rules-off',
+    ])
+  })
+})

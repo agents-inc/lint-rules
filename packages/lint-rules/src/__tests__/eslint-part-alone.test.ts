@@ -15,7 +15,7 @@ import { setUpTempProjects } from './temp-projects.ts'
 
 type SharedFields = Partial<Omit<LintRules, 'tsconfigRootDir' | 'agentRulesets' | 'editorRulesets'>>
 
-const ARRAY_TYPE = '@typescript-eslint/array-type'
+const NO_INFERRABLE_TYPES = '@typescript-eslint/no-inferrable-types'
 const MAX_PARAMS = 'max-params'
 const MAX_PARAMS_TWIN = '@typescript-eslint/max-params'
 
@@ -40,11 +40,11 @@ async function entriesIn(
 
 describe('eslintPartAlone', () => {
   it("runs each rule our ESLint part states where it states it, an entry's off included", async () => {
-    const part = ourEslintPart(PROJECT_WITH_OXLINT, { rules: { [ARRAY_TYPE]: 'error' }, fileOverrides: [{ files: ['legacy/**'], rules: { [ARRAY_TYPE]: 'off' } }] })
+    const part = ourEslintPart(PROJECT_WITH_OXLINT, { rules: { [NO_INFERRABLE_TYPES]: 'error' }, fileOverrides: [{ files: ['legacy/**'], rules: { [NO_INFERRABLE_TYPES]: 'off' } }] })
 
-    expect(await entriesIn(part, ['src/a.ts', 'legacy/a.ts'], [ARRAY_TYPE])).toStrictEqual({
-      'src/a.ts': { [ARRAY_TYPE]: [2, { default: 'array-simple' }] },
-      'legacy/a.ts': { [ARRAY_TYPE]: [0, { default: 'array-simple' }] },
+    expect(await entriesIn(part, ['src/a.ts', 'legacy/a.ts'], [NO_INFERRABLE_TYPES])).toStrictEqual({
+      'src/a.ts': { [NO_INFERRABLE_TYPES]: [2] },
+      'legacy/a.ts': { [NO_INFERRABLE_TYPES]: [0] },
     })
   })
 
@@ -52,11 +52,11 @@ describe('eslintPartAlone', () => {
   it.each(['vendor', 'legacy/vendor/', 'legacy/vendor/**'])(
     'lints no file our ignores leave out, read as global ignores, where they are %s, and lints the rest',
     async (ignore) => {
-      const part = ourEslintPart(PROJECT_WITH_OXLINT, { rules: { [ARRAY_TYPE]: 'error' }, ignores: [ignore] })
+      const part = ourEslintPart(PROJECT_WITH_OXLINT, { rules: { [NO_INFERRABLE_TYPES]: 'error' }, ignores: [ignore] })
 
-      expect(await entriesIn(part, ['legacy/vendor/a.ts', 'src/a.ts'], [ARRAY_TYPE])).toStrictEqual({
+      expect(await entriesIn(part, ['legacy/vendor/a.ts', 'src/a.ts'], [NO_INFERRABLE_TYPES])).toStrictEqual({
         'legacy/vendor/a.ts': NOT_LINTED,
-        'src/a.ts': { [ARRAY_TYPE]: [2, { default: 'array-simple' }] },
+        'src/a.ts': { [NO_INFERRABLE_TYPES]: [2] },
       })
     },
   )

@@ -28,11 +28,12 @@ export type NotAConfigFile = ConfigFile & { readonly what: string; readonly fore
 
 export const NO_VAR = 'no-var'
 export const ARRAY_TYPE = '@typescript-eslint/array-type'
+export const NO_INFERRABLE_TYPES = '@typescript-eslint/no-inferrable-types'
 export const NO_DEBUGGER = 'no-debugger'
 export const NO_EMPTY_PATTERN = 'no-empty-pattern'
 export const NO_EXPLICIT_ANY = '@typescript-eslint/no-explicit-any'
 export const NO_WARNING_COMMENTS = 'no-warning-comments'
-export const MAX_LINES = 'max-lines'
+export const MAX_DEPTH = 'max-depth'
 
 const PACKAGE_JSON_FILE = 'package.json'
 const PACKAGE_JSON_TEXT = packageJsonText(buildPackageJsonListingOxlint())
@@ -55,8 +56,8 @@ const TSCONFIGS_EXTENDING_SHARED_ONES: readonly NotAConfigFile[] = [
   },
 ]
 
-/** Our no-var and array-type, which ESLint runs for us. */
-export const OURS_RUN_BY_ESLINT: OurRules = { [NO_VAR]: 'error', [ARRAY_TYPE]: 'error' }
+/** Our no-var and no-inferrable-types, which ESLint runs for us. */
+export const OURS_RUN_BY_ESLINT: OurRules = { [NO_VAR]: 'error', [NO_INFERRABLE_TYPES]: 'error' }
 
 /** Our no-debugger and no-empty-pattern, which oxlint runs for us. */
 export const OURS_RUN_BY_OXLINT: OurRules = { [NO_DEBUGGER]: 'error', [NO_EMPTY_PATTERN]: 'error' }
@@ -141,7 +142,7 @@ export const teamOxlintrcExtendingThroughAFolderFiles: ProjectFiles = {
 
 /** The team's eslint.config.mjs, calling no merge of ours, and its JSON oxlint config, each setting one rule in legacy/ alone. */
 export const TEAM_ESLINT_BLOCKS_IN_LEGACY: Linter.Config[] = [
-  buildTeamEslintBlock('team/legacy', { files: ['legacy/**'], rules: { [NO_WARNING_COMMENTS]: 'off', [MAX_LINES]: 'off' } }),
+  buildTeamEslintBlock('team/legacy', { files: ['legacy/**'], rules: { [NO_WARNING_COMMENTS]: 'off', [MAX_DEPTH]: 'off' } }),
 ]
 export const TEAM_OXLINT_CONFIG_IN_LEGACY: OxlintConfig = buildTeamOxlintConfig({
   ...EMPTY_TEAM_OXLINT_CONFIG,
@@ -154,14 +155,14 @@ export const teamConfigsSettingRulesInLegacyFiles: ProjectFiles = {
   [TEAM_OXLINTRC_SETTING_RULES_IN_LEGACY]: jsonFileText(TEAM_OXLINT_CONFIG_IN_LEGACY),
 }
 
-/** Ours beside them: oxlint runs no-warning-comments, no-debugger and no-empty-pattern for us; ESLint max-lines, no-var and array-type. */
+/** Ours beside them: oxlint runs no-warning-comments, no-debugger and no-empty-pattern for us; ESLint max-depth, no-var and no-inferrable-types. */
 export const OURS_BESIDE_THE_LEGACY_CONFIGS: OurRules = {
   [NO_WARNING_COMMENTS]: 'error',
   [NO_DEBUGGER]: 'error',
   [NO_EMPTY_PATTERN]: 'error',
-  [MAX_LINES]: 'error',
+  [MAX_DEPTH]: 'error',
   [NO_VAR]: 'error',
-  [ARRAY_TYPE]: 'error',
+  [NO_INFERRABLE_TYPES]: 'error',
 }
 
 /** Our no-explicit-any and no-debugger: oxlint runs both. */

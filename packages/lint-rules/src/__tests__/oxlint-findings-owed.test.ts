@@ -11,14 +11,14 @@ import { setUpTempProjects } from './temp-projects.ts'
 
 const PROJECT_WITH_OXLINT = createProjectListingOxlint(setUpTempProjects())
 
-const JSX_KEY = 'react(jsx-key)'
+const NO_STRING_REFS = 'react(no-string-refs)'
 const NO_UNUSED_VARS = 'eslint(no-unused-vars)'
 // typescript-eslint's no-this-alias, which ESLint runs for us; oxlint's version is in its correctness category.
 const NO_THIS_ALIAS = 'typescript(no-this-alias)'
 // A rule of oxlint's correctness category, of a default plugin, that neither part of ours runs.
 const NO_DUPLICATE_ENUM_VALUES = 'typescript(no-duplicate-enum-values)'
 
-// Our part runs react/jsx-key but in lib/** and our ignores, runs no-unused-vars, and turns
+// Our part runs react/no-string-refs but in lib/** and our ignores, runs no-unused-vars, and turns
 // no-debugger off.
 function ourParts(): EditorParts {
   return defineLintRules(
@@ -26,8 +26,8 @@ function ourParts(): EditorParts {
       PROJECT_WITH_OXLINT,
       {},
       {
-        rules: { 'react/jsx-key': 'error', 'no-unused-vars': 'error', 'no-debugger': 'off' },
-        fileOverrides: [{ files: ['lib/**'], rules: { 'react/jsx-key': 'off' } }],
+        rules: { 'react/no-string-refs': 'error', 'no-unused-vars': 'error', 'no-debugger': 'off' },
+        fileOverrides: [{ files: ['lib/**'], rules: { 'react/no-string-refs': 'off' } }],
         ignores: ['dist/**'],
       },
     ),
@@ -46,8 +46,8 @@ function ourPartsRunningNoThisAliasInEslint(): EditorParts {
 }
 
 const TEAM_SETTING_NONE = teamConfigs(buildTeamOxlintConfig({ plugins: ['react'], categories: { correctness: 'off' } }))
-const TEAM_SETTING_JSX_KEY_IN_TEST_FILES = teamConfigs(
-  buildTeamOxlintConfig({ plugins: ['react'], categories: { correctness: 'off' }, overrides: [{ files: ['**/*.test.tsx'], rules: { 'react/jsx-key': 'warn' } }] }),
+const TEAM_SETTING_NO_STRING_REFS_IN_TEST_FILES = teamConfigs(
+  buildTeamOxlintConfig({ plugins: ['react'], categories: { correctness: 'off' }, overrides: [{ files: ['**/*.test.tsx'], rules: { 'react/no-string-refs': 'warn' } }] }),
 )
 
 describe('ownerOfOxlintFindings, for a rule the team sets', () => {
@@ -55,15 +55,15 @@ describe('ownerOfOxlintFindings, for a rule the team sets', () => {
     { file: 'src/f.test.tsx', why: 'in the files its override sets it in' },
     { file: 'src/f.tsx', why: 'in a file its override does not reach, where our part runs it' },
     { file: 'lib/m.tsx', why: 'where our entry turns it off' },
-  ])("gives jsx-key the team's findings $why", ({ file }) => {
-    expect(ownerOfOxlintFindings(ourParts(), TEAM_SETTING_JSX_KEY_IN_TEST_FILES, catalog)(file, JSX_KEY)).toBe('the team')
+  ])("gives no-string-refs the team's findings $why", ({ file }) => {
+    expect(ownerOfOxlintFindings(ourParts(), TEAM_SETTING_NO_STRING_REFS_IN_TEST_FILES, catalog)(file, NO_STRING_REFS)).toBe('the team')
   })
 
   it.each([
-    { how: 'in its ESLint config alone', team: teamConfigs(TEAM_SETTING_NONE.oxlint, ['react/jsx-key']) },
+    { how: 'in its ESLint config alone', team: teamConfigs(TEAM_SETTING_NONE.oxlint, ['react/no-string-refs']) },
     { how: 'by a category its oxlint config turns on, its plugin listed', team: teamConfigs(buildTeamOxlintConfig({ plugins: ['react'], categories: { correctness: 'warn' } })) },
-  ])("gives jsx-key the team's findings where our part runs it, the team setting it $how", ({ team }) => {
-    expect(ownerOfOxlintFindings(ourParts(), team, catalog)('src/f.tsx', JSX_KEY)).toBe('the team')
+  ])("gives no-string-refs the team's findings where our part runs it, the team setting it $how", ({ team }) => {
+    expect(ownerOfOxlintFindings(ourParts(), team, catalog)('src/f.tsx', NO_STRING_REFS)).toBe('the team')
   })
 
   it("gives no-unused-vars the team's findings where its ESLint config sets typescript-eslint's twin of it alone", () => {
@@ -73,28 +73,28 @@ describe('ownerOfOxlintFindings, for a rule the team sets', () => {
 
 describe('ownerOfOxlintFindings, for a rule the team sets nowhere', () => {
   it.each([
-    { file: 'src/f.tsx', code: JSX_KEY, owner: 'ours', why: 'our part runs it there' },
+    { file: 'src/f.tsx', code: NO_STRING_REFS, owner: 'ours', why: 'our part runs it there' },
     { file: 'src/a.ts', code: NO_UNUSED_VARS, owner: 'ours', why: 'our part runs it there' },
-    { file: 'lib/m.tsx', code: JSX_KEY, owner: 'the team', why: 'our entry turns it off there' },
-    { file: 'dist/x.tsx', code: JSX_KEY, owner: 'the team', why: 'our ignores match the file' },
+    { file: 'lib/m.tsx', code: NO_STRING_REFS, owner: 'the team', why: 'our entry turns it off there' },
+    { file: 'dist/x.tsx', code: NO_STRING_REFS, owner: 'the team', why: 'our ignores match the file' },
     { file: 'src/a.ts', code: 'eslint(no-debugger)', owner: 'the team', why: 'our part turns it off only' },
     { file: 'src/a.ts', code: 'local(no-direct-fetch)', owner: 'the team', why: "it is a JS plugin's" },
   ])('gives $code in $file to $owner: $why', ({ file, code, owner }) => {
     expect(ownerOfOxlintFindings(ourParts(), TEAM_SETTING_NONE, catalog)(file, code)).toBe(owner)
   })
 
-  // Only what the team writes counts: oxlint's own correctness: warn runs jsx-key here, but sets no rule.
+  // Only what the team writes counts: oxlint's own correctness: warn runs no-string-refs here, but sets no rule.
   it.each([
     { file: 'src/f.tsx', owner: 'ours', why: 'our part runs it there' },
     { file: 'lib/m.tsx', owner: 'the team', why: "our entry turns it off there, which leaves oxlint's own copy, as the team's config alone runs it" },
-  ])("gives jsx-key in $file to $owner where the team lists react and writes no category: $why", ({ file, owner }) => {
-    expect(ownerOfOxlintFindings(ourParts(), teamConfigs(buildTeamOxlintConfig({ plugins: ['react'] })), catalog)(file, JSX_KEY)).toBe(owner)
+  ])("gives no-string-refs in $file to $owner where the team lists react and writes no category: $why", ({ file, owner }) => {
+    expect(ownerOfOxlintFindings(ourParts(), teamConfigs(buildTeamOxlintConfig({ plugins: ['react'] })), catalog)(file, NO_STRING_REFS)).toBe(owner)
   })
 
-  it('gives jsx-key our findings where the team turns on a category jsx-key is not in', () => {
+  it('gives no-string-refs our findings where the team turns on a category no-string-refs is not in', () => {
     const team = teamConfigs(buildTeamOxlintConfig({ plugins: ['react'], categories: { correctness: 'off', style: 'warn' } }))
 
-    expect(ownerOfOxlintFindings(ourParts(), team, catalog)('src/f.tsx', JSX_KEY)).toBe('ours')
+    expect(ownerOfOxlintFindings(ourParts(), team, catalog)('src/f.tsx', NO_STRING_REFS)).toBe('ours')
   })
 })
 
@@ -121,12 +121,12 @@ describe('ownerOfOxlintFindings, for a rule our ESLint part runs', () => {
 
 describe('oxlintFindingsOwed', () => {
   it("keeps the team's findings of a rule it sets, in every file, and ours of a rule it does not", () => {
-    const teamsInATestFile = buildOxlintFinding('src/f.test.tsx', JSX_KEY, 'warning')
+    const teamsInATestFile = buildOxlintFinding('src/f.test.tsx', NO_STRING_REFS, 'warning')
     const oursOfARuleTheTeamDoesNotSet = buildOxlintFinding('src/a.ts', NO_UNUSED_VARS, 'error')
     const teamAlone = [teamsInATestFile, buildOxlintFinding('src/a.ts', NO_UNUSED_VARS, 'warning')]
-    const oursAlone = [buildOxlintFinding('src/f.tsx', JSX_KEY, 'error'), oursOfARuleTheTeamDoesNotSet]
+    const oursAlone = [buildOxlintFinding('src/f.tsx', NO_STRING_REFS, 'error'), oursOfARuleTheTeamDoesNotSet]
 
-    expect(oxlintFindingsOwed({ teamAlone, oursAlone }, ownerOfOxlintFindings(ourParts(), TEAM_SETTING_JSX_KEY_IN_TEST_FILES, catalog))).toStrictEqual([
+    expect(oxlintFindingsOwed({ teamAlone, oursAlone }, ownerOfOxlintFindings(ourParts(), TEAM_SETTING_NO_STRING_REFS_IN_TEST_FILES, catalog))).toStrictEqual([
       teamsInATestFile,
       oursOfARuleTheTeamDoesNotSet,
     ])

@@ -11,33 +11,33 @@ import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
 // A key under a team's own prefix for one of our plugins names our rule of that plugin alone:
-// prefer-regexp-exec under `rx` is our regexp rule, now the team's; under `ts` it is typescript-eslint's.
+// prefer-includes under `u` is our unicorn rule, now the team's; under `ts` it is typescript-eslint's.
 
 const tempProjects = setUpTempProjects()
 const { ruleSeverityInProjectFor } = setUpEslintConfigOracle()
 
 const SOURCE_FILE = 'src/a.ts'
-const OUR_REGEXP_RULE = 'regexp/prefer-regexp-exec'
+const OUR_UNICORN_RULE = 'unicorn/prefer-includes'
 
 function teamPrefixesOfOurPlugins(): Readonly<Record<string, ESLint.Plugin>> {
-  return { ts: installedEslintPlugin('@typescript-eslint'), rx: installedEslintPlugin('regexp') }
+  return { ts: installedEslintPlugin('@typescript-eslint'), u: installedEslintPlugin('unicorn') }
 }
 
-describe('mergeEslintConfig, given a team block registering typescript-eslint as ts and eslint-plugin-regexp as rx', () => {
+describe('mergeEslintConfig, given a team block registering typescript-eslint as ts and eslint-plugin-unicorn as u', () => {
   const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJson()) } })
 
-  /** Our regexp rule's severity in a source file, beside the team block stating the key given off. */
-  async function ourRegexpRuleBeside(teamKey: string): Promise<string | undefined> {
-    const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { [OUR_REGEXP_RULE]: 'error' } })).editorRulesets
+  /** Our unicorn rule's severity in a source file, beside the team block stating the key given off. */
+  async function ourUnicornRuleBeside(teamKey: string): Promise<string | undefined> {
+    const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { [OUR_UNICORN_RULE]: 'error' } })).editorRulesets
     const merged = mergeEslintConfig([buildTeamEslintBlock('team', { plugins: teamPrefixesOfOurPlugins(), rules: { [teamKey]: 'off' } })], eslint, NO_TEAM_OXLINT_CONFIG)
-    return ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, OUR_REGEXP_RULE)
+    return ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, OUR_UNICORN_RULE)
   }
 
-  it('keeps our regexp prefer-regexp-exec where the team turns ts/prefer-regexp-exec off, a rule of typescript-eslint', async () => {
-    expect(await ourRegexpRuleBeside('ts/prefer-regexp-exec')).toBe('error')
+  it('keeps our unicorn prefer-includes where the team turns ts/prefer-includes off, a rule of typescript-eslint', async () => {
+    expect(await ourUnicornRuleBeside('ts/prefer-includes')).toBe('error')
   })
 
-  it('drops ours where the team turns rx/prefer-regexp-exec off, our regexp rule under its prefix', async () => {
-    expect(await ourRegexpRuleBeside('rx/prefer-regexp-exec')).toBeUndefined()
+  it('drops ours where the team turns u/prefer-includes off, our unicorn rule under its prefix', async () => {
+    expect(await ourUnicornRuleBeside('u/prefer-includes')).toBeUndefined()
   })
 })

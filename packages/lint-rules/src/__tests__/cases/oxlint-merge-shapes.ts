@@ -8,17 +8,17 @@ import type { Dimension } from '../pairwise-shapes.ts'
 // app/ holds the files only the shapes stating rules under other keys name.
 export const OXLINT_MERGE_LINTED_DIRS = ['src', 'lib', 'app']
 
-// Rule each line draws: 1 typescript/consistent-type-imports, 2 oxc/erasing-op, 3 unicorn/no-useless-spread,
+// Rule each line draws: 1 typescript/no-require-imports, 2 oxc/erasing-op, 3 unicorn/no-useless-spread,
 // 4 typescript/no-duplicate-enum-values, 5 no-compare-neg-zero, 6 typescript/array-type, 7 promise/param-names,
 // 9 typescript/no-this-alias, 10 no-unused-vars.
-const TYPESCRIPT_SOURCE = `import { Thing } from './thing'
+const TYPESCRIPT_SOURCE = `export const thing = require('./thing')
 export const isZero = (value: number): boolean => value * 0 === 0
 export const copy = [...[1, 2]]
 export enum Letter { A = 'a', B = 'a' }
 export const isNegativeZero = (value: number): boolean => value === -0
 export const list: Array<string> = []
 export const waited = new Promise((ok, fail) => ok(fail))
-export const typed: Thing = 1
+export const typed: unknown = thing
 export const aliased = function (this: unknown): unknown { const self = this; return self }
 const unused = 1
 `
@@ -30,8 +30,8 @@ export const isNegativeZero = (value) => value === -0
 export const waited = new Promise((ok, fail) => ok(fail))
 `
 
-// Draws react/jsx-no-duplicate-props, react/jsx-key, then jsx-a11y/alt-text.
-const JSX_LINES = `export const List = () => <ul id="a" id="b">{[1].map(() => <li />)}</ul>
+// Draws react/jsx-no-duplicate-props, react/no-string-refs, then jsx-a11y/alt-text.
+const JSX_LINES = `export const List = () => <ul id="a" id="b"><li ref="item" /></ul>
 export const Logo = () => <img src="logo.png" />
 `
 
@@ -346,35 +346,35 @@ const BARE_NAMES_OF_SHARED_RULES = buildTeamShapeValue(
 // Where oxlint counts the team's statement of a rule ours states, the team's setting decides; where it ignores it, ours does.
 const NO_STATEMENT_OF_OURS = buildTeamShapeValue('no statement of a rule our part may state', {})
 const ROOT_STATES_OURS = buildTeamShapeValue(
-  '@typescript-eslint/consistent-type-imports warn preferring no type imports, eslint/no-compare-neg-zero warn and react-hooks/jsx-key warn at the root',
+  '@typescript-eslint/no-require-imports warn allowing thing, eslint/no-compare-neg-zero warn and react-hooks/no-string-refs warn at the root',
   {
     rules: {
-      '@typescript-eslint/consistent-type-imports': ['warn', { prefer: 'no-type-imports' }],
+      '@typescript-eslint/no-require-imports': ['warn', { allow: ['thing'] }],
       'eslint/no-compare-neg-zero': 'warn',
-      'react-hooks/jsx-key': 'warn',
+      'react-hooks/no-string-refs': 'warn',
     },
   },
 )
 const EXTENDED_ROOT_STATES_OURS = buildTeamShapeValue(
-  'extends an object listing [] stating typescript/consistent-type-imports warn, react/jsx-key warn and no-compare-neg-zero off at its root',
-  { extends: [{ plugins: [], rules: { 'typescript/consistent-type-imports': 'warn', 'react/jsx-key': 'warn', 'no-compare-neg-zero': 'off' } }] },
+  'extends an object listing [] stating typescript/no-require-imports warn, react/no-string-refs warn and no-compare-neg-zero off at its root',
+  { extends: [{ plugins: [], rules: { 'typescript/no-require-imports': 'warn', 'react/no-string-refs': 'warn', 'no-compare-neg-zero': 'off' } }] },
 )
 const LISTING_OVERRIDE_STATES_OURS = buildTeamShapeValue(
-  'eslint-plugin-react/jsx-key warn and typescript/consistent-type-imports off for **/*.tsx, in an override listing react',
-  { overrides: [{ files: TSX_FILES, plugins: ['react'], rules: { 'eslint-plugin-react/jsx-key': 'warn', 'typescript/consistent-type-imports': 'off' } }] },
+  'eslint-plugin-react/no-string-refs warn and typescript/no-require-imports off for **/*.tsx, in an override listing react',
+  { overrides: [{ files: TSX_FILES, plugins: ['react'], rules: { 'eslint-plugin-react/no-string-refs': 'warn', 'typescript/no-require-imports': 'off' } }] },
 )
 const OTHER_OVERRIDE_TURNS_OURS_OFF = buildTeamShapeValue(
-  'typescript/consistent-type-imports, react/jsx-key and no-compare-neg-zero off for src/**, in an override listing no plugin',
-  { overrides: [{ files: SRC_FILES, rules: { 'typescript/consistent-type-imports': 'off', 'react/jsx-key': 'off', 'no-compare-neg-zero': 'off' } }] },
+  'typescript/no-require-imports, react/no-string-refs and no-compare-neg-zero off for src/**, in an override listing no plugin',
+  { overrides: [{ files: SRC_FILES, rules: { 'typescript/no-require-imports': 'off', 'react/no-string-refs': 'off', 'no-compare-neg-zero': 'off' } }] },
 )
 const EXTENDED_OVERRIDES_STATE_OURS = buildTeamShapeValue(
-  'extends an object listing [] whose overrides turn react/jsx-key off for lib/**, listing react, and state no-compare-neg-zero warn for test files',
+  'extends an object listing [] whose overrides turn react/no-string-refs off for lib/**, listing react, and state no-compare-neg-zero warn for test files',
   {
     extends: [
       {
         plugins: [],
         overrides: [
-          { files: LIB_FILES, plugins: ['react'], rules: { 'react/jsx-key': 'off' } },
+          { files: LIB_FILES, plugins: ['react'], rules: { 'react/no-string-refs': 'off' } },
           { files: TEST_TSX_FILES, rules: { 'no-compare-neg-zero': ['warn'] } },
         ],
       },
@@ -383,8 +383,8 @@ const EXTENDED_OVERRIDES_STATE_OURS = buildTeamShapeValue(
 )
 // Both statements count only where react is listed at the root: the override lists promise alone.
 const STATEMENTS_OF_OURS_OXLINT_MAY_IGNORE = buildTeamShapeValue(
-  'react/jsx-key warn at the root, and for lib/** in an override listing [promise]',
-  { rules: { 'react/jsx-key': 'warn' }, overrides: [{ files: LIB_FILES, plugins: ['promise'], rules: { 'react/jsx-key': 'warn' } }] },
+  'react/no-string-refs warn at the root, and for lib/** in an override listing [promise]',
+  { rules: { 'react/no-string-refs': 'warn' }, overrides: [{ files: LIB_FILES, plugins: ['promise'], rules: { 'react/no-string-refs': 'warn' } }] },
 )
 
 const NO_CATEGORIES = buildTeamShapeValue('categories left out', {})
@@ -392,32 +392,32 @@ const STYLE_ON = buildTeamShapeValue('categories { style: warn }', { categories:
 const CORRECTNESS_OFF = buildTeamShapeValue('categories { correctness: off }', { categories: { correctness: 'off' } })
 
 const NO_RULE_OF_A_DEFAULT_PLUGIN = buildOurShapeValue('ours: no typescript rule', {})
-const OUR_RULE_OF_A_DEFAULT_PLUGIN = buildOurShapeValue('ours: @typescript-eslint/consistent-type-imports', {
-  rules: { '@typescript-eslint/consistent-type-imports': 'error' },
+const OUR_RULE_OF_A_DEFAULT_PLUGIN = buildOurShapeValue('ours: @typescript-eslint/no-require-imports', {
+  rules: { '@typescript-eslint/no-require-imports': 'error' },
 })
 const OUR_RULE_OF_A_DEFAULT_PLUGIN_OFF_IN_AN_ENTRY = buildOurShapeValue(
-  'ours: @typescript-eslint/consistent-type-imports, off in an entry for src/**',
+  'ours: @typescript-eslint/no-require-imports, off in an entry for src/**',
   {
-    rules: { '@typescript-eslint/consistent-type-imports': 'error' },
-    fileOverrides: [{ files: SRC_FILES, rules: { '@typescript-eslint/consistent-type-imports': 'off' } }],
+    rules: { '@typescript-eslint/no-require-imports': 'error' },
+    fileOverrides: [{ files: SRC_FILES, rules: { '@typescript-eslint/no-require-imports': 'off' } }],
   },
 )
 
 const NO_REACT_RULE = buildOurShapeValue('ours: no react rule', {})
-const OUR_REACT_RULE = buildOurShapeValue('ours: react/jsx-key', { rules: { 'react/jsx-key': 'error' } })
-const OUR_REACT_RULE_OFF_IN_AN_ENTRY = buildOurShapeValue('ours: react/jsx-key, off in an entry for lib/**', {
-  rules: { 'react/jsx-key': 'error' },
-  fileOverrides: [{ files: LIB_FILES, rules: { 'react/jsx-key': 'off' } }],
+const OUR_REACT_RULE = buildOurShapeValue('ours: react/no-string-refs', { rules: { 'react/no-string-refs': 'error' } })
+const OUR_REACT_RULE_OFF_IN_AN_ENTRY = buildOurShapeValue('ours: react/no-string-refs, off in an entry for lib/**', {
+  rules: { 'react/no-string-refs': 'error' },
+  fileOverrides: [{ files: LIB_FILES, rules: { 'react/no-string-refs': 'off' } }],
 })
-const OUR_ENTRY_TURNING_OFF_A_RULE_WE_DO_NOT_RUN = buildOurShapeValue('ours: react/jsx-key off in an entry for lib/**, and on nowhere', {
-  fileOverrides: [{ files: LIB_FILES, rules: { 'react/jsx-key': 'off' } }],
+const OUR_ENTRY_TURNING_OFF_A_RULE_WE_DO_NOT_RUN = buildOurShapeValue('ours: react/no-string-refs off in an entry for lib/**, and on nowhere', {
+  fileOverrides: [{ files: LIB_FILES, rules: { 'react/no-string-refs': 'off' } }],
 })
-const OUR_REACT_RULE_ONLY_IN_AN_ENTRY = buildOurShapeValue('ours: react/jsx-key on in an entry for lib/** only', {
-  fileOverrides: [{ files: LIB_FILES, rules: { 'react/jsx-key': 'error' } }],
+const OUR_REACT_RULE_ONLY_IN_AN_ENTRY = buildOurShapeValue('ours: react/no-string-refs on in an entry for lib/** only', {
+  fileOverrides: [{ files: LIB_FILES, rules: { 'react/no-string-refs': 'error' } }],
 })
 // Our top-level off removes only ours: the team's config alone decides the rule.
-const OUR_REACT_RULE_OFF_AT_THE_TOP_LEVEL = buildOurShapeValue('ours: react/jsx-key off at the top level', {
-  rules: { 'react/jsx-key': 'off' },
+const OUR_REACT_RULE_OFF_AT_THE_TOP_LEVEL = buildOurShapeValue('ours: react/no-string-refs off at the top level', {
+  rules: { 'react/no-string-refs': 'off' },
 })
 
 // A core rule of oxlint's: its plugin is eslint, which oxlint always runs.

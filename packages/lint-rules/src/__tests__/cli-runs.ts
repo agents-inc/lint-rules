@@ -2,11 +2,12 @@ import { spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { constants } from 'node:os'
-import { delimiter, join } from 'node:path'
+import { delimiter, dirname, join } from 'node:path'
 import { text } from 'node:stream/consumers'
 import { fileURLToPath } from 'node:url'
 import { satisfies } from 'semver'
 import { hasErrorCode } from '../core/caught-errors.ts'
+import { assertNoFindingWasCut } from './check-output.ts'
 import { escapeForPattern, type FolderWatch } from './folder-watch.ts'
 import { createGitProject, type GitProject, testEnv } from './git-projects.ts'
 import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
@@ -54,6 +55,12 @@ export type RunBesideAnotherWriter = { readonly wrote: boolean; readonly run: Cl
 
 export type FileHolding = { readonly path: string; readonly text: string }
 
+/**
+ * A file another writer deletes in one of check's oxlint runs (`fix`, with `--fix`, or `lint`), at a point oxlint's own
+ * progress sets: before oxlint opens it, or as the run ends, once oxlint read every file.
+ */
+export type DeletionWhileOxlintRuns = { readonly path: string; readonly run: 'fix' | 'lint'; readonly when: 'before oxlint opens it' | 'as the run ends' }
+
 // check needs Node 22.18 or later.
 const BELOW_THE_FLOOR = '<22.18.0'
 const CLI_TIMEOUT_MS = 240_000
@@ -75,6 +82,18 @@ const WRITES_AS_OXLINT_LINT_RUN_ENDS = 'AGENTS_INC_TEST_WRITES_AS_OXLINT_LINT_RU
 const OXLINT_HOLDING_ON_AFTER_A_STOP = new URL('./oxlint-holding-on-after-a-stop.mjs', import.meta.url).href
 // Read by oxlint-holding-on-after-a-stop.mjs, under the same name there.
 const OXLINT_HOLDING_ON = 'AGENTS_INC_TEST_OXLINT_HOLDING_ON'
+// Imported into each Node process of a check run: in the oxlint run the variable below names, it deletes a file.
+const ANOTHER_WRITER_DELETING_WHILE_OXLINT_RUNS = new URL('./another-writer-deleting-while-oxlint-runs.mjs', import.meta.url).href
+// Read by another-writer-deleting-while-oxlint-runs.mjs and oxlint-plugin-deleting-a-file.mjs, under the same name there.
+const DELETES_WHILE_OXLINT_RUNS = 'AGENTS_INC_TEST_DELETES_WHILE_OXLINT_RUNS'
+// Written once the file is deleted, in the folder above the project, which is in no repo.
+const DELETION_MARKER = 'deleted-while-oxlint-ran'
+// Imported into each Node process of a run: it moves the clock forward by the months the variable below names.
+const CLOCK_MOVED_FORWARD = new URL('./clock-moved-forward.mjs', import.meta.url).href
+// Read by clock-moved-forward.mjs, under the same name there.
+const CLOCK_MONTHS_AHEAD = 'AGENTS_INC_TEST_CLOCK_MONTHS_AHEAD'
+// browserslist reads it empty as unset, so a value the tests inherit cannot hide its old-data message.
+const BROWSERSLIST_IGNORE_OLD_DATA = 'BROWSERSLIST_IGNORE_OLD_DATA'
 // What signalling a process that has ended gives.
 const NO_SUCH_PROCESS = 'ESRCH'
 
@@ -103,8 +122,9 @@ export function runCommandLine(cwd: string, commandLine: string, args: readonly 
   return { exitCode: status, signal, stdout, stderr }
 }
 
+/** Throws where check cut its list short. */
 export function runCheck(cwd: string, options: CliOptions = {}): CliRun {
-  return runCli(cwd, ['check'], options)
+  return withNoFindingCut(runCli(cwd, ['check'], options))
 }
 
 export function runInit(cwd: string, options: CliOptions = {}): CliRun {
@@ -136,8 +156,15 @@ function startCli(cwd: string, args: readonly string[], { env = {}, node = proce
   }
 }
 
+/** Its run rejects where check cut its list short. */
 function startCheck(cwd: string, options: CliOptions = {}): StartedCli {
-  return startCli(cwd, ['check'], options)
+  const started = startCli(cwd, ['check'], options)
+  return { ...started, ended: started.ended.then(withNoFindingCut) }
+}
+
+function withNoFindingCut(run: CliRun): CliRun {
+  assertNoFindingWasCut(run.stdout)
+  return run
 }
 
 export const RUNS_IN_THE_BACKGROUND: RunsBeforeTheSuiteOptions = { timeoutMs: 600_000, whatFailed: 'the runs could not be made before the suite' }
@@ -206,6 +233,14 @@ export async function checkRunningOnBesideAnotherWriter(cwd: string, path: strin
   return { wrote: didAct, run }
 }
 
+/** `wrote`: whether the writer deleted the file at the point given, which the marker it leaves names. */
+export function checkBesideAWriterDeletingWhileOxlintRuns(cwd: string, deletion: DeletionWhileOxlintRuns): RunBesideAnotherWriter {
+  const marker = join(dirname(cwd), DELETION_MARKER)
+  const nodeOptions = [process.env.NODE_OPTIONS, `--import=${ANOTHER_WRITER_DELETING_WHILE_OXLINT_RUNS}`].filter((option) => option !== undefined && option !== '').join(' ')
+  const run = runCheck(cwd, { env: { NODE_OPTIONS: nodeOptions, [DELETES_WHILE_OXLINT_RUNS]: JSON.stringify({ ...deletion, marker }) } })
+  return { wrote: existsSync(marker) && readFileSync(marker, 'utf8') === deletion.when, run }
+}
+
 /** The writer writes after oxlint read each file, and before check reads it again to place what oxlint reported. */
 export function anotherWriterAsOxlintsLintRunEnds(writes: readonly FileHolding[]): CliOptions {
   const nodeOptions = [process.env['NODE_OPTIONS'], `--import=${WRITER_AS_OXLINT_LINT_RUN_ENDS}`].filter((option) => option !== undefined && option !== '').join(' ')
@@ -224,6 +259,12 @@ export async function checkSignalledTwiceWhileOxlintHoldsOn(
   const run = await started.ended
   const didOxlintHoldOnPastTheRun = isHoldingOn && wasRunningUntilEnded(Number(readFileSync(markers.holding, 'utf8')))
   return { pid: started.pid, signalled: wasAskedToStop, run, oxlintHeldOnPastTheRun: didOxlintHoldOnPastTheRun }
+}
+
+/** Each Node process of the run reads the clock the months given ahead, with browserslist left free to warn that its data is old. */
+export function clockMovedForward(months: number): Required<Pick<CliOptions, 'env'>> {
+  const nodeOptions = [process.env['NODE_OPTIONS'], `--import=${CLOCK_MOVED_FORWARD}`].filter((option) => option !== undefined && option !== '').join(' ')
+  return { env: { NODE_OPTIONS: nodeOptions, [CLOCK_MONTHS_AHEAD]: String(months), [BROWSERSLIST_IGNORE_OLD_DATA]: '' } }
 }
 
 function oxlintHoldingOnAfterAStop(markers: OxlintHoldingOn): CliOptions {

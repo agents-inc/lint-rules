@@ -1,3 +1,4 @@
+import type { OxlintConfig } from 'oxlint'
 import type { RuleByItsNames } from '../findings-beside-the-team.ts'
 import type { OurFields } from './both-engines-grid.ts'
 
@@ -27,11 +28,8 @@ export function four(a, b, c, d) {
 }
 `
 
-// The same, and an empty function (10), which no-empty-function reports.
-const TS_SOURCE_WITH_AN_EMPTY_FUNCTION = `${TS_SOURCE}export function empty(): void {}
-`
-
-const JS_SOURCE_WITH_AN_EMPTY_FUNCTION = `${JS_SOURCE}export function empty() {}
+// Beside either, a class whose constructor does nothing (10), which no-useless-constructor reports.
+const USELESS_CONSTRUCTOR = `export class Empty { constructor() {} }
 `
 
 // A parameter never used (1): no-unused-vars reports it under args all, not under args none.
@@ -45,12 +43,16 @@ const JS_UNUSED_PARAMETER_SOURCE = `export function f(unused) {
 }
 `
 
+// Beside either, a constant never used (4), which no-unused-vars reports under args none and all alike.
+const UNUSED_CONSTANT = `const constant = 1
+`
+
 const MAX_3 = ['error', { max: 3 }] as const
 const MAX_2 = ['error', { max: 2 }] as const
 
-export const NO_EMPTY_FUNCTION: RuleByItsNames = {
-  rule: 'no-empty-function',
-  names: ['no-empty-function', '@typescript-eslint/no-empty-function', 'eslint(no-empty-function)'],
+export const NO_USELESS_CONSTRUCTOR: RuleByItsNames = {
+  rule: 'no-useless-constructor',
+  names: ['no-useless-constructor', '@typescript-eslint/no-useless-constructor', 'eslint(no-useless-constructor)'],
 }
 
 export const OURS_STATING_BOTH_MAX_PARAMS_NAMES: OurFields = {
@@ -73,17 +75,12 @@ export const OURS_STATING_BOTH_MAX_PARAMS_NAMES_BESIDE_ONE_ALONE: OurFields = {
   ],
 }
 
-/** oxlint's no-redeclare refuses the option (measured, oxlint 1.87: "unknown field `ignoreDeclarationMerge`"). */
-export const OURS_STATING_BOTH_NO_REDECLARE_NAMES_THE_EXTENSION_WITH_AN_OPTION_OXLINT_REFUSES: OurFields = {
-  rules: { 'no-redeclare': 'error', '@typescript-eslint/no-redeclare': ['error', { ignoreDeclarationMerge: true }] },
-}
-
 export const OURS_STATING_BOTH_NAMES_OF_TWO_PAIRS: OurFields = {
   rules: {
     'max-params': MAX_3,
     '@typescript-eslint/max-params': MAX_2,
-    'no-empty-function': 'error',
-    '@typescript-eslint/no-empty-function': 'off',
+    'no-useless-constructor': 'error',
+    '@typescript-eslint/no-useless-constructor': 'off',
   },
 }
 
@@ -101,26 +98,41 @@ export const OURS_STATING_BOTH_MAX_PARAMS_NAMES_BESIDE_AN_ENTRY_TURNING_MAX_PARA
 }
 
 /** max-params at ESLint's default of 3, in the engine other than the one our part runs them in. */
-export const TEAM_ESLINT_RULES_TURNING_MAX_PARAMS_AND_NO_EMPTY_FUNCTION_ON = { 'max-params': 'error', 'no-empty-function': 'error' } as const
+export const TEAM_ESLINT_RULES_TURNING_MAX_PARAMS_AND_NO_USELESS_CONSTRUCTOR_ON = { 'max-params': 'error', 'no-useless-constructor': 'error' } as const
 
-// An option oxlint's no-redeclare refuses, and one it honours.
-const IGNORING_DECLARATION_MERGES = ['error', { ignoreDeclarationMerge: true }] as const
-const CHECKING_BUILTIN_GLOBALS = ['error', { builtinGlobals: true }] as const
+// args all with an option oxlint's no-unused-vars loads and does not honour, which rule-data's
+// oxlint-refused-options.json counts as refused; and args none, which it honours.
+const ARGS_ALL_REMOVING_UNUSED_IMPORTS = ['error', { args: 'all', enableAutofixRemoval: { imports: true } }] as const
+const ARGS_NONE = ['error', { args: 'none' }] as const
+
+/** ESLint runs typescript-eslint's in the entry's TS files, where oxlint would drop its option. */
+export const OURS_SETTING_NO_UNUSED_VARS_AND_TYPESCRIPT_ESLINTS_IN_AN_ENTRY_WITH_AN_OPTION_OXLINT_DROPS: OurFields = {
+  rules: { 'no-unused-vars': ARGS_NONE },
+  fileOverrides: [{ files: ['legacy/**'], rules: { '@typescript-eslint/no-unused-vars': ARGS_ALL_REMOVING_UNUSED_IMPORTS } }],
+}
+
+export const OURS_STATING_BOTH_NO_UNUSED_VARS_NAMES_THE_EXTENSION_WITH_AN_OPTION_OXLINT_DROPS: OurFields = {
+  rules: { 'no-unused-vars': ARGS_NONE, '@typescript-eslint/no-unused-vars': ARGS_ALL_REMOVING_UNUSED_IMPORTS },
+}
 
 /** ESLint runs typescript-eslint's on the TS files alone, and no rule of ours runs on the JS files. */
-export const OURS_TURNING_NO_REDECLARE_OFF_AND_TYPESCRIPT_ESLINTS_ON: OurFields = {
-  rules: { 'no-redeclare': 'off', '@typescript-eslint/no-redeclare': IGNORING_DECLARATION_MERGES },
+export const OURS_TURNING_NO_UNUSED_VARS_OFF_AND_TYPESCRIPT_ESLINTS_ON: OurFields = {
+  rules: { 'no-unused-vars': 'off', '@typescript-eslint/no-unused-vars': ARGS_ALL_REMOVING_UNUSED_IMPORTS },
 }
 
-export const OURS_TURNING_NO_REDECLARE_OFF_AND_TYPESCRIPT_ESLINTS_ON_IN_AN_ENTRY: OurFields = {
-  fileOverrides: [{ files: ['legacy/**'], rules: { 'no-redeclare': 'off', '@typescript-eslint/no-redeclare': IGNORING_DECLARATION_MERGES } }],
+export const OURS_TURNING_NO_UNUSED_VARS_OFF_AND_TYPESCRIPT_ESLINTS_ON_IN_AN_ENTRY: OurFields = {
+  fileOverrides: [{ files: ['legacy/**'], rules: { 'no-unused-vars': 'off', '@typescript-eslint/no-unused-vars': ARGS_ALL_REMOVING_UNUSED_IMPORTS } }],
 }
 
-/** no-redeclare is in force nowhere, so the entry's setting stays typescript-eslint's, which ESLint runs on every file there. */
-export const OURS_TURNING_NO_REDECLARE_OFF_AND_TYPESCRIPT_ESLINTS_ON_BESIDE_AN_ENTRY_STATING_TYPESCRIPT_ESLINTS_ALONE: OurFields = {
-  rules: { 'no-redeclare': 'off', '@typescript-eslint/no-redeclare': IGNORING_DECLARATION_MERGES },
-  fileOverrides: [{ files: ['legacy/**'], rules: { '@typescript-eslint/no-redeclare': CHECKING_BUILTIN_GLOBALS } }],
+/** no-unused-vars is in force nowhere, so the entry's setting stays typescript-eslint's, which ESLint runs on every file there. */
+export const OURS_TURNING_NO_UNUSED_VARS_OFF_AND_TYPESCRIPT_ESLINTS_ON_BESIDE_AN_ENTRY_STATING_TYPESCRIPT_ESLINTS_ALONE: OurFields = {
+  rules: { 'no-unused-vars': 'off', '@typescript-eslint/no-unused-vars': ARGS_ALL_REMOVING_UNUSED_IMPORTS },
+  fileOverrides: [{ files: ['legacy/**'], rules: { '@typescript-eslint/no-unused-vars': ARGS_NONE } }],
 }
+
+export const TEAM_ESLINT_RULES_TURNING_NO_UNUSED_VARS_ON = { 'no-unused-vars': 'error' } as const
+
+export const TEAM_OXLINT_CONFIG_TURNING_NO_UNUSED_VARS_ON: OxlintConfig = { categories: { correctness: 'off' }, rules: { 'no-unused-vars': 'error' } }
 
 export const OURS_STATING_BOTH_NO_UNUSED_VARS_NAMES: OurFields = {
   rules: { 'no-unused-vars': ['error', { args: 'none' }], '@typescript-eslint/no-unused-vars': ['error', { args: 'all' }] },
@@ -128,9 +140,9 @@ export const OURS_STATING_BOTH_NO_UNUSED_VARS_NAMES: OurFields = {
 
 export const maxParamsSourceFiles = { 'src/a.ts': TS_SOURCE, 'src/b.js': JS_SOURCE } as const
 
-export const maxParamsAndEmptyFunctionSourceFiles = {
-  'src/a.ts': TS_SOURCE_WITH_AN_EMPTY_FUNCTION,
-  'src/b.js': JS_SOURCE_WITH_AN_EMPTY_FUNCTION,
+export const maxParamsAndUselessConstructorSourceFiles = {
+  'src/a.ts': `${TS_SOURCE}${USELESS_CONSTRUCTOR}`,
+  'src/b.js': `${JS_SOURCE}${USELESS_CONSTRUCTOR}`,
 } as const
 
 export const maxParamsSourceFilesInLegacyAndSrc = {
@@ -140,12 +152,19 @@ export const maxParamsSourceFilesInLegacyAndSrc = {
   'src/b.js': JS_SOURCE,
 } as const
 
-/** A TS and a JS file in src/ and in scripts/, which no-unused-vars' own ignores leave out. */
+/** A TS and a JS file in src/ and in scripts/. */
 export const unusedParameterSourceFiles = {
   'src/a.ts': TS_UNUSED_PARAMETER_SOURCE,
   'src/b.js': JS_UNUSED_PARAMETER_SOURCE,
   'scripts/s.ts': TS_UNUSED_PARAMETER_SOURCE,
   'scripts/s.js': JS_UNUSED_PARAMETER_SOURCE,
+} as const
+
+export const unusedParameterAndConstantSourceFiles = {
+  'legacy/a.ts': `${TS_UNUSED_PARAMETER_SOURCE}${UNUSED_CONSTANT}`,
+  'legacy/b.js': `${JS_UNUSED_PARAMETER_SOURCE}${UNUSED_CONSTANT}`,
+  'src/a.ts': `${TS_UNUSED_PARAMETER_SOURCE}${UNUSED_CONSTANT}`,
+  'src/b.js': `${JS_UNUSED_PARAMETER_SOURCE}${UNUSED_CONSTANT}`,
 } as const
 
 export const maxParamsSourceFilesAtTheRootAndInSrc = { 'a.ts': TS_SOURCE, 'src/a.ts': TS_SOURCE } as const

@@ -26,11 +26,11 @@ export enum Letter { A = 'a', B = 'a' }
 undefinedThing()
 `,
   // react/jsx-no-duplicate-props, which the react plugin's correctness category turns on (1);
-  // react/jsx-key (1)
-  'src/f.tsx': `export const List = () => <ul id="a" id="b">{[1].map(() => <li />)}</ul>
+  // react/no-string-refs (1)
+  'src/f.tsx': `export const List = () => <ul id="a" id="b"><li ref="item" /></ul>
 `,
   // The same two react rules, in a file a team override for .tsx files does not match
-  'src/g.jsx': `export const Other = () => <ul id="a" id="b">{[1].map(() => <li />)}</ul>
+  'src/g.jsx': `export const Other = () => <ul id="a" id="b"><li ref="item" /></ul>
 `,
   // no-compare-neg-zero: a core rule, in oxlint's eslint scope, which its correctness category turns on
   'src/h.ts': `export const isNegativeZero = (value: number): boolean => value === -0
@@ -40,8 +40,8 @@ undefinedThing()
 /** src, and lib, which no override for src matches. */
 export const REACT_LINTED_DIRS = ['src', 'lib']
 
-// react/jsx-no-duplicate-props (via react's correctness category) and react/jsx-key, both on line 1.
-const REACT_SOURCE = `export const List = () => <ul id="a" id="b">{[1].map(() => <li />)}</ul>
+// react/jsx-no-duplicate-props (via react's correctness category) and react/no-string-refs, both on line 1.
+const REACT_SOURCE = `export const List = () => <ul id="a" id="b"><li ref="item" /></ul>
 `
 
 export const reactSourceFiles = {

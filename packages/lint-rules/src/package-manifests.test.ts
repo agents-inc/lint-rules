@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import inventory from '@workspace/rule-data/generated/inventory.json' with { type: 'json' }
 import { beforeAll, describe, expect, it } from 'vitest'
+import { TYPESCRIPT_ESLINT_PACKAGES } from './__tests__/cases/typescript-eslint-packages.ts'
 import {
   dependenciesNoInlinedPackageLists,
   dependenciesNotListedBy,
@@ -19,6 +20,8 @@ import {
   pathsNpmPacks,
   readLockedWorkspaces,
   readManifest,
+  typescriptEslintInstallsAmong,
+  typescriptEslintListings,
   workspaceDirsOf,
 } from './__tests__/package-manifests.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
@@ -37,6 +40,7 @@ const SHIPPED = readManifest(join(PACKAGE_DIR, 'package.json'))
 const WORKSPACE_SCOPE = '@workspace/'
 // The @workspace packages the shipped manifest lists, by name: a test below holds them to the manifest.
 const INLINED_NAMES = ['@workspace/eslint-plugin-house', '@workspace/rule-data', '@workspace/typescript-config']
+const TYPESCRIPT_ESLINT = 'typescript-eslint'
 
 // Node versions at the edges of the engines range (`^22.18.0 || >=24`): 22.18 is the first Node 22
 // that loads agents-inc.lint.mts without a flag, and ESLint 10 admits no Node 23.
@@ -183,16 +187,43 @@ describe('the workspace packages the build inlines', () => {
   })
 })
 
-// What its own code imports or runs: every other package it depends on is one a package its build inlines depends on.
+// What its own code imports or runs: every other package it depends on is a typescript-eslint package (held by the
+// suite below) or one a package its build inlines depends on.
 const ITS_OWN_DEPENDENCIES = ['@eslint/compat', 'eslint', 'eslint-import-resolver-typescript', 'globals', 'oxlint']
 
 describe('the packages @agents-inc/lint-rules depends on', () => {
-  it('are its own and those the packages its build inlines depend on, so it installs no plugin rule-data leaves out', () => {
-    expect(dependenciesNoInlinedPackageLists(SHIPPED, INLINED_NAMES.map(inlinedManifestOf))).toStrictEqual(ITS_OWN_DEPENDENCIES)
+  it("are its own, typescript-eslint's and those the packages its build inlines depend on, so it installs no plugin rule-data leaves out", () => {
+    const notTypescriptEslint = dependenciesNoInlinedPackageLists(SHIPPED, INLINED_NAMES.map(inlinedManifestOf)).filter(
+      (name) => !TYPESCRIPT_ESLINT_PACKAGES.includes(name),
+    )
+
+    expect(notTypescriptEslint).toStrictEqual(ITS_OWN_DEPENDENCIES)
   })
 
   it('are each pinned to one version', () => {
     expect(dependenciesNotPinned(SHIPPED)).toStrictEqual([])
+  })
+})
+
+function typescriptEslintVersionListedBy(manifest: Manifest): string {
+  const version = listedUnder(manifest, 'dependencies')[TYPESCRIPT_ESLINT]
+  if (version === undefined) throw new Error(`${manifest.name}'s package.json lists no ${TYPESCRIPT_ESLINT}`)
+  return version
+}
+
+describe('the typescript-eslint packages @agents-inc/lint-rules lists', () => {
+  it('are each typescript-eslint package, at the version it lists typescript-eslint at, so npm installs no second copy of one', () => {
+    const version = typescriptEslintVersionListedBy(SHIPPED)
+
+    expect(typescriptEslintListings(SHIPPED)).toStrictEqual(Object.fromEntries(TYPESCRIPT_ESLINT_PACKAGES.map((name) => [name, version])))
+  })
+})
+
+describe('the typescript-eslint packages installed for @agents-inc/lint-rules', () => {
+  it('are, by name, those its listing holds to one version', () => {
+    const installedNames = new Set(typescriptEslintInstallsAmong(packagesInstalledFor(PACKAGE_DIR)).map(({ name }) => name))
+
+    expect([...installedNames].toSorted()).toStrictEqual(TYPESCRIPT_ESLINT_PACKAGES)
   })
 })
 

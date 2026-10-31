@@ -5,6 +5,7 @@ import {
   LISTS_WITH_SORTING_RULESETS,
   TEXT_WITH_AN_EMPTY_FLAT_LIST,
   TEXT_WITH_OPT_IN_RULESETS,
+  TEXT_WITH_OPT_IN_RULESETS_AND_THE_PLAYWRIGHT_EXAMPLE_UNCOMMENTED,
   TEXT_WITH_SORTING_RULESETS,
 } from '../cases/init-config-texts.ts'
 import { initConfigTextListing, packageJsonTextIn } from './init-factories.ts'
@@ -21,6 +22,10 @@ describe('initConfigTextListing', () => {
     { lists: LISTS_WITH_SORTING_RULESETS, text: TEXT_WITH_SORTING_RULESETS, kind: 'the formatter warning on opt-in rulesets that sort code' },
   ])('lays out the text written by hand for $kind', ({ lists, text }) => {
     expect(initConfigTextListing(lists)).toBe(text)
+  })
+
+  it('lays out the text written by hand with the Playwright example uncommented', () => {
+    expect(initConfigTextListing(LISTS_WITH_OPT_IN_RULESETS, 'uncommented')).toBe(TEXT_WITH_OPT_IN_RULESETS_AND_THE_PLAYWRIGHT_EXAMPLE_UNCOMMENTED)
   })
 })
 

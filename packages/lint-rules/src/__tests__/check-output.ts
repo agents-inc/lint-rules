@@ -11,6 +11,8 @@ const NOT_CHECKED_PREFIX = 'check: not checked: '
 // Every line check writes itself starts so; the text an engine printed, quoted in an entry, need not.
 const CHECK_LINE_PREFIX = 'check: '
 const NOT_FOUND = -1
+// `+3 more findings in 2 files. Fix the ones above, …`
+const CUT_LINE = /^\+\d+ more findings? in \d+ files?\. /u
 
 export function linesOf(output: string): string[] {
   const lines = output.split(LINE_END)
@@ -50,6 +52,12 @@ export function lastLineOf(stdout: string): string {
   const last = linesOf(stdout).at(-1)
   if (last === undefined) throw new Error('check printed nothing to stdout')
   return last
+}
+
+/** Throws where check cut its list short, since a finding missing from a cut list may only have been cut. */
+export function assertNoFindingWasCut(stdout: string): void {
+  const cutLine = linesOf(stdout).find((line) => CUT_LINE.test(line))
+  if (cutLine !== undefined) throw new Error(`check cut its list short, so a finding missing from it proves nothing: give the spec a project with fewer findings. ${cutLine}`)
 }
 
 /** Each `check: not checked: …` entry, in the order printed, one quoting text over several lines kept whole. */

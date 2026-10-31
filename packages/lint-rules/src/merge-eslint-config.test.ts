@@ -6,13 +6,13 @@ import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
 import { pluginPrefixOf } from '@workspace/rule-data/rule-id-parts'
 import type { ESLint, Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { agentConfigsOf } from './__tests__/agent-configs.ts'
 import { severityOfCalculatedEntry } from './__tests__/calculated-rule-severity.ts'
 import {
+  annotationTheInitializerImplies,
   buttonWithoutAType,
   cleanModule,
-  commentAsJsxText,
   genericArrayOfASimpleType,
   innerHtmlSetDangerously,
   looseNullCheck,
@@ -21,7 +21,9 @@ import {
   simpleTypeArrayInBrackets,
   stringLiteralInBracesAsAProp,
   suppressionOfAnOxcRule,
+  suppressionOfOxlintsUnicornName,
   thrownStringLiteral,
+  uselessFragment,
 } from './__tests__/cases/editor-merge-sources.ts'
 import { listItemWithoutAKey } from './__tests__/cases/eslint-merge-sources.ts'
 import { suppressionOfARuleNobodyDefines } from './__tests__/cases/suppression-comments.ts'
@@ -61,9 +63,11 @@ import {
 import { pathsOfFunctionsIn } from './__tests__/functions-in.ts'
 import { resolversImportXReads } from './__tests__/import-x-settings.ts'
 import { sameModuleNamesOfEach, sameRuleNamesOfEach, type TwinPair, twinPairsOf } from './__tests__/other-eslint-names.ts'
+import { PARALLEL_LOAD_TIMEOUT_MS } from './__tests__/parallel-load.ts'
 import { changesSince, snapshotOf } from './__tests__/plugin-snapshots.ts'
 import { rulesNotFoundAmong } from './__tests__/rules-not-found.ts'
 import { rulesOnInEslint } from './__tests__/rules-on-engines.ts'
+import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { importedTeamConfig } from './__tests__/team-config-modules.ts'
 import { NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG, writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
@@ -146,32 +150,33 @@ type Registration = {
 }
 
 const ARRAY_TYPE = '@typescript-eslint/array-type'
+const NO_INFERRABLE_TYPES = '@typescript-eslint/no-inferrable-types'
 const FLOATING_PROMISES = '@typescript-eslint/no-floating-promises'
 const TYPED_RULE_ON = { rules: { [FLOATING_PROMISES]: 'error' } } satisfies SharedFields
 // Files a team lints without type information, as a scripts folder outside its tsconfig.
 const SCRIPT_FILES = ['scripts/**']
 // typescript-eslint's extensions of core rules, which oxlint does not spell under its typescript
-// scope. The first two core rules are routed to ESLint; without oxlint, ESLint runs each other one's
-// current extension on TS files in its place. No ruleset ships require-await, but `rules` can.
+// scope. The first core rule is routed to ESLint; without oxlint, ESLint runs each other one's
+// current extension on TS files in its place.
 const TWINS_OXLINT_DOES_NOT_SPELL: readonly TwinOfACoreRule[] = [
   { twin: '@typescript-eslint/only-throw-error', coreRule: 'no-throw-literal', withoutOxlint: 'run by ESLint' },
-  { twin: '@typescript-eslint/prefer-promise-reject-errors', coreRule: 'prefer-promise-reject-errors', withoutOxlint: 'run by ESLint' },
+  {
+    twin: '@typescript-eslint/prefer-promise-reject-errors',
+    coreRule: 'prefer-promise-reject-errors',
+    withoutOxlint: 'run by ESLint, as the extension on TS files',
+  },
   { twin: '@typescript-eslint/prefer-destructuring', coreRule: 'prefer-destructuring', withoutOxlint: 'run by ESLint, as the extension on TS files' },
   {
     twin: '@typescript-eslint/no-unused-private-class-members',
     coreRule: 'no-unused-private-class-members',
     withoutOxlint: 'run by ESLint, as the extension on TS files',
   },
-  { twin: '@typescript-eslint/require-await', coreRule: 'require-await', withoutOxlint: 'run by ESLint, as the extension on TS files' },
 ]
 // A rule of the team's own under typescript-eslint's prefix, which must keep firing beside a twin turned off.
 const TEAM_RULE_OF_TYPESCRIPT_ESLINT = '@typescript-eslint/team-rule'
-// One rule of ours that ESLint runs, and typescript-eslint's twin of it, which the team runs.
-const OUR_CORE_RULE_WITH_A_TWIN = 'prefer-promise-reject-errors'
-const TEAMS_TWIN_OF_OUR_CORE_RULE = '@typescript-eslint/prefer-promise-reject-errors'
-// A core rule our oxlint part runs in every file, no ruleset shipping it with files of its own, and its twin.
-const CORE_RULE_OXLINT_RUNS_EVERYWHERE = 'require-await'
-const TWIN_OF_THE_CORE_RULE_OXLINT_RUNS_EVERYWHERE = '@typescript-eslint/require-await'
+// One rule of ours that ESLint runs in either project, and typescript-eslint's twin of it, which the team runs.
+const OUR_CORE_RULE_WITH_A_TWIN = 'no-throw-literal'
+const TEAMS_TWIN_OF_OUR_CORE_RULE = '@typescript-eslint/only-throw-error'
 const OFF = 0
 const WARN = 1
 const ERROR = 2
@@ -180,7 +185,7 @@ const TYPESCRIPT_ESLINT_PARSER_NAME = 'typescript-eslint/parser'
 // deprecated no-loop-func, which points back to the core rule, import-x/first's alias, and
 // unicorn's old name of no-for-each.
 const SAME_RULE_NAMES_THE_WALK_REACHES = ['@typescript-eslint/no-loop-func', 'import/first', 'unicorn/no-array-for-each']
-// Files the twin walk reads: TS, JS, a folder and a story no-unused-vars ships ignoring, and a file
+// Files the twin walk reads: TS, JS, a scripts folder, a story no-unused-vars ships ignoring, and a file
 // our typed blocks leave out, a consumer config file.
 const TWIN_WALK_FILES = ['src/a.ts', 'src/a.js', 'scripts/a.ts', 'src/a.stories.tsx', 'agents-inc.lint.mts']
 // Our typed typescript-eslint rule, whose core twin the team runs.
@@ -204,9 +209,9 @@ const NO_THROW_LITERAL = 'no-throw-literal'
 const TWINS_BOTH_WAYS: readonly TwinBesideOurs[] = [
   {
     direction: "our core rule, the team's typescript-eslint rule",
-    ours: 'prefer-promise-reject-errors',
-    theirs: '@typescript-eslint/prefer-promise-reject-errors',
-    teamOptions: { allowEmptyReject: true },
+    ours: 'no-throw-literal',
+    theirs: '@typescript-eslint/only-throw-error',
+    teamOptions: { allowThrowingUnknown: false },
   },
   {
     direction: "our typescript-eslint rule, the team's core rule",
@@ -250,9 +255,9 @@ const TEAM_PROMISE_PREFIX = 'promise-x'
 const TEAM_PROMISE_RULE = 'promise-x/param-names'
 const TEAM_LOCAL_PREFIX = 'local'
 const TEAM_LOCAL_PROMISE_NAMED_RULE = 'local/param-names'
-// regexp's prefer-regexp-exec, and typescript-eslint's rule of that name under the team's `ts`: another rule.
-const OUR_REGEXP_RULE = 'regexp/prefer-regexp-exec'
-const TEAM_TS_RULE_NAMED_AS_OUR_REGEXP_RULE = 'ts/prefer-regexp-exec'
+// unicorn's prefer-includes, and typescript-eslint's rule of that name under the team's `ts`: another rule.
+const OUR_UNICORN_RULE = 'unicorn/prefer-includes'
+const TEAM_TS_RULE_NAMED_AS_OUR_UNICORN_RULE = 'ts/prefer-includes'
 // A prefix oxlint reads typescript-eslint's rules under, which no ESLint plugin of ours is registered
 // under, and a team plugin of its own registered there.
 const TEAM_TYPESCRIPT_PREFIX = 'typescript'
@@ -273,8 +278,8 @@ const TEAM_BUTTON_TYPE = 'react/dom-no-missing-button-type'
 const ESLINT_REACT_RULE_NAMES = ['dom-no-dangerously-set-innerhtml', 'dom-no-missing-button-type', 'jsx-no-comment-textnodes']
 // A rule name eslint-plugin-react and @eslint-react both have: under `react` it is either plugin's,
 // as the team registers one or the other there.
-const OUR_COMMENT_TEXTNODES = '@eslint-react/jsx-no-comment-textnodes'
-const COMMENT_TEXTNODES_UNDER_REACT = 'react/jsx-no-comment-textnodes'
+const OUR_USELESS_FRAGMENT = '@eslint-react/jsx-no-useless-fragment'
+const USELESS_FRAGMENT_UNDER_REACT = 'react/jsx-no-useless-fragment'
 const CURLY_BRACE_PRESENCE = 'react/jsx-curly-brace-presence'
 // @eslint-react binds one rule module to both of these names, so they are one rule: the second is
 // ours under another name, and the third that one under the prefix antfu's config registers it under.
@@ -325,7 +330,7 @@ const PROJECTS_THE_TWIN_WALK_READS = [
   {
     project: 'whose package.json lists no oxlint',
     projectDir: PROJECT_WITHOUT_OXLINT,
-    reaches: ['@typescript-eslint/prefer-promise-reject-errors'],
+    reaches: ['dot-notation'],
   },
 ]
 
@@ -454,13 +459,6 @@ function entryIn(entries: Readonly<EntriesByFile>, file: string): CalculatedEntr
   return entry
 }
 
-/** The very plugin object our base block registers under the prefix: eslint-plugin-react carries no name to know it by. */
-function ourRegisteredPlugin(prefix: string): ESLint.Plugin {
-  const plugin = eslintPluginRegistry[prefix]
-  if (plugin === undefined) throw new Error(`we register no plugin under ${prefix}`)
-  return plugin
-}
-
 /** The block with each plugin object read as the prefix it is registered under, so blocks compare by everything else. */
 function withPluginPrefixesOnly({ plugins, ...block }: Readonly<Linter.Config>): Record<string, unknown> {
   return plugins === undefined ? block : { ...block, plugins: Object.keys(plugins).toSorted() }
@@ -491,18 +489,18 @@ describe('a team block registering, under the prefix of a rule we run, a plugin 
   const registrations: readonly Registration[] = [
     {
       registers: 'a different object holding the rule, with a module of its own for it',
-      teamConfig: [buildTeamEslintBlock('team', { plugins: { '@typescript-eslint': buildFakePlugin(['array-type']) } })],
-      fields: { rules: { [ARRAY_TYPE]: 'error' } },
-      ourRule: ARRAY_TYPE,
-      source: genericArrayOfASimpleType,
+      teamConfig: [buildTeamEslintBlock('team', { plugins: { '@typescript-eslint': buildFakePlugin(['no-inferrable-types']) } })],
+      fields: { rules: { [NO_INFERRABLE_TYPES]: 'error' } },
+      ourRule: NO_INFERRABLE_TYPES,
+      source: annotationTheInitializerImplies,
       file: 'src/a.ts',
     },
     {
       registers: 'an object lacking the rule',
       teamConfig: [buildTeamEslintBlock('team', { plugins: { '@typescript-eslint': buildFakePlugin(['team-only']) } })],
-      fields: { rules: { [ARRAY_TYPE]: 'error' } },
-      ourRule: ARRAY_TYPE,
-      source: genericArrayOfASimpleType,
+      fields: { rules: { [NO_INFERRABLE_TYPES]: 'error' } },
+      ourRule: NO_INFERRABLE_TYPES,
+      source: annotationTheInitializerImplies,
       file: 'src/a.ts',
     },
     {
@@ -532,10 +530,10 @@ describe('a team block registering, under the prefix of a rule we run, a plugin 
         rules: { '@typescript-eslint/team-rule': 'error' },
       }),
     ]
-    const config = mergedEditorEslintConfig(projectDir, { rules: { [ARRAY_TYPE]: 'error' } }, teamConfig)
+    const config = mergedEditorEslintConfig(projectDir, { rules: { [NO_INFERRABLE_TYPES]: 'error' } }, teamConfig)
 
-    expect((await ruleIdsReportedOn(config, genericArrayOfASimpleType, 'src/a.ts')).toSorted(inDefaultSortOrder)).toStrictEqual([
-      ARRAY_TYPE,
+    expect((await ruleIdsReportedOn(config, annotationTheInitializerImplies, 'src/a.ts')).toSorted(inDefaultSortOrder)).toStrictEqual([
+      NO_INFERRABLE_TYPES,
       '@typescript-eslint/team-rule',
     ])
   })
@@ -755,12 +753,12 @@ describe("our off and our ignores, beside a team block setting the rule in the f
     "leave a rule we do not state as the team's config gives it in the files our ignores name, ours running elsewhere, in a project $project",
     async ({ projectDir }) => {
       const teamRules = [buildTeamEslintBlock('team', { rules: { 'no-console': ['warn', { allow: ['error'] }] } })]
-      const config = mergedEditorEslintConfig(projectDir, { rules: { [ARRAY_TYPE]: 'error' }, ignores: LEGACY_FILES }, teamRules)
-      const ruleIds = ['no-console', ARRAY_TYPE]
+      const config = mergedEditorEslintConfig(projectDir, { rules: { [NO_INFERRABLE_TYPES]: 'error' }, ignores: LEGACY_FILES }, teamRules)
+      const ruleIds = ['no-console', NO_INFERRABLE_TYPES]
 
       expect(await entriesByFileOf(config, ruleIds, ['legacy/a.ts', 'src/a.ts'])).toStrictEqual({
-        'legacy/a.ts': { 'no-console': [1, { allow: ['error'] }], [ARRAY_TYPE]: ABSENT },
-        'src/a.ts': { 'no-console': [1, { allow: ['error'] }], [ARRAY_TYPE]: [2, { default: 'array-simple' }] },
+        'legacy/a.ts': { 'no-console': [1, { allow: ['error'] }], [NO_INFERRABLE_TYPES]: ABSENT },
+        'src/a.ts': { 'no-console': [1, { allow: ['error'] }], [NO_INFERRABLE_TYPES]: [2] },
       })
     },
   )
@@ -774,18 +772,18 @@ describe('a team rule our part does not state', () => {
     expect(await severitiesOf(config, 'no-console', ['src/a.ts'])).toStrictEqual({ 'src/a.ts': 'warn' })
   })
 
-  // react/react-in-jsx-scope is routed to oxlint but not shipped; our oxlint part runs react/jsx-key. The
+  // react/react-in-jsx-scope is routed to oxlint but not shipped; our oxlint part runs react/no-string-refs. The
   // team sets both, so both are the team's and nothing turns either off.
   it("keeps firing in ESLint when we route it to oxlint but do not run it, and so does one our oxlint part runs, in a project whose package.json lists oxlint", async () => {
     const teamConfig = [
       buildTeamEslintBlock('team', {
-        plugins: { react: buildReportingPlugin(['react-in-jsx-scope', 'jsx-key']) },
-        rules: { 'react/react-in-jsx-scope': 'error', 'react/jsx-key': 'error' },
+        plugins: { react: buildReportingPlugin(['react-in-jsx-scope', 'no-string-refs']) },
+        rules: { 'react/react-in-jsx-scope': 'error', 'react/no-string-refs': 'error' },
       }),
     ]
-    const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, { rules: { 'react/jsx-key': 'error' } }, teamConfig)
+    const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, { rules: { 'react/no-string-refs': 'error' } }, teamConfig)
 
-    expect((await ruleIdsReportedOn(config, cleanModule, 'src/a.tsx')).toSorted(inDefaultSortOrder)).toStrictEqual(['react/jsx-key', 'react/react-in-jsx-scope'])
+    expect((await ruleIdsReportedOn(config, cleanModule, 'src/a.tsx')).toSorted(inDefaultSortOrder)).toStrictEqual(['react/no-string-refs', 'react/react-in-jsx-scope'])
   })
 })
 
@@ -833,8 +831,8 @@ describe('a rule our oxlint part runs in some files only, which the team sets in
       fields: { rules: { [NO_DEBUGGER]: 'error' }, fileOverrides: [{ files: LEGACY_FILES, rules: { [NO_DEBUGGER]: 'off' } }] },
       file: 'legacy/a.ts',
     },
-    // no-unused-vars ships ignoring scripts folders.
-    { where: 'it ships ignoring', ruleId: NO_UNUSED_VARS, teamEntry: ['error', { args: 'none' }], fields: { rules: { [NO_UNUSED_VARS]: 'error' } }, file: 'scripts/a.ts' },
+    // no-unused-vars ships ignoring stories.
+    { where: 'it ships ignoring', ruleId: NO_UNUSED_VARS, teamEntry: ['error', { args: 'none' }], fields: { rules: { [NO_UNUSED_VARS]: 'error' } }, file: 'src/a.stories.tsx' },
   ]
 
   it.each(cases)("is the team's, options included, in a file $where, and in one our oxlint part would run it in", async ({ ruleId, teamEntry, fields, file }) => {
@@ -1282,16 +1280,16 @@ describe("typescript-eslint's twin of a rule either editor part states, which th
     expect({ underIt: await severityIn('legacy/a.ts'), outsideIt: await severityIn('src/a.ts') }).toStrictEqual({ underIt: 'error', outsideIt: 'off' })
   })
 
-  // require-await ships in no ruleset, so our oxlint part would run it in every file it lints.
+  // prefer-destructuring ships with no files of its own, so our oxlint part runs it in every file it lints.
   it("is the team's in the files of an entry turning off a core rule our oxlint part runs in every file, and outside them, in a project whose package.json lists oxlint", async () => {
-    const teamConfig = [buildTeamEslintBlockTurningOn('team', [TWIN_OF_THE_CORE_RULE_OXLINT_RUNS_EVERYWHERE])]
+    const teamConfig = [buildTeamEslintBlockTurningOn('team', [TWIN_OF_PREFER_DESTRUCTURING])]
     const fields = {
-      rules: { [CORE_RULE_OXLINT_RUNS_EVERYWHERE]: 'error' },
-      fileOverrides: [{ files: LEGACY_FILES, rules: { [CORE_RULE_OXLINT_RUNS_EVERYWHERE]: 'off' } }],
+      rules: { [PREFER_DESTRUCTURING]: 'error' },
+      fileOverrides: [{ files: LEGACY_FILES, rules: { [PREFER_DESTRUCTURING]: 'off' } }],
     } satisfies SharedFields
     const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, fields, teamConfig)
 
-    expect(await severitiesOf(config, TWIN_OF_THE_CORE_RULE_OXLINT_RUNS_EVERYWHERE, ['legacy/a.ts', 'src/a.ts'])).toStrictEqual({
+    expect(await severitiesOf(config, TWIN_OF_PREFER_DESTRUCTURING, ['legacy/a.ts', 'src/a.ts'])).toStrictEqual({
       'legacy/a.ts': 'error',
       'src/a.ts': 'error',
     })
@@ -1378,7 +1376,7 @@ describe("typescript-eslint's twin of a rule either editor part states, which th
     },
   )
 
-  // no-unused-vars ships ignoring stories, config files and scripts folders, which oxlint keeps.
+  // no-unused-vars ships ignoring stories, which oxlint keeps.
   it("is the team's where our oxlint part would run the core rule and in the files it ships ignoring, in a project whose package.json lists oxlint", async () => {
     const teamConfig = [buildTeamEslintBlockTurningOn('team', [TWIN_OF_NO_UNUSED_VARS])]
     const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, { rules: { [NO_UNUSED_VARS]: 'error' } }, teamConfig)
@@ -1514,12 +1512,12 @@ describe('a plugin of ours, which the team registers under a prefix of its own',
       const teamConfig = [
         buildTeamEslintBlock('team', {
           plugins: { [TEAM_TS_PREFIX]: installedEslintPlugin(TYPESCRIPT_ESLINT_PREFIX) },
-          rules: { [TEAM_TS_RULE_NAMED_AS_OUR_REGEXP_RULE]: 'error' },
+          rules: { [TEAM_TS_RULE_NAMED_AS_OUR_UNICORN_RULE]: 'error' },
         }),
       ]
-      const config = mergedEditorEslintConfig(projectDir, { rules: { [OUR_REGEXP_RULE]: 'error' } }, teamConfig)
+      const config = mergedEditorEslintConfig(projectDir, { rules: { [OUR_UNICORN_RULE]: 'error' } }, teamConfig)
 
-      expect(await severitiesOf(config, TEAM_TS_RULE_NAMED_AS_OUR_REGEXP_RULE, ['src/a.ts'])).toStrictEqual({ 'src/a.ts': 'error' })
+      expect(await severitiesOf(config, TEAM_TS_RULE_NAMED_AS_OUR_UNICORN_RULE, ['src/a.ts'])).toStrictEqual({ 'src/a.ts': 'error' })
     },
   )
 
@@ -1643,47 +1641,14 @@ describe('our @eslint-react plugin, which the team registers under react, the pr
     },
   )
 
-  // The team's key under `react` names both of ours: the @eslint-react rule through the team's prefix,
-  // and the eslint-plugin-react rule by the literal key. Both are the team's, and ours runs in neither engine.
-  it.each(PROJECTS)(
-    "is the team's for both our rules a key of the team's under react names, the eslint-plugin-react rule and the @eslint-react one, in a project $project",
-    async ({ projectDir }) => {
-      const teamConfig = teamRegisteringOurs(installedEslintPlugin(ESLINT_REACT_PREFIX), { [COMMENT_TEXTNODES_UNDER_REACT]: 'error' })
-      const fields = { rules: { [COMMENT_TEXTNODES_UNDER_REACT]: 'warn', [OUR_COMMENT_TEXTNODES]: 'warn' } } satisfies SharedFields
-      const config = mergedEditorEslintConfig(projectDir, fields, teamConfig)
-
-      expect({
-        severities: await severitiesOfEach(config, [COMMENT_TEXTNODES_UNDER_REACT, OUR_COMMENT_TEXTNODES], ['src/a.tsx']),
-        reported: await ruleIdsReportedOn(config, commentAsJsxText, 'src/a.tsx'),
-      }).toStrictEqual({
-        severities: { 'src/a.tsx': { [COMMENT_TEXTNODES_UNDER_REACT]: 'error', [OUR_COMMENT_TEXTNODES]: 'off' } },
-        reported: [COMMENT_TEXTNODES_UNDER_REACT],
-      })
-    },
-  )
-
-  // The mirror of antfu's registration: our eslint-plugin-react under @eslint-react, where the team sets
-  // no rule. Our oxlint part runs eslint-plugin-react's jsx-no-comment-textnodes, whose name under that
-  // prefix is @eslint-react's rule our blocks state: it stays ours.
-  it("keeps running our @eslint-react rule whose name under @eslint-react is that of an eslint-plugin-react rule our oxlint part runs, where the team registers eslint-plugin-react there, in a project whose package.json lists oxlint", async () => {
-    const teamConfig = [buildTeamEslintBlock('team', { plugins: { [ESLINT_REACT_PREFIX]: ourRegisteredPlugin(REACT_PREFIX) } })]
-    const fields = { rules: { [COMMENT_TEXTNODES_UNDER_REACT]: 'warn', [OUR_COMMENT_TEXTNODES]: 'warn' } } satisfies SharedFields
-    const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, fields, teamConfig)
-
-    expect({
-      oxlintsRuleInEslint: entryIn(await entriesOf(config, COMMENT_TEXTNODES_UNDER_REACT, ['src/a.tsx']), 'src/a.tsx'),
-      ourEslintReactRule: (await severitiesOf(config, OUR_COMMENT_TEXTNODES, ['src/a.tsx']))['src/a.tsx'],
-    }).toStrictEqual({ oxlintsRuleInEslint: ABSENT, ourEslintReactRule: 'warn' })
-  })
-
   it.each(PROJECTS)(
     "is the team's under its name for an @eslint-react rule our part states whose name eslint-plugin-react has too, reporting the finding once under its name, in a project $project",
     async ({ projectDir }) => {
-      const teamConfig = teamRegisteringOurs(installedEslintPlugin(ESLINT_REACT_PREFIX), { [COMMENT_TEXTNODES_UNDER_REACT]: 'error' })
-      const config = mergedEditorEslintConfig(projectDir, { rules: { [OUR_COMMENT_TEXTNODES]: 'warn' } }, teamConfig)
+      const teamConfig = teamRegisteringOurs(installedEslintPlugin(ESLINT_REACT_PREFIX), { [USELESS_FRAGMENT_UNDER_REACT]: 'error' })
+      const config = mergedEditorEslintConfig(projectDir, { rules: { [OUR_USELESS_FRAGMENT]: 'warn' } }, teamConfig)
 
-      expect(await severitiesOf(config, COMMENT_TEXTNODES_UNDER_REACT, ['src/a.tsx'])).toStrictEqual({ 'src/a.tsx': 'error' })
-      expect(await ruleIdsReportedOn(config, commentAsJsxText, 'src/a.tsx')).toStrictEqual([COMMENT_TEXTNODES_UNDER_REACT])
+      expect(await severitiesOf(config, USELESS_FRAGMENT_UNDER_REACT, ['src/a.tsx'])).toStrictEqual({ 'src/a.tsx': 'error' })
+      expect(await ruleIdsReportedOn(config, uselessFragment, 'src/a.tsx')).toStrictEqual([USELESS_FRAGMENT_UNDER_REACT])
     },
   )
 
@@ -1730,13 +1695,13 @@ describe('our @eslint-react plugin, which the team registers under react, the pr
   it.each(PROJECTS)(
     "leaves eslint-plugin-react's rule of that name as the team set it, where the team registers eslint-plugin-react under react, in a project $project",
     async ({ projectDir }) => {
-      const teamConfig = teamRegisteringOurs(installedEslintPlugin(REACT_PREFIX), { [COMMENT_TEXTNODES_UNDER_REACT]: 'error' })
-      const config = mergedEditorEslintConfig(projectDir, { rules: { [OUR_COMMENT_TEXTNODES]: 'warn' } }, teamConfig)
+      const teamConfig = teamRegisteringOurs(installedEslintPlugin(REACT_PREFIX), { [USELESS_FRAGMENT_UNDER_REACT]: 'error' })
+      const config = mergedEditorEslintConfig(projectDir, { rules: { [OUR_USELESS_FRAGMENT]: 'warn' } }, teamConfig)
 
-      expect(await severitiesOf(config, COMMENT_TEXTNODES_UNDER_REACT, ['src/a.tsx'])).toStrictEqual({ 'src/a.tsx': 'error' })
-      expect((await ruleIdsReportedOn(config, commentAsJsxText, 'src/a.tsx')).toSorted(inDefaultSortOrder)).toStrictEqual([
-        OUR_COMMENT_TEXTNODES,
-        COMMENT_TEXTNODES_UNDER_REACT,
+      expect(await severitiesOf(config, USELESS_FRAGMENT_UNDER_REACT, ['src/a.tsx'])).toStrictEqual({ 'src/a.tsx': 'error' })
+      expect((await ruleIdsReportedOn(config, uselessFragment, 'src/a.tsx')).toSorted(inDefaultSortOrder)).toStrictEqual([
+        OUR_USELESS_FRAGMENT,
+        USELESS_FRAGMENT_UNDER_REACT,
       ])
     },
   )
@@ -1780,16 +1745,16 @@ describe('the team config, in any shape defineConfig takes', () => {
 
   it("keeps its setting of our rule IDs in a config it extends: the team's off decides them", async () => {
     const extended = buildTeamEslintBlock('team-base', {
-      plugins: { '@typescript-eslint': buildFakePlugin(['array-type']) },
-      rules: { [ARRAY_TYPE]: 'off' },
+      plugins: { '@typescript-eslint': buildFakePlugin(['no-inferrable-types']) },
+      rules: { [NO_INFERRABLE_TYPES]: 'off' },
     })
     const config = mergedEditorEslintConfig(
       PROJECT_WITH_OXLINT,
-      { rules: { [ARRAY_TYPE]: 'error' } },
+      { rules: { [NO_INFERRABLE_TYPES]: 'error' } },
       buildTeamEslintConfigExtending('team', [extended]),
     )
 
-    expect(await ruleIdsReportedOn(config, genericArrayOfASimpleType, 'src/a.ts')).toStrictEqual([])
+    expect(await ruleIdsReportedOn(config, annotationTheInitializerImplies, 'src/a.ts')).toStrictEqual([])
   })
 })
 
@@ -1843,20 +1808,20 @@ describe('the merged blocks', () => {
 // keep the names they have outside a merge; a rule moves into a numbered copy only where our own
 // ignores keep it out of some files.
 describe("our blocks, beside a team config that takes nothing back from ESLint's default ignores", () => {
-  // Four rules of ours: no-var and array-type in the base block, a typed rule in the typed block, and
+  // Four rules of ours: no-var and no-inferrable-types in the base block, a typed rule in the typed block, and
   // no-debugger, which our oxlint part runs where the project lists oxlint, and our base block elsewhere.
-  const rules = { 'no-var': 'error', [NO_DEBUGGER]: 'error', [ARRAY_TYPE]: 'error', [FLOATING_PROMISES]: 'error' } satisfies SharedFields['rules']
+  const rules = { 'no-var': 'error', [NO_DEBUGGER]: 'error', [NO_INFERRABLE_TYPES]: 'error', [FLOATING_PROMISES]: 'error' } satisfies SharedFields['rules']
   const coreRuleOffInLegacy = { files: LEGACY_FILES, rules: { 'no-var': 'off' } } satisfies NonNullable<SharedFields['fileOverrides']>[number]
   const teamBlockStatingNoneOfOurs = buildTeamEslintBlock('team', { rules: { 'no-console': 'error' } })
   // Our base, Svelte runes and typed blocks under their own names, where no entry of ours, no ignores of ours and no team block moves a rule.
   const ourBlocksUnmovedBesideOxlint: readonly OurBlockStating[] = [
-    { name: 'agents-inc/base', states: [ARRAY_TYPE, 'no-var'] },
+    { name: 'agents-inc/base', states: [NO_INFERRABLE_TYPES, 'no-var'] },
     { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
     { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
     { name: 'agents-inc/typed', states: [FLOATING_PROMISES] },
   ]
   const ourBlocksUnmovedWithoutOxlint: readonly OurBlockStating[] = [
-    { name: 'agents-inc/base', states: [ARRAY_TYPE, NO_DEBUGGER, 'no-var'] },
+    { name: 'agents-inc/base', states: [NO_INFERRABLE_TYPES, NO_DEBUGGER, 'no-var'] },
     { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
     { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
     { name: 'agents-inc/typed', states: [FLOATING_PROMISES] },
@@ -1867,25 +1832,25 @@ describe("our blocks, beside a team config that takes nothing back from ESLint's
       fields: { rules, fileOverrides: [coreRuleOffInLegacy] },
       teamConfig: [buildTeamEslintBlock('team/global-ignores', { ignores: ['dist/'] }), teamBlockStatingNoneOfOurs],
       owedBesideOxlint: [
-        { name: 'agents-inc/base', states: [ARRAY_TYPE, 'no-var'] },
+        { name: 'agents-inc/base', states: [NO_INFERRABLE_TYPES, 'no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
         { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [FLOATING_PROMISES] },
         { name: 'agents-inc/file-overrides/0', states: ['no-var'] },
       ],
       owedWithoutOxlint: [
-        { name: 'agents-inc/base', states: [ARRAY_TYPE, NO_DEBUGGER, 'no-var'] },
+        { name: 'agents-inc/base', states: [NO_INFERRABLE_TYPES, NO_DEBUGGER, 'no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
         { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [FLOATING_PROMISES] },
         { name: 'agents-inc/file-overrides/0', states: ['no-var'] },
       ],
     },
-    // The team's setting makes array-type the team's in every file, so no block of ours states it.
+    // The team's setting makes no-inferrable-types the team's in every file, so no block of ours states it.
     {
-      how: 'a team block turns array-type off in scripts/**, which leaves our base block without it',
+      how: 'a team block turns no-inferrable-types off in scripts/**, which leaves our base block without it',
       fields: { rules },
-      teamConfig: [buildTeamEslintBlock('team', { files: SCRIPT_FILES, rules: { [ARRAY_TYPE]: 'off' } })],
+      teamConfig: [buildTeamEslintBlock('team', { files: SCRIPT_FILES, rules: { [NO_INFERRABLE_TYPES]: 'off' } })],
       owedBesideOxlint: [
         { name: 'agents-inc/base', states: ['no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
@@ -1905,7 +1870,7 @@ describe("our blocks, beside a team config that takes nothing back from ESLint's
       teamConfig: [teamBlockStatingNoneOfOurs],
       owedBesideOxlint: [
         { name: 'agents-inc/base', states: [] },
-        { name: 'agents-inc/base/confined/0', states: [ARRAY_TYPE, 'no-var'] },
+        { name: 'agents-inc/base/confined/0', states: [NO_INFERRABLE_TYPES, 'no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
         { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [] },
@@ -1914,7 +1879,7 @@ describe("our blocks, beside a team config that takes nothing back from ESLint's
       ],
       owedWithoutOxlint: [
         { name: 'agents-inc/base', states: [] },
-        { name: 'agents-inc/base/confined/0', states: [ARRAY_TYPE, NO_DEBUGGER, 'no-var'] },
+        { name: 'agents-inc/base/confined/0', states: [NO_INFERRABLE_TYPES, NO_DEBUGGER, 'no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
         { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [] },
@@ -1982,7 +1947,7 @@ describe("our blocks, beside a team config that takes nothing back from ESLint's
 // Our blocks are still split here, each rule moving into a copy kept out of the files our part never
 // lints: ignores on the base block would also stop our parser and plugins there.
 describe("our blocks, beside a team config whose global ignores take every node_modules folder back from ESLint's default ignores", () => {
-  const rules = { 'no-var': 'error', [NO_DEBUGGER]: 'error', [ARRAY_TYPE]: 'error', [FLOATING_PROMISES]: 'error' } satisfies SharedFields['rules']
+  const rules = { 'no-var': 'error', [NO_DEBUGGER]: 'error', [NO_INFERRABLE_TYPES]: 'error', [FLOATING_PROMISES]: 'error' } satisfies SharedFields['rules']
   const takingNodeModulesBack = [
     { how: 'from the project root', globalIgnores: buildTeamEslintBlock('team/global-ignores', { ignores: ['!**/node_modules/'] }) },
     {
@@ -1998,7 +1963,7 @@ describe("our blocks, beside a team config whose global ignores take every node_
       projectDir: PROJECT_WITH_OXLINT,
       owed: [
         { name: 'agents-inc/base', states: [] },
-        { name: 'agents-inc/base/confined/0', states: [ARRAY_TYPE, 'no-var'] },
+        { name: 'agents-inc/base/confined/0', states: [NO_INFERRABLE_TYPES, 'no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
         { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [] },
@@ -2012,7 +1977,7 @@ describe("our blocks, beside a team config whose global ignores take every node_
       projectDir: PROJECT_WITHOUT_OXLINT,
       owed: [
         { name: 'agents-inc/base', states: [] },
-        { name: 'agents-inc/base/confined/0', states: [ARRAY_TYPE, NO_DEBUGGER, 'no-var'] },
+        { name: 'agents-inc/base/confined/0', states: [NO_INFERRABLE_TYPES, NO_DEBUGGER, 'no-var'] },
         { name: SVELTE_RUNES_ESLINT_BLOCK_NAME, states: [] },
         { name: TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME, states: [] },
         { name: 'agents-inc/typed', states: [] },
@@ -2231,30 +2196,19 @@ describe("the team's language options, settings and linter options", () => {
 describe('a team block whose files are a function', () => {
   const projectDir = tempProjects.create({ files: { [TEAM_CONFIG_MODULE]: teamBlockWithFunctionFiles } })
   const fields = { rules: { 'max-lines': 'error' } } satisfies SharedFields
-  // eslint-disable-next-line functional/no-let -- it.fails: only the assertion may throw, so the run is in beforeAll and its result crosses to the test (CLAUDE.md, Tests; q-lint-no-let-it-fails)
-  let entries: { readonly merged: EntriesByFile; readonly owed: EntriesByFile; readonly teamAlone: EntriesByFile } | undefined
+  const runs = setUpRunsBeforeTheSuite(
+    async () => {
+      const teamConfig = await importedTeamConfig(projectDir, TEAM_CONFIG_MODULE)
+      return {
+        merged: await entriesOf(mergedEditorEslintConfig(PROJECT_WITHOUT_OXLINT, fields, teamConfig), 'max-lines', A1_FILES),
+        teamAlone: await teamAloneEntriesOf(teamConfig, 'max-lines', A1_FILES),
+      }
+    },
+    { timeoutMs: PARALLEL_LOAD_TIMEOUT_MS, whatFailed: 'the merged and the team-alone entries could not be calculated before the suite' },
+  )
 
-  // Made before the test, so only the assertion can fail inside it.fails.
-  beforeAll(async () => {
-    const teamConfig = await importedTeamConfig(projectDir, TEAM_CONFIG_MODULE)
-    const merged = await entriesOf(mergedEditorEslintConfig(PROJECT_WITHOUT_OXLINT, fields, teamConfig), 'max-lines', A1_FILES)
-    const teamAlone = await teamAloneEntriesOf(teamConfig, 'max-lines', A1_FILES)
-    const oursAlone = await entriesOf(mergedEditorEslintConfig(PROJECT_WITHOUT_OXLINT, fields, []), 'max-lines', A1_FILES)
-    entries = { merged, owed: { 'legacy/a.tsx': entryIn(teamAlone, 'legacy/a.tsx'), 'src/a.tsx': entryIn(oursAlone, 'src/a.tsx') }, teamAlone }
-  })
-
-  // KNOWN GAP: the team's bare warn keeps the options of any block of ours left in the function's files,
-  // and leaving ours out of every file loses it where the team does not set the rule.
-  it.fails("is the team's in the files the function matches, options included, and ours elsewhere", () => {
-    if (entries === undefined) throw new Error('the run was not made before the test')
-
-    expect(entries.merged).toStrictEqual(entries.owed)
-  })
-
-  // KNOWN GAP: of the two ways to fall short above, the merge keeps our options out of the team's: ours
-  // stays out of every file the function might match. Pinned, so a change of choice is made on purpose.
-  it("leaves ours out of every file the function might match: the team's entry where it matches, and none where it does not", () => {
-    if (entries === undefined) throw new Error('the run was not made before the test')
+  it("is the team's in every file, since the team sets it: the team's entry where the function matches, and none of ours where it does not", () => {
+    const entries = runs()
 
     expect(entries.merged).toStrictEqual({ 'legacy/a.tsx': entryIn(entries.teamAlone, 'legacy/a.tsx'), 'src/a.tsx': ABSENT })
   })
@@ -2316,6 +2270,18 @@ describe('the base block', () => {
     expect(rulesNotFoundAmong(await messagesReportedOn(config, suppressionOfAnOxcRule, 'src/a.ts'))).toStrictEqual([
       'oxc/approx-constant',
     ])
+  })
+
+  it.each(['off', 0] as const)("keeps the stub where the team's own config sets the rule at %s, in a project whose package.json lists oxlint", async (severity) => {
+    const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, {}, [buildTeamEslintBlock('team', { rules: { 'oxc/approx-constant': severity } })])
+
+    expect(rulesNotFoundAmong(await messagesReportedOn(config, suppressionOfAnOxcRule, 'src/a.ts'))).toStrictEqual([])
+  })
+
+  it("keeps the stubs of a prefix's other names where the team's own config turns on one rule under it, in a project whose package.json lists oxlint", async () => {
+    const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, {}, [buildTeamEslintBlock('team', { rules: { 'unicorn/prefer-at': 'error' } })])
+
+    expect(rulesNotFoundAmong(await messagesReportedOn(config, suppressionOfOxlintsUnicornName, 'src/a.ts'))).toStrictEqual([])
   })
 
   // Our runtime globals go only where our own no-undef runs: without oxlint, in the JS files the
@@ -2540,7 +2506,7 @@ describe('a typed rule of ours, beside a team that gives type information', () =
 // elsewhere our project service would make a fatal parse error switching off every rule, so no block
 // that can run a typed rule applies there.
 describe('a typed rule of ours, in a project with a TS file outside every tsconfig', () => {
-  const TYPED_AND_UNTYPED_RULES_ON = { rules: { [FLOATING_PROMISES]: 'error', [ARRAY_TYPE]: 'error' } } satisfies SharedFields
+  const TYPED_AND_UNTYPED_RULES_ON = { rules: { [FLOATING_PROMISES]: 'error', [NO_INFERRABLE_TYPES]: 'error' } } satisfies SharedFields
   const projectFiles = {
     'tsconfig.json': JSON.stringify(buildTsconfig({ include: ['src'] })),
     [TS_FILE_A_TSCONFIG_INCLUDES]: cleanModule,
@@ -2564,7 +2530,7 @@ describe('a typed rule of ours, in a project with a TS file outside every tsconf
     return {
       projectService: isRecord(parserOptions) ? parserOptions['projectService'] : undefined,
       typed: severityOfCalculatedEntry(calculated.rules[FLOATING_PROMISES]) ?? 'off',
-      untyped: severityOfCalculatedEntry(calculated.rules[ARRAY_TYPE]) ?? 'off',
+      untyped: severityOfCalculatedEntry(calculated.rules[NO_INFERRABLE_TYPES]) ?? 'off',
     }
   }
 
@@ -3081,7 +3047,7 @@ function shippedEntryOf(ruleId: string): Linter.RuleEntry {
 // typed extension, with the layer below's setting where it refuses the extension's options. A layer
 // turning the pair off leaves no entry of either name: a later bare severity would bring back its options.
 describe("typescript-eslint's extension of a core rule a listed ruleset ships, set in our own layers, in a project whose package.json lists no oxlint", () => {
-  // no-unused-vars ships ignoring **/scripts/** and **/*.config.{ts,js,mjs,cjs}, among others.
+  // no-unused-vars ships ignoring stories alone.
   it("runs the extension our rules set in every TS file, and the core rule with that setting in every JS file, those the ruleset ships it ignoring included", async () => {
     const setting = ['error', { args: 'none' }] satisfies Linter.RuleEntry
     const config = mergedWithoutOxlint({ editorRulesets: { quality: ['redundancy'] } }, { rules: { [TWIN_OF_NO_UNUSED_VARS]: setting } })
@@ -3100,7 +3066,7 @@ describe("typescript-eslint's extension of a core rule a listed ruleset ships, s
     })
   })
 
-  it("runs the core rule with an entry's setting of the extension in every JS file of the entry, those the ruleset ships it ignoring included, and keeps the ruleset's limit outside the entry", async () => {
+  it("runs the core rule with an entry's setting of the extension in every JS file of the entry, and with the ruleset's setting outside the entry", async () => {
     const setting = ['error', { args: 'none' }] satisfies Linter.RuleEntry
     const config = mergedWithoutOxlint(
       { editorRulesets: { quality: ['redundancy'] } },
@@ -3113,31 +3079,32 @@ describe("typescript-eslint's extension of a core rule a listed ruleset ships, s
       'scripts/a.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
       'scripts/a.ts': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: extension },
       'src/a.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
-      'tool.config.js': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'tool.config.js': { [NO_UNUSED_VARS]: await entryEslintCalculatesFor(NO_UNUSED_VARS, shippedEntryOf(NO_UNUSED_VARS)), [TWIN_OF_NO_UNUSED_VARS]: 'off' },
     })
   })
 
-  it("keeps the ruleset's limit on the core rule, leaving the JS files it ships ignoring with neither name, where our rules set the core rule itself", async () => {
+  it("runs the core rule our rules set itself in every JS file, those in scripts/ and a tool's config file included", async () => {
     const setting = ['error', { args: 'none' }] satisfies Linter.RuleEntry
     const config = mergedWithoutOxlint({ editorRulesets: { quality: ['redundancy'] } }, { rules: { [NO_UNUSED_VARS]: setting } })
+    const coreRule = await entryEslintCalculatesFor(NO_UNUSED_VARS, setting)
 
     expect(await runningEntriesOf(config, [NO_UNUSED_VARS, TWIN_OF_NO_UNUSED_VARS], ['src/a.js', 'scripts/a.js', 'tool.config.js'])).toStrictEqual({
-      'src/a.js': { [NO_UNUSED_VARS]: await entryEslintCalculatesFor(NO_UNUSED_VARS, setting), [TWIN_OF_NO_UNUSED_VARS]: 'off' },
-      'scripts/a.js': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: 'off' },
-      'tool.config.js': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'src/a.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'scripts/a.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'tool.config.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
     })
   })
 
-  // A written limit: the core rule refuses an option only the extension takes, so it keeps the ruleset's
-  // setting within the ruleset's limit, and the JS files outside it get neither name.
-  it("runs the core rule with the ruleset's setting within its limit, and leaves the JS files outside it with neither name, where our rules give the extension options the core rule refuses", async () => {
+  // A written limit: the core rule refuses an option only the extension takes, so it keeps the ruleset's setting.
+  it("runs the core rule with the ruleset's setting in every JS file, those in scripts/ and a tool's config file included, where our rules give the extension options the core rule refuses", async () => {
     const setting = ['error', { enableAutofixRemoval: { imports: true } }] satisfies Linter.RuleEntry
     const config = mergedWithoutOxlint({ editorRulesets: { quality: ['redundancy'] } }, { rules: { [TWIN_OF_NO_UNUSED_VARS]: setting } })
+    const coreRule = await entryEslintCalculatesFor(NO_UNUSED_VARS, shippedEntryOf(NO_UNUSED_VARS))
 
     expect(await runningEntriesOf(config, [NO_UNUSED_VARS, TWIN_OF_NO_UNUSED_VARS], ['src/a.js', 'scripts/a.js', 'tool.config.js'])).toStrictEqual({
-      'src/a.js': { [NO_UNUSED_VARS]: await entryEslintCalculatesFor(NO_UNUSED_VARS, shippedEntryOf(NO_UNUSED_VARS)), [TWIN_OF_NO_UNUSED_VARS]: 'off' },
-      'scripts/a.js': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: 'off' },
-      'tool.config.js': { [NO_UNUSED_VARS]: 'off', [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'src/a.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'scripts/a.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
+      'tool.config.js': { [NO_UNUSED_VARS]: coreRule, [TWIN_OF_NO_UNUSED_VARS]: 'off' },
     })
   })
 

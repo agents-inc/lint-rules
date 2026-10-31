@@ -1,7 +1,7 @@
 import type { OxlintConfig } from 'oxlint'
 import { describe, expect, it } from 'vitest'
 import { oxlintPartOf } from './__tests__/agent-configs.ts'
-import { ARRAY_TYPE, NO_DEBUGGER, NO_EMPTY_PATTERN, NO_VAR, OURS_RUN_BY_ESLINT, OURS_RUN_BY_OXLINT } from './__tests__/cases/other-engine-configs.ts'
+import { NO_DEBUGGER, NO_EMPTY_PATTERN, NO_INFERRABLE_TYPES, NO_VAR, OURS_RUN_BY_ESLINT, OURS_RUN_BY_OXLINT } from './__tests__/cases/other-engine-configs.ts'
 import { THE_PARTS_NAME, THIRD_ARGUMENTS_HOLDING_NO_PATH } from './__tests__/cases/untyped-oxlint-config-arguments.ts'
 import { buildTeamOxlintConfig } from './__tests__/factories/team-config-factories.ts'
 import { NOT_STATED, ourPartsIn, projectListingOxlintIn, severityStatedFor } from './__tests__/other-engine-merges.ts'
@@ -21,7 +21,7 @@ const projectDir = projectListingOxlintIn(tempProjects, teamEslintConfigSettingN
 // Leaves correctness at oxlint's default.
 const theirs = buildTeamOxlintConfig()
 const SOURCE_FILE = 'src/a.ts'
-const OUR_RULES = [NO_DEBUGGER, NO_EMPTY_PATTERN, NO_VAR, ARRAY_TYPE]
+const OUR_RULES = [NO_DEBUGGER, NO_EMPTY_PATTERN, NO_VAR, NO_INFERRABLE_TYPES]
 // Our message where the installed oxlint is looked up from a tsconfigRootDir the value given has none of.
 const INSTALLED_OXLINT_LOOKED_UP_FROM_NO_FOLDER = 'oxlint.config.mts: a package.json lists oxlint, yet it does not resolve from undefined: install it'
 // Node's error for an argument of the wrong type, such as a path that is no string.
@@ -43,14 +43,14 @@ describe('the ESLint part handed to mergeOxlintConfig, in an untyped oxlint.conf
     // @ts-expect-error mergeOxlintConfig takes the oxlint part, not the ESLint part
     const merged = mergeOxlintConfig(theirs, eslint, NO_TEAM_ESLINT_CONFIG)
 
-    expect(ourRulesStatedIn(merged)).toStrictEqual({ [NO_DEBUGGER]: NOT_STATED, [NO_EMPTY_PATTERN]: NOT_STATED, [NO_VAR]: NOT_STATED, [ARRAY_TYPE]: NOT_STATED })
+    expect(ourRulesStatedIn(merged)).toStrictEqual({ [NO_DEBUGGER]: NOT_STATED, [NO_EMPTY_PATTERN]: NOT_STATED, [NO_VAR]: NOT_STATED, [NO_INFERRABLE_TYPES]: NOT_STATED })
   })
 
   it('is not what the oxlint part builds, which turns on the rules oxlint runs for us and turns off its copies of the ESLint-run ones', () => {
     const oxlint = oxlintPartOf(ourEditorParts())
     const merged = mergeOxlintConfig(theirs, oxlint, NO_TEAM_ESLINT_CONFIG)
 
-    expect(ourRulesStatedIn(merged)).toStrictEqual({ [NO_DEBUGGER]: 'error', [NO_EMPTY_PATTERN]: 'error', [NO_VAR]: 'off', [ARRAY_TYPE]: 'off' })
+    expect(ourRulesStatedIn(merged)).toStrictEqual({ [NO_DEBUGGER]: 'error', [NO_EMPTY_PATTERN]: 'error', [NO_VAR]: 'off', [NO_INFERRABLE_TYPES]: 'off' })
   })
 })
 
@@ -106,7 +106,7 @@ describe("mergeOxlintConfig's third argument, in an untyped oxlint.config.mts", 
       [NO_DEBUGGER]: 'error',
       [NO_EMPTY_PATTERN]: 'error',
       [NO_VAR]: 'off',
-      [ARRAY_TYPE]: 'off',
+      [NO_INFERRABLE_TYPES]: 'off',
     })
   })
 })

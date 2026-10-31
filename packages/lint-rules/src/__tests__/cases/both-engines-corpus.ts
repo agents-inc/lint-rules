@@ -10,7 +10,7 @@ import type { OurFields } from './both-engines-grid.ts'
 
 export type OurRulesets = Parameters<typeof buildConsumerLintRules>[1]
 
-/** Our part runs only the rules our settings state, and those always on. */
+/** Our part runs only the rules our settings state. */
 export const NO_RULESETS: OurRulesets = {}
 
 type OurRules = NonNullable<LintRules['rules']>

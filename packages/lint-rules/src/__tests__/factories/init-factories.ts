@@ -101,11 +101,34 @@ export function initListsOfTheCatalog(): InitLists {
   }
 }
 
+/** As init writes it, or as a team leaves it once it removes the comment marks. */
+type PlaywrightExample = 'commented' | 'uncommented'
+
+const PLAYWRIGHT_EXAMPLE_NOTE = '// Opt-in, so off: uncomment to turn these on for your Playwright tests, matched by folder as here or by file name.'
+
+/** The file override init writes in an example: the Playwright rules we ship off, on for the Playwright tests. */
+const PLAYWRIGHT_EXAMPLE_ENTRY = [
+  '{',
+  "  files: ['e2e/**'],",
+  '  rules: {',
+  "    'playwright/no-focused-test': 'error',",
+  "    'playwright/no-identical-title': 'error',",
+  "    'playwright/prefer-hooks-on-top': 'error',",
+  "    'playwright/prefer-web-first-assertions': 'error',",
+  "    'playwright/require-to-throw-message': 'error',",
+  '  },',
+  '},',
+]
+
+function playwrightExampleLines(playwrightExample: PlaywrightExample): string[] {
+  return playwrightExample === 'commented' ? PLAYWRIGHT_EXAMPLE_ENTRY.map((line) => `// ${line}`) : PLAYWRIGHT_EXAMPLE_ENTRY
+}
+
 /** TypeScript 6 loads Node's types only where a tsconfig lists them; this loads them for the file. */
 const NODE_TYPES_REFERENCE = '/// <reference types="node" />'
 
 /** As the spec lays it out: two-space indent, single quotes, trailing commas, no semicolons. */
-export function initConfigTextListing({ quality, libs, runtimes, languages }: InitLists): string {
+export function initConfigTextListing({ quality, libs, runtimes, languages }: InitLists, playwrightExample: PlaywrightExample = 'commented'): string {
   return moduleText(
     NODE_TYPES_REFERENCE,
     "import { defineLintRules } from '@agents-inc/lint-rules'",
@@ -135,7 +158,10 @@ export function initConfigTextListing({ quality, libs, runtimes, languages }: In
     '',
     '  rules: {},',
     '',
-    '  fileOverrides: [],',
+    '  fileOverrides: [',
+    `    ${PLAYWRIGHT_EXAMPLE_NOTE}`,
+    ...playwrightExampleLines(playwrightExample).map((line) => `    ${line}`),
+    '  ],',
     '})',
     '',
     'export const { eslint, oxlint } = config.editorRulesets',

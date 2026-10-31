@@ -13,6 +13,8 @@ export type PackageJson = {
   readonly type: 'module'
   readonly dependencies?: Readonly<Record<string, string>>
   readonly devDependencies?: Readonly<Record<string, string>>
+  /** The browsers the project targets, as browserslist reads them from a package.json. */
+  readonly browserslist?: readonly string[]
 }
 
 type LintRulesManifest = { readonly version: string }
@@ -31,6 +33,10 @@ type OxlintSchema = Readonly<Record<string, unknown>> & {
 export type NamesLeftOut = { readonly ruleNames: readonly string[]; readonly pluginNames: readonly string[] }
 
 const OXLINT = 'oxlint'
+const NEXT = 'next'
+const NEXT_RANGE = '^16.0.0'
+const REMIX = '@remix-run/react'
+const REMIX_RANGE = '^2.17.0'
 const PROJECT_NAME = 'consumer-project'
 const LINT_RULES_MANIFEST = fileURLToPath(new URL('../../../package.json', import.meta.url))
 const CARET = '^'
@@ -60,6 +66,11 @@ export function buildPackageJson(fields: Pick<PackageJson, DependencyField> = {}
   return { name: PROJECT_NAME, private: true, type: 'module', ...fields }
 }
 
+/** One naming the browsers it targets: each a browserslist query. */
+export function buildPackageJsonNamingBrowsers(queries: readonly string[]): PackageJson {
+  return { ...buildPackageJson(), browserslist: queries }
+}
+
 export function buildPackageJsonListingOxlint(field: DependencyField = 'devDependencies'): PackageJson {
   const oxlint = { [OXLINT]: OXLINT_RANGE_THE_MERGE_ADVISES }
   return buildPackageJson(field === 'dependencies' ? { dependencies: oxlint } : { devDependencies: oxlint })
@@ -68,6 +79,17 @@ export function buildPackageJsonListingOxlint(field: DependencyField = 'devDepen
 /** One that uses oxlint, as our parts read it. */
 export function createProjectListingOxlint(tempProjects: TempProjects): string {
   return tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) } })
+}
+
+/** A Next.js app's. */
+export function buildPackageJsonListingNext(field: DependencyField = 'dependencies'): PackageJson {
+  const next = { [NEXT]: NEXT_RANGE }
+  return buildPackageJson(field === 'dependencies' ? { dependencies: next } : { devDependencies: next })
+}
+
+/** A Remix app's, which keeps its routes in app/ too and lists no next. */
+export function buildPackageJsonListingRemix(): PackageJson {
+  return buildPackageJson({ dependencies: { [REMIX]: REMIX_RANGE } })
 }
 
 export function buildPackageJsonListingOthers(): PackageJson {

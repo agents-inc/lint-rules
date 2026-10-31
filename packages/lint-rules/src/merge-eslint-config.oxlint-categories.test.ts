@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   CONFIG_SETTING_TYPESCRIPT_RULES_BY_CATEGORY,
+  CONFIG_SETTING_TYPESCRIPT_RULES_BY_CATEGORY_IN_OVERRIDES,
   CONFIG_TURNING_TYPE_AWARE_RULES_ON,
   CONFIGS_LEAVING_TYPE_AWARE_RULES_OUT,
   CONFIGS_LISTING_A_PLUGIN_BY_ANOTHER_NAME,
@@ -37,6 +38,7 @@ const projectDir = tempProjects.create({
     ...filesOf([
       ...CONFIGS_SETTING_NO_TYPESCRIPT_RULE_BY_CATEGORY,
       CONFIG_SETTING_TYPESCRIPT_RULES_BY_CATEGORY,
+      CONFIG_SETTING_TYPESCRIPT_RULES_BY_CATEGORY_IN_OVERRIDES,
       ...CONFIGS_LEAVING_TYPE_AWARE_RULES_OUT,
       CONFIG_TURNING_TYPE_AWARE_RULES_ON,
       ...CONFIGS_LISTING_A_PLUGIN_BY_ANOTHER_NAME,
@@ -61,6 +63,10 @@ describe('mergeEslintConfig, given a team oxlint config writing categories', () 
 
   it('drops ours where the config writes correctness on for typescript, which runs it as the team set it', async () => {
     expect(await oursBeside(CONFIG_SETTING_TYPESCRIPT_RULES_BY_CATEGORY.file, NO_THIS_ALIAS)).toBeUndefined()
+  })
+
+  it('drops ours where the config writes correctness on and two overrides list typescript and import, which may match one file', async () => {
+    expect(await oursBeside(CONFIG_SETTING_TYPESCRIPT_RULES_BY_CATEGORY_IN_OVERRIDES.file, NO_THIS_ALIAS)).toBeUndefined()
   })
 })
 

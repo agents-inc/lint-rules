@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ARRAY_TYPE, NO_VAR, OURS_RUN_BY_ESLINT } from './__tests__/cases/other-engine-configs.ts'
+import { NO_INFERRABLE_TYPES, NO_VAR, OURS_RUN_BY_ESLINT } from './__tests__/cases/other-engine-configs.ts'
 import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
 import { buildConsumerLintRules } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
@@ -28,8 +28,8 @@ describe('mergeEslintConfig, given a team block for legacy files stating one of 
 
     expect({
       noVar: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, NO_VAR),
-      arrayType: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, ARRAY_TYPE),
-    }).toStrictEqual({ noVar: 'error', arrayType: 'error' })
+      noInferrableTypes: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, NO_INFERRABLE_TYPES),
+    }).toStrictEqual({ noVar: 'error', noInferrableTypes: 'error' })
   })
 
   it("drops ours of it in every file where the block states it off, which makes it the team's", async () => {
@@ -38,7 +38,7 @@ describe('mergeEslintConfig, given a team block for legacy files stating one of 
 
     expect({
       noVar: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, NO_VAR),
-      arrayType: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, ARRAY_TYPE),
-    }).toStrictEqual({ noVar: undefined, arrayType: 'error' })
+      noInferrableTypes: await ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, NO_INFERRABLE_TYPES),
+    }).toStrictEqual({ noVar: undefined, noInferrableTypes: 'error' })
   })
 })

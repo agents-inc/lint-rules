@@ -11,7 +11,10 @@ type OurRules = NonNullable<LintRules['rules']>
 
 export const NO_WARNING_COMMENTS: RuleByItsNames = { rule: 'no-warning-comments', names: ['no-warning-comments', 'eslint(no-warning-comments)'] }
 export const NO_DEBUGGER: RuleByItsNames = { rule: 'no-debugger', names: ['no-debugger', 'eslint(no-debugger)'] }
-export const ARRAY_TYPE: RuleByItsNames = { rule: '@typescript-eslint/array-type', names: ['@typescript-eslint/array-type', 'typescript(array-type)'] }
+export const NO_INFERRABLE_TYPES: RuleByItsNames = {
+  rule: '@typescript-eslint/no-inferrable-types',
+  names: ['@typescript-eslint/no-inferrable-types', 'typescript(no-inferrable-types)'],
+}
 export const NO_VAR: RuleByItsNames = { rule: 'no-var', names: ['no-var', 'eslint(no-var)'] }
 export const NO_UNUSED_VARS: RuleByItsNames = {
   rule: 'no-unused-vars',
@@ -36,6 +39,8 @@ export const JSX_NO_COMMENT_TEXTNODES: RuleByItsNames = {
   rule: 'react/jsx-no-comment-textnodes',
   names: ['react/jsx-no-comment-textnodes', '@eslint-react/jsx-no-comment-textnodes', 'react(jsx-no-comment-textnodes)'],
 }
+/** Under the prefix a team registers the original eslint-plugin-jsx-a11y under, too. */
+export const ALT_TEXT: RuleByItsNames = { rule: 'jsx-a11y/alt-text', names: ['jsx-a11y/alt-text', 'a11y/alt-text', 'jsx-a11y(alt-text)'] }
 
 // oxlint's no-warning-comments reports todo (1) and fixme (3) by default, which ESLint's under the
 // team's terms leaves alone; ESLint's under the team's terms reports hack (2). no-debugger (5).
@@ -47,9 +52,10 @@ export function stop(): void {
 }
 `
 
-// An array type array-simple and oxlint's default report (1), and one only generic reports (2); no-var (3).
-export const ARRAY_TYPE_SOURCE = `export const simple: Array<string> = []
-export const bracketed: string[] = []
+// An annotation its initializer implies (1), and one on a parameter its default implies, which ignoreParameters
+// leaves alone (2), each reported by default in either engine; no-var (3).
+export const INFERRABLE_TYPES_SOURCE = `export const count: number = 1
+export const next = (step: number = 1): number => step + 1
 export var counter = 0
 `
 
@@ -97,6 +103,13 @@ export function stop(): void {
 }
 `
 
+// An image with no alt text (1); no-debugger (3).
+export const IMAGE_WITHOUT_ALT_TEXT_AND_DEBUGGER_SOURCE = `export const Avatar = () => <img src="avatar.png" />
+export function stop(): void {
+  debugger
+}
+`
+
 // A promise left floating (4), which only a typed rule reports.
 export const FLOATING_PROMISE_SOURCE = `async function load(): Promise<number> {
   return 1
@@ -113,19 +126,19 @@ export const TEAMS_ESLINT_WARNING_COMMENTS = teamBlockSourceOf({ files: ['**/*.{
 export const TEAMS_OXLINT_WARNING_COMMENTS: OxlintConfig = { categories: { correctness: 'off' }, rules: { 'no-warning-comments': ['warn', { terms: ['fixme'] }] } }
 
 /** ESLint runs both. */
-export const OURS_ARRAY_TYPE_AND_NO_VAR: OurRules = { '@typescript-eslint/array-type': 'error', 'no-var': 'error' }
+export const OURS_NO_INFERRABLE_TYPES_AND_NO_VAR: OurRules = { '@typescript-eslint/no-inferrable-types': 'error', 'no-var': 'error' }
 
-export const TEAMS_OXLINT_ARRAY_TYPE: OxlintConfig = {
+export const TEAMS_OXLINT_NO_INFERRABLE_TYPES: OxlintConfig = {
   plugins: ['typescript'],
   categories: { correctness: 'off' },
-  rules: { 'typescript/array-type': ['error', { default: 'generic' }] },
+  rules: { 'typescript/no-inferrable-types': ['error', { ignoreParameters: true }] },
 }
 
 /** typescript is listed nowhere, so oxlint skips the line (measured, oxlint 1.87). */
-export const TEAMS_OXLINT_ARRAY_TYPE_IN_A_LINE_IT_SKIPS: OxlintConfig = {
+export const TEAMS_OXLINT_NO_INFERRABLE_TYPES_IN_A_LINE_IT_SKIPS: OxlintConfig = {
   plugins: ['unicorn'],
   categories: { correctness: 'off' },
-  rules: { 'typescript/array-type': 'error' },
+  rules: { 'typescript/no-inferrable-types': 'error' },
 }
 
 export function teamsOxlintStyleCategoryListing(plugins: Readonly<NonNullable<OxlintConfig['plugins']>>): OxlintConfig {
@@ -142,6 +155,20 @@ export function teamsOxlintListingTypescriptForLegacyBeside(rootPlugins: Readonl
 
 export function teamsOxlintStyleCategoryListingTypescriptForLegacyBeside(rootPlugins: Readonly<NonNullable<OxlintConfig['plugins']>>): OxlintConfig {
   return { ...teamsOxlintListingTypescriptForLegacyBeside(rootPlugins), categories: { correctness: 'off', style: 'warn' } }
+}
+
+export function teamsOxlintCorrectnessOnListingTypescriptForLegacyBeside(rootPlugins: Readonly<NonNullable<OxlintConfig['plugins']>>): OxlintConfig {
+  return { ...teamsOxlintListingTypescriptForLegacyBeside(rootPlugins), categories: { correctness: 'warn' } }
+}
+
+/** Two overrides listing different plugins match legacy/a.ts, so oxlint runs typescript's correctness rules there (measured, oxlint 1.87). */
+export const TEAMS_OXLINT_CORRECTNESS_ON_LISTING_IMPORT_AND_TYPESCRIPT_FOR_LEGACY: OxlintConfig = {
+  plugins: [],
+  categories: { correctness: 'warn' },
+  overrides: [
+    { files: ['legacy/**'], plugins: ['import'] },
+    { files: ['legacy/**'], plugins: ['typescript'] },
+  ],
 }
 
 export const TEAMS_OXLINT_EXTENDING_AN_OBJECT_TURNING_NO_VAR_ON: OxlintConfig = { categories: { correctness: 'off' }, extends: [{ rules: { 'no-var': 'warn' } }] }
@@ -164,7 +191,7 @@ export const TEAMS_ESLINT_TWIN_OF_NO_UNUSED_VARS =
 
 export const TEAMS_OXLINT_NO_UNUSED_VARS: OxlintConfig = { categories: { correctness: 'off' }, rules: { 'no-unused-vars': 'warn' } }
 
-/** oxlint runs no-debugger; ESLint runs max-lines. */
+/** oxlint runs both. */
 export const OURS_DEBUGGER_AND_MAX_LINES: OurRules = { 'no-debugger': 'error', 'max-lines': ['error', { max: 2 }] }
 
 export const TEAMS_OXLINT_DEBUGGER_OFF_IN_LEGACY: OxlintConfig = {
@@ -188,6 +215,9 @@ export const TEAMS_OXLINT_WRITING_NURSERY_ON: OxlintConfig = { categories: { cor
 /** ESLint runs it; oxlint's version is in its correctness category under typescript, a default plugin. */
 export const OURS_NO_THIS_ALIAS: OurRules = { '@typescript-eslint/no-this-alias': 'error' }
 
+/** ESLint runs no-this-alias and oxlint no-duplicate-enum-values; oxlint's versions of both are in its correctness category under typescript. */
+export const OURS_NO_THIS_ALIAS_AND_DUPLICATE_ENUM_VALUES: OurRules = { '@typescript-eslint/no-this-alias': 'error', '@typescript-eslint/no-duplicate-enum-values': 'error' }
+
 /** oxlint runs it; its version is a nursery rule. */
 export const OURS_UNREACHABLE_LOOP: OurRules = { 'no-unreachable-loop': 'error' }
 
@@ -199,6 +229,18 @@ export const ESLINT_REACT_IMPORT = "import eslintReact from '@eslint-react/eslin
 /** Registers @eslint-react under react, as antfu's config does: the prefix our eslint-plugin-react rules take. */
 export const TEAMS_ESLINT_ESLINT_REACT_UNDER_REACT =
   "{ files: ['**/*.tsx'], plugins: { react: eslintReact }, rules: { 'react/jsx-no-comment-textnodes': 'error' } }"
+
+/** oxlint runs both. */
+export const OURS_ALT_TEXT_AND_DEBUGGER: OurRules = { 'jsx-a11y/alt-text': 'error', 'no-debugger': 'error' }
+
+export const JSX_A11Y_FORK_IMPORT = "import jsxA11y from 'eslint-plugin-jsx-a11y-x'"
+
+/**
+ * Registers the original eslint-plugin-jsx-a11y under a11y: our fork's rules under the original's name stand in for it,
+ * which we no longer install.
+ */
+export const TEAMS_ESLINT_ORIGINAL_JSX_A11Y_UNDER_A11Y =
+  "{ files: ['**/*.tsx'], plugins: { a11y: { meta: { name: 'eslint-plugin-jsx-a11y', version: '6.10.2' }, rules: jsxA11y.rules } }, rules: { 'a11y/alt-text': 'error' } }"
 
 export const OURS_FLOATING_PROMISES: OurRules = { '@typescript-eslint/no-floating-promises': 'error' }
 

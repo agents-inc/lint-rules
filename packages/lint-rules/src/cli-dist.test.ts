@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { findingsIn } from './__tests__/check-output.ts'
 import { CLI_FILE, EXIT, setUpCheckAfterTheAgent } from './__tests__/cli-runs.ts'
-import { checkedPackageFiles, DEBUGGER_STATEMENT, exportedConstant, moduleText, REDUNDANCY } from './__tests__/factories/check-factories.ts'
+import { checkedPackageFiles, DEBUGGER_STATEMENT, exportedConstant, moduleText, REPORTING_RULESETS } from './__tests__/factories/check-factories.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 
 // Reads the build output, so `turbo test` builds this package first.
@@ -35,7 +35,7 @@ describe('the bin entry', () => {
 })
 
 describe('the bin entry and the package entry a config imports', () => {
-  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY), (project) => {
+  const run = setUpCheckAfterTheAgent(checkedPackageFiles(REPORTING_RULESETS), (project) => {
     project.write('src/a.ts', moduleText(exportedConstant('a'), DEBUGGER_STATEMENT))
   })
 

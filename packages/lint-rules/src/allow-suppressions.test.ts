@@ -20,8 +20,9 @@ import { defineLintRules, type LintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
 // allowSuppressions decides the suppression rules and whether ESLint reads directives in the agent
-// build; the editor parts always behave as with true. With false, unicorn/no-abusive-eslint-disable is
-// off so a bare /* eslint-disable */ is not reported twice.
+// build; the editor parts always behave as with true, but run a suppression rule of a ruleset only where
+// the editor rulesets list it. With false, unicorn/no-abusive-eslint-disable is off so a bare
+// /* eslint-disable */ is not reported twice.
 
 type SuppressionSettings = {
   /** house/no-suppressions, as ESLint runs it. */
@@ -31,6 +32,10 @@ type SuppressionSettings = {
   readonly tsCommentBan: unknown
   /** unicorn/no-abusive-eslint-disable's severity, from the engine the catalog routes it to. */
   readonly blanketDisableRule: Linter.StringSeverity
+  /** @eslint-community/eslint-comments/disable-enable-pair's severity, from the engine the catalog routes it to. */
+  readonly disableEnablePairRule: Linter.StringSeverity
+  /** @eslint-community/eslint-comments/no-duplicate-disable's severity, from the engine the catalog routes it to. */
+  readonly duplicateDisableRule: Linter.StringSeverity
   /** react-hooks/rule-suppression's severity, from the engine the catalog routes it to. */
   readonly hooksSuppressionRule: Linter.StringSeverity
 }
@@ -53,8 +58,19 @@ type TopLevelCase = { readonly config: string; readonly lintRulesIn: (tsconfigRo
 /** A project as a title names it, its folder as a test reads it, and what the editor parts set there. */
 type EditorProjectCase = { readonly project: string; readonly projectDir: () => string; readonly editorExpected: SuppressionSettings }
 
+/** A config as a title names it, built in the folder a test gives, the file read, and what the editor parts set there beside oxlint and without it. */
+type EditorListingCase = {
+  readonly config: string
+  readonly lintRulesIn: (tsconfigRootDir: string) => LintRules
+  readonly file: string
+  readonly besideOxlint: SuppressionSettings
+  readonly withoutOxlint: SuppressionSettings
+}
+
 const TS_COMMENT_BAN = '@typescript-eslint/ban-ts-comment'
 const BLANKET_DISABLE_RULE = 'unicorn/no-abusive-eslint-disable'
+const DISABLE_ENABLE_PAIR_RULE = '@eslint-community/eslint-comments/disable-enable-pair'
+const DUPLICATE_DISABLE_RULE = '@eslint-community/eslint-comments/no-duplicate-disable'
 const HOOKS_SUPPRESSION_RULE = 'react-hooks/rule-suppression'
 const BAN_TS_COMMENTS_OUTRIGHT = { 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true }
 const BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR = {
@@ -68,6 +84,8 @@ const BANNED: SuppressionSettings = {
   eslintReadsDirectives: false,
   tsCommentBan: ['error', BAN_TS_COMMENTS_OUTRIGHT],
   blanketDisableRule: 'off',
+  disableEnablePairRule: 'off',
+  duplicateDisableRule: 'off',
   hooksSuppressionRule: 'off',
 }
 
@@ -76,14 +94,26 @@ const ALLOWED: SuppressionSettings = {
   eslintReadsDirectives: true,
   tsCommentBan: ['error', BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR],
   blanketDisableRule: 'error',
+  disableEnablePairRule: 'error',
+  duplicateDisableRule: 'error',
   hooksSuppressionRule: 'error',
 }
 
 // A test or type test may still assert a type error, with a description; every other suppression stays banned.
 const BANNED_IN_TEST_FILES: SuppressionSettings = { ...BANNED, tsCommentBan: ['error', BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR] }
 
-/** ESLint does not run the hooks rule without oxlint (eslint-fallback-skips.json). */
+/** ESLint does not run the hooks rule without oxlint (eslint-fallback-skips.json); it runs the comments ruleset's rules either way. */
 const ALLOWED_WITHOUT_OXLINT: SuppressionSettings = { ...ALLOWED, hooksSuppressionRule: 'off' }
+
+// The blanket-disable, disable-enable-pair and duplicate-disable rules are in the comments ruleset, the hooks rule
+// in react and ban-ts-comment in type-safety: in the editor parts each runs only where the editor rulesets list its ruleset.
+const THE_COMMENTS_RULES_OFF = { blanketDisableRule: 'off', disableEnablePairRule: 'off', duplicateDisableRule: 'off' } as const
+const THE_HOOKS_RULE_OFF = { hooksSuppressionRule: 'off' } as const
+const THE_TS_COMMENT_BAN_OFF = { tsCommentBan: 'off' } as const
+const ALLOWED_WITH_THE_COMMENTS_RULES_ALONE: SuppressionSettings = { ...ALLOWED, ...THE_HOOKS_RULE_OFF, ...THE_TS_COMMENT_BAN_OFF }
+const ALLOWED_WITH_THE_HOOKS_RULE_ALONE: SuppressionSettings = { ...ALLOWED, ...THE_COMMENTS_RULES_OFF, ...THE_TS_COMMENT_BAN_OFF }
+const ALLOWED_WITH_THE_TS_COMMENT_BAN_ALONE: SuppressionSettings = { ...ALLOWED, ...THE_COMMENTS_RULES_OFF, ...THE_HOOKS_RULE_OFF }
+const ALLOWED_WITH_NO_RULESETS_RULES: SuppressionSettings = { ...ALLOWED, ...THE_COMMENTS_RULES_OFF, ...THE_HOOKS_RULE_OFF, ...THE_TS_COMMENT_BAN_OFF }
 
 /** ESLint still reads no directive, so it still ignores the comments the ban no longer reports. */
 const BANNED_BUT_THE_BAN_OFF: SuppressionSettings = { ...BANNED, suppressionBan: 'off' }
@@ -95,6 +125,7 @@ const TS_COMMENTS_BANNED_OUTRIGHT: Record<string, readonly ['error', typeof BAN_
 }
 
 const NO_RULESETS = { quality: [], libs: {}, runtimes: [] }
+const THE_THREE_RULESETS = { quality: ['comments', 'type-safety'], libs: { ui: ['react'] } } as const satisfies Partial<LintRules['editorRulesets']>
 
 const { lintedConfigFor } = setUpEslintConfigOracle()
 const tempProjects = setUpTempProjects()
@@ -124,14 +155,17 @@ async function suppressionSettingsFor(configs: BuiltConfigs, file: string): Prom
     eslintReadsDirectives: readsDirectives(calculated),
     tsCommentBan: tsCommentBanIn(configs, calculated, file),
     blanketDisableRule: routedSeverityIn(configs, calculated, file, BLANKET_DISABLE_RULE),
+    disableEnablePairRule: routedSeverityIn(configs, calculated, file, DISABLE_ENABLE_PAIR_RULE),
+    duplicateDisableRule: routedSeverityIn(configs, calculated, file, DUPLICATE_DISABLE_RULE),
     hooksSuppressionRule: routedSeverityIn(configs, calculated, file, HOOKS_SUPPRESSION_RULE),
   }
 }
 
-/** The ban's entry from the routed engine, ESLint's numeric severity read by name so both compare alike. */
+/** The ban's entry from the routed engine, ESLint's numeric severity read by name so both compare alike; off, with whatever options, is off. */
 function tsCommentBanIn({ oxlint }: BuiltConfigs, calculated: Readonly<Linter.Config>, file: string): unknown {
   const { engine, oxlintName } = routeOfTheTsCommentBan()
   if (oxlint !== null && engine === 'oxlint') return oxlintConfigForFile(oxlint, file).rules[oxlintName]
+  if (calculatedSeverityOf(calculated, TS_COMMENT_BAN) === 'off') return 'off'
   const entry = calculatedEntryOf(calculated, TS_COMMENT_BAN)
   if (!isList(entry)) throw new TypeError(`ESLint calculates ${TS_COMMENT_BAN} as [severity, ...options], not ${JSON.stringify(entry)}`)
   const [, ...options] = entry
@@ -430,6 +464,152 @@ describe('the editor parts, merged into a team config, beside the agent build of
       expect(await suppressionSettingsFor(agentConfigsFor(lintRules), file)).toStrictEqual(agentExpected)
     },
   )
+})
+
+// A team's editor config holds only what its editor rulesets list: a rule allowSuppressions turns on that
+// belongs to a ruleset joins the editor parts where the editor rulesets list that ruleset, and nowhere else.
+describe('the suppression rules of the comments, react and type-safety rulesets (all three), in the editor parts merged into a team config', () => {
+  function nothingListedSuppressionsAllowed(tsconfigRootDir: string): LintRules {
+    return buildConsumerLintRules(tsconfigRootDir, {}, { allowSuppressions: true })
+  }
+  function allThreeListedForAgentsAloneSuppressionsAllowed(tsconfigRootDir: string): LintRules {
+    return buildConsumerLintRules(tsconfigRootDir, { agentRulesets: THE_THREE_RULESETS }, { allowSuppressions: true })
+  }
+  function allThreeListedInAnEntryForLegacy(tsconfigRootDir: string): LintRules {
+    return buildConsumerLintRules(tsconfigRootDir, {}, { fileOverrides: [{ files: ['legacy/**'], editorRulesets: THE_THREE_RULESETS }] })
+  }
+  function allThreeListedThenNoneInAnEntryForBare(tsconfigRootDir: string): LintRules {
+    return buildConsumerLintRules(
+      tsconfigRootDir,
+      { editorRulesets: THE_THREE_RULESETS },
+      { fileOverrides: [{ files: ['bare/**'], editorRulesets: NO_RULESETS }] },
+    )
+  }
+
+  const projects = [
+    {
+      project: 'whose package.json lists oxlint',
+      projectDir() {
+        return PROJECT_WITH_OXLINT
+      },
+      usesOxlint: true,
+    },
+    { project: 'whose package.json lists no oxlint', projectDir: emptyTsconfigRootDir, usesOxlint: false },
+  ]
+  const listings: readonly EditorListingCase[] = [
+    {
+      config: 'nothing listed, suppressions allowed',
+      lintRulesIn: nothingListedSuppressionsAllowed,
+      file: 'src/a.ts',
+      besideOxlint: ALLOWED_WITH_NO_RULESETS_RULES,
+      withoutOxlint: ALLOWED_WITH_NO_RULESETS_RULES,
+    },
+    {
+      config: 'comments alone listed',
+      lintRulesIn(tsconfigRootDir) {
+        return buildConsumerLintRules(tsconfigRootDir, { editorRulesets: { quality: ['comments'] } })
+      },
+      file: 'src/a.ts',
+      besideOxlint: ALLOWED_WITH_THE_COMMENTS_RULES_ALONE,
+      withoutOxlint: ALLOWED_WITH_THE_COMMENTS_RULES_ALONE,
+    },
+    {
+      config: 'react alone listed',
+      lintRulesIn(tsconfigRootDir) {
+        return buildConsumerLintRules(tsconfigRootDir, { editorRulesets: { libs: { ui: ['react'] } } })
+      },
+      file: 'src/a.ts',
+      besideOxlint: ALLOWED_WITH_THE_HOOKS_RULE_ALONE,
+      withoutOxlint: ALLOWED_WITH_NO_RULESETS_RULES,
+    },
+    {
+      config: 'type-safety alone listed',
+      lintRulesIn(tsconfigRootDir) {
+        return buildConsumerLintRules(tsconfigRootDir, { editorRulesets: { quality: ['type-safety'] } })
+      },
+      file: 'src/a.ts',
+      besideOxlint: ALLOWED_WITH_THE_TS_COMMENT_BAN_ALONE,
+      withoutOxlint: ALLOWED_WITH_THE_TS_COMMENT_BAN_ALONE,
+    },
+    {
+      config: 'all three listed',
+      lintRulesIn(tsconfigRootDir) {
+        return buildConsumerLintRules(tsconfigRootDir, { editorRulesets: THE_THREE_RULESETS })
+      },
+      file: 'src/a.ts',
+      besideOxlint: ALLOWED,
+      withoutOxlint: ALLOWED_WITHOUT_OXLINT,
+    },
+    {
+      config: 'all three for agents, suppressions allowed',
+      lintRulesIn: allThreeListedForAgentsAloneSuppressionsAllowed,
+      file: 'src/a.ts',
+      besideOxlint: ALLOWED_WITH_NO_RULESETS_RULES,
+      withoutOxlint: ALLOWED_WITH_NO_RULESETS_RULES,
+    },
+    {
+      config: 'all three listed in an entry for legacy/**',
+      lintRulesIn: allThreeListedInAnEntryForLegacy,
+      file: 'legacy/a.ts',
+      besideOxlint: ALLOWED,
+      withoutOxlint: ALLOWED_WITHOUT_OXLINT,
+    },
+    {
+      config: 'all three listed in an entry for legacy/**',
+      lintRulesIn: allThreeListedInAnEntryForLegacy,
+      file: 'src/a.ts',
+      besideOxlint: ALLOWED_WITH_NO_RULESETS_RULES,
+      withoutOxlint: ALLOWED_WITH_NO_RULESETS_RULES,
+    },
+    {
+      config: 'all three listed for agents in legacy/**',
+      lintRulesIn(tsconfigRootDir) {
+        return buildConsumerLintRules(tsconfigRootDir, {}, { fileOverrides: [{ files: ['legacy/**'], agentRulesets: THE_THREE_RULESETS }] })
+      },
+      file: 'legacy/a.ts',
+      besideOxlint: ALLOWED_WITH_NO_RULESETS_RULES,
+      withoutOxlint: ALLOWED_WITH_NO_RULESETS_RULES,
+    },
+    {
+      config: 'all three listed, then none for bare/**',
+      lintRulesIn: allThreeListedThenNoneInAnEntryForBare,
+      file: 'bare/a.ts',
+      besideOxlint: ALLOWED_WITH_NO_RULESETS_RULES,
+      withoutOxlint: ALLOWED_WITH_NO_RULESETS_RULES,
+    },
+    {
+      config: 'all three listed, then none for bare/**',
+      lintRulesIn: allThreeListedThenNoneInAnEntryForBare,
+      file: 'src/a.ts',
+      besideOxlint: ALLOWED,
+      withoutOxlint: ALLOWED_WITHOUT_OXLINT,
+    },
+  ]
+  const cases = projects.flatMap(({ usesOxlint, ...project }) =>
+    listings.map(({ besideOxlint, withoutOxlint, ...listing }) => ({ ...project, ...listing, editorExpected: usesOxlint ? besideOxlint : withoutOxlint })),
+  )
+
+  it.each(cases)('sets the suppression rules in $file of a project $project, with $config', async ({ projectDir, lintRulesIn, file, editorExpected }) => {
+    const lintRules = lintRulesIn(projectDir())
+
+    expect(await suppressionSettingsFor(editorConfigsFor(lintRules), file)).toStrictEqual(editorExpected)
+  })
+
+  // The agent build sets the suppression rules whatever rulesets are listed.
+  it.each([
+    { config: 'nothing listed, suppressions allowed', lintRulesIn: nothingListedSuppressionsAllowed },
+    { config: 'all three for agents, suppressions allowed', lintRulesIn: allThreeListedForAgentsAloneSuppressionsAllowed },
+    {
+      config: 'all three for editors, suppressions allowed',
+      lintRulesIn(tsconfigRootDir: string) {
+        return buildConsumerLintRules(tsconfigRootDir, { editorRulesets: THE_THREE_RULESETS }, { allowSuppressions: true })
+      },
+    },
+  ])('leaves the agent build allowing them in src/a.ts, with $config', async ({ lintRulesIn }) => {
+    const lintRules = lintRulesIn(emptyTsconfigRootDir())
+
+    expect(await suppressionSettingsFor(agentConfigsFor(lintRules), 'src/a.ts')).toStrictEqual(ALLOWED)
+  })
 })
 
 describe("a team ESLint config's own noInlineConfig, merged with the editor part", () => {

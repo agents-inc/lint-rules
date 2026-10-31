@@ -1,6 +1,7 @@
 import { catalog } from '@workspace/rule-data'
-import type { OxlintConfig } from 'oxlint'
+import type { OxlintConfig, OxlintOverride } from 'oxlint'
 import { describe, expect, it } from 'vitest'
+import { NO_THIS_ALIAS } from '../__tests__/cases/oxlint-categories-and-plugin-names.ts'
 import { NO_DEBUGGER } from '../__tests__/cases/other-engine-configs.ts'
 import { buildTeamOxlintConfig } from '../__tests__/factories/team-config-factories.ts'
 import { type ProjectFiles, setUpTempProjects } from '../__tests__/temp-projects.ts'
@@ -15,14 +16,29 @@ const CORRECTNESS_ON = buildTeamOxlintConfig({ categories: { correctness: 'error
 const CORRECTNESS_OFF = buildTeamOxlintConfig({ categories: { correctness: 'off' } })
 const SETTING_NO_DEBUGGER = buildTeamOxlintConfig({ rules: { [NO_DEBUGGER]: 'error' } })
 const TEAM_OXLINTRC = '.oxlintrc.json'
-const EXTENDED_OXLINTRC = 'base.oxlintrc.json'
-// V8's text for a property read on null.
-const READ_ON_NULL = /^Cannot read properties of null \(reading '/u
+const SOURCES = 'src/**'
+const LIBRARY = 'lib/**'
+
+type CorrectnessRulesSet = { readonly noDebugger: boolean; readonly noThisAlias: boolean }
 
 const tempProjects = setUpTempProjects()
 
 function setBy(config: Readonly<OxlintConfig>): string[] {
   return ruleIdsTheTeamsOxlintConfigSets(config, catalog)
+}
+
+function correctnessOnBeside(rootPlugins: Readonly<NonNullable<OxlintConfig['plugins']>>, overrides: readonly OxlintOverride[], extended: readonly OxlintConfig[] = []): OxlintConfig {
+  return buildTeamOxlintConfig({ plugins: [...rootPlugins], categories: { correctness: 'error' }, overrides: [...overrides], extends: [...extended] })
+}
+
+function listing(files: string, plugins: Readonly<NonNullable<OxlintOverride['plugins']>>): OxlintOverride {
+  return { files: [files], plugins: [...plugins] }
+}
+
+/** no-debugger is a core rule, which correctness on runs whatever plugins are listed. */
+function correctnessRulesSetBy(config: Readonly<OxlintConfig>): CorrectnessRulesSet {
+  const set = setBy(config)
+  return { noDebugger: set.includes(NO_DEBUGGER), noThisAlias: set.includes(NO_THIS_ALIAS) }
 }
 
 /** As the ESLint merge reads a team's .oxlintrc.json. */
@@ -56,34 +72,63 @@ describe('ruleIdsTheTeamsOxlintConfigSets, given a config extending configs that
   })
 })
 
-// A team's JSON config is judged by its keys alone (oxlintConfigInJson), so a null where oxlint takes an object, which
-// oxlint itself refuses (measured, 1.87: "invalid type: null"), reaches the reading, which stops where it reads into it.
-describe('ruleIdsTheTeamsOxlintConfigSets, given a team JSON config holding null where oxlint takes an object', () => {
-  it('stops at a TypeError where options is null, reading typeAware in it', () => {
-    const optionsNull = readTheTeamsJson({ [TEAM_OXLINTRC]: JSON.stringify({ ...SETTING_NO_DEBUGGER, options: null }) })
-
-    expect(() => setBy(optionsNull)).toThrow(expect.objectContaining({ name: 'TypeError', message: "Cannot read properties of null (reading 'typeAware')" }))
-  })
-
+// The read refuses a null at any key oxlint refuses it at (merge-other-engine-config.refusals.test.ts), so none
+// reaches the reading.
+describe('ruleIdsTheTeamsOxlintConfigSets, given a team JSON config holding an empty object where oxlint takes an object', () => {
   it('reads its statements where options is an object turning nothing on', () => {
     const optionsEmpty = readTheTeamsJson({ [TEAM_OXLINTRC]: JSON.stringify({ ...SETTING_NO_DEBUGGER, options: {} }) })
 
     expect(setBy(optionsEmpty)).toStrictEqual([NO_DEBUGGER])
   })
+})
 
-  it('stops at a TypeError where categories is null and it extends no config, reading a category in it', () => {
-    const categoriesNull = readTheTeamsJson({ [TEAM_OXLINTRC]: JSON.stringify({ ...SETTING_NO_DEBUGGER, categories: null }) })
-
-    expect(() => setBy(categoriesNull)).toThrow(TypeError)
-    expect(() => setBy(categoriesNull)).toThrow(READ_ON_NULL)
+// Measured, oxlint 1.87: in a file, a plugin outside the root's runs its category rules only where an override matching
+// the file lists plugins other than the root's and the matching overrides' joined. Lists that differ may match one file
+// as far as their globs tell, so there the rules stay the team's (owner 2026-10-29).
+describe('ruleIdsTheTeamsOxlintConfigSets, given correctness on and typescript listed in overrides alone', () => {
+  it.each([
+    { how: 'one override lists typescript beside a root listing none', team: correctnessOnBeside([], [listing(SOURCES, ['typescript'])]) },
+    { how: 'one override lists import and typescript beside a root listing import', team: correctnessOnBeside(['import'], [listing(SOURCES, ['import', 'typescript'])]) },
+    { how: 'one override lists typescript beside a root listing eslint alone', team: correctnessOnBeside(['eslint'], [listing(SOURCES, ['typescript'])]) },
+    { how: 'two overrides list typescript alone, for two folders', team: correctnessOnBeside([], [listing(SOURCES, ['typescript']), listing(LIBRARY, ['typescript'])]) },
+    { how: 'two overrides list typescript, one with eslint', team: correctnessOnBeside([], [listing(SOURCES, ['typescript']), listing(SOURCES, ['eslint', 'typescript'])]) },
+    { how: 'one override lists typescript beside another leaving plugins out', team: correctnessOnBeside([], [listing(SOURCES, ['typescript']), { files: [SOURCES] }]) },
+    {
+      how: 'an override of a config it extends lists typescript, and no root lists a plugin',
+      team: correctnessOnBeside([], [], [buildTeamOxlintConfig({ plugins: [], overrides: [listing(SOURCES, ['typescript'])] })]),
+    },
+  ])("sets none of typescript's correctness rules where $how, as oxlint then runs them in no file", ({ team }) => {
+    expect(correctnessRulesSetBy(team)).toStrictEqual({ noDebugger: true, noThisAlias: false })
   })
 
-  it('reads the categories of a config it extends where its own categories is null', () => {
-    const categoriesNullBesideAnExtended = readTheTeamsJson({
-      [TEAM_OXLINTRC]: JSON.stringify({ extends: [EXTENDED_OXLINTRC], categories: null }),
-      [EXTENDED_OXLINTRC]: JSON.stringify(CORRECTNESS_ON),
+  it("sets none of typescript's correctness rules where two overrides list typescript under two of its names, read from JSON", () => {
+    const twoNames = readTheTeamsJson({
+      [TEAM_OXLINTRC]: JSON.stringify({
+        plugins: [],
+        categories: { correctness: 'error' },
+        overrides: [
+          { files: [SOURCES], plugins: ['typescript'] },
+          { files: [SOURCES], plugins: ['typescript-eslint'] },
+        ],
+      }),
     })
 
-    expect(setBy(categoriesNullBesideAnExtended)).toStrictEqual(setBy(CORRECTNESS_ON))
+    expect(correctnessRulesSetBy(twoNames)).toStrictEqual({ noDebugger: true, noThisAlias: false })
+  })
+
+  it.each([
+    { how: 'the root lists typescript, and an override lists it too', team: correctnessOnBeside(['typescript'], [listing(SOURCES, ['typescript'])]) },
+    // oxlint runs them in src/** alone, and nobody outside it.
+    { how: 'one override lists typescript beside a root listing import, which the override leaves out', team: correctnessOnBeside(['import'], [listing(SOURCES, ['typescript'])]) },
+    {
+      how: 'one override lists typescript beside a root listing none and a config it extends listing import at its root',
+      team: correctnessOnBeside([], [listing(SOURCES, ['typescript'])], [buildTeamOxlintConfig({ plugins: ['import'] })]),
+    },
+    { how: 'two overrides for one folder list typescript and import', team: correctnessOnBeside([], [listing(SOURCES, ['import']), listing(SOURCES, ['typescript'])]) },
+    { how: 'two overrides for one folder list typescript and no plugin', team: correctnessOnBeside([], [listing(SOURCES, []), listing(SOURCES, ['typescript'])]) },
+    // oxlint runs them in no file: whether the two folders share a file is not read from their globs.
+    { how: 'two overrides for two folders list typescript and import', team: correctnessOnBeside([], [listing(SOURCES, ['typescript']), listing(LIBRARY, ['import'])]) },
+  ])("sets typescript's correctness rules where $how", ({ team }) => {
+    expect(correctnessRulesSetBy(team)).toStrictEqual({ noDebugger: true, noThisAlias: true })
   })
 })

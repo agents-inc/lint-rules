@@ -22,6 +22,7 @@ import {
 import { isCoveredByAShippedRule, isCoveredInOxlintByAShippedRule } from './__tests__/shipped-covers.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG, NO_TEAM_ESLINT_CONFIG, writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
+import { WITHHELD_FIXES } from './cli/check/withheld-fixes.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
@@ -70,11 +71,11 @@ function routeOf(id: string): RuleRoute {
   return route
 }
 
-/** Every shipped rule allowSuppressions does not decide, except each one another rule covers. */
+/** Every shipped rule allowSuppressions does not decide and no rule shipped off, except each one another rule covers. */
 function shippedRoutesBesidesTheSuppressionRules(): RuleRoute[] {
   return catalog.rules
     .values()
-    .filter((route) => route.shipped !== null && !SUPPRESSION_RULE_IDS.has(route.id) && !isCoveredByAShippedRule(route))
+    .filter((route) => route.shipped !== null && !SUPPRESSION_RULE_IDS.has(route.id) && !('offByDefault' in route.shipped) && !isCoveredByAShippedRule(route))
     .toArray()
 }
 
@@ -88,6 +89,16 @@ function shippedOptionsOf(route: Readonly<RuleRoute>): readonly unknown[] {
   return route.shipped.options
 }
 
+/** oxlint's editor integration would offer the fix of an oxlint rule whose fix check withholds, so ESLint runs it. */
+function onItsEditorEngine(route: Readonly<RuleRoute>): RuleOnEngine {
+  const options = shippedOptionsOf(route)
+  return isOxlintRoutedWithItsFixWithheld(route) ? onEslint(route.id, options) : onItsEngine(route.id, options)
+}
+
+function isOxlintRoutedWithItsFixWithheld({ engine, id }: Readonly<RuleRoute>): boolean {
+  return engine === 'oxlint' && WITHHELD_FIXES.has(id)
+}
+
 function editorConfigsWithOxlint(): MergedEditorConfigs {
   return mergedEditorConfigsOf(PROJECT_WITH_OXLINT)
 }
@@ -98,12 +109,12 @@ function editorConfigsWithoutOxlint(): MergedEditorConfigs {
 
 describe('the editor parts of a project whose package.json lists oxlint, merged into empty team configs', () => {
   // A rule covered in oxlint by another is left out wherever oxlint runs.
-  it('run exactly the editor rules, each once, on its routed engine, with its options, suppressions allowed', () => {
+  it('run exactly the editor rules, each once, on its editor engine, with its options, suppressions allowed', () => {
     const configs = editorConfigsWithOxlint()
     const expected = sortedById([
       ...shippedRoutesBesidesTheSuppressionRules()
         .filter((route) => !isCoveredInOxlintByAShippedRule(route))
-        .map((route) => onItsEngine(route.id, shippedOptionsOf(route))),
+        .map(onItsEditorEngine),
       onItsEngine('@typescript-eslint/ban-ts-comment', [BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR]),
       onItsEngine('unicorn/no-abusive-eslint-disable', []),
     ])
@@ -118,10 +129,10 @@ describe('the editor parts of a project whose package.json lists oxlint, merged 
     expect(uniqueById(rulesOnInOxlint(oxlintConfigOf(configs))).filter((rule) => eslintIds.has(rule.id))).toStrictEqual([])
   })
 
-  it('state in ESLint no oxlint-routed rule, under its ID or an alias', () => {
+  it('state in ESLint no oxlint-routed rule but those whose fix check withholds, under its ID or an alias', () => {
     const { eslint } = editorConfigsWithOxlint()
     const oxlintRoutedNames = new Set(
-      catalog.rules.values().flatMap((route) => (route.engine === 'oxlint' ? [route.id, ...route.eslintAliases] : [])),
+      catalog.rules.values().flatMap((route) => (route.engine === 'oxlint' && !WITHHELD_FIXES.has(route.id) ? [route.id, ...route.eslintAliases] : [])),
     )
 
     expect(ruleIdsStatedInEslint(eslint).filter((id) => oxlintRoutedNames.has(id))).toStrictEqual([])

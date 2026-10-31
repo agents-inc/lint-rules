@@ -4,6 +4,7 @@ import { createRequire } from 'node:module'
 import { dirname, join, relative } from 'node:path'
 import type { OxlintCliOutput } from '@workspace/rule-data/test-support/oxlint-cli'
 import type { OxlintConfig } from 'oxlint'
+import type { CliOptions } from './cli-runs.ts'
 import { rawOxlintOutput, rawOxlintOutputFindingItsConfigs } from './oxlint-raw-output.ts'
 import { projectPathOf } from './project-paths.ts'
 
@@ -50,8 +51,8 @@ const WHOLE_FILE_LINE = 0
 * In a process of its own: typescript-eslint keeps one project service per process. With no config file named,
 * ESLint finds the project's own `eslint.config.mjs`.
 */
-export function runEslintCli(projectDir: string, configFile?: string): readonly EslintCliResult[] {
-  const linting = eslintCliOutcomeOf(projectDir, configFile)
+export function runEslintCli(projectDir: string, configFile?: string, { env = {} }: Pick<CliOptions, 'env'> = {}): readonly EslintCliResult[] {
+  const linting = eslintCliOutcomeOf(projectDir, configFile, { env })
   if (linting.outcome === 'refused') throw new Error(`ESLint could not lint ${projectDir}: ${linting.output}`)
   return linting.results
 }
@@ -61,10 +62,11 @@ export type EslintCliOutcome =
   | { readonly outcome: 'refused'; readonly output: string }
 
 /** Keeps a run ESLint could not make, a config that fails to load included, as its refusal. */
-export function eslintCliOutcomeOf(projectDir: string, configFile?: string): EslintCliOutcome {
+export function eslintCliOutcomeOf(projectDir: string, configFile?: string, { env = {} }: Pick<CliOptions, 'env'> = {}): EslintCliOutcome {
   const configArgs = configFile === undefined ? [] : ['-c', configFile]
   const { status, stdout, stderr } = spawnSync(process.execPath, [ESLINT_BIN, ...configArgs, '-f', 'json', '.'], {
     cwd: projectDir,
+    env: { ...process.env, ...env },
     encoding: 'utf8',
     timeout: ESLINT_CLI_TIMEOUT_MS,
   })

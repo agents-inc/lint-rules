@@ -17,8 +17,8 @@ function ourOxlintPart(): OxlintPart {
       PROJECT_WITH_OXLINT,
       {},
       {
-        rules: { 'react/jsx-key': 'error', '@typescript-eslint/array-type': 'error', '@typescript-eslint/no-non-null-assertion': 'error' },
-        fileOverrides: [{ files: ['lib/**'], rules: { 'react/jsx-key': 'off' } }],
+        rules: { 'react/no-string-refs': 'error', '@typescript-eslint/no-inferrable-types': 'error', '@typescript-eslint/no-non-null-assertion': 'error' },
+        fileOverrides: [{ files: ['lib/**'], rules: { 'react/no-string-refs': 'off' } }],
       },
     ),
   ).editorRulesets
@@ -30,19 +30,18 @@ describe('oxlintPartAlone', () => {
     const config = oxlintPartAlone(ourOxlintPart(), catalog)
 
     expect({
-      ours: oxlintSeverityFor(config, 'src/f.tsx', 'react/jsx-key'),
-      oursInTheEntry: oxlintSeverityFor(config, 'lib/m.tsx', 'react/jsx-key'),
-      eslintRuns: oxlintSeverityFor(config, 'src/a.ts', 'typescript/array-type'),
+      ours: oxlintSeverityFor(config, 'src/f.tsx', 'react/no-string-refs'),
+      oursInTheEntry: oxlintSeverityFor(config, 'lib/m.tsx', 'react/no-string-refs'),
+      eslintRuns: oxlintSeverityFor(config, 'src/a.ts', 'typescript/no-inferrable-types'),
     }).toStrictEqual({ ours: 'error', oursInTheEntry: 'off', eslintRuns: undefined })
   })
 
-  // typescript is listed for no-non-null-assertion, react for jsx-key, and unicorn for no-abusive-eslint-disable,
-  // which oxlint runs where suppressions are allowed, as they are in the editor parts.
+  // typescript is listed for no-non-null-assertion and react for no-string-refs.
   it('lists the plugin of each rule it runs and turns every category off, so it runs no rule it does not name', () => {
     const { plugins, categories } = oxlintPartAlone(ourOxlintPart(), catalog)
 
     expect({ plugins, categories }).toStrictEqual({
-      plugins: ['react', 'typescript', 'unicorn'],
+      plugins: ['react', 'typescript'],
       categories: { correctness: 'off', nursery: 'off', pedantic: 'off', perf: 'off', restriction: 'off', style: 'off', suspicious: 'off' },
     })
   })

@@ -199,6 +199,24 @@ defineLintRules({
 
 defineLintRules({
   ...allowed,
+  rules: {
+    'no-debugger': 'off',
+    // @ts-expect-error @eslint-community/eslint-comments/disable-enable-pair is set by allowSuppressions
+    '@eslint-community/eslint-comments/disable-enable-pair': 'error',
+  },
+})
+
+defineLintRules({
+  ...allowed,
+  rules: {
+    'no-debugger': 'off',
+    // @ts-expect-error @eslint-community/eslint-comments/no-duplicate-disable is set by allowSuppressions
+    '@eslint-community/eslint-comments/no-duplicate-disable': 'off',
+  },
+})
+
+defineLintRules({
+  ...allowed,
   fileOverrides: [
     // @ts-expect-error house/no-suppressions is set by allowSuppressions, in a file override too
     { files: ['legacy/**'], rules: { 'house/no-suppressions': 'off' } },
@@ -218,6 +236,22 @@ defineLintRules({
   fileOverrides: [
     // @ts-expect-error unicorn/no-abusive-eslint-disable is set by allowSuppressions, in a file override too
     { files: ['legacy/**'], rules: { 'unicorn/no-abusive-eslint-disable': 'off' } },
+  ],
+})
+
+defineLintRules({
+  ...allowed,
+  fileOverrides: [
+    // @ts-expect-error @eslint-community/eslint-comments/disable-enable-pair is set by allowSuppressions, in a file override too
+    { files: ['legacy/**'], rules: { '@eslint-community/eslint-comments/disable-enable-pair': 'off' } },
+  ],
+})
+
+defineLintRules({
+  ...allowed,
+  fileOverrides: [
+    // @ts-expect-error @eslint-community/eslint-comments/no-duplicate-disable is set by allowSuppressions, in a file override too
+    { files: ['legacy/**'], rules: { '@eslint-community/eslint-comments/no-duplicate-disable': 'error' } },
   ],
 })
 

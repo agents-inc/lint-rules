@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { type AgentBuildSettings, agentBuildSettingsOf, agentConfigsOf } from './__tests__/agent-configs.ts'
+import { NO_RULE_IN_THE_CATALOG, unshippedRuleRefusal } from './__tests__/cases/rules-we-do-not-ship.ts'
 import {
   buildConsumerLintRules,
   buildConsumerLintRulesWithoutAgentRulesets,
@@ -13,9 +14,9 @@ import type { EditorParts } from './core/editor-parts.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 
 // What an untyped agents-inc.lint.mts does: a .mjs file, or a .mts file whose type errors nobody reads. The types
-// refuse every value below and no check of ours on the config refuses it at run time (owner, 2026-10-19: "if they
-// use mjs it's on them"), so each is measured beside the typed config it builds the same as, or by the error it
-// stops at.
+// refuse every value below and, a rule ID aside, no check of ours on the config refuses it at run time (owner,
+// 2026-10-19: "if they use mjs it's on them"), so each is measured beside the typed config it builds the same as, or by
+// the error it stops at.
 
 type Built = { readonly agentBuild: AgentBuildSettings; readonly editorParts: EditorParts }
 
@@ -132,12 +133,13 @@ describe('a severity that is none of error, warn or off, in an untyped agents-in
   })
 })
 
-describe('a rule ID no shipped rule has, in an untyped agents-inc.lint.mts', () => {
-  it('stops at the look-up in the catalog, which names the ID and no file', () => {
+// Refused as every rule we do not ship is (owner, q-lint-unshipped-rules-channel), not at the catalog's look-up.
+describe('a rule ID no rule in the catalog has, in an untyped agents-inc.lint.mts', () => {
+  it("stops, naming the file, the key and the ID, and pointing to the team's own ESLint or oxlint config", () => {
     // @ts-expect-error not-a/rule is no rule ID
-    const untyped = buildConsumerLintRules(PROJECT_WITH_OXLINT, {}, { rules: { 'not-a/rule': 'error' } })
+    const untyped = buildConsumerLintRules(PROJECT_WITH_OXLINT, {}, { rules: { [NO_RULE_IN_THE_CATALOG]: 'error' } })
 
-    expect(() => defineLintRules(untyped)).toThrow(new Error('unknown rule ID "not-a/rule"'))
+    expect(() => defineLintRules(untyped)).toThrow(new Error(unshippedRuleRefusal('rules', NO_RULE_IN_THE_CATALOG)))
   })
 
   it('is not what a shipped rule ID stops at', () => {

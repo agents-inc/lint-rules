@@ -30,6 +30,9 @@ import { defineLintRules, type LintRules } from './index.ts'
 // allowSuppressions decides the suppression rules whatever is listed, so they are stated here per setting;
 // where it bans them, a block of its own gives ban-ts-comment its setting in test files.
 const SUPPRESSION_RULE_IDS: ReadonlySet<string> = new Set([
+  '@eslint-community/eslint-comments/disable-enable-pair',
+  '@eslint-community/eslint-comments/no-duplicate-disable',
+  '@eslint-community/eslint-comments/require-description',
   '@typescript-eslint/ban-ts-comment',
   'house/no-suppressions',
   'react-hooks/rule-suppression',
@@ -40,6 +43,12 @@ const BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR = {
   'ts-expect-error': 'allow-with-description',
   'ts-ignore': true,
   'ts-nocheck': true,
+}
+// oxlint obeys its own spelling of a switch-off comment, and `// eslint-disable` as a line comment, which the rule reads
+// only where additionalDirectives names them.
+const A_REASON_ASKED_OF_EITHER_ENGINES_SWITCH_OFF_COMMENTS = {
+  ignore: ['eslint-enable', 'eslint-env', 'exported', 'global', 'globals'],
+  additionalDirectives: ['eslint-disable', 'oxlint-disable', 'oxlint-disable-line', 'oxlint-disable-next-line'],
 }
 
 const TEST_FILE_BAN_BLOCK = 'agents-inc/test-files/@typescript-eslint/ban-ts-comment'
@@ -72,7 +81,7 @@ type GateReading = {
   readonly inFilesOfSomeRules: RuleOnEngine[]
 }
 
-// Two of the rules with banned suppressions, and three with suppressions allowed: ban-ts-comment runs
+// Two of the rules with banned suppressions, and six with suppressions allowed: ban-ts-comment runs
 // either way, with different options.
 function suppressionRulesBanned(): RuleOnEngine[] {
   return [onItsEngine('@typescript-eslint/ban-ts-comment', [BAN_TS_COMMENTS_OUTRIGHT]), onItsEngine('house/no-suppressions', [])]
@@ -80,6 +89,9 @@ function suppressionRulesBanned(): RuleOnEngine[] {
 
 function suppressionRulesAllowed(): RuleOnEngine[] {
   return [
+    onItsEngine('@eslint-community/eslint-comments/disable-enable-pair', []),
+    onItsEngine('@eslint-community/eslint-comments/no-duplicate-disable', []),
+    onItsEngine('@eslint-community/eslint-comments/require-description', [A_REASON_ASKED_OF_EITHER_ENGINES_SWITCH_OFF_COMMENTS]),
     onItsEngine('@typescript-eslint/ban-ts-comment', [BAN_TS_COMMENTS_BUT_A_DESCRIBED_EXPECT_ERROR]),
     onItsEngine('react-hooks/rule-suppression', []),
     onItsEngine('unicorn/no-abusive-eslint-disable', []),
@@ -107,14 +119,14 @@ function noRules(): RuleOnEngine[] {
 }
 
 /**
- * Every shipped rule allowSuppressions does not decide, on its routed engine with its shipped options less each
+ * Every shipped rule allowSuppressions does not decide and no rule shipped off, on its routed engine with its shipped options less each
  * entry it leaves to a rule run on some files alone, except each one another rule covers, in both engines or, as
  * the agent build always runs oxlint, in oxlint.
  */
 function shippedRulesBesidesTheSuppressionRules(): RuleOnEngine[] {
   return catalog.rules
     .values()
-    .filter((rule) => rule.shipped !== null && !SUPPRESSION_RULE_IDS.has(rule.id) && !isCoveredByAShippedRule(rule) && !isCoveredInOxlintByAShippedRule(rule))
+    .filter((rule) => rule.shipped !== null && !SUPPRESSION_RULE_IDS.has(rule.id) && !('offByDefault' in rule.shipped) && !isCoveredByAShippedRule(rule) && !isCoveredInOxlintByAShippedRule(rule))
     .map((rule) => ({ id: rule.id, engine: rule.engine, options: shippedOptionsWithout(rule, isLeftToARuleKeptToSomeFiles) }))
     .toArray()
 }

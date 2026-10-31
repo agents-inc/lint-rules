@@ -121,11 +121,33 @@ describe('ruleIdsTheTeamsOxlintConfigSets, given categories', () => {
     }).toStrictEqual({ typescript: [ARRAY_TYPE], unicorn: [PREFER_INCLUDES] })
   })
 
-  // typescript is listed for one folder alone: the category runs its rules there only, and they are the team's everywhere.
-  it('sets the rules a category on runs of a plugin one override lists, beside a root listing none', () => {
+  it('sets no rule a category on would run of a plugin one override lists beside a root listing none, as oxlint runs it in no file', () => {
     const team = buildTeamOxlintConfig({ plugins: [], categories: { correctness: 'off', style: 'warn' }, overrides: [{ files: ['legacy/**'], plugins: ['typescript'] }] })
 
-    expect(setAmong(team, [ARRAY_TYPE, PREFER_INCLUDES])).toStrictEqual([ARRAY_TYPE])
+    expect(setAmong(team, [ARRAY_TYPE, PREFER_INCLUDES])).toStrictEqual([])
+  })
+
+  // oxlint runs it in legacy/** alone; whether lib/** and legacy/** share a file is not read from their globs.
+  it.each<{ readonly beside: string; readonly team: OxlintConfig; readonly ruleIds: readonly string[] }>([
+    {
+      beside: 'a root listing unicorn, which the override leaves out',
+      team: buildTeamOxlintConfig({ plugins: ['unicorn'], categories: { correctness: 'off', style: 'warn' }, overrides: [{ files: ['legacy/**'], plugins: ['typescript'] }] }),
+      ruleIds: [ARRAY_TYPE, PREFER_INCLUDES],
+    },
+    {
+      beside: 'a root listing none and an override listing another plugin',
+      team: buildTeamOxlintConfig({
+        plugins: [],
+        categories: { correctness: 'off', style: 'warn' },
+        overrides: [
+          { files: ['legacy/**'], plugins: ['typescript'] },
+          { files: ['lib/**'], plugins: ['import'] },
+        ],
+      }),
+      ruleIds: [ARRAY_TYPE],
+    },
+  ])('sets the rules a category on runs of a plugin one override lists, beside $beside', ({ team, ruleIds }) => {
+    expect(setAmong(team, [ARRAY_TYPE, PREFER_INCLUDES])).toStrictEqual(ruleIds)
   })
 
   it('sets no rule of a category the config turns off, nor one a category on leaves out', () => {

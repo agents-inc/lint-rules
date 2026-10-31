@@ -36,8 +36,8 @@ const NOT_FOUND = -1
 const UNUSED_SUPPRESSION_LABEL = 'unused suppression'
 export const REPORTED_FILE = 'src/a.ts'
 
-/** Their fixtures fire rules that report and never fix. */
-export const REDUNDANCY = { quality: ['redundancy'] } as const
+/** Their fixtures fire rules that report and never fix: no-debugger in correctness, no-useless-catch in redundancy. */
+export const REPORTING_RULESETS = { quality: ['correctness', 'redundancy'] } as const
 
 export const SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED: SharedFields = { fileOverrides: [{ files: ['src/allowed/**'], allowSuppressions: true }] }
 
