@@ -9,11 +9,12 @@ import { catalog } from './catalog.ts'
 import { rulesetDefinitions } from './ruleset-definitions.ts'
 
 // Each hydration-proof rule the owner accepted runs as it ships, through the real ESLint: it reports code a component
-// renders differently on the server and in the browser, and stays silent beside it. Each is to ship in react-ssr, the
+// renders differently on the server and in the browser, and stays silent beside it. Four ship in react-ssr, the
 // ruleset the owner named on the cards, at the plugin's defaults, untyped (every case reports without type information)
 // and on every file. The rules report in an app that never renders on a server, so the owner made react-ssr opt-in (card
 // q-lint-react-ssr-in-client-apps, "Make react-ssr opt-in"): init names it in the ui list's comment instead of listing
-// it, and a config listing it keeps it. A rule whose build waits on a card has its case held unrun (ACCEPTED_HP_HELD_CASES).
+// it, and a config listing it keeps it. The owner decided against the other two for now (card q-lint-hp-left-off-record),
+// so they are recorded dropped and do not ship.
 
 const ENGINES_TIMEOUT_MS = 120_000
 

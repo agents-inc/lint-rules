@@ -2,6 +2,7 @@ import { writeFileSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
+import { fixupPluginRules } from '@eslint/compat'
 import { ESLint, type Linter } from 'eslint'
 import typescriptEslint from 'typescript-eslint'
 
@@ -40,6 +41,8 @@ const TS_FILES = '**/*.{ts,tsx,mts,cts}'
 // eslint-plugin-react warns on every run without a React version, and reads its version-gated
 // checks (react/no-unsafe's) from it.
 const REACT_VERSION = '19.0'
+// Their rules call context methods ESLint 10 removed, so the shipped config wraps them too (lint-rules' core/eslint-compat.ts).
+const PREFIXES_NEEDING_COMPAT: ReadonlySet<string> = new Set(['css-modules', 'react', 'react-hook-form'])
 
 /**
  * The settings a shipped rule runs with: its own, or, for a rule `allowSuppressions` decides, the
@@ -87,7 +90,9 @@ export function eslintBlocksOf(route: Readonly<RuleRoute>, settings: RuleSetting
 
 /**
  * ESLint over the files, from the project's root, with each block's rule on in its files but its
- * ignores, and type information where `typed` says: each file's outcome.
+ * ignores, and type information on TS files where `typed` says: each file's outcome. Unused disable comments go
+ * unreported, as the shipped configs set it: ESLint's default reports each with no rule ID, which
+ * reads as not linted.
  */
 export async function eslintOutcomesOf(
   projectDir: string,
@@ -101,13 +106,12 @@ export async function eslintOutcomesOf(
     overrideConfig: [
       {
         files: [ALL_SOURCE_FILES],
-        languageOptions: {
-          parser: typescriptEslint.parser,
-          parserOptions: typed ? { projectService: true, tsconfigRootDir: projectDir } : { ecmaFeatures: { jsx: true } },
-        },
-        plugins: eslintPlugins,
+        languageOptions: { parser: typescriptEslint.parser, parserOptions: { ecmaFeatures: { jsx: true } } },
+        linterOptions: { reportUnusedDisableDirectives: 'off' },
+        plugins: pluginsAsShipped(),
         settings: { react: { version: REACT_VERSION } },
       },
+      ...(typed ? [{ files: [TS_FILES], languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: projectDir } } }] : []),
       ...blocks.map(configBlockOf),
     ],
   })
@@ -143,6 +147,14 @@ export function oxlintOutcomesOf(
   if (run.outcome === 'refused') return new Map(paths.map((path) => [path, 'not linted']))
   const { diagnostics } = run.report
   return new Map(paths.map((path) => [path, oxlintOutcomeOf(diagnostics.filter(({ filename }) => filename === path))]))
+}
+
+function pluginsAsShipped(): Readonly<Record<string, ESLint.Plugin>> {
+  return Object.fromEntries(Object.entries(eslintPlugins).map(([prefix, plugin]) => [prefix, withCompatLayerWhereNeeded(prefix, plugin)]))
+}
+
+function withCompatLayerWhereNeeded(prefix: string, plugin: Readonly<ESLint.Plugin>): ESLint.Plugin {
+  return PREFIXES_NEEDING_COMPAT.has(prefix) ? fixupPluginRules(plugin) : plugin
 }
 
 function configBlockOf({ ruleId, settings: { options, files, ignores } }: EslintRuleBlock): Linter.Config {

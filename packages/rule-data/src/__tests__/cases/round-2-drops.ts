@@ -91,19 +91,26 @@ export const ROUND_2_DROPS: readonly Drop[] = [
 ]
 
 /**
- * The installed rules whose rewrite needs an API Node 22 lacks: off until a category for the newest
- * language features, enabled by Node version, exists. In data/rule-candidates.json's order.
+ * The rules whose automatic fix writes an API Node 22 lacks, or one jsdom or a test's stand-in location lacks
+ * (prefer-dom-node-html-methods, prefer-location-assign): shipped off by default, check withholding that fix where a team
+ * names one. In ID order.
  */
-export const RULES_NEEDING_NEWER_NODE: readonly string[] = [
+export const RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD: readonly string[] = [
   'e18e/prefer-get-or-insert',
-  'unicorn/prefer-dispose',
+  'unicorn/prefer-dom-node-html-methods',
   'unicorn/prefer-error-is-error',
   'unicorn/prefer-get-or-insert-computed',
   'unicorn/prefer-iterator-concat',
-  'unicorn/prefer-iterator-zip',
+  'unicorn/prefer-location-assign',
   'unicorn/prefer-promise-try',
   'unicorn/prefer-regexp-escape',
   'unicorn/prefer-temporal',
   'unicorn/prefer-uint8array-base64',
   'unicorn/prefer-uint8array-hex',
 ]
+
+/**
+ * The newest-language rules whose only rewrite is a suggestion an editor offers, which check never applies: shipped off
+ * by default, so a team on a Node that has the API turns one on by naming it.
+ */
+export const NEWEST_LANGUAGE_RULES_SHIPPED_OFF: readonly string[] = ['unicorn/prefer-dispose', 'unicorn/prefer-iterator-zip']

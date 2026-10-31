@@ -142,6 +142,89 @@ test('renders the title on the server', async ({ page }) => {
     ],
     packages: [PUPPETEER_CORE],
   },
+  // A skipped test is no focused one.
+  {
+    rule: 'playwright/no-focused-test',
+    silentIn: [
+      {
+        path: 'e2e/plain-test.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('opens', async ({ page }) => {
+  await expect(page).toHaveTitle('Home')
+})
+`,
+      },
+      {
+        path: 'e2e/skipped-test.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test.skip('opens', async ({ page }) => {
+  await expect(page).toHaveTitle('Home')
+})
+`,
+      },
+    ],
+    reportedIn: [
+      {
+        path: 'e2e/test-only.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test.only('opens', async ({ page }) => {
+  await expect(page).toHaveTitle('Home')
+})
+`,
+      },
+      {
+        path: 'e2e/describe-only.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test.describe.only('menu', () => {
+  test('opens', async ({ page }) => {
+    await expect(page).toHaveTitle('Home')
+  })
+})
+`,
+      },
+    ],
+  },
+  // A title repeated in another describe block names another test.
+  {
+    rule: 'playwright/no-identical-title',
+    silentIn: [
+      {
+        path: 'e2e/distinct-titles.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('opens', async ({ page }) => {
+  await expect(page).toHaveTitle('Home')
+})
+
+test('closes', async ({ page }) => {
+  await expect(page).toHaveTitle('Home')
+})
+`,
+      },
+      {
+        path: 'e2e/title-in-two-describes.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test.describe('menu', () => {
+  test('opens', async ({ page }) => {
+    await expect(page).toHaveTitle('Home')
+  })
+})
+
+test.describe('dialog', () => {
+  test('opens', async ({ page }) => {
+    await expect(page).toHaveTitle('Home')
+  })
+})
+`,
+      },
+    ],
+    reportedIn: [
+      {
+        path: 'e2e/identical-titles.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('opens', async ({ page }) => {
+  await expect(page).toHaveTitle('Home')
+})
+
+test('opens', async ({ page }) => {
+  await expect(page).toHaveTitle('Settings')
+})
+`,
+      },
+    ],
+  },
   // Another load state is not networkidle.
   {
     rule: 'playwright/no-networkidle',
@@ -184,6 +267,51 @@ test('renders the title on the server', async ({ page }) => {
       },
     ],
   },
+  // Only a locator is never undefined: the page's title can be empty. A Testing Library query is a getBy* call too,
+  // so a unit test's check of one is reported as well (owner: "Ship everywhere",
+  // q-lint-rc-unnecessary-assertions-measured).
+  {
+    rule: 'playwright/no-unnecessary-assertions',
+    silentIn: [
+      {
+        path: 'e2e/visible-dialog.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('opens', async ({ page }) => {
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+})
+`,
+      },
+      {
+        path: 'e2e/truthy-title.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('has a title', async ({ page }) => {
+  expect(await page.title()).toBeTruthy()
+})
+`,
+      },
+    ],
+    reportedIn: [
+      {
+        path: 'e2e/defined-locator.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('opens', async ({ page }) => {
+  const dialog = page.getByRole('dialog')
+  expect(dialog).toBeDefined()
+  await expect(dialog).toBeVisible()
+})
+`,
+      },
+      {
+        path: 'src/greeting.test.tsx',
+        source: `import { render, screen } from '@testing-library/react'
+import { expect, it } from 'vitest'
+
+it('greets', () => {
+  render(<p>Hi</p>)
+  expect(screen.getByText('Hi')).toBeTruthy()
+})
+`,
+      },
+    ],
+  },
   // A locator's own waitFor() is the wait the rule asks for, and outside the test files Puppeteer's
   // page.waitForSelector goes unread.
   {
@@ -218,6 +346,85 @@ test('renders the title on the server', async ({ page }) => {
       },
     ],
     packages: [PUPPETEER_CORE],
+  },
+  // A hook on top of its own describe block is on top, whatever comes before the block.
+  {
+    rule: 'playwright/prefer-hooks-on-top',
+    silentIn: [
+      {
+        path: 'e2e/hook-on-top.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test.beforeEach(async ({ page }) => {
+  await page.goto('/')
+})
+
+test('opens', async ({ page }) => {
+  await expect(page).toHaveTitle('Home')
+})
+`,
+      },
+      {
+        path: 'e2e/hook-on-top-of-a-describe.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('opens', async ({ page }) => {
+  await expect(page).toHaveTitle('Home')
+})
+
+test.describe('settings', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/settings')
+  })
+
+  test('opens', async ({ page }) => {
+    await expect(page).toHaveTitle('Settings')
+  })
+})
+`,
+      },
+    ],
+    reportedIn: [
+      {
+        path: 'e2e/hook-below-a-test.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('opens', async ({ page }) => {
+  await expect(page).toHaveTitle('Home')
+})
+
+test.beforeEach(async ({ page }) => {
+  await page.goto('/')
+})
+`,
+      },
+    ],
+  },
+  // The page's title is no locator's state, so no web-first assertion reads it.
+  {
+    rule: 'playwright/prefer-web-first-assertions',
+    silentIn: [
+      {
+        path: 'e2e/to-be-hidden.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('hides the tooltip', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('tooltip')).toBeHidden()
+})
+`,
+      },
+      {
+        path: 'e2e/page-title.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('names the page', async ({ page }) => {
+  await page.goto('/')
+  expect(await page.title()).toBe('Home')
+})
+`,
+      },
+    ],
+    reportedIn: [
+      {
+        path: 'e2e/is-visible.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('hides the tooltip', async ({ page }) => {
+  await page.goto('/')
+  expect(await page.getByRole('tooltip').isVisible()).toBe(false)
+})
+`,
+      },
+    ],
   },
   // Options that name a timeout satisfy it, whatever else they hold.
   {
@@ -263,6 +470,50 @@ test('renders the title on the server', async ({ page }) => {
       },
     ],
   },
+  // A message or a pattern names the error.
+  {
+    rule: 'playwright/require-to-throw-message',
+    silentIn: [
+      {
+        path: 'e2e/to-throw-message.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('refuses an empty title', () => {
+  expect(() => {
+    throw new Error('empty title')
+  }).toThrow('empty title')
+})
+`,
+      },
+      {
+        path: 'e2e/to-throw-pattern.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('refuses an empty title', () => {
+  expect(() => {
+    throw new Error('empty title')
+  }).toThrow(/empty/)
+})
+`,
+      },
+    ],
+    reportedIn: [
+      {
+        path: 'e2e/to-throw.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('refuses an empty title', () => {
+  expect(() => {
+    throw new Error('empty title')
+  }).toThrow()
+})
+`,
+      },
+      {
+        path: 'e2e/to-throw-error.spec.ts',
+        source: `${IMPORTS_PLAYWRIGHT}test('refuses an empty title', () => {
+  expect(() => {
+    throw new Error('empty title')
+  }).toThrowError()
+})
+`,
+      },
+    ],
+  },
   // A tag in the title, or a list of tags, each starting with @, is valid too.
   {
     rule: 'playwright/valid-test-tags',
@@ -301,100 +552,18 @@ test('closes', { tag: ['@smoke', '@fast'] }, async ({ page }) => {
 /**
  * The cases of accepted Playwright rules whose build waits on a card, unrun until the owner answers it: once the rule
  * ships, its case moves to ACCEPTED_PLAYWRIGHT_CASES.
- *
- * no-unnecessary-assertions: a Testing Library query is a getBy* call too, so the rule reports
- * expect(screen.getByText(...)).toBeTruthy() in Vitest and Jest test files, which hold every hit it made on the corpus
- * (measured, eslint-plugin-playwright 2.12.1).
- *
- * prefer-web-first-assertions: it reports element.getAttribute(...) assertions in Vitest and Jest test files, which hold
- * most of its hits on the corpus, and its fix writes await into a test that is not async there (TS1308); in a
- * Playwright test its fix changes the verdict of several assertions, and rewrites the declaration of a variable it
- * reads, so a value read earlier in the test becomes the live locator (measured, Playwright 1.56.1).
  */
-export const ACCEPTED_PW_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = [
-  // Only a locator is never undefined: the page's title can be empty.
-  {
-    heldBy: 'q-lint-rc-unnecessary-assertions-measured',
-    ruleCase: {
-      rule: 'playwright/no-unnecessary-assertions',
-      silentIn: [
-        {
-          path: 'e2e/visible-dialog.spec.ts',
-          source: `${IMPORTS_PLAYWRIGHT}test('opens', async ({ page }) => {
-  const dialog = page.getByRole('dialog')
-  await expect(dialog).toBeVisible()
-})
-`,
-        },
-        {
-          path: 'e2e/truthy-title.spec.ts',
-          source: `${IMPORTS_PLAYWRIGHT}test('has a title', async ({ page }) => {
-  expect(await page.title()).toBeTruthy()
-})
-`,
-        },
-      ],
-      reportedIn: [
-        {
-          path: 'e2e/defined-locator.spec.ts',
-          source: `${IMPORTS_PLAYWRIGHT}test('opens', async ({ page }) => {
-  const dialog = page.getByRole('dialog')
-  expect(dialog).toBeDefined()
-  await expect(dialog).toBeVisible()
-})
-`,
-        },
-      ],
-    },
-  },
-  // The page's title is no locator's state, so no web-first assertion reads it.
-  {
-    heldBy: 'q-lint-rc-web-first-assertions-measured',
-    ruleCase: {
-      rule: 'playwright/prefer-web-first-assertions',
-      silentIn: [
-        {
-          path: 'e2e/to-be-hidden.spec.ts',
-          source: `${IMPORTS_PLAYWRIGHT}test('hides the tooltip', async ({ page }) => {
-  await page.goto('/')
-  await expect(page.getByRole('tooltip')).toBeHidden()
-})
-`,
-        },
-        {
-          path: 'e2e/page-title.spec.ts',
-          source: `${IMPORTS_PLAYWRIGHT}test('names the page', async ({ page }) => {
-  await page.goto('/')
-  expect(await page.title()).toBe('Home')
-})
-`,
-        },
-      ],
-      reportedIn: [
-        {
-          path: 'e2e/is-visible.spec.ts',
-          source: `${IMPORTS_PLAYWRIGHT}test('hides the tooltip', async ({ page }) => {
-  await page.goto('/')
-  expect(await page.getByRole('tooltip').isVisible()).toBe(false)
-})
-`,
-        },
-      ],
-    },
-  },
-]
+export const ACCEPTED_PW_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = []
 
 /**
- * The accepted Playwright rules that report the same line as a shipped vitest rule in Vitest and Jest test files.
- * The owner's answer on card q-lint-playwright-vitest-twins: off by default, recorded as accepted; a team turns them
- * on for its Playwright folder in fileOverrides.
+ * The accepted Playwright rules shipped off by default, on only where a team names them: the four that report the same
+ * line as a shipped vitest rule in Vitest and Jest test files, and prefer-web-first-assertions, whose reports in those
+ * files are wrong and whose fix check withholds.
  */
 export const PLAYWRIGHT_RULES_OFF_BY_DEFAULT: readonly string[] = [
   'playwright/no-focused-test',
   'playwright/no-identical-title',
   'playwright/prefer-hooks-on-top',
+  'playwright/prefer-web-first-assertions',
   'playwright/require-to-throw-message',
 ]
-
-/** The owner's answer on card q-lint-playwright-vitest-twins, as each one's rule-candidates.json entry quotes it. */
-export const OWNER_ANSWER_KEEPING_THEM_OFF = `"Don't ship them by default" (q-lint-playwright-vitest-twins)`

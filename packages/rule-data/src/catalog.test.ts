@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import rulesetDefinitions from '../data/ruleset-definitions.json' with { type: 'json' }
 import { RULES_UNICORN_78_ADDS } from './__tests__/cases/plugin-upgrades.ts'
-import { ROUND_2_DROPS, RULES_NEEDING_NEWER_NODE } from './__tests__/cases/round-2-drops.ts'
+import { NEWEST_LANGUAGE_RULES_SHIPPED_OFF, ROUND_2_DROPS, RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD } from './__tests__/cases/round-2-drops.ts'
 import { ALLOWANCES_LEFT_TO } from './__tests__/cases/rule-relations.ts'
 import { isOptInRuleset, isSortingRuleset } from './__tests__/cases/sorting-rulesets.ts'
-import { TEST_FILE_GLOBS } from './__tests__/cases/test-file-globs.ts'
+import { TEST_AND_SETUP_FILE_GLOBS } from './__tests__/cases/test-file-globs.ts'
 import { buildEslintRoute, buildEslintRoutingEntry, buildOxlintRoute, buildOxlintRoutingEntry } from './__tests__/factories/inventory-factories.ts'
 import { buildShippedRule } from './__tests__/factories/shipped-rule-factories.ts'
 import { negatedShippedGlobsIn } from './__tests__/negated-globs.ts'
@@ -23,6 +23,23 @@ const nativeOxlintNameById: ReadonlyMap<string, string> = new Map(
 /** A relation as the catalog gives it: another rule's ID, or null for none. */
 function isRelationValue(value: unknown): boolean {
   return value === null || typeof value === 'string'
+}
+
+/** Each rule's engine, and how it is turned on where it ships. */
+function shippedRoutesOf(ids: readonly string[]): Record<string, unknown> {
+  return Object.fromEntries(
+    ids.map((id): [string, unknown] => {
+      const route = catalog.rules.get(id)
+      if (route === undefined) return [id, 'no RuleId']
+      const { engine, shipped } = route
+      if (shipped === null) return [id, { engine, shipped }]
+      return [id, { engine, ruleset: shipped.ruleset, alwaysOn: 'alwaysOn' in shipped, setBySuppressions: 'whenSuppressions' in shipped }]
+    }),
+  )
+}
+
+function routesShippedOffInEslint(ids: readonly string[]): Record<string, unknown> {
+  return Object.fromEntries(ids.map((id) => [id, { engine: 'eslint', ruleset: undefined, alwaysOn: false, setBySuppressions: false }]))
 }
 
 describe('the catalog, src/generated/routing.json', () => {
@@ -332,8 +349,7 @@ describe('the catalog, src/generated/routing.json', () => {
       })
     })
 
-    // The bans are always on; house's comes from the installed house plugin. oxlint skips ban-ts-comment
-    // in a JS file, so ESLint runs it.
+    // house's ban comes from the installed house plugin. oxlint skips ban-ts-comment in a JS file, so ESLint runs it.
     it('routes both suppression bans to ESLint, each with its shipped options', () => {
       const bans = Object.fromEntries(
         ['@typescript-eslint/ban-ts-comment', 'house/no-suppressions'].map((id) => {
@@ -352,15 +368,15 @@ describe('the catalog, src/generated/routing.json', () => {
       })
     })
 
-    // Where suppressions are banned, a test and a type test may still assert a type error, with a
+    // Where suppressions are banned, a test, a type test and a setup file may still assert a type error, with a
     // description; @ts-ignore and @ts-nocheck stay banned there.
-    it("gives @typescript-eslint/ban-ts-comment its setting in test and type-test files where suppressions are banned, with those files' globs", () => {
+    it("gives @typescript-eslint/ban-ts-comment its setting in test, type-test and setup files where suppressions are banned, with those files' globs", () => {
       const shipped = shippedRuleOf(routeOf('@typescript-eslint/ban-ts-comment', catalog))
 
       expect('whenSuppressions' in shipped ? shipped.whenSuppressions : 'not decided by allowSuppressions').toStrictEqual({
         banned: { options: [{ 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true }] },
         allowed: { options: [{ 'ts-expect-error': 'allow-with-description', 'ts-ignore': true, 'ts-nocheck': true }] },
-        bannedInTestFiles: { files: TEST_FILE_GLOBS, options: [{ 'ts-expect-error': 'allow-with-description', 'ts-ignore': true, 'ts-nocheck': true }] },
+        bannedInTestFiles: { files: TEST_AND_SETUP_FILE_GLOBS, options: [{ 'ts-expect-error': 'allow-with-description', 'ts-ignore': true, 'ts-nocheck': true }] },
       })
     })
 
@@ -368,6 +384,23 @@ describe('the catalog, src/generated/routing.json', () => {
       const withATestFileSetting = routes.filter(({ shipped }) => shipped !== null && 'whenSuppressions' in shipped && 'bannedInTestFiles' in shipped.whenSuppressions).map(({ id }) => id)
 
       expect(withATestFileSetting).toStrictEqual(['@typescript-eslint/ban-ts-comment'])
+    })
+
+    // The editor parts run each one with an editor ruleset only where their rulesets list it.
+    it('gives each rule allowSuppressions decides the ruleset rules.json gives it as its editor ruleset, and none to those always on', () => {
+      const editorRulesets = Object.fromEntries(
+        routes.flatMap(({ id, shipped }) => (shipped !== null && 'whenSuppressions' in shipped ? [[id, 'editorRuleset' in shipped ? shipped.editorRuleset : 'none']] : [])),
+      )
+
+      expect(editorRulesets).toStrictEqual({
+        '@eslint-community/eslint-comments/disable-enable-pair': 'comments',
+        '@eslint-community/eslint-comments/no-duplicate-disable': 'comments',
+        '@eslint-community/eslint-comments/require-description': 'comments',
+        '@typescript-eslint/ban-ts-comment': 'type-safety',
+        'house/no-suppressions': 'none',
+        'react-hooks/rule-suppression': 'react',
+        'unicorn/no-abusive-eslint-disable': 'comments',
+      })
     })
 
     it('ships house/require-class-helper in class-names, run by ESLint at its defaults, related to no other rule', () => {
@@ -413,17 +446,13 @@ describe('the catalog, src/generated/routing.json', () => {
       expect(lostWithoutOxlint).toStrictEqual([])
     })
 
-    // The fix of each writes an API Node 22 lacks: shipped off until a category for the newest language
-    // features, enabled by Node version, exists.
-    it('keeps each modern-js rule whose fix needs a newer Node a RuleId run by ESLint, shipped in no ruleset', () => {
-      const routesById = Object.fromEntries(
-        RULES_NEEDING_NEWER_NODE.map((id) => {
-          const route = catalog.rules.get(id)
-          return [id, route === undefined ? 'no RuleId' : { engine: route.engine, shipped: route.shipped }]
-        }),
-      )
+    // A team on a Node with the API turns one on by naming it; check never applies a suggestion.
+    it('ships each newest-language rule whose only rewrite is a suggestion, run by ESLint, off until a team names it: in no ruleset, not always on, and not set by allowSuppressions', () => {
+      expect(shippedRoutesOf(NEWEST_LANGUAGE_RULES_SHIPPED_OFF)).toStrictEqual(routesShippedOffInEslint(NEWEST_LANGUAGE_RULES_SHIPPED_OFF))
+    })
 
-      expect(routesById).toStrictEqual(Object.fromEntries(RULES_NEEDING_NEWER_NODE.map((id) => [id, { engine: 'eslint', shipped: null }])))
+    it('ships each rule whose fix writes an API Node 22 or jsdom lacks, run by ESLint, off until a team names it: in no ruleset, not always on, and not set by allowSuppressions', () => {
+      expect(shippedRoutesOf(RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD)).toStrictEqual(routesShippedOffInEslint(RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD))
     })
 
     // oxlint has neither, so ESLint runs each: in its ruleset where we ship it, elsewhere where a team turns it on by ID.

@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 
 import { beforeAll } from 'vitest'
 
-import { type Catalog, type Engine, type RuleRoute, routeOf } from '../catalog.ts'
+import { type Catalog, type Engine, type RuleRoute, routeOf, ruleIdsOxlintRunsTypeAware } from '../catalog.ts'
 import { PROJECT_MANIFEST, type RuleCase, type StubPackage, STUB_PACKAGES, TYPED_PROJECT_TSCONFIG } from './cases/changed-settings.ts'
 import type { StandInCase } from './cases/stand-ins.ts'
 import {
@@ -33,7 +33,12 @@ type OutcomesByEngine = Readonly<Record<string, Readonly<Record<string, FileOutc
 /** What the engines made of a case's files, and what they owe there. */
 type CaseOutcomes = { readonly actual: OutcomesByEngine; readonly expected: OutcomesByEngine }
 
-type CatalogParts = Readonly<Pick<Catalog, 'rules' | 'coreRuleExtensions' | 'eslintStandIns'>>
+type CatalogParts = Readonly<Pick<Catalog, 'rules' | 'coreRuleExtensions' | 'eslintStandIns' | 'oxlintRules'>>
+
+type OxlintNames = { readonly oxlintName: string; readonly oxlintPlugin: string }
+
+/** An engine a case runs on, with oxlint's version of the rule resolved before any engine runs: a refusal starts none. */
+type EngineRun = { readonly engine: 'oxlint'; readonly version: OxlintNames } | { readonly engine: 'eslint' }
 
 /** The rule a case runs, with the settings it ships, and the catalog that names its ESLint blocks. */
 type RuleRun = { readonly route: Readonly<RuleRoute>; readonly settings: RuleSettings; readonly catalogParts: CatalogParts }
@@ -83,13 +88,19 @@ async function writeTheProject(projectDir: string): Promise<void> {
   await writeFile(join(projectDir, 'package.json'), JSON.stringify(PROJECT_MANIFEST))
 }
 
-async function caseOutcomesIn(projectDir: string, folder: string, { rule, engines, silentIn, reportedIn, packages = [] }: RuleCase, catalogParts: CatalogParts): Promise<CaseOutcomes> {
+async function caseOutcomesIn(
+  projectDir: string,
+  folder: string,
+  { rule, engines, silentIn, reportedIn, packages = [], compilerOptions }: RuleCase,
+  catalogParts: CatalogParts,
+): Promise<CaseOutcomes> {
   const route = routeOf(rule, catalogParts)
   const settings = shippedSettingsOf(route)
   const silent = inFolder(folder, silentIn)
   const reported = inFolder(folder, reportedIn)
   const files = [...silent, ...reported]
   await writeStubPackages(join(projectDir, folder), packages)
+  if (compilerOptions !== undefined) await writeFolderTsconfig(join(projectDir, folder), compilerOptions)
   await writeCaseFiles(projectDir, files)
   const runOn = engines ?? enginesThatMayRun(route)
   const actual = await outcomesByEngine(runOn, { route, settings, catalogParts }, { projectDir, files, configFile: `${folder}.oxlintrc.json` })
@@ -113,17 +124,22 @@ async function standInCaseOutcomesIn(projectDir: string, folder: string, { oxlin
 }
 
 async function outcomesByEngine(engines: readonly Engine[], rule: RuleRun, run: CaseRun): Promise<OutcomesByEngine> {
-  const outcomes = await Promise.all(engines.map(async (engine): Promise<[Engine, Readonly<Record<string, FileOutcome>>]> => [engine, await outcomesOn(engine, rule, run)]))
+  const engineRuns = engines.map((engine) => engineRunOf(engine, rule))
+  const outcomes = await Promise.all(engineRuns.map(async (engineRun): Promise<[Engine, Readonly<Record<string, FileOutcome>>]> => [engineRun.engine, await outcomesOn(engineRun, rule, run)]))
   return Object.fromEntries(outcomes)
 }
 
-async function outcomesOn(engine: Engine, { route, settings, catalogParts }: RuleRun, { projectDir, files, configFile }: CaseRun): Promise<Readonly<Record<string, FileOutcome>>> {
-  const read = readBy(engine, files)
-  const outcomes =
-    engine === 'oxlint'
-      ? oxlintOutcomesOf({ projectDir, files: read, configFile }, oxlintNamesOf(route), settings)
-      : await eslintOutcomesOf(projectDir, eslintBlocksOf(route, settings, catalogParts), read, { typed: route.typed })
-  return Object.fromEntries(outcomes)
+function engineRunOf(engine: Engine, { route, catalogParts }: RuleRun): EngineRun {
+  return engine === 'oxlint' ? { engine, version: oxlintVersionOf(route, catalogParts) } : { engine }
+}
+
+async function outcomesOn(engineRun: EngineRun, { route, settings, catalogParts }: RuleRun, { projectDir, files, configFile }: CaseRun): Promise<Readonly<Record<string, FileOutcome>>> {
+  const read = readBy(engineRun.engine, files)
+  if (engineRun.engine === 'oxlint') return Object.fromEntries(oxlintOutcomesOf({ projectDir, files: read, configFile }, engineRun.version, settings))
+  const blocks = eslintBlocksOf(route, settings, catalogParts)
+  // A moved core rule's typed extension, run on TS files in its place, needs type information there.
+  const typed = blocks.some(({ ruleId }) => routeOf(ruleId, catalogParts).typed)
+  return Object.fromEntries(await eslintOutcomesOf(projectDir, blocks, read, { typed }))
 }
 
 /** The engines that may run the rule: the one it is routed to, and ESLint, which runs an oxlint rule without oxlint. */
@@ -131,7 +147,17 @@ function enginesThatMayRun({ engine }: Readonly<RuleRoute>): readonly Engine[] {
   return engine === 'oxlint' ? ['oxlint', 'eslint'] : ['eslint']
 }
 
-function oxlintNamesOf(route: Readonly<RuleRoute>): { readonly oxlintName: string; readonly oxlintPlugin: string } {
+/** oxlint's version of the case's rule: the route's own, or, for a rule ESLint runs, the one oxlint runs without type information. */
+function oxlintVersionOf(route: Readonly<RuleRoute>, { oxlintRules }: Pick<CatalogParts, 'oxlintRules'>): OxlintNames {
+  if (route.engine === 'oxlint') return oxlintNamesOf(route)
+  const version = oxlintRules.find(({ id }) => id === route.id)
+  if (version === undefined) throw new Error(`${route.id} has no oxlint version`)
+  if (ruleIdsOxlintRunsTypeAware.has(route.id)) throw new Error(`${route.id}: oxlint runs its version only with type information`)
+  const { oxlintName, oxlintPlugin } = version
+  return { oxlintName, oxlintPlugin }
+}
+
+function oxlintNamesOf(route: Readonly<RuleRoute>): OxlintNames {
   if (route.engine !== 'oxlint') throw new Error(`${route.id} is not routed to oxlint`)
   const { oxlintName, oxlintPlugin } = route
   return { oxlintName, oxlintPlugin }
@@ -139,6 +165,13 @@ function oxlintNamesOf(route: Readonly<RuleRoute>): { readonly oxlintName: strin
 
 function inFolder(folder: string, files: readonly CaseFile[]): CaseFile[] {
   return files.map((file) => ({ ...file, path: `${folder}/${file.path}` }))
+}
+
+/** TypeScript gives each file the nearest tsconfig, so the folder's files are typed by this one, not the project's. */
+async function writeFolderTsconfig(folder: string, compilerOptions: Readonly<Record<string, unknown>>): Promise<void> {
+  await mkdir(folder, { recursive: true })
+  const tsconfig = { ...TYPED_PROJECT_TSCONFIG, compilerOptions: { ...TYPED_PROJECT_TSCONFIG.compilerOptions, ...compilerOptions } }
+  await writeFile(join(folder, 'tsconfig.json'), JSON.stringify(tsconfig))
 }
 
 /** Writes each package under the folder's `node_modules`, as a package manager installs it. */

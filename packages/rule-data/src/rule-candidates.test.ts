@@ -4,7 +4,7 @@ import candidates from '../data/rule-candidates.json' with { type: 'json' }
 import canonicalRules from '../data/rules.json' with { type: 'json' }
 import { CANDIDATE_STATUSES, NOT_REVIEWED_WHY, UNSHIPPED_STATUSES } from './__tests__/cases/candidate-states.ts'
 import { DROPPED_RULES } from './__tests__/cases/dropped-rules.ts'
-import { ROUND_2_DROPS, RULES_NEEDING_NEWER_NODE } from './__tests__/cases/round-2-drops.ts'
+import { ROUND_2_DROPS } from './__tests__/cases/round-2-drops.ts'
 import { catalog } from './catalog.ts'
 import { pluginPrefixOf } from './rule-id-parts.ts'
 
@@ -108,13 +108,6 @@ describe('the rules we do not ship, data/rule-candidates.json', () => {
         status: candidateFor('shadcn/no-arbitrary-values').status,
         isRuleId: catalog.rules.has('shadcn/no-arbitrary-values'),
       }).toStrictEqual({ status: 'considering', isRuleId: true })
-    })
-
-    // Shipped off until a category for the newest language features, enabled by Node version, exists.
-    it('parks each modern-js rule whose fix writes an API Node 22 lacks', () => {
-      expect(candidates.filter(({ id }) => RULES_NEEDING_NEWER_NODE.includes(id)).map(({ id, status }) => [id, status])).toStrictEqual(
-        RULES_NEEDING_NEWER_NODE.map((id) => [id, 'parked']),
-      )
     })
 
     // A later sweep sees why each was dropped, and does not propose it again unknowingly.

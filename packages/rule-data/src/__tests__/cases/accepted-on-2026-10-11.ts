@@ -17,8 +17,8 @@ export const ACCEPTED_ON_2026_10_11: Readonly<Record<string, AcceptedRule>> = {
   '@typescript-eslint/prefer-string-starts-ends-with': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
   '@typescript-eslint/use-unknown-in-catch-callback-variable': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
   'accessor-pairs': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
-  // To be ported as house/no-reduce-accumulator-copy, which this key becomes once the port ships.
-  'anti-slop/no-reduce-accumulator-copy': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  // anti-slop/no-reduce-accumulator-copy, accepted on the page, ships as its house port.
+  'house/no-reduce-accumulator-copy': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
   'no-array-constructor': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
   'no-empty': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
   'no-new-wrappers': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
@@ -31,7 +31,7 @@ export const ACCEPTED_ON_2026_10_11: Readonly<Record<string, AcceptedRule>> = {
   'sonarjs/composite-assertions': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
   'sonarjs/no-debounce-throttle-in-render': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
   'sonarjs/no-duplicate-parameterized-test-case': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
-  'sonarjs/no-duplicated-branches': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
+  'sonarjs/no-duplicated-branches': { card: OWNER_2026_10_11, droppedBy: 'q-lint-snr-duplicated-branches-false-alarms' },
   'sonarjs/no-empty-parameterized-test-dataset': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
   'sonarjs/synchronous-exception-assertions': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
   'symbol-description': { card: OWNER_2026_10_11, waitsAs: 'recommended' },

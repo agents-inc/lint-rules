@@ -16,6 +16,8 @@ export type RuleCase = {
   readonly reportedIn: readonly CaseFile[]
   /** Packages the case's files resolve before the project's own: written to the `node_modules` of the case's folder. */
   readonly packages?: readonly StubPackage[]
+  /** Compiler options set over the project's in a tsconfig of the case's folder, which takes in the folder's files alone. */
+  readonly compilerOptions?: Readonly<Record<string, unknown>>
 }
 
 /**
@@ -383,6 +385,12 @@ function skippingTestFiles(rule: string, source: string): RuleCase {
   return { rule, subject: 'test and type-test files', silentIn: inEachTestFile(source, 'ts'), reportedIn: [{ path: 'src/a.ts', source }] }
 }
 
+/** A file that only re-exports. */
+const A_BARREL = "export * from './greeting.js'\n"
+
+/** Every JS and TS extension a consumer's files are linted under. */
+const SOURCE_FILE_EXTENSIONS: readonly string[] = ['js', 'mjs', 'cjs', 'jsx', 'ts', 'mts', 'cts', 'tsx']
+
 const LONG_FUNCTION = `export function total(): number {
 ${Array.from({ length: 22 }, (_, index) => `  const part${String(index)} = ${String(index)}`).join('\n')}
   return ${Array.from({ length: 22 }, (_, index) => `part${String(index)}`).join(' + ')}
@@ -390,6 +398,10 @@ ${Array.from({ length: 22 }, (_, index) => `  const part${String(index)} = ${Str
 `
 
 const STACK_PUSH = 'export function add(stack: number[], item: number): void {\n  stack.push(item)\n}\n'
+
+// Written as CommonJS, which every extension parses, so one source serves each.
+const HOOK_IN_A_STORY_RENDER = 'module.exports = {\n  render: () => {\n    const [count] = useState(0)\n    return count\n  },\n}\n'
+const UNUSED_PARAMETER_IN_A_STORY = 'module.exports = (read, unused) => read()\n'
 
 // The plugin takes any function named render… for Testing Library's.
 const RENDERER_NAMED_LIKE_A_RENDER = 'declare function rendererNameOf(frame: object): string\nexport const renderer = rendererNameOf({})\n'
@@ -732,6 +744,16 @@ export class Card extends Component {
   skippingTestFiles('functional/no-classes', 'export class Runner {}\n'),
   skippingTestFiles('functional/no-this-expressions', 'export const counter = {\n  count: 0,\n  next() {\n    return this.count\n  },\n}\n'),
   skippingTestFiles('sonarjs/file-name-differ-from-class', 'export default class Runner {}\n'),
+  // A package's main entry re-exports by design and the rule takes no options, so every src/index file stands in for it.
+  {
+    rule: 'unicorn/no-barrel-files',
+    silentIn: [...SOURCE_FILE_EXTENSIONS.map((extension) => ({ path: `src/index.${extension}`, source: A_BARREL })), { path: 'packages/a/src/index.ts', source: A_BARREL }],
+    reportedIn: [
+      { path: 'src/components/index.ts', source: A_BARREL },
+      { path: 'index.ts', source: A_BARREL },
+      { path: 'src/main.ts', source: A_BARREL },
+    ],
+  },
   {
     rule: 'testing-library/render-result-naming-convention',
     subject: 'source files',
@@ -745,6 +767,18 @@ export class Card extends Component {
       { path: 'src/a.test-d.ts', source: RENDERER_NAMED_LIKE_A_RENDER },
       { path: 'src/a.stories.tsx', source: RENDERER_NAMED_LIKE_A_RENDER },
     ],
+  },
+  {
+    rule: 'react-hooks/rules-of-hooks',
+    subject: 'story files',
+    silentIn: SOURCE_FILE_EXTENSIONS.map((extension) => ({ path: `src/button.stories.${extension}`, source: HOOK_IN_A_STORY_RENDER })),
+    reportedIn: [{ path: 'src/button.mjs', source: HOOK_IN_A_STORY_RENDER }],
+  },
+  {
+    rule: 'no-unused-vars',
+    subject: 'story files',
+    silentIn: SOURCE_FILE_EXTENSIONS.map((extension) => ({ path: `src/button.stories.${extension}`, source: UNUSED_PARAMETER_IN_A_STORY })),
+    reportedIn: [{ path: 'src/button.mjs', source: UNUSED_PARAMETER_IN_A_STORY }],
   },
 ]
 

@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 import canonicalRules from '../data/rules.json' with { type: 'json' }
 import rulesetDefinitions from '../data/ruleset-definitions.json' with { type: 'json' }
-import { ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON } from './__tests__/cases/routed-to-eslint-for-a-reason.ts'
+import { ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON, RULES_WAITING_ON_AN_OWNER_ANSWER } from './__tests__/cases/routed-to-eslint-for-a-reason.ts'
 import { DROPPED_ON_2026_10_16 } from './__tests__/cases/dropped-rules.ts'
-import { ROUND_2_DROPS } from './__tests__/cases/round-2-drops.ts'
+import { PLAYWRIGHT_RULES_OFF_BY_DEFAULT } from './__tests__/cases/accepted-pw.ts'
+import { NEWEST_LANGUAGE_RULES_SHIPPED_OFF, ROUND_2_DROPS, RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD } from './__tests__/cases/round-2-drops.ts'
 import { ALLOWANCES_LEFT_TO, COVERED_BY, COVERED_IN_OXLINT_BY, FILES_LEFT_UNCOVERED_BY_CARD, SPLIT_BY_TYPES_WITH } from './__tests__/cases/rule-relations.ts'
 import { isOptInRuleset, isSortingRuleset, RULES_THAT_SORT, SORTING_RULESETS } from './__tests__/cases/sorting-rulesets.ts'
-import { NAMES_TEST_FILES, RULES_SKIPPING_TEST_FILES, STORY_FILE_GLOB, TEST_FILE_GLOBS } from './__tests__/cases/test-file-globs.ts'
+import { NAMES_TEST_FILES, RULES_SKIPPING_TEST_FILES, SETUP_FILE_GLOBS, STORY_FILE_GLOB, STORY_FILE_NAME_PART, TEST_AND_SETUP_FILE_GLOBS, TEST_FILE_GLOBS } from './__tests__/cases/test-file-globs.ts'
 import { allowancesLeftToOffenders, coveredByOffenders, coveredInOxlintByOffenders, filesLeftUncovered, splitByTypesOffenders } from './__tests__/relation-offenders.ts'
 import { catalog } from './catalog.ts'
 import { canonicalRules as parsedCanonicalRules } from './generate/canonical-rules.ts'
@@ -54,8 +55,11 @@ const RUNTIME_RULESETS = [
   { name: 'browser-targets', env: null },
 ]
 
+/** In ID order, as data/rules.json lists them. */
+const RULES_SHIPPED_OFF_BY_DEFAULT = [...PLAYWRIGHT_RULES_OFF_BY_DEFAULT, ...NEWEST_LANGUAGE_RULES_SHIPPED_OFF, ...RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD].toSorted()
+
 // Created empty, so a team can list each before its first rule arrives.
-const LIBRARY_RULESETS_CREATED_EMPTY = new Set(['nextjs', 'react-ssr', 'jest-dom', 'drizzle', 'jsonwebtoken', 'browser-targets'])
+const LIBRARY_RULESETS_CREATED_EMPTY = new Set(['nextjs', 'drizzle', 'jsonwebtoken'])
 
 const definedRulesetNames = new Set(rulesetDefinitions.map((definition) => definition.name))
 const inventoryById = new Map(inventory.rules.map((rule) => [rule.id, rule]))
@@ -78,6 +82,11 @@ function eslintBecauseOf(rule: Readonly<(typeof canonicalRules)[number]>): unkno
  */
 function hasAnAssignmentRecord({ assignment }: { readonly assignment?: { readonly by?: unknown; readonly confidence?: unknown } }): boolean {
   return assignment !== undefined && typeof assignment.by === 'string' && typeof assignment.confidence === 'string'
+}
+
+/** Whether the entry ships the rule off, on only where a team names it. Read with `in`: no entry of today's data need carry the key. */
+function isOffByDefault(rule: Readonly<(typeof canonicalRules)[number]>): boolean {
+  return 'offByDefault' in rule && rule.offByDefault
 }
 
 /** The ruleset a rule ships in, or `null` for a rule the canonical list leaves out. */
@@ -171,13 +180,13 @@ describe('the canonical list, data/rules.json', () => {
       expect(typeAwareOxlintRules).toStrictEqual([])
     })
 
-    it('has no rule with both or neither of a ruleset and alwaysOn: true, so each is turned on exactly one way', () => {
+    it('has no rule with other than exactly one of a ruleset, alwaysOn: true and offByDefault: true, so each is turned on exactly one way or off until a team names it', () => {
       const misplaced = canonicalRules
         .filter((rule) => {
           const hasRuleset = typeof rule.ruleset === 'string' && rule.ruleset !== ''
-          return hasRuleset === (rule.alwaysOn === true)
+          return [hasRuleset, rule.alwaysOn === true, isOffByDefault(rule)].filter(Boolean).length !== 1
         })
-        .map((rule) => `${rule.id} (ruleset ${String(rule.ruleset)}, alwaysOn ${String(rule.alwaysOn)})`)
+        .map((rule) => `${rule.id} (ruleset ${String(rule.ruleset)}, alwaysOn ${String(rule.alwaysOn)}, offByDefault ${String(isOffByDefault(rule))})`)
 
       expect(misplaced).toStrictEqual([])
     })
@@ -202,12 +211,33 @@ describe('the canonical list, data/rules.json', () => {
     it('has no files or ignores list naming test files without every test-file glob, or with one spelled otherwise', () => {
       const offenders = canonicalRules.flatMap(({ id, files, ignores }) =>
         Object.entries({ files, ignores }).flatMap(([key, globs]) => {
-          const testFileGlobs = (globs ?? []).filter((glob) => NAMES_TEST_FILES.test(glob))
+          const testFileGlobs = (globs ?? []).filter((glob) => NAMES_TEST_FILES.test(glob) && !SETUP_FILE_GLOBS.includes(glob))
           const missing = testFileGlobs.length === 0 ? [] : TEST_FILE_GLOBS.filter((glob) => !testFileGlobs.includes(glob))
           const otherSpellings = testFileGlobs.filter((glob) => !TEST_FILE_GLOBS.includes(glob))
           return [...missing.map((glob) => `${id} ${key}: lacks ${glob}`), ...otherSpellings.map((glob) => `${id} ${key}: names ${glob}`)]
         }),
       )
+
+      expect(offenders).toStrictEqual([])
+    })
+
+    it('names story files by one glob, in the extensions test files take, in every files and ignores list', () => {
+      const offenders = canonicalRules.flatMap(({ id, files, ignores }) =>
+        Object.entries({ files, ignores }).flatMap(([key, globs]) =>
+          (globs ?? []).filter((glob) => glob.includes(STORY_FILE_NAME_PART) && glob !== STORY_FILE_GLOB).map((glob) => `${id} ${key}: names ${glob}`),
+        ),
+      )
+
+      expect(offenders).toStrictEqual([])
+    })
+
+    // A test runner's setup file registers hooks and keeps state as a test does, so it gets test files' relaxed rules.
+    it('has no ignores list naming test files without every setup-file glob', () => {
+      const offenders = canonicalRules.flatMap(({ id, ignores }) => {
+        const globs = ignores ?? []
+        if (!TEST_FILE_GLOBS.some((glob) => globs.includes(glob))) return []
+        return SETUP_FILE_GLOBS.filter((glob) => !globs.includes(glob)).map((glob) => `${id} ignores: lacks ${glob}`)
+      })
 
       expect(offenders).toStrictEqual([])
     })
@@ -300,6 +330,20 @@ describe('the canonical list, data/rules.json', () => {
 
       expect(withNoUntypedOxlintVersion).toStrictEqual([])
     })
+
+    // oxlint runs a rule faster: ESLint keeps one oxlint could run untyped only for a measured reason.
+    it('leave no rule to ESLint that oxlint could run untyped, without a reason, but those waiting on an owner answer', () => {
+      const withoutAReason = canonicalRules
+        .filter((rule) => {
+          if (rule.engine !== 'eslint' || eslintBecauseOf(rule) !== undefined) return false
+          const installed = inventoryById.get(rule.id)
+          return installed?.oxlint !== undefined && installed.oxlint !== null && !installed.oxlint.typeAware
+        })
+        .map((rule) => rule.id)
+        .toSorted()
+
+      expect(withoutAReason).toStrictEqual(RULES_WAITING_ON_AN_OWNER_ANSWER.map(({ rule }) => rule).toSorted())
+    })
   })
 
   describe('pinned entries', () => {
@@ -355,20 +399,26 @@ describe('the canonical list, data/rules.json', () => {
       ).toStrictEqual(['no-dupe-class-members'])
     })
 
-    it("runs max-lines on JSX files only, skipping hooks, tests, type tests and stories, as the gate's ESLint config did", () => {
+    // oxlint runs no rule scoped by files, so every file type but JSX is ignored instead.
+    it("runs max-lines on JSX files only, skipping hooks, tests, type tests, setup files and stories, as the gate's ESLint config did", () => {
       const { engine, options, files, ignores } = canonicalEntryFor('max-lines')
 
       expect({ engine, options, files, ignores }).toStrictEqual({
-        engine: 'eslint',
+        engine: 'oxlint',
         options: [{ max: 200 }],
-        files: ['**/*.{tsx,jsx}'],
+        files: undefined,
         ignores: [
+          '**/*.{js,mjs,cjs,ts,mts,cts,vue,svelte,astro}',
           '**/use[A-Z]*.{tsx,jsx}',
           '**/use-*.{tsx,jsx}',
-          '**/*.{test,spec}.{ts,tsx,js,jsx}',
+          '**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
           '**/__tests__/**',
-          '**/*.{test,spec}-d.{ts,tsx,js,jsx}',
-          '**/*.stories.{ts,tsx,js,jsx}',
+          '**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+          '**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+          '**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+          '**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+          '**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
+          '**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',
         ],
       })
     })
@@ -472,12 +522,9 @@ describe('the canonical list, data/rules.json', () => {
       ])
     })
 
-    // Removing rulesets never removes the bans; a consumer can still turn either off by ID in rules.
-    it('ships exactly the two suppression bans always on, in no ruleset', () => {
-      expect(canonicalRules.filter((rule) => rule.alwaysOn === true).map((rule) => rule.id)).toStrictEqual([
-        '@typescript-eslint/ban-ts-comment',
-        'house/no-suppressions',
-      ])
+    // Removing rulesets never removes it; a consumer can still turn it off by ID in rules.
+    it('ships house/no-suppressions alone always on, in no ruleset', () => {
+      expect(canonicalRules.filter((rule) => rule.alwaysOn === true).map((rule) => rule.id)).toStrictEqual(['house/no-suppressions'])
     })
 
     it('ships house/no-suppressions always on, run by ESLint on every file with no options', () => {
@@ -497,8 +544,9 @@ describe('the canonical list, data/rules.json', () => {
     })
 
     // oxlint skips it in a JS file, so ESLint runs it. A type test asserts a type error with a
-    // description-bearing @ts-expect-error, which TypeScript fails where it suppresses nothing.
-    it('ships @typescript-eslint/ban-ts-comment always on, run by ESLint, banning @ts-expect-error, @ts-ignore and @ts-nocheck outright, but for @ts-expect-error with a description in test and type-test files', () => {
+    // description-bearing @ts-expect-error, which TypeScript fails where it suppresses nothing. type-safety
+    // is the ruleset of code that escapes TypeScript's checking, @ts- comments among it.
+    it('ships @typescript-eslint/ban-ts-comment in type-safety, run by ESLint, banning @ts-expect-error, @ts-ignore and @ts-nocheck outright, but for @ts-expect-error with a description in test and type-test files', () => {
       const { engine, oxlintName, ruleset, alwaysOn, options, files, ignores, whenSuppressions } = canonicalEntryFor(
         '@typescript-eslint/ban-ts-comment',
       )
@@ -506,8 +554,8 @@ describe('the canonical list, data/rules.json', () => {
       expect({ engine, oxlintName, ruleset, alwaysOn, options, files, ignores, whenSuppressions }).toStrictEqual({
         engine: 'eslint',
         oxlintName: undefined,
-        ruleset: undefined,
-        alwaysOn: true,
+        ruleset: 'type-safety',
+        alwaysOn: undefined,
         options: [{ 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true }],
         files: undefined,
         ignores: undefined,
@@ -520,8 +568,11 @@ describe('the canonical list, data/rules.json', () => {
     })
 
     // generate/render-generated.ts renders exactly these as SuppressionRuleId.
-    it('has allowSuppressions decide exactly the two bans, the blanket-suppression rule and the hooks rule that reports suppressions', () => {
+    it('has allowSuppressions decide exactly the two bans, the unpaired-disable, duplicate-disable, undescribed-comment and blanket-suppression rules and the hooks rule that reports suppressions', () => {
       expect(canonicalRules.filter((rule) => rule.whenSuppressions !== undefined).map((rule) => rule.id)).toStrictEqual([
+        '@eslint-community/eslint-comments/disable-enable-pair',
+        '@eslint-community/eslint-comments/no-duplicate-disable',
+        '@eslint-community/eslint-comments/require-description',
         '@typescript-eslint/ban-ts-comment',
         'house/no-suppressions',
         'react-hooks/rule-suppression',
@@ -538,6 +589,51 @@ describe('the canonical list, data/rules.json', () => {
         engine: 'oxlint',
         oxlintName: 'unicorn/no-abusive-eslint-disable',
         ruleset: 'comments',
+        whenSuppressions: { banned: 'off', allowed: 'on' },
+      })
+    })
+
+    // oxlint has no version of it; where suppressions are banned, house/no-suppressions reports every disable comment.
+    it('runs @eslint-community/eslint-comments/disable-enable-pair in ESLint at its defaults, only where suppressions are allowed', () => {
+      const { engine, oxlintName, ruleset, options, whenSuppressions } = canonicalEntryFor('@eslint-community/eslint-comments/disable-enable-pair')
+
+      expect({ engine, oxlintName, ruleset, options, whenSuppressions }).toStrictEqual({
+        engine: 'eslint',
+        oxlintName: undefined,
+        ruleset: 'comments',
+        options: [],
+        whenSuppressions: { banned: 'off', allowed: 'on' },
+      })
+    })
+
+    // It reads only comments, so it reports a second disable of a rule whichever engine runs that rule.
+    it('runs @eslint-community/eslint-comments/no-duplicate-disable in ESLint at its defaults, only where suppressions are allowed', () => {
+      const { engine, oxlintName, ruleset, options, whenSuppressions } = canonicalEntryFor('@eslint-community/eslint-comments/no-duplicate-disable')
+
+      expect({ engine, oxlintName, ruleset, options, whenSuppressions }).toStrictEqual({
+        engine: 'eslint',
+        oxlintName: undefined,
+        ruleset: 'comments',
+        options: [],
+        whenSuppressions: { banned: 'off', allowed: 'on' },
+      })
+    })
+
+    // A comment switching a check off, in either engine's spelling, or setting a rule for the file needs a reason after
+    // `--`, even one that only changes an option; enable, env, exported and global comments need none.
+    it("runs @eslint-community/eslint-comments/require-description in ESLint, only where suppressions are allowed, reading oxlint's switch-off comments and ESLint's whole-file one written as a line comment too, and asking no reason of enable, env, exported or global comments", () => {
+      const { engine, oxlintName, ruleset, options, whenSuppressions } = canonicalEntryFor('@eslint-community/eslint-comments/require-description')
+
+      expect({ engine, oxlintName, ruleset, options, whenSuppressions }).toStrictEqual({
+        engine: 'eslint',
+        oxlintName: undefined,
+        ruleset: 'comments',
+        options: [
+          {
+            ignore: ['eslint-enable', 'eslint-env', 'exported', 'global', 'globals'],
+            additionalDirectives: ['eslint-disable', 'oxlint-disable', 'oxlint-disable-line', 'oxlint-disable-next-line'],
+          },
+        ],
         whenSuppressions: { banned: 'off', allowed: 'on' },
       })
     })
@@ -574,7 +670,7 @@ describe('the canonical list, data/rules.json', () => {
 
       expect({ engine, files, ignores }).toStrictEqual({
         engine: 'eslint',
-        files: ['**/*.stories.{ts,tsx,js,jsx,mjs}', '**/.storybook/**'],
+        files: ['**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}', '**/.storybook/**'],
         ignores: undefined,
       })
     })
@@ -632,8 +728,8 @@ describe('the canonical list, data/rules.json', () => {
     })
 
     // A test is made of statements, and fixture code held in strings: these judge it by source-code standards.
-    it('skips test and type-test files in exactly the rules that judge code by standards a test cannot meet', () => {
-      const skipping = canonicalRules.filter(({ ignores }) => TEST_FILE_GLOBS.every((glob) => (ignores ?? []).includes(glob))).map(({ id }) => id)
+    it('skips test, type-test and setup files in exactly the rules that judge code by standards a test cannot meet', () => {
+      const skipping = canonicalRules.filter(({ ignores }) => TEST_AND_SETUP_FILE_GLOBS.every((glob) => (ignores ?? []).includes(glob))).map(({ id }) => id)
 
       expect(skipping.toSorted()).toStrictEqual(RULES_SKIPPING_TEST_FILES.toSorted())
     })
@@ -674,6 +770,13 @@ describe('the ruleset definitions, data/ruleset-definitions.json', () => {
       ),
       ...RUNTIME_RULESETS.map(({ name, env }) => ({ name, list: 'runtimes', domain: null, env, optIn: isOptInRuleset(name), sortsCode: isSortingRuleset(name) })),
     ])
+  })
+
+  // Owner: a rule kept off by default still ships, so a team can turn it on by naming it in agents-inc.lint.mts.
+  it('ships off by default exactly the accepted rules the owner kept off whose rewrite check never applies, each run by ESLint in no ruleset', () => {
+    expect(canonicalRules.filter(isOffByDefault).map(({ id, engine, ruleset }) => ({ id, engine, ruleset }))).toStrictEqual(
+      RULES_SHIPPED_OFF_BY_DEFAULT.map((id) => ({ id, engine: 'eslint', ruleset: undefined })),
+    )
   })
 
   it('holds no rule yet in the library rulesets created empty', () => {

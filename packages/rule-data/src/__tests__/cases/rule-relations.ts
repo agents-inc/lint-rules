@@ -1,4 +1,4 @@
-import { TEST_FILE_GLOBS } from './test-file-globs.ts'
+import { TEST_AND_SETUP_FILE_GLOBS } from './test-file-globs.ts'
 
 /** "Covered by": each covered rule, and the rule covering it. */
 export const COVERED_BY: Readonly<Record<string, string>> = {
@@ -43,7 +43,7 @@ const ARRAY_MUTATION_PAIRS = [
   'unicorn/no-array-sort covered by functional/immutable-data',
 ]
 const RUNS_ONLY_WHERE_TYPES_ARE_KNOWN = 'the cover runs only where types are known'
-const SKIPS_TEST_FILES = TEST_FILE_GLOBS.map((glob) => `the cover skips ${glob}`)
+const SKIPS_TEST_FILES = TEST_AND_SETUP_FILE_GLOBS.map((glob) => `the cover skips ${glob}`)
 
 /** Each set of files for each pair, as `filesLeftUncovered` names them. */
 function leftUncovered(pairs: readonly string[], wheres: readonly string[]): string[] {
@@ -53,7 +53,7 @@ function leftUncovered(pairs: readonly string[], wheres: readonly string[]): str
 /** Each set of files a cover leaves, where nothing reports what the rule it covers would, by the owner's card that decides it. */
 export const FILES_LEFT_UNCOVERED_BY_CARD: Readonly<Record<string, readonly string[]>> = {
   'r2-d25': leftUncovered(['react-hooks/immutability covered by functional/immutable-data'], [RUNS_ONLY_WHERE_TYPES_ARE_KNOWN]),
-  'r2-d72': leftUncovered([NO_NEW, NO_UNUSED_EXPRESSIONS], ['the cover runs only on **/*.ts', 'the cover skips **/use[A-Z]*.ts', 'the cover skips **/use-*.ts', RUNS_ONLY_WHERE_TYPES_ARE_KNOWN]),
+  'r2-d72': leftUncovered([NO_NEW, NO_UNUSED_EXPRESSIONS], ['the cover runs only on **/*.{ts,mts,cts}', 'the cover skips **/use[A-Z]*.{ts,mts,cts}', 'the cover skips **/use-*.{ts,mts,cts}', RUNS_ONLY_WHERE_TYPES_ARE_KNOWN]),
   'r2-d74': leftUncovered(ARRAY_MUTATION_PAIRS, [RUNS_ONLY_WHERE_TYPES_ARE_KNOWN]),
   'r2-d78': leftUncovered(['react/prefer-read-only-props covered by functional/prefer-immutable-types'], [RUNS_ONLY_WHERE_TYPES_ARE_KNOWN]),
   'q-dogfood-map-spread-pair': leftUncovered(['oxc/no-map-spread covered by functional/immutable-data'], [RUNS_ONLY_WHERE_TYPES_ARE_KNOWN]),

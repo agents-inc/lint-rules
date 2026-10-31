@@ -7,7 +7,7 @@ const RULE_ID = '@typescript-eslint/ban-ts-comment'
 const RULESET = 'comments'
 const BANNED_OPTIONS: readonly unknown[] = [{ 'ts-expect-error': true }]
 const ALLOWED_OPTIONS: readonly unknown[] = [{ 'ts-expect-error': 'allow-with-description' }]
-const NOT_EXACTLY_ONE_WAY = new Error(`${RULE_ID} needs exactly one of a ruleset, alwaysOn: true and whenSuppressions`)
+const NOT_EXACTLY_ONE_WAY = new Error(`${RULE_ID} needs exactly one of a ruleset, alwaysOn: true, offByDefault: true and whenSuppressions`)
 
 describe('parseTurnedOnBy', () => {
   it('takes a ruleset as what turns the rule on', () => {
@@ -16,6 +16,17 @@ describe('parseTurnedOnBy', () => {
 
   it('takes alwaysOn: true as a rule on whatever rulesets are listed', () => {
     expect(parseTurnedOnBy(RULE_ID, { alwaysOn: true })).toStrictEqual({ alwaysOn: true })
+  })
+
+  it('takes offByDefault: true as a rule shipped off, on only where a team names it', () => {
+    expect(parseTurnedOnBy(RULE_ID, { offByDefault: true })).toStrictEqual({ offByDefault: true })
+  })
+
+  it.each([
+    { beside: 'a ruleset', fields: { ruleset: RULESET } },
+    { beside: 'alwaysOn: true', fields: { alwaysOn: true } },
+  ])('refuses offByDefault: true beside $beside', ({ fields }) => {
+    expect(() => parseTurnedOnBy(RULE_ID, { ...fields, offByDefault: true })).toThrow(NOT_EXACTLY_ONE_WAY)
   })
 
   it("takes whenSuppressions as given: each mode's setting, and the test-file setting", () => {
@@ -34,12 +45,31 @@ describe('parseTurnedOnBy', () => {
     ).toThrow(NOT_EXACTLY_ONE_WAY)
   })
 
+  it('keeps an editor ruleset beside whenSuppressions', () => {
+    const whenSuppressions = { banned: 'off', allowed: { options: ALLOWED_OPTIONS } }
+
+    expect(parseTurnedOnBy(RULE_ID, { whenSuppressions, editorRuleset: RULESET })).toStrictEqual({ whenSuppressions, editorRuleset: RULESET })
+  })
+
+  it.each([
+    { beside: 'a ruleset', fields: { ruleset: RULESET } },
+    { beside: 'alwaysOn: true', fields: { alwaysOn: true } },
+    { beside: 'offByDefault: true', fields: { offByDefault: true } },
+  ])('refuses an editor ruleset beside $beside, naming the rule', ({ fields }) => {
+    expect(() => parseTurnedOnBy(RULE_ID, { ...fields, editorRuleset: RULESET })).toThrow(
+      new Error(`${RULE_ID}: an editor ruleset goes only beside whenSuppressions`),
+    )
+  })
+
   it('refuses a ruleset beside alwaysOn: true', () => {
     expect(() => parseTurnedOnBy(RULE_ID, { ruleset: RULESET, alwaysOn: true })).toThrow(NOT_EXACTLY_ONE_WAY)
   })
 
-  it('refuses a rule nothing turns on: alwaysOn: false is no way', () => {
-    expect(() => parseTurnedOnBy(RULE_ID, { alwaysOn: false })).toThrow(NOT_EXACTLY_ONE_WAY)
+  it.each([
+    { way: 'alwaysOn: false', fields: { alwaysOn: false } },
+    { way: 'offByDefault: false', fields: { offByDefault: false } },
+  ])('refuses a rule nothing turns on: $way is no way', ({ fields }) => {
+    expect(() => parseTurnedOnBy(RULE_ID, fields)).toThrow(NOT_EXACTLY_ONE_WAY)
   })
 })
 

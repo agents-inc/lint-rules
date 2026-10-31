@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { Catalog, RuleRoute } from '../catalog.ts'
+import type { Catalog, OxlintRule, RuleRoute } from '../catalog.ts'
 import type { CaseFile } from './rule-case-runs.ts'
 import { buildEslintRoute, buildOxlintRoute } from './factories/inventory-factories.ts'
 import { buildShippedRule } from './factories/shipped-rule-factories.ts'
@@ -8,6 +8,8 @@ import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './rule-case-outcomes.ts'
 
 const ENGINES_TIMEOUT_MS = 120_000
 const STAND_IN = 'unicorn/no-constant-zero-expression'
+const HANDLE_CALLBACK_ERR = 'n/handle-callback-err'
+const NO_FLOATING_PROMISES = '@typescript-eslint/no-floating-promises'
 
 const DEBUGGER_FILE: CaseFile = { path: 'src/debugger.js', source: 'debugger\n' }
 const QUIET_FILE: CaseFile = { path: 'src/quiet.js', source: 'export const value = 1\n' }
@@ -26,6 +28,8 @@ const USES_VITESTS_TYPES: CaseFile = { path: 'src/vitest-types.ts', source: "imp
 const CALLS_AN_UNDECLARED_FUNCTION: CaseFile = { path: 'src/undeclared.ts', source: 'export const value: unknown = undeclared()\n' }
 const TIMES_ZERO_FILE: CaseFile = { path: 'src/times-zero.js', source: 'export const zero = (x) => x * 0\n' }
 const TIMES_ONE_FILE: CaseFile = { path: 'src/times-one.js', source: 'export const same = (x) => x * 1\n' }
+const UNHANDLED_ERR_FILE: CaseFile = { path: 'src/unhandled-err.js', source: 'export function done(err, data) {\n  return data\n}\n' }
+const UNHANDLED_ERROR_FILE: CaseFile = { path: 'src/unhandled-error.js', source: 'export function done(error, data) {\n  return data\n}\n' }
 const STUBBED_PACKAGE = { name: 'stubbed', declarations: 'export declare const value: number\n', module: 'export const value = 1\n' }
 
 function shippedOxlintRule(id: string, oxlintPlugin: string): RuleRoute {
@@ -40,6 +44,19 @@ function shippedTypedEslintRule(id: string): RuleRoute {
   return buildEslintRoute(id, { typed: true, oxlintSpellings: [], shipped: buildShippedRule('correctness') })
 }
 
+function shippedEslintRuleOxlintHas({ id, oxlintName }: OxlintRule, { typed, options }: { readonly typed: boolean; readonly options: readonly unknown[] }): RuleRoute {
+  return buildEslintRoute(id, { typed, oxlintSpellings: [oxlintName], shipped: buildShippedRule('correctness', { options }) })
+}
+
+function oxlintVersionOf(id: string, oxlintName: string, oxlintPlugin: string): OxlintRule {
+  return { id, oxlintName, oxlintPlugin, category: 'correctness' }
+}
+
+// oxlint's config takes no spelling of this rule under its RuleId.
+const HANDLE_CALLBACK_ERR_IN_OXLINT = oxlintVersionOf(HANDLE_CALLBACK_ERR, 'node/handle-callback-err', 'node')
+// oxlint runs its version only with type information, as ruleIdsOxlintRunsTypeAware records.
+const NO_FLOATING_PROMISES_IN_OXLINT = oxlintVersionOf(NO_FLOATING_PROMISES, 'typescript/no-floating-promises', 'typescript')
+
 const ROUTES: readonly RuleRoute[] = [
   shippedOxlintRule('no-debugger', 'eslint'),
   shippedOxlintRule('oxc/erasing-op', 'oxc'),
@@ -48,14 +65,23 @@ const ROUTES: readonly RuleRoute[] = [
   shippedUntypedEslintRule('import-x/no-unresolved'),
   shippedTypedEslintRule('@typescript-eslint/await-thenable'),
   shippedTypedEslintRule('@typescript-eslint/no-unsafe-call'),
+  shippedEslintRuleOxlintHas(HANDLE_CALLBACK_ERR_IN_OXLINT, { typed: false, options: ['error'] }),
+  shippedEslintRuleOxlintHas(NO_FLOATING_PROMISES_IN_OXLINT, { typed: true, options: [] }),
   buildEslintRoute('no-unused-labels', { typed: false, oxlintSpellings: [], shipped: null }),
   buildEslintRoute(STAND_IN, { typed: false, oxlintSpellings: [], shipped: null }),
 ]
 
 // no-debugger's stand-in reports nothing it does: a stand-in that misses.
-const CATALOG_PARTS: Pick<Catalog, 'rules' | 'coreRuleExtensions' | 'eslintStandIns'> = {
+const CATALOG_PARTS: Pick<Catalog, 'rules' | 'coreRuleExtensions' | 'eslintStandIns' | 'oxlintRules'> = {
   rules: new Map(ROUTES.map((route) => [route.id, route])),
   coreRuleExtensions: new Map(),
+  oxlintRules: [
+    NO_FLOATING_PROMISES_IN_OXLINT,
+    HANDLE_CALLBACK_ERR_IN_OXLINT,
+    oxlintVersionOf('no-debugger', 'no-debugger', 'eslint'),
+    oxlintVersionOf('oxc/const-comparisons', 'oxc/const-comparisons', 'oxc'),
+    oxlintVersionOf('oxc/erasing-op', 'oxc/erasing-op', 'oxc'),
+  ],
   eslintStandIns: new Map([
     ['oxc/erasing-op', STAND_IN],
     ['no-debugger', 'no-empty'],
@@ -95,6 +121,41 @@ describe("a rule's cases, run on the installed engines with its shipped settings
     },
     ENGINES_TIMEOUT_MS,
   )
+
+  it(
+    'runs a rule ESLint runs on ESLint alone where the case names no engine, though oxlint has a version of it',
+    async () => {
+      const outcomes = await outcomesOfCase('eslint-rule-oxlint-has', { rule: HANDLE_CALLBACK_ERR, silentIn: [UNHANDLED_ERR_FILE], reportedIn: [UNHANDLED_ERROR_FILE] })
+
+      const held = { 'eslint-rule-oxlint-has/src/unhandled-err.js': 'silent', 'eslint-rule-oxlint-has/src/unhandled-error.js': 'reports' }
+      expect(outcomes).toStrictEqual({ actual: { eslint: held }, expected: { eslint: held } })
+    },
+    ENGINES_TIMEOUT_MS,
+  )
+
+  // The shipped option names the error parameter: without it, each file's outcome flips on both engines.
+  it(
+    "runs a rule ESLint runs on oxlint too where the case names oxlint, as oxlint's version under its oxlint name and plugin, with the shipped options",
+    async () => {
+      const outcomes = await outcomesOfCase('eslint-rule-on-oxlint', { rule: HANDLE_CALLBACK_ERR, engines: ['oxlint', 'eslint'], silentIn: [UNHANDLED_ERR_FILE], reportedIn: [UNHANDLED_ERROR_FILE] })
+
+      const held = { 'eslint-rule-on-oxlint/src/unhandled-err.js': 'silent', 'eslint-rule-on-oxlint/src/unhandled-error.js': 'reports' }
+      expect(outcomes).toStrictEqual({ actual: { oxlint: held, eslint: held }, expected: { oxlint: held, eslint: held } })
+    },
+    ENGINES_TIMEOUT_MS,
+  )
+
+  it('throws for a case naming oxlint for a rule ESLint runs that oxlint has no version of, naming the rule', async () => {
+    await expect(outcomesOfCase('no-oxlint-version', { rule: 'import-x/no-unresolved', engines: ['oxlint'], silentIn: [], reportedIn: [QUIET_FILE] })).rejects.toThrow(
+      /import-x\/no-unresolved has no oxlint version/u,
+    )
+  })
+
+  it('throws for a case naming oxlint for a rule ESLint runs whose oxlint version runs only with type information, naming the rule', async () => {
+    await expect(outcomesOfCase('type-aware-oxlint-version', { rule: NO_FLOATING_PROMISES, engines: ['eslint', 'oxlint'], silentIn: [], reportedIn: [QUIET_FILE] })).rejects.toThrow(
+      /@typescript-eslint\/no-floating-promises: oxlint runs its version only with type information/u,
+    )
+  })
 
   it(
     'runs a case naming its engines on those alone, and gives a file one engine alone reads to that engine alone',
@@ -176,10 +237,9 @@ describe("a rule's cases, run on the installed engines with its shipped settings
     ENGINES_TIMEOUT_MS,
   )
 
-  it('throws for a rule that is no RuleId, one we do not ship, and an engine the rule is not routed to, naming the rule', async () => {
+  it('throws for a rule that is no RuleId and one we do not ship, naming the rule', async () => {
     await expect(outcomesOfCase('unknown', { rule: 'zod/no-coerce-boolean', silentIn: [], reportedIn: [QUIET_FILE] })).rejects.toThrow(/unknown rule ID "zod\/no-coerce-boolean"/u)
     await expect(outcomesOfCase('unshipped', { rule: 'no-unused-labels', silentIn: [], reportedIn: [QUIET_FILE] })).rejects.toThrow(/no-unused-labels is not shipped/u)
-    await expect(outcomesOfCase('not-routed', { rule: 'no-empty', engines: ['oxlint'], silentIn: [], reportedIn: [EMPTY_BLOCK_FILE] })).rejects.toThrow(/no-empty is not routed to oxlint/u)
   })
 
   it(

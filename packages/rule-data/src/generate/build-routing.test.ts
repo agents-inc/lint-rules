@@ -296,6 +296,35 @@ describe('buildRouting', () => {
     })
   })
 
+  // The editor parts run a rule allowSuppressions decides only where their rulesets list its ruleset.
+  describe('a rule allowSuppressions decides', () => {
+    const inventory = buildInventory([
+      buildInventoryRule('unicorn/no-abusive-eslint-disable', { oxlint: null, eslint: UNTYPED_ESLINT_VERSION }),
+      buildInventoryRule('house/no-suppressions', { oxlint: null, eslint: UNTYPED_ESLINT_VERSION }),
+    ])
+
+    it('carries the ruleset the canonical list gives it as its editor ruleset, and leaves the field out of one always on', () => {
+      const canonicalRules = [
+        buildCanonicalRule('unicorn/no-abusive-eslint-disable', {
+          engine: 'eslint',
+          ruleset: 'comments',
+          options: [],
+          typed: false,
+          whenSuppressions: { banned: 'off', allowed: 'on' },
+        }),
+        buildCanonicalRule('house/no-suppressions', { engine: 'eslint', alwaysOn: true, options: [], typed: false, whenSuppressions: { banned: 'on', allowed: 'off' } }),
+      ]
+
+      expect(buildRouting({ inventory, canonicalRules }).map(({ id, shipped }) => [id, shipped])).toStrictEqual([
+        ['house/no-suppressions', { whenSuppressions: { banned: { options: [] }, allowed: 'off' }, options: [], files: null, ignores: null }],
+        [
+          'unicorn/no-abusive-eslint-disable',
+          { whenSuppressions: { banned: 'off', allowed: { options: [] } }, editorRuleset: 'comments', options: [], files: null, ignores: null },
+        ],
+      ])
+    })
+  })
+
   describe("a route's oxlint spellings", () => {
     it("are oxlint's spellings of its own name for a rule oxlint has under another name, though ESLint runs it", () => {
       const inventory = buildInventory([

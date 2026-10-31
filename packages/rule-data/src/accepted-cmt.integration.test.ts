@@ -11,7 +11,7 @@ import { catalog } from './catalog.ts'
 // runs, through the real ESLint: it reports the card's comment and stays silent beside it. Where suppressions are
 // banned it is off: allow-suppressions.test.ts in packages/lint-rules pins that. A rule whose build waits on a card
 // has its case held unrun (ACCEPTED_CMT_HELD_CASES). One describe holds both, since vitest fails a describe left
-// with no test, as the shipped cases' is while every rule waits.
+// with no test.
 
 const ENGINES_TIMEOUT_MS = 120_000
 

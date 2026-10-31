@@ -60,7 +60,9 @@ describe('the ESLint-fallback skip list, read through the catalog', () => {
 
     expect({ extended, skipped: extended.filter((id) => catalog.eslintFallbackSkips.has(id)) }).toStrictEqual({
       extended: [
+        'default-param-last',
         'max-params',
+        'no-array-constructor',
         'no-dupe-class-members',
         'no-shadow',
         'no-unused-expressions',
@@ -68,6 +70,7 @@ describe('the ESLint-fallback skip list, read through the catalog', () => {
         'no-unused-vars',
         'no-useless-constructor',
         'prefer-destructuring',
+        'prefer-promise-reject-errors',
       ],
       skipped: [],
     })

@@ -2,12 +2,21 @@
 // catches a list that leaves one out, so each is written out here rather than read from the data.
 
 /** Test files, files under `__tests__`, and Vitest's type tests (`*.test-d.ts`), in the order rules.json lists them. */
-export const TEST_FILE_GLOBS: readonly string[] = ['**/*.{test,spec}.{ts,tsx,js,jsx}', '**/__tests__/**', '**/*.{test,spec}-d.{ts,tsx,js,jsx}']
+export const TEST_FILE_GLOBS: readonly string[] = ['**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}', '**/__tests__/**', '**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}']
 
-/** Story files, where Testing Library runs in `play` functions. */
-export const STORY_FILE_GLOB = '**/*.stories.{ts,tsx,js,jsx,mjs}'
+/** The usual names of a test runner's setup file, in the extensions test files take: it gets test files' relaxed rules. */
+export const SETUP_FILE_GLOBS: readonly string[] = ['**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}', '**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}', '**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}', '**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}']
 
-/** Every rule that skips test and type-test files: those that skipped them first, then those that judge test code by source-code standards. */
+/** What a rule skipping test files skips: test files, then setup files. */
+export const TEST_AND_SETUP_FILE_GLOBS: readonly string[] = [...TEST_FILE_GLOBS, ...SETUP_FILE_GLOBS]
+
+/** Story files, in the extensions test files take; Testing Library runs in their `play` functions. */
+export const STORY_FILE_GLOB = '**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}'
+
+/** What marks a glob as naming story files. */
+export const STORY_FILE_NAME_PART = '.stories.'
+
+/** Every rule that skips test, type-test and setup files: those that skipped them first, then those that judge test code by source-code standards. */
 export const RULES_SKIPPING_TEST_FILES: readonly string[] = [
   '@typescript-eslint/no-non-null-assertion',
   'max-lines',
@@ -25,6 +34,7 @@ export const RULES_SKIPPING_TEST_FILES: readonly string[] = [
   'unicorn/no-incorrect-template-string-interpolation',
   'unicorn/no-repeated-call-wrappers',
   'unicorn/prefer-await',
+  'accessor-pairs',
 ]
 
 /** A glob naming test files in any spelling: the guard reads each such glob, not only the three it expects. */

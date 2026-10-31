@@ -3,16 +3,22 @@ import { describe, expect, it } from 'vitest'
 import canonicalRules from '../data/rules.json' with { type: 'json' }
 import { ACCEPTED_E18E_CASES } from './__tests__/cases/accepted-e18.ts'
 import { ACCEPTED_ON_2026_10_24 } from './__tests__/cases/accepted-on-2026-10-24.ts'
+import { RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD } from './__tests__/cases/round-2-drops.ts'
 import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './__tests__/rule-case-outcomes.ts'
 import { catalog } from './catalog.ts'
 
 // The e18e rule the owner accepted runs as it ships, through the real ESLint: it reports the card's stat call and stays
 // silent beside it. It ships in node, since it is about a Node built-in, at the plugin's defaults and untyped: every case
-// reports without type information. The other e18e rule the owner accepted waits, parked, for the Node-version category.
+// reports without type information. The other e18e rule the owner accepted ships off: its fix writes an API Node 22
+// lacks.
 
 const ENGINES_TIMEOUT_MS = 120_000
 
-const E18E_RULE = /^e18e\//u
+const E18E_PREFIX = 'e18e/'
+
+function isOffByDefault(rule: Readonly<(typeof canonicalRules)[number]>): boolean {
+  return 'offByDefault' in rule && rule.offByDefault
+}
 
 describe('the e18e rule accepted on 2026-10-24', () => {
   const { outcomesOfCase } = setUpRuleCaseOutcomes(catalog)
@@ -27,7 +33,7 @@ describe('the e18e rule accepted on 2026-10-24', () => {
     ENGINES_TIMEOUT_MS,
   )
 
-  it('ships, and no other e18e rule does, in node, in ESLint, at its defaults, untyped, on every file, assigned by the spec with correctness as the alternative', () => {
+  it('ships on, and no other e18e rule does, in node, in ESLint, at its defaults, untyped, on every file, assigned by the spec with correctness as the alternative', () => {
     const expectedEntries = ACCEPTED_E18E_CASES.map(({ rule }) => {
       const accepted = ACCEPTED_ON_2026_10_24[rule]
       if (accepted === undefined) throw new Error(`${rule} is no rule the owner accepted on 2026-10-24`)
@@ -41,12 +47,16 @@ describe('the e18e rule accepted on 2026-10-24', () => {
       }
     })
 
-    expect(canonicalRules.filter(({ id }) => E18E_RULE.test(id))).toStrictEqual(expectedEntries)
+    expect(canonicalRules.filter((rule) => rule.id.startsWith(E18E_PREFIX) && !isOffByDefault(rule))).toStrictEqual(expectedEntries)
   })
 
-  it('leave every other e18e rule unshipped: the one parked for the Node-version category, and each the owner did not accept', () => {
+  it('ship every other e18e rule off by default, as the one whose fix writes an API Node 22 lacks ships, or not at all, as each the owner did not accept', () => {
     const casedRules = new Set(ACCEPTED_E18E_CASES.map(({ rule }) => rule))
+    const otherRules = canonicalRules.filter(({ id }) => id.startsWith(E18E_PREFIX) && !casedRules.has(id))
+    const e18eRulesShippedOff = RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD.filter((id) => id.startsWith(E18E_PREFIX))
 
-    expect(canonicalRules.filter(({ id }) => E18E_RULE.test(id) && !casedRules.has(id)).map(({ id }) => id)).toStrictEqual([])
+    expect(otherRules.map((rule) => ({ id: rule.id, offByDefault: isOffByDefault(rule) }))).toStrictEqual(
+      e18eRulesShippedOff.map((id) => ({ id, offByDefault: true })),
+    )
   })
 })

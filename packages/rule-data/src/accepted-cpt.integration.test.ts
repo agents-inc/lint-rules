@@ -1,14 +1,13 @@
+import { resolveConfig } from 'vite'
 import { describe, expect, it } from 'vitest'
 
 import canonicalRules from '../data/rules.json' with { type: 'json' }
-import { heldCasesOutOfPlace } from './__tests__/accepted-rules-out-of-place.ts'
 import {
   ACCEPTED_COMPAT_CASES,
   ACCEPTED_COMPAT_CASES_IN_PROJECTS_NAMING_BROWSERS,
-  ACCEPTED_CPT_HELD_CASES,
-  ACCEPTED_CPT_HELD_CASES_IN_PROJECTS_NAMING_BROWSERS,
   type CaseInAProjectNamingBrowsers,
   MAJOR_BROWSERS_AS_VITE_TARGETS,
+  VITE_DEFAULT_BUILD_TARGET,
 } from './__tests__/cases/accepted-cpt.ts'
 import { ACCEPTED_ON_2026_10_24 } from './__tests__/cases/accepted-on-2026-10-24.ts'
 import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './__tests__/rule-case-outcomes.ts'
@@ -21,9 +20,8 @@ import { catalog, routeOf } from './catalog.ts'
 // check the major browsers as Vite targets them (card q-lint-compat-default-target), and untyped: every case reports
 // without type information. eslint-plugin-compat reads a project's own browserslist from the linted file's folder up,
 // so the cases in projects naming browsers write a package.json beside their files, which the case runner has no field
-// for. While the rule's build waits on a card its cases are held unrun (ACCEPTED_CPT_HELD_CASES and
-// ACCEPTED_CPT_HELD_CASES_IN_PROJECTS_NAMING_BROWSERS), each checked in the describe that runs it once the rule ships,
-// since vitest fails a describe left with no test.
+// for. The option names Vite 8's browsers as a literal, since nothing reads Vite at runtime; the guard below fails when
+// the Vite the repo pins builds for other browsers.
 
 const ENGINES_TIMEOUT_MS = 120_000
 
@@ -64,12 +62,6 @@ describe('the compat rule accepted on 2026-10-24', () => {
 
     expect(canonicalRules.filter(({ id }) => COMPAT_RULE.test(id))).toStrictEqual(expectedEntries)
   })
-
-  it('whose build waits on a card has its cases held unrun only while the rule is accepted and does not ship, each case naming the card its build waits on', () => {
-    const shippedIds = new Set(canonicalRules.map(({ id }) => id))
-
-    expect(heldCasesOutOfPlace(ACCEPTED_CPT_HELD_CASES, ACCEPTED_ON_2026_10_24, shippedIds)).toStrictEqual([])
-  })
 })
 
 describe('the compat rule accepted on 2026-10-24, in a project whose package.json names its own browsers', () => {
@@ -101,10 +93,14 @@ describe('the compat rule accepted on 2026-10-24, in a project whose package.jso
     },
     ENGINES_TIMEOUT_MS,
   )
+})
 
-  it('whose build waits on a card has its cases held unrun only while the rule is accepted and does not ship, each case naming the card its build waits on', () => {
-    const shippedIds = new Set(canonicalRules.map(({ id }) => id))
+describe('the browsers the compat rule accepted on 2026-10-24 checks', () => {
+  const viteRoot = setUpTempDir('rule-data-vite-target-')
 
-    expect(heldCasesOutOfPlace(ACCEPTED_CPT_HELD_CASES_IN_PROJECTS_NAMING_BROWSERS, ACCEPTED_ON_2026_10_24, shippedIds)).toStrictEqual([])
+  it('Vite still builds for the browsers the option names', async () => {
+    const { build } = await resolveConfig({ root: viteRoot(), configFile: false, logLevel: 'silent' }, 'build')
+
+    expect(build.target).toStrictEqual(VITE_DEFAULT_BUILD_TARGET)
   })
 })

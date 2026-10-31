@@ -1,11 +1,14 @@
 import type { HeldCase } from '../accepted-rules-out-of-place.ts'
+import type { CaseFile } from '../rule-case-runs.ts'
 import type { RuleCase } from './changed-settings.ts'
 
 // The TanStack Query and TanStack Router rules the owner accepted on 2026-10-24: each reports the card's code and
 // stays silent on its corrected form, and on a shape its code or docs say it leaves alone. The plugins find TanStack
-// by a file's import source, so no case installs it.
+// by a file's import source, so no case installs it. The two property-order rules are left out, so they have no case,
+// and sort-objects sorts the options of the calls they would order as any other's (below).
 
-const PROPERTY_ORDER_BESIDE_SORT_OBJECTS = 'q-lint-rc-tanstack-property-order-measured'
+/** The answer that left both property-order rules out, which the entry of each names. */
+export const PROPERTY_ORDER_LEFT_OUT_BY = 'q-lint-rc-tanstack-property-order-which-skip'
 
 /** Each accepted @tanstack/query rule's report case beside its silent twin, in the order of their IDs. */
 export const ACCEPTED_TANSTACK_QUERY_CASES: readonly RuleCase[] = [
@@ -198,6 +201,60 @@ export function useRefresh() {
       },
     ],
   },
+  // A client held in state lives as long as the component, and a server component's lives for one request.
+  {
+    rule: '@tanstack/query/stable-query-client',
+    silentIn: [
+      {
+        path: 'src/client-in-module.tsx',
+        source: `import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
+
+const queryClient = new QueryClient()
+
+export function Providers({ children }: { children: ReactNode }) {
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+}
+`,
+      },
+      {
+        path: 'src/client-in-state.tsx',
+        source: `import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { type ReactNode, useState } from 'react'
+
+export function Providers({ children }: { children: ReactNode }) {
+  const [queryClient] = useState(() => new QueryClient())
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+}
+`,
+      },
+      {
+        path: 'src/client-in-server-component.tsx',
+        source: `import { QueryClient } from '@tanstack/react-query'
+
+declare function prefetchPostTitle(client: QueryClient): Promise<string>
+
+export async function PostPage() {
+  const queryClient = new QueryClient()
+  return <h1>{await prefetchPostTitle(queryClient)}</h1>
+}
+`,
+      },
+    ],
+    reportedIn: [
+      {
+        path: 'src/client-in-component.tsx',
+        source: `import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
+
+export function Providers({ children }: { children: ReactNode }) {
+  const queryClient = new QueryClient()
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+}
+`,
+      },
+    ],
+  },
 ]
 
 /** Each accepted @tanstack/router rule's report case beside its silent twin, in the order of their IDs. */
@@ -243,27 +300,19 @@ export const route = createRoute({ getParentRoute: () => rootRoute, path: '/user
 ]
 
 /**
- * The cases of accepted TanStack rules whose build waits on a card, unrun until the owner answers it: once the rule
- * ships, its case moves to the cases its plugin's rules run.
- *
- * The two property-order rules: where the opt-in ordering ruleset is listed, perfectionist/sort-objects reports the
- * order their fix writes (queryFn before getNextPageParam; loaderDeps before loader, context before beforeLoad), its
- * own fix is withheld, and sorting the object as its report asks undoes theirs, which check then writes again
- * (measured). A blank line between the two groups satisfies both.
- *
- * stable-query-client: check applies its fix, which writes `React.useState(() => new QueryClient())` whether or not
- * the file binds React, so a component importing only named hooks from 'react' throws a ReferenceError when it
- * renders (measured).
+ * The accepted TanStack rules whose build waits on a card, each case held unrun until its rule ships: once it does, its
+ * case moves to ACCEPTED_TANSTACK_QUERY_CASES or ACCEPTED_TANSTACK_ROUTER_CASES.
  */
-export const ACCEPTED_TSQ_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = [
+export const ACCEPTED_TSQ_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = []
+
+/** The two rules that put a call's options in TanStack's order, which is not alphabetical. */
+export const TANSTACK_PROPERTY_ORDER_RULES: readonly string[] = ['@tanstack/query/infinite-query-property-order', '@tanstack/router/create-route-property-order']
+
+/** The options of each call the two property-order rules would order, in TanStack's order. */
+const OPTIONS_IN_TANSTACK_ORDER: readonly CaseFile[] = [
   {
-    heldBy: PROPERTY_ORDER_BESIDE_SORT_OBJECTS,
-    ruleCase: {
-      rule: '@tanstack/query/infinite-query-property-order',
-      silentIn: [
-        {
-          path: 'src/query-fn-before-next-page.ts',
-          source: `import { useInfiniteQuery } from '@tanstack/react-query'
+    path: 'src/infinite-query-in-tanstack-order.ts',
+    source: `import { useInfiniteQuery } from '@tanstack/react-query'
 
 declare function fetchPage(page: number): Promise<{ items: string[]; next: number }>
 
@@ -271,112 +320,55 @@ export function usePages() {
   return useInfiniteQuery({
     queryKey: ['pages'],
     queryFn: ({ pageParam }) => fetchPage(pageParam),
-    initialPageParam: 0,
     getNextPageParam: (last) => last.next,
+    initialPageParam: 0,
   })
 }
 `,
-        },
-      ],
-      reportedIn: [
-        {
-          path: 'src/next-page-before-query-fn.ts',
-          source: `import { useInfiniteQuery } from '@tanstack/react-query'
+  },
+  {
+    path: 'src/suspense-infinite-query-in-tanstack-order.ts',
+    source: `import { useSuspenseInfiniteQuery } from '@tanstack/react-query'
 
 declare function fetchPage(page: number): Promise<{ items: string[]; next: number }>
 
 export function usePages() {
-  return useInfiniteQuery({
+  return useSuspenseInfiniteQuery({
     queryKey: ['pages'],
-    getNextPageParam: (last) => last.next,
     queryFn: ({ pageParam }) => fetchPage(pageParam),
+    getNextPageParam: (last) => last.next,
     initialPageParam: 0,
   })
 }
 `,
-        },
-      ],
-    },
-  },
-  // A client held in state lives as long as the component, and a server component's lives for one request.
-  {
-    heldBy: 'q-lint-rc-stable-query-client-fix-measured',
-    ruleCase: {
-      rule: '@tanstack/query/stable-query-client',
-      silentIn: [
-        {
-          path: 'src/client-in-module.tsx',
-          source: `import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { ReactNode } from 'react'
-
-const queryClient = new QueryClient()
-
-export function Providers({ children }: { children: ReactNode }) {
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-}
-`,
-        },
-        {
-          path: 'src/client-in-state.tsx',
-          source: `import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { type ReactNode, useState } from 'react'
-
-export function Providers({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient())
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-}
-`,
-        },
-        {
-          path: 'src/client-in-server-component.tsx',
-          source: `import { QueryClient } from '@tanstack/react-query'
-
-declare function prefetchPostTitle(client: QueryClient): Promise<string>
-
-export async function PostPage() {
-  const queryClient = new QueryClient()
-  return <h1>{await prefetchPostTitle(queryClient)}</h1>
-}
-`,
-        },
-      ],
-      reportedIn: [
-        {
-          path: 'src/client-in-component.tsx',
-          source: `import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { ReactNode } from 'react'
-
-export function Providers({ children }: { children: ReactNode }) {
-  const queryClient = new QueryClient()
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-}
-`,
-        },
-      ],
-    },
   },
   {
-    heldBy: PROPERTY_ORDER_BESIDE_SORT_OBJECTS,
-    ruleCase: {
-      rule: '@tanstack/router/create-route-property-order',
-      silentIn: [
-        {
-          path: 'src/before-load-before-loader.ts',
-          source: `import { createRootRoute, createRoute } from '@tanstack/react-router'
+    path: 'src/infinite-query-options-in-tanstack-order.ts',
+    source: `import { infiniteQueryOptions } from '@tanstack/react-query'
 
-const rootRoute = createRootRoute()
+declare function fetchPage(page: number): Promise<{ items: string[]; next: number }>
 
-export const route = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/posts',
-  beforeLoad: () => ({ user: 'x' }),
-  loader: ({ context }) => context,
+export const pagesQuery = infiniteQueryOptions({
+  queryKey: ['pages'],
+  queryFn: ({ pageParam }) => fetchPage(pageParam),
+  getNextPageParam: (last) => last.next,
+  initialPageParam: 0,
 })
 `,
-        },
-        {
-          path: 'src/loader-deps-before-loader.ts',
-          source: `import { createRootRoute, createRoute } from '@tanstack/react-router'
+  },
+  {
+    path: 'src/root-route-in-tanstack-order.ts',
+    source: `import { createRootRoute } from '@tanstack/react-router'
+
+export const rootRoute = createRootRoute({
+  loaderDeps: ({ search }) => ({ search }),
+  loader: ({ deps }) => deps.search,
+})
+`,
+  },
+  {
+    path: 'src/route-in-tanstack-order.ts',
+    source: `import { createRootRoute, createRoute } from '@tanstack/react-router'
 
 const rootRoute = createRootRoute()
 
@@ -387,38 +379,132 @@ export const route = createRoute({
   loader: ({ deps }) => deps.search,
 })
 `,
-        },
-      ],
-      reportedIn: [
-        {
-          path: 'src/loader-before-before-load.ts',
-          source: `import { createRootRoute, createRoute } from '@tanstack/react-router'
+  },
+  {
+    path: 'src/file-route-in-tanstack-order.ts',
+    source: `import { createFileRoute } from '@tanstack/react-router'
 
-const rootRoute = createRootRoute()
-
-export const route = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/posts',
-  loader: ({ context }) => context,
-  beforeLoad: () => ({ user: 'x' }),
-})
-`,
-        },
-        {
-          path: 'src/loader-before-loader-deps.ts',
-          source: `import { createRootRoute, createRoute } from '@tanstack/react-router'
-
-const rootRoute = createRootRoute()
-
-export const route = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/posts',
-  loader: ({ deps }) => deps.search,
+export const Route = createFileRoute('/posts')({
   loaderDeps: ({ search }) => ({ search }),
+  loader: ({ deps }) => deps.search,
 })
 `,
-        },
-      ],
-    },
+  },
+  {
+    path: 'src/root-route-with-context-in-tanstack-order.ts',
+    source: `import { createRootRouteWithContext } from '@tanstack/react-router'
+
+type RouterContext = { readonly user: string }
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  loaderDeps: ({ search }) => ({ search }),
+  loader: ({ deps }) => deps.search,
+})
+`,
   },
 ]
+
+/** Options out of alphabetical order passed to another call, to a TanStack call neither rule would order, and nested in the options of one they would order. */
+const OPTIONS_SORT_OBJECTS_SORTS: readonly CaseFile[] = [
+  {
+    path: 'src/infinite-query-order-passed-to-another-call.ts',
+    source: `declare function fetchPage(page: number): Promise<{ items: string[]; next: number }>
+declare function configurePages(options: object): void
+
+configurePages({
+  queryKey: ['pages'],
+  queryFn: ({ pageParam }: { pageParam: number }) => fetchPage(pageParam),
+  getNextPageParam: (last: { next: number }) => last.next,
+  initialPageParam: 0,
+})
+`,
+  },
+  {
+    path: 'src/query-options-unsorted.ts',
+    source: `import { useQuery } from '@tanstack/react-query'
+
+declare function fetchTodos(): Promise<string[]>
+
+export function useTodos() {
+  return useQuery({
+    queryKey: ['todos'],
+    queryFn: fetchTodos,
+  })
+}
+`,
+  },
+  {
+    path: 'src/object-nested-in-infinite-query-options.ts',
+    source: `import { useInfiniteQuery } from '@tanstack/react-query'
+
+declare function fetchPage(page: number): Promise<{ items: string[]; next: number }>
+
+export function usePages() {
+  return useInfiniteQuery({
+    queryKey: ['pages'],
+    queryFn: ({ pageParam }) => fetchPage(pageParam),
+    getNextPageParam: (last) => last.next,
+    initialPageParam: 0,
+    meta: { source: 'pages', label: 'Pages' },
+  })
+}
+`,
+  },
+]
+
+/** Options out of alphabetical order passed to another library's call named as one the property-order rules order. */
+const OPTIONS_OF_ANOTHER_LIBRARYS_CALL_OF_THOSE_NAMES: readonly CaseFile[] = [
+  {
+    path: 'src/hono-create-route.ts',
+    source: `import { createRoute } from '@hono/zod-openapi'
+
+export const route = createRoute({
+  path: '/stacks',
+  method: 'get',
+  responses: {},
+})
+`,
+  },
+  {
+    path: 'src/pinia-colada-infinite-query.ts',
+    source: `import { useInfiniteQuery } from '@pinia/colada'
+
+declare function fetchPage(page: number): Promise<{ items: string[]; next: number }>
+
+export function usePages() {
+  return useInfiniteQuery({
+    key: ['pages'],
+    query: ({ pageParam }) => fetchPage(pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last) => last.next,
+  })
+}
+`,
+  },
+]
+
+/**
+ * The opt-in ordering ruleset's perfectionist/sort-objects with the two property-order rules left out: it reports the
+ * options of each call they would order, and of another library's call of one of those names, as it reports any other
+ * call's, and stays silent on options in alphabetical order.
+ */
+export const SORT_OBJECTS_ON_THE_PROPERTY_ORDER_CALLS: RuleCase = {
+  rule: 'perfectionist/sort-objects',
+  subject: 'the options of the calls the TanStack property-order rules would order',
+  silentIn: [
+    {
+      path: 'src/options-in-alphabetical-order.ts',
+      source: `declare function fetchPage(page: number): Promise<{ items: string[]; next: number }>
+declare function configurePages(options: object): void
+
+configurePages({
+  getNextPageParam: (last: { next: number }) => last.next,
+  initialPageParam: 0,
+  queryFn: ({ pageParam }: { pageParam: number }) => fetchPage(pageParam),
+  queryKey: ['pages'],
+})
+`,
+    },
+  ],
+  reportedIn: [...OPTIONS_IN_TANSTACK_ORDER, ...OPTIONS_SORT_OBJECTS_SORTS, ...OPTIONS_OF_ANOTHER_LIBRARYS_CALL_OF_THOSE_NAMES],
+}

@@ -27,7 +27,10 @@ export function buildAlwaysOnShippedRule(fields: ShippedRuleFields = {}): Shippe
   return { alwaysOn: true, ...SHIPPED_RULE_DEFAULTS, ...fields }
 }
 
-/** A rule `allowSuppressions` decides: its setting in each mode. */
-export function buildShippedRuleDecidedBySuppressions(whenSuppressions: SettingBySuppressionMode, fields: ShippedRuleFields = {}): ShippedRule {
+/** A rule `allowSuppressions` decides: its setting in each mode. Typed as one, so a spec can give it an editor ruleset. */
+export function buildShippedRuleDecidedBySuppressions(
+  whenSuppressions: SettingBySuppressionMode,
+  fields: ShippedRuleFields = {},
+): Extract<ShippedRule, { whenSuppressions: unknown }> {
   return { whenSuppressions, ...SHIPPED_RULE_DEFAULTS, ...fields }
 }

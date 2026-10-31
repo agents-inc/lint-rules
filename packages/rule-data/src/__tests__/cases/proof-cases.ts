@@ -1,0 +1,74 @@
+import { ACCEPTED_1011_CORE_CASES } from './accepted-1011-core.ts'
+import { ACCEPTED_1011_HRA_CASES } from './accepted-1011-hra.ts'
+import { ACCEPTED_1011_SNR_CASES } from './accepted-1011-snr.ts'
+import { ACCEPTED_1011_TSE_CASES, TYPE_IMPORTS_BESIDE_DECORATORS_CASES } from './accepted-1011-tse.ts'
+import { ACCEPTED_1011_UG_CASES, ACCESSOR_PAIRS_BESIDE_THE_OVERRIDE_RULE } from './accepted-1011-ug.ts'
+import { ACCEPTED_1011_UNI_CASES, IGNORED_RETURN_BESIDE_THE_UNUSED_RETURN_RULE } from './accepted-1011-uni.ts'
+import { ACCEPTED_A_CASES } from './accepted-a.ts'
+import { ACCEPTED_CMT_CASES } from './accepted-cmt.ts'
+import { ACCEPTED_COMPAT_CASES, ACCEPTED_COMPAT_CASES_IN_PROJECTS_NAMING_BROWSERS } from './accepted-cpt.ts'
+import { ACCEPTED_E18E_CASES } from './accepted-e18.ts'
+import { ACCEPTED_EFFECT_CASES } from './accepted-eff.ts'
+import { ACCEPTED_HYDRATION_PROOF_CASES } from './accepted-hp.ts'
+import { ACCEPTED_JEST_DOM_CASES } from './accepted-jd.ts'
+import { ACCEPTED_PLAYWRIGHT_CASES } from './accepted-pw.ts'
+import { ACCEPTED_SHADCN_CASES } from './accepted-sh.ts'
+import { ACCEPTED_TANSTACK_QUERY_CASES, ACCEPTED_TANSTACK_ROUTER_CASES, SORT_OBJECTS_ON_THE_PROPERTY_ORDER_CALLS } from './accepted-tsq.ts'
+import { ACCEPTED_ZOD_CASES } from './accepted-zod.ts'
+import { CHANGED_SETTING_CASES, DUPLICATES_LEFT_TO_THE_SPECIFIC_RULE, MOVED_OR_ADDED_CASES, type RuleCase, SUPPRESSION_AND_RENAMED_CASES } from './changed-settings.ts'
+import { OXLINT_VERSION_CASES, OXLINT_VERSION_GAPS } from './oxlint-versions.ts'
+import { PROOF_NODE_CASES } from './proof-node.ts'
+import { PROOF_OXC_CASES } from './proof-oxc.ts'
+import { PROOF_REACT_CASES } from './proof-react.ts'
+import { PROOF_PERFECTIONIST_CASES, PROOF_REGEXP_CASES } from './proof-regexp.ts'
+import { PROOF_SONAR_CASES } from './proof-sonar.ts'
+import { PROOF_STORYBOOK_CASES, PROOF_TESTING_LIBRARY_CASES } from './proof-test.ts'
+import { PROOF_TS_CASES } from './proof-ts.ts'
+import { PROOF_UNICORN_CASES } from './proof-unicorn.ts'
+import { NAMESPACE_KEYWORD_IN_DECLARATION_FILES } from './ruleset-moves.ts'
+
+// A list left out here proves none of its rules to every-rule-proven.integration.test.ts.
+
+/** Every RuleCase a test runs on the engines, from each list and lone case that holds one. */
+export const PROOF_CASES: readonly RuleCase[] = [
+  ...ACCEPTED_1011_CORE_CASES,
+  ...ACCEPTED_1011_HRA_CASES,
+  ...ACCEPTED_1011_SNR_CASES,
+  ...ACCEPTED_1011_TSE_CASES,
+  ...TYPE_IMPORTS_BESIDE_DECORATORS_CASES,
+  ...ACCEPTED_1011_UG_CASES,
+  ACCESSOR_PAIRS_BESIDE_THE_OVERRIDE_RULE,
+  ...ACCEPTED_1011_UNI_CASES,
+  IGNORED_RETURN_BESIDE_THE_UNUSED_RETURN_RULE,
+  ...ACCEPTED_A_CASES,
+  ...ACCEPTED_CMT_CASES,
+  ...ACCEPTED_COMPAT_CASES,
+  ...ACCEPTED_COMPAT_CASES_IN_PROJECTS_NAMING_BROWSERS,
+  ...ACCEPTED_E18E_CASES,
+  ...ACCEPTED_EFFECT_CASES,
+  ...ACCEPTED_HYDRATION_PROOF_CASES,
+  ...ACCEPTED_JEST_DOM_CASES,
+  ...ACCEPTED_PLAYWRIGHT_CASES,
+  ...ACCEPTED_SHADCN_CASES,
+  ...ACCEPTED_TANSTACK_QUERY_CASES,
+  ...ACCEPTED_TANSTACK_ROUTER_CASES,
+  SORT_OBJECTS_ON_THE_PROPERTY_ORDER_CALLS,
+  ...ACCEPTED_ZOD_CASES,
+  ...CHANGED_SETTING_CASES,
+  ...DUPLICATES_LEFT_TO_THE_SPECIFIC_RULE,
+  ...MOVED_OR_ADDED_CASES,
+  ...SUPPRESSION_AND_RENAMED_CASES,
+  ...OXLINT_VERSION_CASES,
+  ...OXLINT_VERSION_GAPS,
+  ...PROOF_NODE_CASES,
+  ...PROOF_OXC_CASES,
+  ...PROOF_REACT_CASES,
+  ...PROOF_REGEXP_CASES,
+  ...PROOF_PERFECTIONIST_CASES,
+  ...PROOF_SONAR_CASES,
+  ...PROOF_STORYBOOK_CASES,
+  ...PROOF_TESTING_LIBRARY_CASES,
+  ...PROOF_TS_CASES,
+  ...PROOF_UNICORN_CASES,
+  NAMESPACE_KEYWORD_IN_DECLARATION_FILES,
+]

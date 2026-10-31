@@ -1,15 +1,24 @@
 import { describe, expect, it } from 'vitest'
 
+import candidates from '../data/rule-candidates.json' with { type: 'json' }
 import canonicalRules from '../data/rules.json' with { type: 'json' }
 import { heldCasesOutOfPlace } from './__tests__/accepted-rules-out-of-place.ts'
 import { ACCEPTED_ON_2026_10_24 } from './__tests__/cases/accepted-on-2026-10-24.ts'
-import { ACCEPTED_TANSTACK_QUERY_CASES, ACCEPTED_TANSTACK_ROUTER_CASES, ACCEPTED_TSQ_HELD_CASES } from './__tests__/cases/accepted-tsq.ts'
+import {
+  ACCEPTED_TANSTACK_QUERY_CASES,
+  ACCEPTED_TANSTACK_ROUTER_CASES,
+  ACCEPTED_TSQ_HELD_CASES,
+  PROPERTY_ORDER_LEFT_OUT_BY,
+  SORT_OBJECTS_ON_THE_PROPERTY_ORDER_CALLS,
+  TANSTACK_PROPERTY_ORDER_RULES,
+} from './__tests__/cases/accepted-tsq.ts'
 import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './__tests__/rule-case-outcomes.ts'
 import { catalog } from './catalog.ts'
 
 // Each TanStack rule the owner accepted runs as it ships, through the real ESLint: it reports the card's code and stays
 // silent beside it. Each ships in the ruleset the owner named on its card, at the plugin's defaults, typed only where
-// its report needs type information. A rule whose build waits on a card has its case held unrun (ACCEPTED_TSQ_HELD_CASES).
+// its report needs type information. The two property-order rules are left out, so the opt-in ordering ruleset's
+// sort-objects sorts the options of the calls they would order as any other's.
 
 const ENGINES_TIMEOUT_MS = 120_000
 
@@ -72,5 +81,25 @@ describe('the TanStack rules accepted on 2026-10-24', () => {
     const shippedIds = new Set(canonicalRules.map(({ id }) => id))
 
     expect(heldCasesOutOfPlace(ACCEPTED_TSQ_HELD_CASES, ACCEPTED_ON_2026_10_24, shippedIds)).toStrictEqual([])
+  })
+
+  it(
+    "leave perfectionist/sort-objects of the ordering ruleset, run as it ships, reporting the options of each call the two property-order rules would order, of another library's call of one of those names and of any other call, and silent on options in alphabetical order",
+    async () => {
+      const { actual, expected } = await outcomesOfCase('accepted-tsq-sort-objects', SORT_OBJECTS_ON_THE_PROPERTY_ORDER_CALLS)
+
+      expect(actual).toStrictEqual(expected)
+    },
+    ENGINES_TIMEOUT_MS,
+  )
+
+  it('leave both property-order rules out, each unshipped and recorded dropped, its entry naming the answer that left both out', () => {
+    const shippedIds = new Set(canonicalRules.map(({ id }) => id))
+    const leftOut = TANSTACK_PROPERTY_ORDER_RULES.map((rule) => {
+      const entry = candidates.find(({ id }) => id === rule)
+      return { rule, shipped: shippedIds.has(rule), status: entry?.status, namesTheAnswer: entry?.why.includes(PROPERTY_ORDER_LEFT_OUT_BY) }
+    })
+
+    expect(leftOut).toStrictEqual(TANSTACK_PROPERTY_ORDER_RULES.map((rule) => ({ rule, shipped: false, status: 'dropped', namesTheAnswer: true })))
   })
 })

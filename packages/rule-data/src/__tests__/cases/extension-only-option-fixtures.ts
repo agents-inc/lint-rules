@@ -122,4 +122,40 @@ export const side: number = shape.side
 `,
     reportOf: 'findings',
   },
+  // The option leaves alone a rejection with a value typed any.
+  {
+    coreRule: 'prefer-promise-reject-errors',
+    option: '.allowThrowingAny',
+    key: 'allowThrowingAny',
+    without: [],
+    with: [{ allowThrowingAny: true }],
+    source: `declare const reason: any
+export const rejected = Promise.reject(reason)
+`,
+    reportOf: 'findings',
+  },
+  // The option leaves alone a rejection with a value typed unknown.
+  {
+    coreRule: 'prefer-promise-reject-errors',
+    option: '.allowThrowingUnknown',
+    key: 'allowThrowingUnknown',
+    without: [],
+    with: [{ allowThrowingUnknown: true }],
+    source: `declare const reason: unknown
+export const rejected = Promise.reject(reason)
+`,
+    reportOf: 'findings',
+  },
+  // The option leaves alone a rejection with an instance of the class it names, which is no Error.
+  {
+    coreRule: 'prefer-promise-reject-errors',
+    option: '.allow',
+    key: 'allow',
+    without: [],
+    with: [{ allow: [{ from: 'file', name: 'Failure' }] }],
+    source: `class Failure {}
+export const rejected = Promise.reject(new Failure())
+`,
+    reportOf: 'findings',
+  },
 ]

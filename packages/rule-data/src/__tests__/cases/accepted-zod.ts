@@ -1,4 +1,3 @@
-import type { HeldCase } from '../accepted-rules-out-of-place.ts'
 import type { RuleCase } from './changed-settings.ts'
 
 // The zod rules the owner accepted on 2026-10-24: each reports the card's schema and stays silent on its corrected
@@ -99,6 +98,15 @@ export const ACCEPTED_ZOD_CASES: readonly RuleCase[] = [
       { path: 'src/transformed-key.ts', source: `${IMPORTS_ZOD}export const Headers = z.record(z.string().transform((key) => key.toLowerCase()), z.string())\n` },
     ],
   },
+  // A string with no .trim() has no order to fix.
+  {
+    rule: 'zod/prefer-trim-before-string-length-checks',
+    silentIn: [
+      { path: 'src/trimmed-before-check.ts', source: `${IMPORTS_ZOD}export const Name = z.string().trim().min(1)\n` },
+      { path: 'src/checked-untrimmed.ts', source: `${IMPORTS_ZOD}export const Name = z.string().min(1)\n` },
+    ],
+    reportedIn: [{ path: 'src/checked-before-trim.ts', source: `${IMPORTS_ZOD}export const Name = z.string().min(1).trim()\n` }],
+  },
   {
     rule: 'zod/require-brand-type-parameter',
     silentIn: [{ path: 'src/named-brand.ts', source: `${IMPORTS_ZOD}export const UserId = z.string().brand<'UserId'>()\n` }],
@@ -106,25 +114,3 @@ export const ACCEPTED_ZOD_CASES: readonly RuleCase[] = [
   },
 ]
 
-/**
- * The cases of accepted zod rules whose build waits on a card, unrun until the owner answers it: once the rule ships,
- * its case moves to ACCEPTED_ZOD_CASES.
- *
- * prefer-trim-before-string-length-checks: check applies its fix, which moves .trim() before the length checks and so
- * changes what the schema accepts (measured with zod 3 and 4): a value of only spaces then fails .min(1), and a padded
- * value longer than .max() then passes.
- */
-export const ACCEPTED_ZOD_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = [
-  {
-    heldBy: 'q-lint-rc-zod-trim-fix-measured',
-    // A string with no .trim() has no order to fix.
-    ruleCase: {
-      rule: 'zod/prefer-trim-before-string-length-checks',
-      silentIn: [
-        { path: 'src/trimmed-before-check.ts', source: `${IMPORTS_ZOD}export const Name = z.string().trim().min(1)\n` },
-        { path: 'src/checked-untrimmed.ts', source: `${IMPORTS_ZOD}export const Name = z.string().min(1)\n` },
-      ],
-      reportedIn: [{ path: 'src/checked-before-trim.ts', source: `${IMPORTS_ZOD}export const Name = z.string().min(1).trim()\n` }],
-    },
-  },
-]
