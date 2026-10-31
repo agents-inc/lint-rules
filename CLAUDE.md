@@ -146,7 +146,9 @@ Steps 7-8 are how the work is finished, not a tidy-up phase for later.
   `--testFiles`, which the script warns of, re-run it without `--testFiles`; one that ran 0 tests
   means test files failed to load, so fix the cause and re-run with `--force`. Stryker only makes
   small breaks (swap an operator, flip a condition): a break that changes a decision (drop a field,
-  reorder blocks, stop after one step) is still written by hand.
+  reorder blocks, stop after one step) is still written by hand. Its totals can say 0 survived while
+  a changed line went untested: list each changed line with no Killed mutant (all CompileError, or
+  none made, as for `return f(x)`) and break each by hand.
 - **"This break changes nothing" needs a run of the real tool** on the exact config the break
   writes, not on a similar one.
 
@@ -163,7 +165,13 @@ Steps 7-8 are how the work is finished, not a tidy-up phase for later.
 - **No backward-compatibility shims before 1.0.** Remove old code cleanly.
 - **Named exports only** (except where a tool loads `default`, e.g. `*.config.*`). Kebab-case files.
   No magic strings or numbers.
-- **Comments only where the code is unintuitive.** No banner or section-divider comments.
+- **Comments only where the code is unintuitive.** No banner or section-divider comments. Write one
+  only for a non-obvious why, a workaround or a constraint from outside the code, one line where one
+  will do, in tests too (a test's name says its behaviour); never narrate the code, restate a name
+  or type, tell its history or the change ("now", "no longer", "previously", lane, ticket or card
+  ids), or answer a reviewer. Directive comments (`eslint-disable` and `@ts-expect-error` with their
+  reason, `// KNOWN GAP:`) stay, and a file you touch has its failing comments trimmed (owner,
+  2026-10-30).
 - **An `eslint-disable` needs proof after `--`:** the compiler error or the concrete thing that
   breaks, never "the rule is annoying here". A caught error reports its cause; never rename it to
   `_error` to silence lint.

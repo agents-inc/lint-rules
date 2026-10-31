@@ -27,16 +27,16 @@ Unless marked **proposed** or *(slice 1)*, everything here was decided by the ow
 | Who runs our rules | **Two sets in `agents-inc.lint.mts`: an agent set and an editor set** (owner 2026-10-10, names `agentRulesets` and `editorRulesets`; `rulesets` is renamed). `check` runs the agent set for sub-agents, on the lines they change. The editor set is what `agents-inc.lint.mts` exports as `eslint` and `oxlint`; a team merges each into its own config, so people's editors show those rules. Humans opt in by importing it; otherwise their editors, CI, scripts, lint configs and suppression comments stay as they were. |
 | Editor export | **Owner 2026-10-11, built.** `agents-inc.lint.mts` assigns its config to a const and ends with `export const { eslint, oxlint } = config.editorRulesets`; there is no default export and no other export. `eslint` and `oxlint` are plain values, the editor set's rules for each engine, holding no plugin objects, so importing the file never loads ESLint's plugins (load times: [spec §1](work/spec-agent-editor-sets.md#1-laziness-the-parts-are-plain-data-and-only-the-eslint-merge-entry-loads-plugins)). Each of the team's configs imports a **merge function** from our package (`mergeEslintConfig` from `@agents-inc/lint-rules/eslint`, `mergeOxlintConfig` from `@agents-inc/lint-rules/oxlint`; names mine, owner: "call it whatever you like") that takes the team's config, ours, and the path of the team's config for the other engine (owner 2026-10-14), and returns one config with no duplicates. It registers the plugins, building one merged plugin object for a prefix both register (the team's object as the base, our rule modules for the rules we run; why reusing the team's object as it is fails: spec §2): adding our config after a team config that uses typescript-eslint or eslint-plugin-react throws `Cannot redefine plugin` (measured). **The team's engine configs override the editor set** (owner 2026-10-14, replacing the per-file split of #32 D4, #41 and O6): a rule the team's ESLint or oxlint config sets anywhere, under any of its names (an alias, an old name, a team prefix such as `ts/`) or its typescript-eslint twin's, is the team's in every file, and both our parts drop it; a rule it sets in neither is ours. The wording: [the team's own configs](#files-init-adds-or-changes). Turning a rule off in `agents-inc.lint.mts` removes only ours (owner 2026-10-11, [questions](work/questions.md) #42). If the project does not use oxlint (read from the `package.json` nearest to `tsconfigRootDir`, not from what is installed: our package brings its own oxlint for `check`; owner 2026-10-11, #32 D1), there is no oxlint part, and the ESLint part takes over each oxlint-run rule ESLint has a version of and that fires there on its fixture, minus a skip list with a reason per rule (`packages/rule-data/data/eslint-fallback-skips.json`). On TS files, typescript-eslint's extension of a core rule it takes over runs in its place (owner, #39). Only the `oxc/*` rules have no ESLint version, since we install the plugins for the rest (`jsx-a11y`, `@vitest`, `react-hooks`, `react-perf`; owner, #30); [the commands](work/spec-owner-answers.md#commands) count them. Where one has a stand-in (`packages/rule-data/data/eslint-stand-ins.json`), the ESLint part runs the stand-in in its place (owner 2026-10-14, #55). Editor parts always allow suppression comments; `allowSuppressions` applies to the agent set only (default applied). The specs, with every measurement: [spec-agent-editor-sets](work/spec-agent-editor-sets.md), amended by [spec-owner-answers](work/spec-owner-answers.md) and [spec-merge-model](work/spec-merge-model.md). |
 | Runner | **Builds both engine configs itself on every run** from `agents-inc.lint.mts` (owner 2026-10-11): ESLint's through its Node API, oxlint's as a temporary file in the git top level, deleted after the run (owner, my-check-temp-config); each glob tied to a folder gets the config's folder in front, so it keeps meaning that folder (owner 2026-10-17). It never reads the project's engine configs. **It applies the autofixes first, then lints, and reports what is left** (owner, q-c11): only on the changed lines, dropping a fix that would change a line nobody changed (owner, my-check-fix-changed-lines), and only for rules at `error` (owner, my-check-fix-warnings). Nothing persists between runs, so restarting Claude changes nothing. The rebuild costs ~30 ms a run ([learnings](work/learnings.md)). |
-| Engines and rules the runner uses | **Its own ESLint and oxlint** (owner 2026-10-11), as dependencies of our package, so a project on another ESLint version has no install conflict and the rule list matches the engine versions it was generated from. **Only our rules:** the project's own lint config is never read, because its rules could conflict with ours. To add a rule, a consumer lists it under `rules` in `agents-inc.lint.mts`, which accepts any rule of the engines and plugins we ship. |
+| Engines and rules the runner uses | **Its own ESLint and oxlint** (owner 2026-10-11), as dependencies of our package, so a project on another ESLint version has no install conflict and the rule list matches the engine versions it was generated from. **Only our rules:** the project's own lint config is never read, because its rules could conflict with ours. `rules` in `agents-inc.lint.mts` takes only the rules we ship ([Rules we do not ship](#rules-we-do-not-ship)). |
 | Commands | `init` and `check` (owner 2026-10-11). |
 | Install | **`@agents-inc/lint-rules` as a devDependency** (owner 2026-10-11: "a dep is better"). `agents-inc.lint.mts` imports from it, so it is typed with no generated file. See [Considered and dropped](#considered-and-dropped) for `npx` with no install. |
 | Canonical rule ID | **The ESLint rule ID.** oxlint does not accept every one in its config: it refuses `n/`, `@vitest/` and `react-refresh/` IDs and renamed rules, so each oxlint-run rule also stores oxlint's own name, and every oxlint config we write uses that. A rule whose ESLint name differs from oxlint's (`unicorn/no-for-each`, oxlint's `unicorn/no-array-for-each`) runs in oxlint like the rest (owner 2026-10-14). |
 | Consumer config | `agents-inc.lint.mts` configures **only the rules we ship**, strictly typed. It is the one file we add. See [What a consumer's repo looks like](#what-a-consumers-repo-looks-like). |
-| Unknown IDs | A type error; an untyped config naming one stops at the catalog look-up, which names no file. No "did you mean" suggestion. |
+| Unknown IDs | A type error; an untyped config naming one is refused as a rule we do not ship. No "did you mean" suggestion. |
 | Engine per rule | Not configurable by consumers; the package routes every rule. If oxlint lacks an option a rule needs, the fix is to move that rule to ESLint in the canonical list. |
-| Severity | Every rule ships at `error`. Consumers may set `warn` or `off`. `no-use-before-define` is not shipped (owner 2026-10-10: use hoisting wherever possible), though it was the only guard against a temporal-dead-zone crash that `tsc` misses. |
-| Suppression comments | **Banned by default** (owner 2026-10-10). `house/no-suppressions` reports every `eslint-disable*`, `oxlint-disable*` and inline rule-config comment; `@typescript-eslint/ban-ts-comment` reports `@ts-ignore`, `@ts-nocheck` and `@ts-expect-error`. **`allowSuppressions: true`**, top level or in a `fileOverrides` entry, allows them there: the ban is off, ESLint reads inline config again, `@ts-expect-error` passes with a description (`@ts-ignore` and `@ts-nocheck` stay banned), and `unicorn/no-abusive-eslint-disable` and `react-hooks/rule-suppression` are on. While banned, both are off, so a blanket disable or a suppressed hooks rule is not reported twice (owner 2026-10-14). `allowSuppressions` sets these four rules, whatever rulesets are listed. The types refuse them in `rules`, though not in every shape, and an entry's `rules` naming one sets it in the entry's files, which the owner accepts (2026-10-20; [Open](#open), "Written limit of the config's types"). While banned, `@ts-expect-error` with a description passes in test and type-test files (`*.test.*`, `*.spec.*`, `*.{test,spec}-d.*`, `__tests__/`), every other suppression staying banned there (owner, q-dogfood-ts-expect-error-tests); an entry's `rules` naming the rule undo it there, unless the entry also sets `allowSuppressions: false`. A suppressed React hooks rule is reported even where suppressions are allowed, because suppressing one switches React Compiler off for the component (owner 2026-10-14, #75). See [Suppression comments](#suppression-comments-measured-2026-10-04). |
-| Rulesets | Every rule belongs to exactly one ruleset, except the four rules `allowSuppressions` sets. All rulesets but the opt-in ones are listed in the consumer's file, in four lists (`quality`, `libs`, `runtimes`, `languages`) per set, and removing one disables it there. No presets, no disable list. `import-order` and `ordering` are opt-in, since they sort code (owner 2026-10-15: a new repo gets bombarded with sorting reports). See [Rulesets](#rulesets). *Names decided 2026-10-10: these were "packs", with `code` and `tech` lists.* |
+| Severity | Every rule ships at `error`, except those we ship off by default. Consumers may set `warn` or `off`. `no-use-before-define` is not shipped (owner 2026-10-10: use hoisting wherever possible), though it was the only guard against a temporal-dead-zone crash that `tsc` misses. |
+| Suppression comments | **Banned by default** (owner 2026-10-10). `house/no-suppressions` reports every `eslint-disable*`, `oxlint-disable*` and inline rule-config comment; `@typescript-eslint/ban-ts-comment` reports `@ts-ignore`, `@ts-nocheck` and `@ts-expect-error`. **`allowSuppressions: true`**, top level or in a `fileOverrides` entry, allows them there: the ban is off, ESLint reads inline config again, `@ts-expect-error` passes with a description (`@ts-ignore` and `@ts-nocheck` stay banned), and `unicorn/no-abusive-eslint-disable`, `react-hooks/rule-suppression` and the eslint-comments rules `disable-enable-pair`, `no-duplicate-disable` and `require-description` are on; `require-description` asks a reason after `--`, of oxlint's switch-off comments too (owner 2026-10-30, q-lint-cmt-oxlint-disable-reason). While banned, these are off, so a blanket disable or a suppressed hooks rule is not reported twice (owner 2026-10-14). `allowSuppressions` sets these rules, whatever rulesets are listed, but the editor set runs `unicorn/no-abusive-eslint-disable` and the eslint-comments rules only where it lists `comments`, `react-hooks/rule-suppression` only where it lists `react` (owner 2026-10-27, q-lint-cmt-editor-reach), and `@typescript-eslint/ban-ts-comment` only where it lists `type-safety` (owner 2026-10-29, q-lint-ban-ts-comment-editor). The types refuse them in `rules`, though not in every shape, and an entry's `rules` naming one sets it in the entry's files, which the owner accepts (2026-10-20; [Open](#open), "Written limit of the config's types"). While banned, `@ts-expect-error` with a description passes in test, type-test and test-setup files (`*.test.*`, `*.spec.*`, `*.{test,spec}-d.*`, `__tests__/`, `vitest.setup.*`, `jest.setup.*`, `setupTests.*`, `test-setup.*`; owner 2026-10-30, q-lint-setup-files-which), every other suppression staying banned there (owner, q-dogfood-ts-expect-error-tests); an entry's `rules` naming the rule undo it there, unless the entry also sets `allowSuppressions: false`. A suppressed React hooks rule is reported even where suppressions are allowed, because suppressing one switches React Compiler off for the component (owner 2026-10-14, #75). See [Suppression comments](#suppression-comments-measured-2026-10-04). |
+| Rulesets | Every rule belongs to exactly one ruleset, except the rules `allowSuppressions` sets and those we ship off by default. All rulesets but the opt-in ones are listed in the consumer's file, in four lists (`quality`, `libs`, `runtimes`, `languages`) per set, and removing one disables it there. No presets, no disable list. `import-order` and `ordering` are opt-in, since they sort code (owner 2026-10-15: a new repo gets bombarded with sorting reports). See [Rulesets](#rulesets). *Names decided 2026-10-10: these were "packs", with `code` and `tech` lists.* |
 
 ## What a consumer's repo looks like
 
@@ -92,8 +92,10 @@ const config = defineLintRules({
       'tests',
     ],
     libs: {
-      ui: ['react', 'nextjs', 'react-ssr'],
-      testing: ['vitest', 'testing-library', 'storybook', 'playwright', 'jest-dom'],
+      // Opt-in, so not listed: 'react-ssr'
+      ui: ['react', 'nextjs'],
+      // Opt-in, so not listed: 'jest-dom'
+      testing: ['vitest', 'testing-library', 'storybook', 'playwright'],
       forms: ['react-hook-form'],
       // Opt-in, so not listed: 'tailwind'
       styling: ['css-modules', 'class-names'],
@@ -101,6 +103,7 @@ const config = defineLintRules({
       routing: ['tanstack-router'],
       validation: ['zod'],
       auth: ['jsonwebtoken'],
+      effect: ['effect'],
     },
     // Opt-in, so not listed: 'browser-targets'
     runtimes: [
@@ -134,7 +137,19 @@ const config = defineLintRules({
 
   rules: {},
 
-  fileOverrides: [],
+  fileOverrides: [
+    // Opt-in, so off: uncomment to turn these on for your Playwright tests, matched by folder as here or by file name.
+    // {
+    //   files: ['e2e/**'],
+    //   rules: {
+    //     'playwright/no-focused-test': 'error',
+    //     'playwright/no-identical-title': 'error',
+    //     'playwright/prefer-hooks-on-top': 'error',
+    //     'playwright/prefer-web-first-assertions': 'error',
+    //     'playwright/require-to-throw-message': 'error',
+    //   },
+    // },
+  ],
 })
 
 export const { eslint, oxlint } = config.editorRulesets
@@ -206,7 +221,7 @@ const config = defineLintRules({
   ignores: ['src/generated/**'],
 
   rules: {
-    'max-lines': ['error', { max: 400 }],                    // ESLint runs it
+    'max-lines': ['error', { max: 400 }],
     'react/no-array-index-key': 'warn',                      // oxlint runs it
     'unicorn/no-null': 'error',                              // off in the base, turned on
     'house/max-hooks-per-component': ['error', { max: 6 }],  // one of our custom rules
@@ -250,8 +265,9 @@ know the engine.
 
 ### Rules we do not ship
 
-`check` runs only our rules. To add one, a consumer lists it under `rules`, which accepts any rule of
-the engines and plugins we ship (owner 2026-10-11). In a team's own configs, its other plugins and
+`check` runs only our rules, and `rules` takes no other (owner 2026-10-27, q-lint-unshipped-rules-channel): naming
+one stops the config as it loads, pointing to the team's own ESLint or oxlint config, but for a twin of a rule we ship.
+In a team's own configs, its other plugins and
 rules stay where they are, and the merge function combines them with the editor set.
 
 Engine sections in `agents-inc.lint.mts` were tried and dropped, because they create a second place
@@ -297,10 +313,13 @@ prefix, so a suppression of an oxlint-only name loads there too.
 
 ## Rulesets
 
-Every rule has exactly one `ruleset` field in the canonical list, except the two suppression bans,
-which carry `alwaysOn: true` instead (owner 2026-10-10). The four rules `allowSuppressions` sets
+Every rule has exactly one `ruleset` field in the canonical list, except `house/no-suppressions`,
+which carries `alwaysOn: true` instead (owner 2026-10-10), and the rules we ship off by default, which
+carry `offByDefault: true` and run only where a team names them in `rules` or a `fileOverrides`
+entry's `rules` (owner 2026-10-29, q-lint-pw-off-by-default-where). The rules `allowSuppressions` sets
 also carry `whenSuppressions`, their setting in each mode, which replaces both in the generated
-routing, so no ruleset turns them on. *Names decided by the owner
+routing, so no ruleset turns them on in the agent set; routing keeps a rule's ruleset as its
+`editorRuleset`, which the editor set must list. *Names decided by the owner
 2026-10-10: "rulesets" (was "packs"), `quality` (was `code`), `libs` (was `tech`), and `runtimes`
 was added.* The list of rulesets, in the order a consumer lists them, is
 `packages/rule-data/data/ruleset-definitions.json`.
@@ -308,8 +327,8 @@ was added.* The list of rulesets, in the order a consumer lists them, is
 | List | Rulesets |
 | --- | --- |
 | `quality`: what the code should be like | `correctness`, `type-safety`, `security`, `accessibility`, `performance`, `complexity`, `declarative`, `immutability`, `modern-js`, `redundancy`, `modules`, `import-order`, `naming`, `comments`, `ordering`, `conventions`, `tests` |
-| `libs`: a dependency or convention the project uses | `react`, `nextjs`, `react-ssr`, `vitest`, `testing-library`, `storybook`, `playwright`, `jest-dom`, `react-hook-form`, `css-modules`, `class-names`, `tailwind` (opt-in), `tanstack-query`, `drizzle`, `tanstack-router`, `zod`, `jsonwebtoken` |
-| `runtimes`: where the code runs | `node` (`n/*` and a few unicorn rules), `browser` (DOM rules filed under unicorn, e.g. `prefer-dom-node-append`, `require-post-message-target-origin`), `browser-targets` (opt-in; it sets no globals: `browser` does) |
+| `libs`: a dependency or convention the project uses | `react`, `nextjs`, `react-ssr` (opt-in), `vitest`, `testing-library`, `storybook`, `playwright`, `jest-dom` (opt-in), `react-hook-form`, `css-modules`, `class-names`, `tailwind` (opt-in), `tanstack-query`, `drizzle`, `tanstack-router`, `zod`, `jsonwebtoken`, `effect` |
+| `runtimes`: where the code runs | `node` (`n/*` and a few unicorn rules), `browser` (DOM rules filed under unicorn, e.g. `prefer-dom-node-append`), `browser-targets` (opt-in; it sets no globals: `browser` does) |
 
 - **The test for a `libs` ruleset:** it must be meaningless without that dependency. That makes
   accessibility a `quality` ruleset, since it applies to any JSX. "Libs" is loose on purpose:
@@ -324,6 +343,12 @@ was added.* The list of rulesets, in the order a consumer lists them, is
 - **A fourth list, `languages`** (owner 2026-10-10), for rules about non-JS file types: `json`, `markdown`, `css`. JS and TS are always linted and are not in the list. oxlint lints only JS/TS, so every `languages` rule routes to ESLint (`@eslint/json`, `@eslint/markdown`, `eslint-plugin-package-json`). Today there are **no** such rules, so the list would be empty. The value is in checks a formatter never does: duplicate JSON keys, invalid `package.json` version ranges, skipped heading levels, and linting TS inside Markdown code blocks. Prettier or oxfmt still formats these files either way; we do not ship a formatter.
 - **Only runtimes that have rules exist.** `bun`, `deno`, `workers` and `edge` have no rules in our
   set. They would only switch globals, so they wait until someone needs them.
+- **A bug check goes to `correctness`,** however tidy its rewrite looks; `type-safety` holds only rules about weaker
+  type checking, so bans on TypeScript syntax Node cannot run (enums, namespaces, parameter properties) are
+  `conventions`; `modern-js` holds only rewrites that need a newer language or platform feature, so a shortening in the
+  same edition is `redundancy` (owner 2026-10-30, the round 2 critique's Q1–Q3; [decisions](work/decisions.md)).
+- **No `lodash` or `axios` ruleset, no `suspicious` split and no `style` list** (owner 2026-10-30, the round 2
+  critique's Q8 and Q11): the four sonarjs rules about those libraries stay in the groups their purpose names.
 - **Regex has no ruleset.** Its rules are spread across the `quality` rulesets by what they guard
   against: ReDoS goes to `security`, empty groups to `redundancy`.
 - **JSX has no ruleset either** (owner 2026-10-10). JSX-syntax and HTML rules go to `quality`
@@ -343,7 +368,7 @@ was added.* The list of rulesets, in the order a consumer lists them, is
 ## Ruleset assignment
 
 The canonical list, `packages/rule-data/data/rules.json`, gives every rule we ship a `ruleset` (or
-`alwaysOn: true`) and an `assignment`: `confidence`, an optional `alternative` and `note`, and
+`alwaysOn: true` or `offByDefault: true`) and an `assignment`: `confidence`, an optional `alternative` and `note`, and
 `by`, which records how it was assigned. *(slice 1: the draft `packages/rule-data/rulesets.json` was folded into it and deleted.)*
 
 - **`by: plugin`:** assigned by plugin: react, @eslint-react, react-perf,
@@ -352,6 +377,7 @@ The canonical list, `packages/rule-data/data/rules.json`, gives every rule we sh
 - **`by: agent-A` to `agent-D`:** four sub-agents, each with one batch of plugins, reading each
   rule's description and, where unclear, its docs or source.
 - **`by: critique-r1`:** moved by the owner's answers to the first ruleset critique (below).
+- **`by: owner-<date>`:** placed by the owner's answer of that date.
 - **Tie-break used:** a technology-specific rule goes to its lib or runtime, unless it is a security
   rule. Otherwise the rule's primary purpose decides.
 - **`confidence: low`** marks close calls between neighbouring rulesets (correctness/redundancy for
@@ -359,9 +385,10 @@ The canonical list, `packages/rule-data/data/rules.json`, gives every rule we sh
 - **Only enabled rules carry a ruleset.** Rules that ship off belong to none; a user can still turn
   one on in `rules`.
 - **Two shipped rules reporting one problem** (ruleset round 2, owner 2026-10-14): one is dropped, or
-  the narrower carries a relation, with the card and why. `coveredBy`: a rule in another ruleset
-  reports the same problem, so this one is left out wherever that one is on (the `because` names
-  any files the cover skips). `coveredInOxlintBy`: the same, only where oxlint runs both, as ESLint's
+  the narrower carries a relation, with the card and why, unless the owner accepted the double report
+  (2026-10-29, `no-useless-assignment` and `unicorn/no-async-iterator-callback`; [decisions](work/decisions.md)).
+  `coveredBy`: a rule in another ruleset reports the same problem, so this one is left out wherever
+  that one is on (the `because` names any files the cover skips). `coveredInOxlintBy`: the same, only where oxlint runs both, as ESLint's
   version of the cover reports less (`jsx-a11y/html-has-lang` beside `jsx-a11y/lang`,
   q-html-lang-twice). `splitByTypesWith`: an untyped rule is off where its typed partner runs with
   type information.
@@ -421,24 +448,43 @@ installed engines, it is the source of truth for both generated configs:
 }
 ```
 
-- **Each rule keeps the gate's engine.** `engine` was imported from the gate's live configs, whose
-  oxlint half comes from `build_lint_config.py` (categories, `NAMED`, `DEDUPE`). Exceptions: a rule
-  whose oxlint version is measurably worse runs in ESLint (next bullet), and
-  `unicorn/no-abusive-eslint-disable` runs in oxlint, which reports the line-form `// eslint-disable`
-  that ESLint does not read (owner 2026-10-14).
+- **oxlint runs each rule it has a version of that needs no type information** (owner 2026-10-14);
+  ESLint runs the rest. `engine` was imported from the gate's live configs, whose oxlint half comes
+  from `build_lint_config.py` (categories, `NAMED`, `DEDUPE`); slice 2 then moved to oxlint each rule
+  ESLint ran whose oxlint version cases on both engines, with the shipped settings, show no worse
+  (`OXLINT_VERSION_CASES`, `packages/rule-data/src/__tests__/cases/oxlint-versions.ts`).
+  Exceptions: a rule whose oxlint version is measurably worse runs in ESLint (next bullet), and so,
+  until the owner answers q-lint-slice2-oxlint-fix-changes-meaning, does each rule whose oxlint fix
+  changes what the code does where ESLint's version leaves the code alone (`RULES_WAITING_ON_AN_OWNER_ANSWER`,
+  `routed-to-eslint-for-a-reason.ts`), and `unicorn/prefer-modern-dom-apis`, listed there too, until the owner
+  answers q-lint-prefer-modern-dom-apis-engine. `unicorn/no-abusive-eslint-disable` runs in oxlint, which reports
+  the line-form `// eslint-disable` that ESLint does not read (owner 2026-10-14).
+  `@typescript-eslint/prefer-namespace-keyword` runs in ESLint, in declaration files only, since the
+  oxlint build turns no rule on in files of its own (owner 2026-10-30).
 - **Where oxlint's version is measurably worse, ESLint runs the rule** (owner 2026-10-14), instead
   of the merges handling it: oxlint misses a finding or reports a false one that ESLint's version
   does not, or refuses or ignores an option ESLint's version takes ([spec](work/spec-merge-model.md)
-  §3). So does the untyped rule of a `splitByTypesWith` pair that oxlint has: oxlint cannot tell
+  §3), or leaves unfixed code both report that ESLint's version fixes (owner 2026-10-27,
+  q-lint-slice2-autofix). So does the untyped rule of a `splitByTypesWith` pair that oxlint has: oxlint cannot tell
   which files have type information, so beside the typed rule its copy would report twice there.
   The entry's `eslintBecause` holds the reason and the measurement, and
   `canonical-list.test.ts` checks that each such rule runs in ESLint and has an untyped oxlint
-  version. The list:
+  version, and names each rule ESLint runs that oxlint has an untyped version of with no
+  `eslintBecause`, but those waiting on an owner answer. The list:
   `jq -r '.[] | select(.eslintBecause) | .id + ": " + .eslintBecause' packages/rule-data/data/rules.json`.
-- **No implementation is proven per engine yet** (slice 2). A matching name is not proof
-  (CLAUDE.md), and our plugin versions are newer than the gate's (unicorn 78 against 74).
-- **A rule we do not ship** is still a `RuleId` a consumer can turn on. It runs on oxlint when
-  oxlint has a version that needs no type information, else on ESLint (`defaultEngineOf` in
+- **Each shipped rule is proven on each engine that runs it** (slice 2): the one it is routed to, and
+  ESLint in a project without oxlint where the ESLint part takes an oxlint rule over (each but those
+  `eslint-fallback-skips.json` names, with the reason). The proof is a `RuleCase` in a list
+  `packages/rule-data/src/__tests__/cases/proof-cases.ts` indexes, an `oxc/*` rule's stand-in case,
+  its ESLint-fallback fixture (in oxlint, `oxlint-routed-rules.integration.test.ts`; in ESLint,
+  `eslint-fallback.integration.test.ts`), or for a `house/*` rule its own test in eslint-plugin-house.
+  `every-rule-proven.integration.test.ts` names each shipped rule and engine without one, but the
+  known gaps under [Open](#open); it counts a case whether or not the case passes, which the case's
+  own test checks. A matching name is not proof (CLAUDE.md), and our plugin versions are newer than
+  the gate's (unicorn 78 against 74).
+- **A rule we do not ship** is still a `RuleId`, so the types take it under `rules`, and the config
+  refuses it as it loads ([Rules we do not ship](#rules-we-do-not-ship)). Its engine is oxlint when
+  oxlint has a version that needs no type information, else ESLint (`defaultEngineOf` in
   `build-routing.ts`).
 - **Moving a rule between engines is a data change** (`engine`, and `oxlintName`) and a regenerate,
   with nothing for consumers to do. See [architecture](architecture.md#change-a-rule).
@@ -525,7 +571,6 @@ Measured 2026-10-04 with oxlint 1.82, ESLint 10.10 and Node 22.23.
 | Engine sections in `agents-inc.lint.mts` (`eslint`/`oxlint`, then `engineOverrides`, then `rules.eslint`/`rules.oxlint`) | A second place to edit rules, and an invitation to dump things there. Other rules stay in the team's own configs (owner 2026-10-11). |
 | Third-party rule lists as user-enabled rulesets | Owner 2026-10-05: not doing this. For the record: **anti-slop** (dmmulroy) is 15 oxlint JS-plugin rules, deliberately not on npm (vendor-only). ultracite bundles it, but has to switch off 3 core rules that otherwise create a fix/break loop. **`@shadcn/lint`** 0.2.0 has 6 Tailwind design-system rules, works in ESLint 9.30+ and oxlint 1.80+, and is mostly useful only with per-project "contracts". A ruleset like either would need a conflict list and an autofix-convergence check. |
 | Code-role rulesets (`tests`, `scripts`, `server-components`, …) | Owner 2026-10-10: not needed. `fileOverrides` covers path-based scoping. |
-| Target versions (`engines`, `browserslist`) driving rules | Owner 2026-10-10: not needed. |
 | Stability tiers (`stable` / `experimental`) | Owner 2026-10-10: not needed. |
 | Per-rule tags (`typed`, `autofix`, `fast`, `agent-slop`) | Owner 2026-10-10: not needed. |
 | Project kind (`project: 'app' \| 'library' \| 'cli'`) | Owner 2026-10-10: complicates things. It would also have to switch off rules owned by other rulesets (e.g. `no-console` for a CLI). |
@@ -690,15 +735,19 @@ Built: `agents-inc-lint check`, with no flags (owner 2026-10-11). The spec, with
 | A team oxlint statement that oxlint skips, its plugin listed neither at the root nor in the override, does not count as the team setting the rule ([spec-owner-answers](work/spec-owner-answers.md) O5, a default) | It counts, at any severity: both our parts drop the rule, and the line stays skipped, so nothing reports the rule until the team lists the plugin | Owner 2026-10-22 (LD-O5b): "if a rule is skipper in the user's eslint or oxlint config then it overrules our config rule" |
 | Where the type information is ours, typed blocks leave out each TS file no tsconfig takes in as a literal path listed when the config loads; no function in ESLint `files` (O7, a default) | Each typed block's `files` ANDs a function asking, as ESLint lints a file, whether a tsconfig takes it in, so a TS file made after the config loaded needs no restart | Owner 2026-10-22 (LD-O7b): "if this is solved using a function do that"; `eslint-function-in-files.test.ts` fails where a later ESLint stops calling it |
 | `npm audit` reports advisories through check-file → micromatch → braces and functional → deepmerge-ts (Open) | Only functional → deepmerge-ts | `npm audit` on a fresh install of the packed package (lane DEP, 2026-10-24) |
+| `rules` accepts any rule of the engines and plugins we ship (owner 2026-10-11) | Only the rules we ship; any other is refused as the config loads, pointing to the team's own ESLint or oxlint config | Owner 2026-10-27 (q-lint-unshipped-rules-channel): "Only their own config"; `unshipped-rules-refused.test.ts` |
+| The editor parts always allow suppressions, so they run `unicorn/no-abusive-eslint-disable` and `react-hooks/rule-suppression` whatever rulesets they list (default applied) | Each runs there only where the editor rulesets list its ruleset, `comments` or `react`; an entry's list replaces the top level's for its files | Owner 2026-10-27 (q-lint-cmt-editor-reach): "nothing should be in editor config without being listed in the editor config directly"; `allow-suppressions.test.ts` |
+| Target versions (`engines`, `browserslist`) driving rules: not needed (Considered and dropped) | `compat/compat`, in the opt-in `browser-targets` ruleset, checks the browsers Vite 8 builds for, given as a browserslist query, together with the project's own list where it names one; a Node-version category is still Open | Owner 2026-10-24 (rc-compat-compat) and 2026-10-28 (q-lint-compat-vite-target, q-lint-compat-install-size; [decisions](work/decisions.md)) |
+| `@typescript-eslint/ban-ts-comment` is always on, in no ruleset, so every editor runs it whatever it lists (Rulesets) | It is in `type-safety`; editors run it only where they list `type-safety`, and the agent build still sets it by `allowSuppressions` whatever is listed | Owner 2026-10-29 (q-lint-ban-ts-comment-editor): "Move it into a ruleset"; `canonical-list.test.ts`, `catalog.test.ts` |
+| Each rule keeps the gate's engine until per-engine proof (slice 2) (an earlier row) | Of the rules ESLint ran that oxlint has an untyped version of, oxlint runs each that cases on both engines show reporting and staying silent alike; ESLint runs the others, each with its reason (`eslintBecause`) or, where oxlint's fix changes what the code does, until the owner answers | Slice 2 phase A, 2026-10-31, oxlint 1.87 (`oxlint-versions.integration.test.ts`; the routing guard in `canonical-list.test.ts`) |
 
 ## Open
 
-- ESLint runs some rules oxlint also has (command under [Routing](#routing-the-canonical-list)): move the untyped ones without an `eslintBecause` once each passes its fixture on oxlint.
-- Per-rule, per-engine fixture proof (slice 2), including plugin majors newer than the gate's.
-- Rules turned on through `rules` that no fixture proves: allowed by default.
-- Ruleset critique: the ambiguous assignments ([critique r1](work/ruleset-critique-r1.md), section 4). Round 2's double reports and conflicts are settled in the data (owner 2026-10-14), and one pair remains: `unicorn/no-hex-escape`, to drop once `prefer-literal-ascii` is decided.
+- Waiting on the owner (q-lint-slice2-oxlint-fix-changes-meaning): the rules ESLint runs that oxlint has an untyped version of whose oxlint fix changes what the code does where ESLint's version leaves the code alone (`RULES_WAITING_ON_AN_OWNER_ANSWER` in `packages/rule-data/src/__tests__/cases/routed-to-eslint-for-a-reason.ts`). Also (q-lint-prefer-modern-dom-apis-engine): which engine runs `unicorn/prefer-modern-dom-apis` ([Routing](#routing-the-canonical-list)).
+- Proof per engine, left: the known gaps `every-rule-proven.integration.test.ts` lists (`UNPROVEN_ON_AN_ENGINE_THAT_RUNS_THEM`), rules that report only beside a file no engine lints (a stylesheet, a `package.json`), which a `RuleCase` cannot write, and a rule with no case yet.
 - Later (owner): a category for the newest language features, enabled by Node version ([decisions](work/decisions.md), third sweep).
 - Later (owner, q-c12): look into a type-check and a formatter step for `check`.
+- Very deferred (owner 2026-10-29, q-lint-own-immutability-patch): offer each library this repo patches (`patches/`) its fix upstream.
 - `check` and `init`, written limits ([spec-cli](work/spec-cli.md)):
   - oxlint's fixes in a partly changed file are applied only where all of them touch changed lines alone, since oxlint cannot be told which lines to fix; the same holds for ESLint's fixes in a file.
   - `check` fixes every changed line in the work tree, another agent's included, and two runs fixing one file at once can race (the last write wins).
@@ -717,35 +766,33 @@ Built: `agents-inc-lint check`, with no flags (owner 2026-10-11). The spec, with
   - #34: editors need Node 22.18 or later to import `agents-inc.lint.mts`, and a team on `.oxlintrc.json` must move to a TS oxlint config (not measured).
   - Until the editor's ESLint restarts, a TS file keeps the answer it got when first linted, so a tsconfig edited later to take it in does not bring it our typed rules: ESLint keeps each file's config by path (`getConfigWithStatus` in @eslint/config-array), and `projectFactsOf` each answer. A file first linted after the edit gets them if it was made after the config loaded; one that existed then is asked of each tsconfig as first read (`tsconfigWalkOf`).
   - #60: where a consumer's `rules` name only typescript-eslint's version of a rule, it runs on JS files too if no ruleset has the plain rule.
-  - A rule the team sets runs as the team's copy, which our cut of re-export cycles (`core/re-export-cycles.ts`) does not reach: a team on typescript-eslint's `strictTypeChecked` or `all`, which turn `no-deprecated` on, still has its editor ESLint hang for good on a re-export cycle, as before (measured, 8.71.1; `check` never loads the team's config). Left written down (owner, a3v-team-no-deprecated-hang).
+  - A rule the team sets, under a plugin it registers itself, that our blocks do not run is the team's copy, which our cut of re-export cycles (`core/re-export-cycles.ts`) does not reach (read from `pluginsForEveryBlock`): a team on typescript-eslint's `strictTypeChecked` or `all`, which turn `no-deprecated` on, still has its editor ESLint hang for good on a re-export cycle, as before (measured, 8.71.1; `check` never loads the team's config). Left written down (owner, a3v-team-no-deprecated-hang). Where the team relies on the plugins our merge registers, its rule runs our repaired copy (owner 2026-10-30, q-lint-team-set-repaired-copies; pinned in `editor-merges.team-set-rules-as-shipped.integration.test.ts`).
+  - Nor, in that case, does our per-call cache for functional's `prefer-immutable-types` (`core/immutability-cache-per-call.ts`): a team that sets that rule under the plugin it registers itself, our blocks not running it, still gets answers that depend on which file it checked first (read from the merge, not measured).
   - #62, a written limit: a negated value of our `ignores` taking back a file under a folder another value leaves out (`lib/**` then `!lib/a.js`) keeps it out in ESLint and takes it back in oxlint.
   - #64: a consumer's own option that oxlint refuses for a rule it runs makes oxlint reject the whole config and lint nothing, in the agent build and the editor merges.
   - #74: a wrong option in `rules` is not traced to `agents-inc.lint.mts`: ESLint shows its own error, and only once a file the rule covers exists; for an oxlint rule, oxlint lints nothing.
   - #72: in a monorepo, a package with its own config and no oxlint gets each oxlint-run problem twice when both engines run from the root.
-  - Limits of reading the team's configs ([spec](work/spec-merge-model.md) §1.2, §1.3): neither merge sees blocks an `eslint.config.mjs` adds outside the config it passes to `mergeEslintConfig`, `--type-aware` on oxlint's command line, or rules set in inline config comments; where the team's oxlint config writes a category on and lists a plugin only in an override, under a root listing no plugin, oxlint runs the category's rules of that plugin in no file, yet they are the team's, so nobody reports them; an ESLint config the oxlint merge takes from a default export (no merge of ours called) is read without our plugins, so a prefix it registers one of ours under goes unrecognised; a config read this way cannot use top-level await, and a change to it reaches a running editor engine only when that engine restarts; reading `eslint.config.mjs` loads our ESLint entry and its plugins on every oxlint start (accepted, owner 2026-10-14). For a team block whose `basePath` is above the project, an extglob folder part matches no folder, braces expand within one folder part, and a glob naming the project's folder and nothing below it matches no file (my-basepath-glob-limits).
+  - Limits of reading the team's configs ([spec](work/spec-merge-model.md) §1.2, §1.3): neither merge sees blocks an `eslint.config.mjs` adds outside the config it passes to `mergeEslintConfig`, `--type-aware` on oxlint's command line, or rules set in inline config comments; where the team's oxlint config writes a category on and lists a plugin only in an override, oxlint runs that plugin's category rules in a file only where an override matching it gives a plugin list different from the root's and the matching overrides' lists joined (measured, 1.87); where every override listing plugins lists one set holding each root plugin, oxlint runs them in no file and our copy reports them (owner 2026-10-29), and otherwise they are the team's in every file, so where oxlint does not run them nobody reports them; an ESLint config the oxlint merge takes from a default export (no merge of ours called) is read without our plugins, so a prefix it registers one of ours under goes unrecognised; a config read this way cannot use top-level await, and a change to it reaches a running editor engine only when that engine restarts; reading `eslint.config.mjs` loads our ESLint entry and its plugins on every oxlint start (accepted, owner 2026-10-14). For a team block whose `basePath` is above the project, an extglob folder part matches no folder, braces expand within one folder part, and a glob naming the project's folder and nothing below it matches no file (my-basepath-glob-limits).
   - The TypeScript import resolver, in a project with no tsconfig, reads the tsconfig of the folder ESLint starts in, and where any tsconfig path holds glob characters it reads every path as a glob, so a tsconfig inside a folder named `[id]` may not be read (not measured; my-resolver-limits).
   - Our runtimes' globals go only where our own `no-undef` runs, so editors miss `window = {}` in a TS file, `setTimeout('code')` in a JS file beside oxlint, and either in a TS file no tsconfig takes in; `check` reports all of them (a3-editor-globals-short).
   - The oxlint merge turns oxlint's default `correctness` copies of the rules our ESLint part runs off in every file, so in the files our `ignores` keep our ESLint rules out of, neither engine reports them. Where the project lists oxlint but oxlint runs without our merge (`oxlintConfig: null`), those default copies report beside ours.
+- Written limit (owner 2026-10-29, q-lint-hp-next-setting-where; [decisions](work/decisions.md)): where a file's own nearest `package.json` lists `next`, `react-ssr`'s rules skip it when it has no `'use client'` and any folder in its path is named `app`, so they also miss a component without `'use client'` that a `'use client'` file imports, and a Pages Router app's `app` folder; `check` gives a team no way to turn that off.
 - Known limit (owner, [questions](work/questions.md) #59: the floor stays 22.18): eslint-plugin-regexp's parser declares a narrower Node range than ours, so npm warns on part of our range.
 - Known limit: a project on TypeScript 7 (npm's `latest` since 2026-07-08) cannot use the package until typescript-eslint supports it. npm refuses the install (`ERESOLVE`: our `typescript` peer range is typescript-eslint's, `npm view typescript-eslint peerDependencies`), and with `--legacy-peer-deps` ESLint crashes: "typescript-eslint does not support TS 7.0" (real run, 2026-10-14).
 - Type-aware rules on `agents-inc.lint.mts` and `oxlint.config.mts` (owner 2026-10-14, typed-config-files; [architecture](architecture.md) step 8):
   - Limits: `eslint.config.mjs` is JS and gets none; where the team gives type information, ours leave both files out; a config file no tsconfig takes in gets none, at `tsconfigRootDir` too (owner, q-config-files-several-projects). `agents-inc.lint.mts` counts as taken in through `oxlint.config.mts`'s import only where the import is written `./agents-inc.lint.mts`, as `init`'s files write it, at the project root (my-config-file-import-detection).
 - Raised by fix round 5, a known limit (owner, q78):
   - #78: linted from a folder above the package (a monorepo's root), `n/no-unpublished-import` reports as unpublished an import it cannot resolve: an alias in `tsconfig.app.json` or `jsconfig.json`, `$app/…`. Only `settings.n.convertPath` reaches them, and it also hides genuinely unpublished files behind aliases (measured, eslint-plugin-n 18.4.1).
-- Raised by the plugin upgrades (unicorn 78, @eslint-react 5.26.5, jsx-a11y-x), owner calls:
-  - A team config registering the original eslint-plugin-jsx-a11y under a prefix other than `jsx-a11y` is no longer read as our plugin, so a rule it sets there and ours both report.
-  - @eslint-react 5.26.5 asks for typescript-eslint's packages at `^8.71.2` and we pin 8.71.1, so a second copy installs beside ours: move typescript-eslint to 8.71.2?
-- Raised by the editor-set build ([questions](work/questions.md) #49, #50): a format script for this repo's own code (later, owner; it lints itself through its own configs, a3-whole-repo-lint); a committed break-a-line check, which belongs to agents-inc ([follow-up](work/follow-up-mutation-check.md)). Out of date, 2026-10-15: StrykerJS now runs this check in this repo, on the owner's 2026-10-14 call ([mutation testing](work/mutation-testing.md)); how agents-inc ships one to other projects is still open.
+- Gone back to the owner from his 2026-10-26/27 dependency answer ([decisions](work/decisions.md), "Move to 8.71.2"):
+  - This repo's bun.lock keeps 8.71.1 copies of `@typescript-eslint/*` beside 8.71.2: relock from scratch?
+- Raised by the editor-set build ([questions](work/questions.md) #49, #50): a format script for this repo's own code (later, owner; it lints itself through its own configs, a3-whole-repo-lint). The break-a-line check #50 asked for runs here through StrykerJS ([mutation testing](work/mutation-testing.md)) and is not shipped to other projects: only lint-rules and agents-inc run one (owner 2026-10-26, q-gap-break-a-line-check, "Keep it in-house").
 - Raised by this repo's own configs (a3-whole-repo-lint): run from the root, oxlint still lints `packages/lint-rules/test-fixtures/consumer-files`, which holds an oxlint config of its own, by that config (a root `ignorePatterns` does not reach a folder with an oxlint config of its own; an ignore file naming it, or `--disable-nested-config`, would), so `npx oxlint` reports its planted `no-debugger`.
-- Written limit of the config's types, accepted (owner 2026-10-20: "totally fine to be able to manually switch off the ban"): a value typed `LintRules`, or any part of it (`LintRules['rules']`, a typed `fileOverrides` entry or list), checks a const it holds only on the names both its type and the const's list, and given to `defineLintRules` it hands the call every name, which an entry beside a typed one takes too. So an unknown rule ID or libs domain held in a const beside a known one compiles there, and so does every name and value of a const typed with an index signature (`Record<string, …>`, what `Object.fromEntries` returns), the rules `allowSuppressions` sets included (KNOWN GAP in `define-lint-rules.test-d.ts`). An entry's `rules` held in a const typed `object` or `{}` compiles even given to `defineLintRules` directly. As the config loads: an unknown rule ID stops it at the catalog look-up, which names no file, so `check` and both editor engines stop; an unknown domain's rulesets are on as if listed under a known domain, and an unknown ruleset, under any domain, turns nothing on; a setting that is no rule entry is refused by the engine running the rule, so `check` stops (ESLint) or reports oxlint's rules unchecked (oxlint); a rule `allowSuppressions` sets, named in an entry's `rules`, takes that setting in the entry's files, but for `ban-ts-comment` in the test files of an entry that also sets `allowSuppressions: false`; so `'house/no-suppressions': 'off'` there stops sub-agents' disable comments being reported, and those comments then switch off the rules oxlint runs (ESLint still ignores them), and neither tsc nor `check` says so (at the top level, `allowSuppressions` wins).
+- Written limit of the config's types, accepted (owner 2026-10-20: "totally fine to be able to manually switch off the ban"): a value typed `LintRules`, or any part of it (`LintRules['rules']`, a typed `fileOverrides` entry or list), checks a const it holds only on the names both its type and the const's list, and given to `defineLintRules` it hands the call every name, which an entry beside a typed one takes too. So an unknown rule ID or libs domain held in a const beside a known one compiles there, and so does every name and value of a const typed with an index signature (`Record<string, …>`, what `Object.fromEntries` returns), the rules `allowSuppressions` sets included (KNOWN GAP in `define-lint-rules.test-d.ts`). An entry's `rules` held in a const typed `object` or `{}` compiles even given to `defineLintRules` directly. As the config loads: an unknown rule ID stops it as a rule we do not ship, so `check` and both editor engines stop; an unknown domain's rulesets are on as if listed under a known domain, and an unknown ruleset, under any domain, turns nothing on; a setting that is no rule entry is refused by the engine running the rule, so `check` stops (ESLint) or reports oxlint's rules unchecked (oxlint); a rule `allowSuppressions` sets, named in an entry's `rules`, takes that setting in the entry's files, but for `ban-ts-comment` in the test files of an entry that also sets `allowSuppressions: false`; so `'house/no-suppressions': 'off'` there stops sub-agents' disable comments being reported, and those comments then switch off the rules oxlint runs (ESLint still ignores them), and neither tsc nor `check` says so (at the top level, `allowSuppressions` wins).
 - Raised by the merge-call types build, owner call: an `oxlint.config.mts` nobody type-checks gets no error of ours from `mergeOxlintConfig` for a wrong part or third argument (`untyped-oxlint-config.test.ts`). Handed the ESLint part, it builds a config setting none of our rules; handed the object holding both parts, or a string, it stops at "a package.json lists oxlint, yet it does not resolve from undefined: install it", which sends the team to reinstall oxlint; a third argument holding no path stops at a `TypeError`. Leave it, or bring back a check that names the wrong part?
 - Raised by the check for exports nothing imports (knip 6.32.0, which every `bun run typecheck` runs first; [architecture](architecture.md#packages)), a written limit and an owner call: knip counts an exported type as used wherever it appears in the declaration of an export something uses, and has no option to change that, so such a type nothing imports stays exported unreported. The a7 review's fourteen are un-exported. Every export the check passes with no importer, the remaining types among them, from the root: `bunx knip --trace | grep -B1 'no imports found) ✓' | grep -v -e 'no imports found' -e '^--'` (`⎆` marks an export of an entry file). Un-export the remaining types too, or leave them?
 - `npm audit` reports a high-severity advisory through our dependencies (functional → deepmerge-ts): fix before publishing.
 - Packaging problems to fix before publishing ([questions](work/questions.md) #38): a plugin we depend on puts an old ESLint into every consumer's `node_modules`; our package.json has `exports` but no `main` or `types`, so eslint-plugin-import reports our imports unresolved; a team on ESLint 10 that lists eslint-plugin-react itself needs `--legacy-peer-deps`.
-- A ruleset switched on is a change to the setup under test; on the benchmark it needs its own A/B.
 - Beside oxlint, `unicorn/no-for-each` can be suppressed only under oxlint's name, `unicorn/no-array-for-each`, which ESLint lacks and our ESLint parts stub no rule for (stubs cover rule IDs): ESLint reports `Definition for rule 'unicorn/no-array-for-each' was not found` on the comment (measured, ESLint 10.12, eslint-plugin-unicorn 77).
 - Suppression ban, owner calls:
   - oxlint has no guard: it honours a suppression for its own rules, and only ESLint's report fails the file.
-  - `ban-ts-comment`'s message for `@ts-ignore` still says to use `@ts-expect-error` instead, which the ban also refuses outside test files: typescript-eslint's, which ESLint now runs, as oxlint's did (measured, typescript-eslint 8.71.1).
 - Accepted, written down: three rules report correct code here, each with a rewrite that passes (q-dogfood-keep-three): `@typescript-eslint/consistent-return` on a `switch` returning in every case of a union, fixed by a `never` default, `default: { const unhandled: never = x; return unhandled }`, so a missing case stays a type error (owner 2026-10-22); `@typescript-eslint/no-generated-empty-object-type` on `<V extends NonNullable<unknown>>`, fixed by a named union of the non-nullish types; `unicorn/no-non-function-verb-prefix` on a value named like `setByTheTeam`, fixed by a rename. And `functional/immutable-data` reports the mutation ESLint's rule API needs (a visitor's stack, `RuleTester.afterAll = afterAll`), so a team writing ESLint rules turns it off for those files in `fileOverrides` (q-dogfood-required-mutation).
-- Raised by house round 7, owner calls ([learnings, Lint guards](work/learnings.md#lint-guards-2026-10-23-lane-la)): in a `namespace` body, `house-repo/no-throwing-default-in-exhaustive-switch` suggests `return`, which does not compile there (q-lint-house-namespace-body); and it always asks TypeScript, which makes very large switches slower to lint (q-lint-house-rebuild-cost).
