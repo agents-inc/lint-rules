@@ -524,8 +524,7 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   `define-lint-rules.test-d.ts`: a `fileOverrides` entry turns it off for `**/*.test-d.ts` (`agents-inc.lint.mts`);
   nothing shipped changes.
 - Owner 2026-10-24 (board https://claude.ai/artifact/4GpMMzy64wzXqSPZaghWTJ, the rule-candidate cards; a card is `rc-`
-  and the rule ID with `@` dropped and `/` turned into `-`). Each verdict is in `rule-candidates.json`, the card named;
-  nothing ships yet:
+  and the rule ID with `@` dropped and `/` turned into `-`). Each verdict is in `rule-candidates.json`, the card named:
   - Accepted, `recommended` until built, by the ruleset each goes to (the card's, else the accepted-rules spec's pick):
     redundancy `unicorn/no-unnecessary-default-arguments`, `unicorn/no-repeated-call-wrappers`,
     `unicorn/prefer-logical-operator-over-ternary`; modern-js `prefer-named-capture-group`,
@@ -638,6 +637,9 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   q-lint-compat-default-target), asked which browsers `compat/compat` checks by default: the `browser-targets` ruleset
   gives the rule a browserslist query as its option. Which list that means was asked again on 2026-10-28
   (q-lint-compat-vite-target, below).
+- Owner 2026-10-24, "`libs: { effect: ['effect'] }`" (board card q-lint-effect-ruleset-name), asked what teams type to
+  list the Effect ruleset: a new `libs` domain `effect` holding the ruleset `effect`, which `init` lists. The port ships
+  there as `house/no-manual-effect-error-tag`, and the upstream candidate entry is gone (lane EFF).
 - Owner 2026-10-28 (workboard; each card's text and the choice verbatim in the session's answers bundle). The lanes are in
   `docs/work/spec-answers-4.md`; nothing below is built yet unless it says so:
   - "Vite's fixed list" (q-lint-compat-vite-target), asked whether compat checks exactly what Vite builds for or
@@ -725,3 +727,697 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
     (rc-bulk-rejected); `no-case-declarations`, `unicorn/prefer-escaped-irregular-whitespace` (rc-bulk-recommended).
   - Knock-on: with `unicorn/prefer-literal-ascii` accepted, r2-d68 (`docs/work/spec-next-batch.md`, row D68) drops
     `unicorn/no-hex-escape`, decided by `r2-d68`, in lane UNI.
+- Owner 2026-10-27, "Treat it like a file's top level" (board card q-lint-house-namespace-body), asked what
+  `house-repo/no-throwing-default-in-exhaustive-switch` suggests at a `default: throw` in a `namespace` body, where
+  `return unhandled` does not compile: as at a file's top level, `const unhandled: never = x` before the throw, and it
+  accepts that form; a function inside the namespace keeps the return form (`isWhereNothingReturns`,
+  `rules/no-throwing-default-in-exhaustive-switch.ts`).
+- Owner 2026-10-27, "Accept it, give that test more time" (board card q-lint-house-rebuild-cost), asked whether the
+  rebuilt rule's cost on very large switches is accepted: it is, no behaviour change; "stays silent on a throwing default
+  the last of thousands of cases falls into" runs under its own timeout (`THOUSANDS_OF_CASES_TIMEOUT_MS`,
+  `rules/no-throwing-default-in-exhaustive-switch.test.ts`; lane LINT-HOUSE-SLOW-SPEC).
+- Owner 2026-10-27, "Only their own config" (board card q-lint-unshipped-rules-channel), asked where a team turns on a
+  rule we do not ship: in its own ESLint or oxlint config only. `rules` takes only the rules we ship, and naming any other
+  there, an unknown ID included, stops the config as it loads with a message pointing to that config
+  (`refuseRulesWeDoNotShip`, `core/rules-we-do-not-ship.ts`; lane LINT-UNSHIPPED-CHANNEL). This overrules "a consumer adds
+  any rule we support via `rules`" (2026-10-11 above). Held on q-lint-unshipped-ts-twin: typescript-eslint's copy of a
+  rule we ship, and the core rule a shipped copy extends, are routed as before.
+- Owner 2026-10-27, "Run them in ESLint unless tested" (board card q-lint-unshipped-rules-untested), asked which engine
+  runs a rule turned on through `rules` that no fixture proves: moot under q-lint-unshipped-rules-channel, as `rules`
+  takes no rule we do not ship; nothing built.
+- Owner 2026-10-27, "Yes, update the test" (board card q-lint-itfails-function-files), asked whether the test still
+  expecting our copy of a rule outside the files a team block's function matches, which the 2026-10-14 ruling replaced
+  (a rule the team sets anywhere is theirs in every file), may change: its `it.fails` test is deleted and the passing
+  one renamed to say the team's entry stands in every file, its assertion unchanged ("a team block whose files are a
+  function", `merge-eslint-config.test.ts`). No behaviour changed.
+- Board card q-lint-no-let-it-fails ("Allow `let` for this pattern", above) is built: each `let` a hook assigns and an
+  `it.fails` test reads carries its own `eslint-disable-next-line functional/no-let` with the proof
+  `docs/work/spec-own-lint.md` requirement 4 gives; no override.
+- Owner 2026-10-27, "The gate reports it" (board card q-gap-lint-stryker-leftover-sandbox), asked what handles the copy
+  of the repo a killed mutation run leaves in `.stryker-tmp`, which slows every test that walks the repo:
+  `scripts/report-leftover-stryker-copies.mts`, run from the root, names each `.stryker-tmp/sandbox-*` copy unless a
+  Stryker run started from the root is live (workers a killed run leaves in its copy do not count as one); it removes
+  nothing and exits 0. It reads `/proc`, so it reports only on Linux. Not wired into `bun run test` yet: that needs the
+  root `package.json` and `turbo.json`.
+- Owner 2026-10-27, "A written rule only" (board card q-gap-lint-stryker-untested-lines), asked what catches a mutation
+  run that totals 0 survived while a changed line got no tested break: CLAUDE.md, Tests, says to list each changed line
+  with no Killed mutant and break each by hand; nothing checks that it was done.
+- Owner 2026-10-27, note "What do these have to do with the lint rules repo remove the jobs" (board card
+  q-gap-lint-ai-benchmarking-items), asked whether the two lint jobs only ai-benchmarking can do (its gate defects, and
+  an A/B for each ruleset switched on in the benchmark) get a session there or stay written down: both are removed from
+  this repo's docs (`questions.md` Open #8, the A/B note in `plan.md` Open); nothing is done in ai-benchmarking.
+- Correction 2026-10-29 to the "The gate reports it" entry above: it is wired. `bun run test` runs the root script
+  `report-leftover-stryker-copies`, uncached, before every package's test (`turbo.json`).
+- Owner 2026-10-27, chat ruling on board card q-lint-cmt-editor-reach, overriding its choice "Keep it (editors too)": "we
+  have two separate configs for a reason so nothing should be in editor config without being listed in the editor config
+  directly". The card asked whether rules that run wherever suppressions are allowed also run in every team's editor,
+  where they always are. They do not: a rule `allowSuppressions` turns on that belongs to a ruleset
+  (`unicorn/no-abusive-eslint-disable`, comments; `react-hooks/rule-suppression`, react; the comment rules RULES-CMT
+  ships) runs in the editor parts only in files whose `editorRulesets` list its ruleset. The agent build is unchanged.
+  Pinned in `allow-suppressions.test.ts` (lane LINT-EDITOR-LISTED-ONLY). Open, asked of the owner: whether
+  `@typescript-eslint/ban-ts-comment`, on in every config and in no ruleset, stays in editors.
+- Owner 2026-10-26/27, "Ship it" (board card q-lint-rc-duplicate-disable-measured), asked whether
+  `@eslint-community/eslint-comments/no-duplicate-disable` ships though check already reports a second disable of an
+  ESLint-run rule as an unused suppression: it ships in `comments`, run by ESLint at its defaults only where suppressions
+  are allowed, like `unicorn/no-abusive-eslint-disable`. A duplicate disable of an oxlint-run rule draws its one report;
+  of an ESLint-run rule, two on the same comment. With q-lint-cmt-editor-reach built,
+  `@eslint-community/eslint-comments/disable-enable-pair` ships the same way. Cases in rule-data's
+  `__tests__/cases/accepted-cmt.ts`; the double report is pinned nowhere (lane RULES-CMT).
+- Owner 2026-10-26/27, "Only switch-off comments" (board card q-lint-cmt-require-description-scope), asked whether
+  `@eslint-community/eslint-comments/require-description` also asks a reason of enable and global comments: it does
+  not; it ships with an ignore list of those kinds. Held, not shipped, on q-lint-cmt-inline-config-reason: the rule
+  skips whole kinds of comment only, and an inline rule-setting comment (`eslint no-console: "off"`) is one kind whether
+  it switches a check off or only changes a setting (measured, eslint-comments 4.8.1). Its case is held in
+  `accepted-cmt.ts` (lane RULES-CMT).
+- Owner 2026-10-26/27, the measured cards on Playwright, TanStack and zod rules accepted 2026-10-24 (lane
+  LINT-HELD-RULES):
+  - "Report only, fix withheld" (board card q-lint-rc-stable-query-client-fix-measured), asked how
+    `@tanstack/query/stable-query-client` ships, its fix writing `React.useState(() => new QueryClient())` in files that do
+    not bind `React`: it ships in `tanstack-query`, its fix withheld by `check` (`cli/check/withheld-fixes.json`).
+  - "Report only, fix withheld" (q-lint-rc-zod-trim-fix-measured), asked how
+    `zod/prefer-trim-before-string-length-checks` ships, its fix changing which values a schema accepts: it ships in `zod`,
+    its fix withheld the same way. Editors still offer both fixes, as for the jest-dom rules (q-lint-jd-editor-fixes).
+    Pinned in `check-withheld-tanstack-zod-fixes.integration.test.ts`.
+  - "Ship everywhere" (q-lint-rc-unnecessary-assertions-measured): `playwright/no-unnecessary-assertions` ships in
+    `playwright` with no `files`, so Vitest and Jest files get its reports too. It has suggestions and no fix, so `check`
+    rewrites nothing. Its message names a Playwright Locator and `toBeVisible()` in those files as well.
+  - "Ship with sorting told to skip these calls" (q-lint-rc-tanstack-property-order-measured), asked how
+    `@tanstack/query/infinite-query-property-order` and `@tanstack/router/create-route-property-order` ship beside
+    `ordering`: not built. Where a spread sits between the keys a rule reorders, `check` applies its fix, which moves
+    `queryFn` or `loaderDeps` across the spread, so the spread's value wins: a passing test failed, TypeScript reported
+    TS2783 and a second `check` reported nothing (measured, @tanstack/react-query 5.104.2, @tanstack/react-router
+    1.170.19). Both stay `recommended` and held, and the skip (`perfectionist/sort-objects`
+    `useConfigurationIf.callingFunctionNamePattern` with `type: 'unsorted'`) is held with them. How they ship went back
+    to the owner (proposed card q-lint-rc-tanstack-property-order-fix-spread).
+  - "Report only, everywhere" (q-lint-rc-web-first-assertions-measured), its note asking to keep
+    `playwright/prefer-web-first-assertions` on everywhere only if it works in unit tests: it does not, so
+    q-lint-rc-web-first-assertions-tested asked again. Its note ("folder or filename matching ... include this as a
+    comment in the config because it's opt in") is not built, nor the same example for the four Playwright rules that
+    repeat a Vitest rule: `defineLintRules` refuses a rule we do not ship in `rules` and `fileOverrides`
+    (q-lint-unshipped-rules-channel), so the example uncommented stops the config loading, and nothing ships switched
+    off. All five stay `recommended` and held; how a team turns them on for its Playwright tests went back to the owner.
+- Correction 2026-10-29 to the 2026-10-24 entry on the four Playwright rules that repeat a Vitest rule: a team cannot
+  turn them on with `fileOverrides`, which refuses a rule we do not ship (q-lint-unshipped-rules-channel). Only its own
+  ESLint config can, and `check` does not run that.
+- Owner 2026-10-26/27, four answers on the merge and shipped rules (lane LINT-MERGE-ANSWERS):
+  - "Count it as ours" (q-gap-lint-a11y-original-prefix), note "this should be the same as if it was set on in our
+    config": a team plugin carrying the original `eslint-plugin-jsx-a11y`'s name is our jsx-a11y plugin under whatever
+    prefix the team gives it, so `a11y/alt-text` is our `jsx-a11y/alt-text`: one report, at the team's setting, and its
+    'off' silences ours. Pinned in `merge-eslint-config.team-plugin-identity.test.ts`.
+  - "Say what to do instead" (q-gap-lint-ts-comment-message): where `@ts-expect-error` is banned too, `ban-ts-comment`'s
+    message for a `@ts-ignore` says to fix the type error, not to use `@ts-expect-error`; one more wrapped copy of a
+    typescript-eslint rule. The wording is ours; the test pins its meaning. Pinned in
+    `check-ts-ignore-message.integration.test.ts`. Whether the editor suggestion "Replace @ts-ignore with
+    @ts-expect-error" goes too went back to the owner.
+  - "Check them too" (q-gap-lint-unused-vars-scripts-config): `no-unused-vars` no longer ships ignoring `**/scripts/**`
+    and `**/*.config.{ts,js,mjs,cjs}`; it still ships ignoring stories. Pinned in
+    `typescript-version-named-alone.integration.test.ts` and `editor-merges.twin-pairs.integration.test.ts`.
+  - "Yes, treat them as test files" (q-lint-setup-files-as-tests): not built. Which files are test setup files is not
+    given: names such as `vitest.setup.*` miss our own bridge (`mutation-testing/child-process-bridge.ts`), whose
+    disable comments the answer expects to go, and reading a runner's `setupFiles` is a new mechanism. Went back to the
+    owner.
+- Owner 2026-10-26/27, "Move to 8.71.2" (q-gap-lint-typescript-eslint-version), asked because @eslint-react 5.26.5 asks
+  for typescript-eslint's packages at `^8.71.2` while we pinned 8.71.1 (lane LINT-DEPS): every package that lists
+  typescript-eslint, `@typescript-eslint/utils`, `parser` or `rule-tester` pins 8.71.2
+  (`git ls-files '*package.json' | xargs grep -n typescript-eslint`), bun.lock is relocked by a plain `bun install`
+  (only typescript-eslint entries move) and the inventory is regenerated. The card's consequence, "one copy installs",
+  does not hold (measured 2026-10-29): a user's npm install still gets a second version of eight `@typescript-eslint/*`
+  packages, the newest release (8.72.1), which the plugins' `^` ranges and is-immutable-type's `^8.0.0` take; and this
+  repo's own lock keeps 8.71.1 copies beside the 8.71.2 ones (`grep -E '^    "[^"]+/@typescript-eslint/' bun.lock`).
+  Whether to chase one copy, and whether to relock from scratch (which moves unrelated packages), went back to the
+  owner.
+- Owner 2026-10-29, "Count it as ours" (board card q-lint-unshipped-ts-twin), asked whether the other copy of a rule we
+  ship counts as a rule we ship: it does, either way round (typescript-eslint's copy of a core rule we ship, and the core
+  rule a typescript-eslint copy we ship extends), so a team may name it in `rules` and `fileOverrides` as before. This
+  lifts the hold in the "Only their own config" entry above; no behaviour changed (`isTwinOfARuleWeShip`,
+  `core/rules-we-do-not-ship.ts`; pinned in `unshipped-rules-refused.twins.test.ts`; lane TS-TWIN).
+- Owner 2026-10-29, "Refuse it, naming the file" (board card q-lint-oxlint-null-beside-extends), asked whether a team's
+  oxlint config holding `categories: null` beside a config it extends is refused too: both merges refuse it as
+  `categories`, as where it extends nothing, and the ESLint merge no longer reads the extended config's categories in
+  its place. Lane OXLINT-NULL-MORE.
+- Owner 2026-10-29, "Refuse them all, naming the file" (board card q-lint-oxlint-null-other-keys): a null at any key
+  oxlint 1.87 refuses it at (every key but `$schema`, `jsPlugins` and `plugins`), in the team's config or in any config
+  it extends at any depth, stops both merges with one line naming the key, what oxlint takes there, and where the null
+  sits: the JSON file extended by path that holds it, or the path to the object extended (`extends[0].`)
+  (`nullOxlintRefusesIn`, `core/oxlint-config-reading.ts`; pinned in `merge-other-engine-config.refusals.test.ts` and
+  `team-oxlint-config-null-keys.integration.test.ts`). A null oxlint refuses inside an override or inside a key's value
+  is read as before; whether to refuse it went back to the owner. Lane OXLINT-NULL-MORE.
+- Owner 2026-10-29, "Ship it anyway" (board card q-lint-core-dead-store-reported-twice), asked whether
+  `no-useless-assignment` ships although the shipped `sonarjs/no-dead-store` reports the same line on 17 of its 70 corpus
+  lines: it ships, in oxlint, in redundancy beside `sonarjs/no-dead-store`, and those lines get two reports. An exception
+  to #35 (no duplicate reports) the owner accepted for the 53 lines only it finds. oxlint 1.87 has no fix for it.
+- Owner 2026-10-29, "Report only, fix withheld" (board card q-lint-core-new-wrappers-fix): `no-new-wrappers` ships, in
+  oxlint, in correctness; check reports it and never applies oxlint's fix, which deletes `new` and so turns
+  `new Boolean(false)`, always truthy, into `Boolean(false)` (`withheld-fixes.json`; pinned in
+  `check-withheld-new-wrappers-and-test-row-fixes.integration.test.ts`).
+- Owner 2026-10-29, "Ship it in ESLint with type information" (board card q-lint-tse-type-imports-decorator-metadata):
+  `@typescript-eslint/consistent-type-imports` ships typed in ESLint, not in oxlint, in conventions with
+  `{ disallowTypeAnnotations: false }`, its reason in `eslintBecause`. Under `emitDecoratorMetadata` the typed version
+  leaves a decorated class's constructor parameter import alone, so the emitted `design:paramtypes` keeps naming the
+  class; without it, it fixes the import to `import type` (pinned in
+  `check-type-imports-under-decorator-metadata.integration.test.ts`). The owner accepted the slower run.
+- Owner 2026-10-29, "Report only, fix withheld" (board card q-lint-snr-duplicate-test-rows-fix):
+  `sonarjs/no-duplicate-parameterized-test-case` ships, in ESLint, in tests; check reports a repeated `it.each` row and
+  never applies the fix, which deletes it even where each row calls something giving a new value (`withheld-fixes.json`;
+  pinned beside `no-new-wrappers`).
+- Owner 2026-10-29, "Don't ship it" (board card q-lint-snr-duplicated-branches-false-alarms):
+  `sonarjs/no-duplicated-branches` is recorded `dropped` in `rule-candidates.json`, decided by that card, superseding its
+  2026-10-11 accept: 4 of its 21 corpus reports were false alarms, and where every branch is identical beside an else or
+  default it repeats `sonarjs/no-all-duplicated-branches`.
+- Owner 2026-10-29, "Allow a patched copy" (board card q-lint-own-immutability-patch), confirmed in chat as "Also add the
+  patched copy": this repo installs is-immutable-type 5.0.4 patched (`patches/is-immutable-type@5.0.4.patch`, root
+  `patchedDependencies`, as the Stryker runner is). The copy keeps each answer under the type asked about, its type node
+  and the immutability limit asked under, never under the recursion identity every instantiation of one generic shares
+  (its issue #625); that identity only marks a type being worked out within one call, so a type recursing without end
+  still ends (its issue #98). npm gives teams the original, so the per-call wrapper
+  (`core/immutability-cache-per-call.ts`) stays as it is for them and our runs go through both. Measured on one build,
+  the original swapped in by a loader hook for every other run (`<r44>/resume-1029/evidence/PATCHED-COPY/developer/`,
+  `timing-ab.txt`): the rule's own time in a whole-repo lint fell from 40–52 s to 18–20 s, the run from 117–152 s to
+  93–100 s, with the same findings. Pinned in `is-immutable-type-patch.test.ts`. Offering the fix upstream is deferred
+  by the owner; nothing was built for it. Lane PATCHED-COPY.
+- Owner 2026-10-29, "Count it only where oxlint runs it" (board card q-lint-oxlint-override-category-plugins),
+  superseding the accepted limit of 2026-10-14: where the team's oxlint config writes a category on, a plugin listed only
+  in overrides counts toward the rules the team sets unless every override listing plugins lists one set holding each
+  root plugin, as oxlint 1.87 then runs that plugin's category rules in no file (measured,
+  `<r44>/resume-1029/evidence/OXLINT-OVERRIDE-PLUGINS/tester/boundary.out`); there both merges keep our copy
+  (`pluginsItsCategoriesReach` in `core/oxlint-config-reading.ts`). Overrides listing different sets stay the team's, as
+  whether two match one file is not read from their globs. Held for the owner, nothing built: an override that leaves
+  out a root plugin, where oxlint runs those rules in its files alone and nobody reports them elsewhere, since both
+  merges leave a rule to the team in every file or none (`rulesTheTeamSets`).
+- Owner 2026-10-29, "Ship it anyway" (board card q-lint-ug-async-iterator-foreach-reported-twice):
+  `unicorn/no-async-iterator-callback` ships, in ESLint, in correctness, on all six iterator methods; on `.forEach` it
+  reports the same line as the typed `@typescript-eslint/no-misused-promises`, a double report the owner accepted. Lane
+  HELD-1011-UG-UNI.
+- Owner 2026-10-29, "Ship ESLint's version instead" (board card q-lint-uni-prefer-at-node-lists): `unicorn/prefer-at`
+  ships in ESLint, not oxlint, in modern-js, its reason in `eslintBecause`: ESLint's version leaves the last item of a
+  NodeList or of `.children` alone, where oxlint's reports it and its fix there throws or does not compile. check applies
+  ESLint's fix, whose `T | undefined` result can fail to type-check, as the card disclosed; on the lane's real run it
+  reddened no test (`<r44>/resume-1029/evidence/HELD-1011-UG-UNI/tester/measure-predicted-oxlint/`). Pinned in
+  `check-prefer-at-and-single-call-in-eslint.integration.test.ts`.
+- Owner 2026-10-29, "Ship ESLint's version instead" (board card q-lint-uni-single-call-custom-push):
+  `unicorn/prefer-single-call` ships in ESLint, in redundancy, its reason in `eslintBecause`; ESLint's version leaves a
+  class's own `push` alone. check reports it and never applies its fix (`withheld-fixes.json`), which keeps the answer's
+  "check never applies the change" true. Correction to the card, which said ESLint's version only suggests: it applies
+  its fix to two `classList.add()` or `remove()` calls, two `importScripts()` calls and pushes of fixed values onto a
+  known array, and suggests elsewhere (measured on `classList.add` and pushes of literals, eslint-plugin-unicorn 78.0.0).
+  Pinned beside prefer-at.
+- Owner 2026-10-29, "Ship it only where accessor-pairs is silent" (board card
+  q-lint-ug-accessor-override-reported-twice): nothing built. `unicorn/no-incomplete-accessor-override` takes no options
+  and reports getter-only and setter-only overrides under one message, so neither a file scope nor any report filter
+  this repo has keeps only getter-only overrides and test files. Held on card
+  q-lint-ug-accessor-override-only-where-silent.
+- Owner 2026-10-29, "Ship it only where it adds a shape" (board card q-lint-uni-unused-return-reported-twice): nothing
+  built. `unicorn/no-unused-builtin-method-return` takes no options, and only type information tells the mutable array
+  `sonarjs/no-ignored-return` reports from the readonly one it misses, so no file scope or filter this repo has limits it
+  to the shapes the shipped rule misses. Held on card q-lint-uni-unused-return-only-new-shapes.
+- Correction 2026-10-30 to the "Allow a patched copy" entry above: old, the copy keeps each answer it works out for
+  the whole process; new, only one worked out without reading a type around it that is still being worked out. An
+  answer that read one (a recursion the copy ended early, which an instantiation of one generic also sets off for
+  another, or a partial answer) is kept for that one question, as is the work around it out to the type it read. Why:
+  kept for the process, such an answer reached later questions, so a parameter whose type holds an overwritable Pick,
+  first met inside another Pick, went unreported with parameters held to ReadonlyDeep or Immutable, where the per-call
+  wrapper alone reports it; at the shipped ReadonlyShallow nothing changed. Pinned in `is-immutable-type-patch.test.ts`
+  (cases in `work-in-progress-parameter-sources.ts`). Measured as before
+  (`<r44>/resume-1029/evidence/PATCHED-COPY/developer/fix-round-1/`, `timing-ab.txt`): the rule's own time fell from
+  44 s to 21 s on the quiet pair (61 to 32 s and 121 to 20 s on two pairs under other lanes' load), the findings are
+  identical in every pair, and `npx eslint .` and `NODE_ENV=test npx eslint .` give one list. Lane PATCHED-COPY.
+- Owner 2026-10-29, "Stop editors offering them too" (board card q-lint-jd-editor-fixes), widened by the owner's words to
+  every rule whose fix `check` withholds: in the editor merges each such rule still reports, with no quick fix, and
+  fix-on-save leaves its line. Read from `cli/check/withheld-fixes.json` (`WITHHELD_FIXES`), so a later report-only
+  answer reaches editors with nothing more. ESLint: `mergeEslintPart` gives each such rule our blocks run a module
+  reporting `fix: null` (`withWithheldFixesLeftOut`, `core/fixes-withheld-in-editors.ts`); its suggestions stay. oxlint: 1.87's editor integration (`oxlint --lsp`) offers `no-new-wrappers`' fix as a quick fix
+  and in fix-all, its `fixKind: none` drops every rule's fixes and is a setting of the team's editor, and the config
+  refuses a per-rule fix option (measured, `<r44>/resume-1029/evidence/LINT-EDITOR-WITHHELD-FIXES/tester/lsp/`). So
+  beside oxlint the ESLint part takes over each oxlint-routed rule whose fix `check` withholds and that ESLint can take
+  over (a version, not in `eslint-fallback-skips.json`; `runsInEslintBesideOxlint`, `editor-parts.ts`), and the oxlint
+  merge turns oxlint's default copy off (`turnedOnInEslint`). ESLint's `no-new-wrappers` has no fix and reports
+  everything oxlint's does, plus `new (Boolean)(true)`. `check` is unchanged. A withheld oxlint rule ESLint cannot take
+  over has no route: `editor-withheld-fixes.integration.test.ts`, which pins the rest, goes red for it. Not decided,
+  returned to the owner, and left as before: a withheld rule the team sets itself in its ESLint or oxlint config keeps
+  its fix (it is the team's, as every rule it sets), and the suggestions some of these rules offer stay (proposed cards
+  q-lint-editor-withheld-fix-team-set, q-lint-editor-withheld-fix-suggestions). Correction to the two entries above
+  that say editors still offer these fixes (jest-dom, and stable-query-client with zod's trim): old, editors offer
+  them; new, they do not; why, this answer. Beside oxlint, a `// oxlint-disable-next-line no-new-wrappers` comment (the
+  form oxlint's editor quick fix writes) no longer hides that finding in editors, because ESLint runs the rule there; the
+  `eslint-disable` form works in editors and in `check` (measured,
+  `<r44>/resume-1029/evidence/LINT-EDITOR-WITHHELD-FIXES/reviewer/oxlint-comment-beside-oxlint.out`). Lane
+  LINT-EDITOR-WITHHELD-FIXES.
+- Owner 2026-10-29, "No switch: editors never apply them" (board card q-lint-editor-withheld-fix-switch): no setting
+  lets a team switch a withheld fix back on in its editors; `agents-inc.lint.mts` gets none. Lane
+  LINT-EDITOR-WITHHELD-FIXES.
+- Owner 2026-10-29, "Report only, fix withheld" (board card q-lint-rc-tanstack-property-order-fix-spread):
+  `@tanstack/query/infinite-query-property-order` ships in `tanstack-query` and
+  `@tanstack/router/create-route-property-order` in `tanstack-router`, at the plugins' defaults, untyped. check reports
+  each and never applies its fix (`withheld-fixes.json`): where a spread sits between the keys it reorders, the fix moves
+  a key across the spread, so the spread's value wins (measured, @tanstack/eslint-plugin-query 5.104.5,
+  @tanstack/eslint-plugin-router 1.162.0). Editors offer neither fix, as for every fix check withholds
+  (q-lint-jd-editor-fixes). With them ships the answer to q-lint-rc-tanstack-property-order-measured ("Ship with
+  sorting told to skip these calls"): `ordering`'s `perfectionist/sort-objects` gains a first option,
+  `useConfigurationIf.callingFunctionNamePattern` with `type: 'unsorted'`, so it leaves the options of the calls the two
+  rules order alone; options passed to any other call, a TanStack one included, and an object nested in those options
+  are still sorted. Pinned in `check-ordering-beside-tanstack-property-order.integration.test.ts` and
+  `accepted-tsq.integration.test.ts`. Correction to the 2026-10-26/27 entry on q-lint-rc-tanstack-property-order-measured:
+  old, both rules and the skip stay held; new, they ship; why, the owner answered the card they waited on. Lane
+  HELD-RULES-ANSWERS.
+- Correction 2026-10-30 to the "Allow a patched copy" entry and its 2026-10-30 correction above: old, an answer worked
+  out without reading a type around it still being worked out is kept for the process; new, not when the step that
+  finishes a type read the answer the library last worked out for another type. Why: is-immutable-type hands that step
+  its last answer, which for a type whose every child refers back to it, or one with only an index signature, comes
+  from a type beside it; kept for the process, it reached later questions, so a parameter holding only
+  `type Loop = { readonly next: Loop }` was reported with parameters held to Immutable, and one that is a read-only
+  string-keyed record or undefined was reported as Mutable at the shipped ReadonlyShallow; the per-call wrapper alone
+  reports neither. Pinned in `is-immutable-type-patch.test.ts` (cases in `work-in-progress-parameter-sources.ts`).
+  Measured (`<r44>/resume-1029/evidence/PATCHED-COPY/developer/fix-round-2/`, `rule-time.txt`): the rule's own time
+  fell from 43 s to 28 s on one pair, and from 102 s to 19 s on one under other lanes' load, where the previous copy,
+  run next, also took 19 s; every run, `npx eslint .` and `NODE_ENV=test npx eslint .` give one list. Lane PATCHED-COPY.
+- Correction 2026-10-30 to the 2026-10-29 entry on q-lint-rc-tanstack-property-order-fix-spread ("Report only, fix
+  withheld"): old, both TanStack property-order rules ship report only, with `ordering`'s `perfectionist/sort-objects`
+  skipping the calls they order; new, neither ships, the skip is not built, and both wait as `recommended`. Why: neither
+  can ship exactly as answered with what exists. sort-objects can skip a call only by its name (perfectionist 5.12.1
+  matches `callingFunctionNamePattern` on the callee's text, with no import filter), so in every project with
+  `ordering` the skip also left unsorted the options of `@hono/zod-openapi`'s `createRoute`, which the CLI monorepo's
+  API server uses, and of `@pinia/colada`'s `useInfiniteQuery` (measured). And
+  `@tanstack/router/create-route-property-order` throws on a spread of anything but a plain name
+  (`...routeDefaults()`, `...(devOnly ? { ssr: false } : {})`) in any call named `createRoute`, `createFileRoute`,
+  `createRootRoute` or `createRootRouteWithContext`, Hono's included, so check left the whole file unchecked and exited
+  2 where it found nothing else (measured, @tanstack/eslint-plugin-router 1.162.0, the newest). The answer stays
+  recorded and is built once the two proposed cards are answered: q-lint-rc-tanstack-property-order-skip-by-name (both
+  rules and the skip) and q-lint-rc-tanstack-router-order-spread-crash (the Router rule). `withheld-fixes.json` keys
+  neither while they are held, as for every rule that does not ship. Pinned in `accepted-tsq.integration.test.ts` and
+  `check-ordering-beside-tanstack-property-order.integration.test.ts`. Lane HELD-RULES-ANSWERS.
+- Correction 2026-10-30 to the 2026-10-30 correction on q-lint-rc-tanstack-property-order-fix-spread ("neither ships"):
+  old, sort-objects can skip a call only by its name, and both rules and the skip wait on card
+  q-lint-rc-tanstack-property-order-skip-by-name; new, it can also skip by an AST selector
+  (`useConfigurationIf.matchesAstSelector`, perfectionist 5.12.1), so only where the file imports the call's name from
+  `@tanstack/`, and the card is q-lint-rc-tanstack-property-order-which-skip, offering both. Why: both TanStack rules
+  check a call by its name alone, whatever it is imported from, so neither skip matches them. By name, `ordering` also
+  leaves unsorted the options of another library's call of those names (`@pinia/colada`'s `useInfiniteQuery`,
+  `@hono/zod-openapi`'s `createRoute`); by import, those are sorted, but a TanStack call reached through a re-export
+  (`./query-client`, `@/lib/query`) is sorted and still checked, so where both rulesets are on no order of its options
+  satisfies both (measured, `<r44>/resume-1029/evidence/HELD-RULES-ANSWERS/reviewer/review-2/selector-skip.out` and
+  `.../developer/fix-round-2/skip-matrix.out`). Both rules stay held; the Router rule's card
+  q-lint-rc-tanstack-router-order-spread-crash is unchanged. Lane HELD-RULES-ANSWERS.
+- Owner 2026-10-29, no option chosen, the note the answer (board card q-lint-pw-off-by-default-where): "there are many
+  rules that we have as off by default but we should still ship them. how else will a consumer be able to switch them
+  on? these rules should still be shipped, but just be shipped as off". Built: an accepted rule kept off by default
+  ships with `offByDefault: true` in `data/rules.json`, in no ruleset, so `agents-inc.lint.mts` accepts it in `rules`
+  and in a `fileOverrides` entry's `rules`, and it runs, in `check` and in the editor parts alike, only where a team
+  names it. Seven ship so: the four Playwright rules that repeat a Vitest rule, `playwright/prefer-web-first-assertions`
+  (its fix withheld in `withheld-fixes.json`, so editors withhold it too, as q-lint-rc-web-first-assertions-measured
+  answered), and `unicorn/prefer-dispose` and `unicorn/prefer-iterator-zip`, whose only rewrite is a suggestion `check`
+  never applies. `init` writes the five Playwright rules as a commented-out `fileOverrides` entry for `e2e/**`. A rule
+  we do not ship is still refused (q-lint-unshipped-rules-channel). Pinned in `rules-shipped-off.test.ts`,
+  `check-rules-shipped-off.integration.test.ts`, `config-text.test.ts`, `init.integration.test.ts`,
+  `canonical-list.test.ts`, `catalog.test.ts` and `accepted-pw.integration.test.ts`. Correction to the 2026-10-26/27
+  entry on q-lint-rc-web-first-assertions-measured and the 2026-10-29 correction on the four Playwright rules that
+  repeat a Vitest rule: old, all five stay held and only a team's own ESLint config can turn them on; new, they ship off
+  and a team turns them on in `agents-inc.lint.mts`; why, this answer. Lane SHIP-OFF-BY-DEFAULT.
+- Held 2026-10-30 on a new card, q-lint-newest-language-fix: the other nine parked newest-language rules
+  (`e18e/prefer-get-or-insert`, and unicorn's `prefer-error-is-error`, `prefer-get-or-insert-computed`,
+  `prefer-iterator-concat`, `prefer-promise-try`, `prefer-regexp-escape`, `prefer-temporal`, `prefer-uint8array-base64`
+  and `prefer-uint8array-hex`) do not ship off with the two above. Each declares an automatic fix writing an API Node 22
+  lacks, which `check` would apply wherever a team turned the rule on: with the fix of `prefer-regexp-escape`,
+  `prefer-error-is-error` or `prefer-promise-try` applied, a passing test threw a TypeError on Node 22.23.2 (measured,
+  `<r44>/resume-1029/evidence/SHIP-OFF-BY-DEFAULT/tester/fix-measure/runs.out`; the other six unmeasured). Whether
+  `check` applies those fixes is the owner's. They stay `parked` in `rule-candidates.json`, each why naming the card.
+  Pinned in `rule-candidates.test.ts`, `accepted-candidates.test.ts`, `catalog.test.ts` and `rules-shipped-off.test.ts`.
+  Lane SHIP-OFF-BY-DEFAULT.
+- Owner 2026-10-30, "Also list the nine other typescript-eslint packages at 8.71.2" (q-lint-tseslint-one-copy), the
+  first question the "Move to 8.71.2" entry sent back: `@agents-inc/lint-rules` lists every typescript-eslint package a
+  user's install reaches (`eslint-plugin`, `parser`, `project-service`, `scope-manager`, `tsconfig-utils`, `type-utils`,
+  `types`, `typescript-estree`, `utils`, `visitor-keys`, and `typescript-eslint`) at typescript-eslint's version, so the
+  plugins' `^` ranges take ours and npm installs no newer copy, until a plugin needs a newer one. Measured 2026-10-30 on
+  a packed stand-in's npm install: 24 copies before, 11 after, one each at 8.71.2
+  (`<r44>/resume-1029/evidence/TSESLINT-ONE-COPY/developer/consumer.json`). A plain `bun install` moved only
+  typescript-eslint entries in bun.lock, which keeps nested 8.71.1 copies; relocking from scratch stays the owner's.
+  Pinned in `package-manifests.test.ts` and `packed-install.integration.test.ts`. Lane TSESLINT-ONE-COPY.
+- Owner 2026-10-30, "Drop them too" (q-lint-editor-withheld-fix-suggestions): in the editor merges each rule our blocks
+  run whose fix `check` withholds reports with no suggestion as well as no fix, so an editor's quick-fix menu lists no
+  rewrite for it (`fix: null, suggest: null`, `core/fixes-withheld-in-editors.ts`). Of the withheld rules only
+  `jest-dom/prefer-in-document` and `unicorn/prefer-single-call` pass one (`@tanstack/query/stable-query-client`
+  declares suggestions and passes none; measured,
+  `<r44>/resume-1029/evidence/EDITOR-WITHHELD-SUGGESTIONS/tester/has-suggestions.out`); both run in ESLint with or
+  without oxlint, so the oxlint merge is unchanged. Pinned in `editor-withheld-fixes.integration.test.ts`. Correction
+  to the "Stop editors offering them too" entry: old, "its suggestions stay" and "the suggestions some of these rules
+  offer stay"; new, editors list none; why, this answer. Lane EDITOR-WITHHELD-SUGGESTIONS.
+- Owner 2026-10-30, "Refuse them all, naming the file" (board card q-lint-oxlint-null-deeper), asked whether a null
+  oxlint refuses below a key is refused too: both merges refuse, with one line naming the file, the path to the null and
+  what to write there, every null oxlint 1.87 refuses whatever the rule or plugin, in the team's config and in each
+  config it extends at any depth: an override's `files`, `excludeFiles` or `rules`; one rule's or category's severity,
+  its first slot included (`overrides[0].rules["no-debugger"][0]`); one `env` or `globals` entry; a plugin's `settings`
+  (`jest`, `jsdoc`, `jsx-a11y`, `next`, `react`, `vitest`); a slot in `extends`, `overrides`, `plugins`,
+  `ignorePatterns`, `jsPlugins` or an override's globs, `plugins` or `jsPlugins`; a JS plugin's `name` or `specifier`
+  (`nullOxlintRefusesIn`, `core/nulls-oxlint-refuses.ts`; pinned in `merge-other-engine-config.refusals.test.ts` and
+  `team-oxlint-config-null-keys.integration.test.ts`; measured,
+  `<r44>/resume-1029/evidence/OXLINT-NULL-DEEPER/tester/oxlint-itself-*.out`). Read as before, oxlint taking them: an
+  override's `env`, `globals`, `plugins` and `jsPlugins` null, every option null, and a settings key no plugin of
+  oxlint's reads. Held: a null among a rule's options or in a field of a plugin's settings, which oxlint refuses for
+  some rules and fields and takes for others (`no-debugger` refuses `["error", null]`, `no-unused-vars` takes it;
+  `react.version` takes null, `jsdoc.ignoreInternal` refuses it); whether to refuse them went back to the owner on a
+  new card. Lane OXLINT-NULL-DEEPER.
+- Owner 2026-10-30, "Keep it the team's in every file" (board card q-lint-oxlint-override-leaves-out-root-plugin), the
+  owner noting "Typescript won't be long added for one folder only": where a team's oxlint config lists typescript in
+  one override alone and that override leaves out a plugin its root lists, each merge leaves typescript's category
+  rules to the team in every file, though oxlint runs them in that override's files alone, so outside them nobody
+  reports them. No code: the reading as it stands, pinned in `editor-merges.team-sets-a-rule.integration.test.ts`
+  ("is the team's in every file where one override alone lists typescript beside a root listing unicorn") and
+  `core/oxlint-config-reading.test.ts` ("one override lists typescript beside a root listing import, which the
+  override leaves out"). Lane OXLINT-NULL-DEEPER.
+- Correction to the 2026-10-29 entry on q-lint-oxlint-null-other-keys: old, "A null oxlint refuses inside an override
+  or inside a key's value is read as before; whether to refuse it went back to the owner"; new, it is refused as the
+  q-lint-oxlint-null-deeper entry above says, a rule's options and a plugin's settings fields aside; why, the owner's
+  answer to that card. Lane OXLINT-NULL-DEEPER.
+- Owner 2026-10-29, "Report only, no auto-fix" (board card q-lint-rc-pressed-fix-current-jest-dom), asked how
+  `jest-dom/prefer-pressed` ships now that its fix breaks a passing test on jest-dom 6.9.1 too: it ships in `jest-dom`
+  like the other six, and check and editors withhold its fix (`withheld-fixes.json`), which turns a passing test that
+  `aria-pressed` is present on a button not pressed into a failing `toBePressed()` (measured, jest-dom 6.9.1). False
+  alarms: 9 hits in one file of 7,861, none false. Pinned in `check-withheld-jest-dom-fixes.integration.test.ts` and
+  `editor-withheld-fixes.integration.test.ts`. Lane JD-PRESSED.
+- Owner 2026-10-29, "Decided against for now" (board card q-lint-hp-left-off-record), asked whether the two react-ssr
+  rules left off (q-lint-rc-hydration-false-alarms-measured, "Leave them off") are decided against or wait on something
+  named: `hydration-proof/no-browser-global-in-render` and `hydration-proof/no-locale-without-explicit-locale` are
+  recorded `dropped` in `rule-candidates.json`, decided by that card, like the two drizzle rules; a later card can bring
+  them back. Their held cases are gone (in git at 707df6e). Pinned in `rule-candidates.test.ts` and
+  `accepted-candidates.test.ts`. Lane HP-LEFT-OFF-RECORD.
+- Owner 2026-10-30, "Yes, the rule is the team's" (board card q-lint-editor-withheld-fix-team-set), the owner noting
+  "we have no say over functionality they add or remove from their respective configs make sure that's consistent": a
+  rule a team sets in its own ESLint or oxlint config keeps everything its plugin gives it, fix and suggestions
+  included, in both merges; our withheld fixes and suggestions reach only the rules our blocks run (unchanged, pinned).
+  Made consistent in the ESLint merge: our `ban-ts-comment` message ("remove it and fix the type error it hides") wraps
+  only the copy our blocks run (`withOurTsIgnoreMessage`, `core/ts-ignore-message.ts`, no longer in the plugin
+  registry), so a team that sets the rule and relies on the plugin we register gets typescript-eslint's own message, as
+  it does registering the plugin itself; `check` keeps ours. Beside oxlint, a rule name the team's ESLint config turns
+  on gets no do-nothing rule, and a prefix no plugin of ours or the team's backs gets no plugin of stubs once the team
+  turns a rule on under it (`stubsLeavingUndefinedWhatTheTeamTurnsOn`): ESLint refuses a rule no plugin defines with
+  the error the team's config alone gets, where before the rule silently did nothing. Turned off, or set nowhere, the
+  stub stays, so a suppression of an oxlint-run rule still loads. Still reaching a team's rule, waiting on card
+  q-lint-team-set-repaired-copies: where the team relies on the plugins we register, the re-export-cycle and
+  immutability repairs (`consistent-type-exports`, `no-deprecated`, `prefer-immutable-types`); and the compat layer
+  (`withCompatLayerWhereNeeded`, `core/eslint-compat.ts`: `css-modules`, `react`, `react-hook-form`), which
+  `pluginUnder` also applies to a plugin the team registers itself, so a team-set `react-hook-form/no-use-watch` or
+  `css-modules/no-undef-class` reports merged where the team's config alone throws (`context.getScope` /
+  `context.getFilename is not a function`; measured, ESLint 10). Consistent with O8 (the team's settings win where set):
+  our settings fill only keys the team leaves unset, so a team that sets `import-x/no-unresolved` and gives no resolver
+  runs it on ours (measured: `@/b` resolves merged; alone, "Unable to resolve path to module '@/b'"). Pinned in
+  `editor-merges.team-set-rules-as-shipped.integration.test.ts`. Correction to the 'Stop editors offering them too'
+  entry: old, "a withheld rule the team sets itself keeps its fix ... returned to the owner"; new, decided as above;
+  why, this answer. Lane TEAM-SET-CONSISTENT.
+- Owner 2026-10-29, "Where the nearest package.json lists next" (board card q-lint-hp-next-setting-where), asked how our
+  config knows a project is a Next.js app, to pass the setting that stops the `react-ssr` rules reporting pages only the
+  server renders: both builds give `settings['hydration-proof'].serverComponents: 'next-app'` to each JS and TS file
+  whose own nearest `package.json` lists `next` in `dependencies` or `devDependencies`, read from manifests alone, never
+  `node_modules`, in a block `agents-inc/next-js-server-components` given only where a `hydration-proof` rule of ours
+  runs (`build-eslint-config.ts`, `core/next-js-apps.ts`). A Remix or React Router app, and a monorepo's other apps,
+  whose own `package.json` lists no `next`, stay checked. Accepted consequence: in a Next.js app the rules also skip a
+  file without `'use client'` in any other folder named `app` (a Pages Router app's too) and miss a component without
+  it that a `'use client'` file imports (both pinned as KNOWN GAP); `check` gives a team no way to turn it off, and in
+  the editor merge a team block after ours giving the setting decides. Pinned in
+  `server-components-in-next-apps.integration.test.ts` and `check-server-components-in-next-apps.integration.test.ts`.
+  Lane HP-SETTINGS.
+- Owner 2026-10-29, "Skip every src/index file" (board card q-lint-barrel-entry-how), asked how `unicorn/no-barrel-files`,
+  which takes no options, recognises a package's main entry to leave it alone: the rule ships with
+  `ignores: ["**/src/index.*"]` in `rules.json`, the glob the card's measurement used, so a file named `index` directly
+  in any `src` folder is never reported, whatever its extension (`src/index.d.ts` too); every other barrel still is.
+  Accepted consequence: an entry at a package root, named otherwise or named only by a build script stays flagged, and a
+  `src/index` that is no package's entry is spared. Correction to the "Leave entry files alone" entry: old, "our
+  `packages/rule-data/src/index.ts` finding stays"; new, it is no longer reported, with no change to the file; why, this
+  answer. Pinned in `check-barrel-entry-files.integration.test.ts` and the rule's case in `changed-settings.ts`. Lane
+  SCOPE-BARREL.
+- Owner 2026-10-29, "Report only, fix withheld" (board cards q-lint-jsdom-add-event-listener-fix,
+  q-lint-jsdom-css-escape, q-lint-jsdom-dataset-fix, q-lint-jsdom-keyboard-event-key-fix,
+  q-lint-jsdom-modern-dom-apis-fix, q-lint-jsdom-query-selector-fix, q-lint-jsdom-src-prefer-https and
+  q-lint-presence-queries-attribute-fix), each asked whether `check` keeps applying a shipped rule's fix that turned a
+  passing jsdom test red or stopped it typechecking: `unicorn/prefer-add-event-listener`, `require-css-escape`,
+  `dom-node-dataset`, `prefer-keyboard-event-key`, `prefer-modern-dom-apis`, `prefer-query-selector`, `prefer-https` and
+  `testing-library/prefer-presence-queries` ship where they did, and `check` reports each line and never rewrites it
+  (`withheld-fixes.json`; oxlint's fix run turns `dom-node-dataset` off under its oxlint name, `fixRunConfigOf`); editors
+  withhold the fix too (`fixes-withheld-in-editors.ts`, and `editor-parts.ts` hands `dom-node-dataset` to ESLint). With this
+  and the next two entries, on a packed install's real Vitest suite of 29 tests (jsdom 30.1.3 and 29.1.1): before, 15
+  and 17 failed after `check` and `tsc` failed; after, all 29 pass, `tsc` passes and a second `check` rewrites nothing
+  (`<r44>/resume-1029/evidence/FIXES-WITHHELD-1029/`). Pinned in `check-withheld-jsdom-fixes.integration.test.ts` and
+  `editor-withheld-fixes.integration.test.ts`. Lane FIXES-WITHHELD-1029.
+- Owner 2026-10-29, "Turn the rule off" (board cards q-lint-jsdom-src-prefer-dom-node-html-methods and
+  q-lint-jsdom-src-prefer-location-assign), both answered in chat: `unicorn/prefer-dom-node-html-methods` (its fix writes
+  `getHTML()`, which jsdom lacks) and `unicorn/prefer-location-assign` (its fix writes `location.assign()`, which a test's
+  stand-in location lacks) no longer ship in `browser`, so `check` neither reports nor rewrites them. Held on a new card,
+  q-lint-jsdom-off-rules-fix, rather than shipped off as q-lint-pw-off-by-default-where builds a rule kept off: a team
+  that turned either on would get the fix that broke the test, and whether `check` applies it there is the owner's, as
+  for the newest-language rules (q-lint-newest-language-fix). Both are `parked` in `rule-candidates.json`, each why
+  naming the cards. Correction to the "Not in test files" entry (q-lint-unicorn-gethtml-jsdom): old, the rule ships and
+  skips test files; new, it does not ship; why, this answer. Pinned in `check-withheld-jsdom-fixes.integration.test.ts`
+  (each refused as a rule we do not ship; a `location.href` write neither reported nor rewritten),
+  `check-html-reads-in-test-files.integration.test.ts` and the test-file skips in `canonical-list.test.ts`. Lane
+  FIXES-WITHHELD-1029.
+- Owner 2026-10-29, "Run it in ESLint" (board card q-lint-jsdom-src-no-useless-spread): `unicorn/no-useless-spread` runs
+  in ESLint, never oxlint (`engine: "eslint"` with an `eslintBecause` in `rules.json`), as "Ship ESLint's version
+  instead" is built for `prefer-at` and `prefer-single-call`. oxlint's version (1.87.0) removes the spread around an
+  iterator's `.map()`, so `[...list.values().map(f)]` returned an iterator and a passing test failed in jsdom, Node and
+  browsers alike; ESLint's (eslint-plugin-unicorn 78.0.0) leaves it alone and still reports and fixes a plain useless
+  spread. Accepted consequence: `[...array.map(f)]` is no longer reported, and the rule runs at ESLint's speed. Pinned in
+  `check-withheld-jsdom-fixes.integration.test.ts`, `eslint-fallback.integration.test.ts` and the routed list in
+  `canonical-list.test.ts`. Lane FIXES-WITHHELD-1029.
+- Owner 2026-10-29, "Keep the fix" (board cards q-lint-jsdom-src-prefer-queue-microtask,
+  q-lint-jsdom-src-no-unnecessary-fetch-options and q-lint-jsdom-src-no-selector-as-dom-name): `check` keeps rewriting
+  `process.nextTick(f)` to `queueMicrotask(f)`, `fetch(url, { method: 'GET' })` to `fetch(url)` and
+  `classList.add('.active')` to `classList.add('active')`. Accepted consequences: a suite faking `nextTick` (Vitest's
+  threads pool) must wait another way, an assertion on the dropped option fails once, and a snapshot holding the dotted
+  class fails once and is accepted with `vitest -u`. No change; pinned in `check-withheld-jsdom-fixes.integration.test.ts`
+  and `editor-withheld-fixes.integration.test.ts` (each fix applied). Lane FIXES-WITHHELD-1029.
+- Correction 2026-10-30 to the 2026-10-29 entry on q-lint-jsdom-src-no-useless-spread ("Run it in ESLint"): old,
+  `unicorn/no-useless-spread` runs in ESLint, whose version leaves `[...list.values().map(f)]` alone; new, it does not
+  ship, `parked` in `rule-candidates.json` and held on card q-lint-useless-spread-loop-copy. Why: ESLint's version removes
+  the copy in `for (const child of [...parent.childNodes]) child.remove()` and in a loop over
+  `[...root.getElementsByClassName('item')]` that removes the class, so the loop walks the live list it shrinks and skips
+  items; on a packed install two passing jsdom tests failed after `check` (measured, eslint-plugin-unicorn 78.0.0, jsdom
+  29.1.1). oxlint 1.87.0 reported both lines and rewrote neither. The answer's "no wrong rewrite" does not hold, and the
+  rule takes no option that limits it, so how it ships is the owner's. Pinned in
+  `check-withheld-jsdom-fixes.integration.test.ts` (each loop and a plain useless spread neither reported nor rewritten;
+  the rule refused as one we do not ship). Lane FIXES-WITHHELD-1029.
+- Owner 2026-10-29, "Yes, always a reason" (board card q-lint-cmt-inline-config-reason), asked whether a comment that
+  sets a rule for its file (`/* eslint no-console: "off" */`, or `/* eslint eqeqeq: ["error", "smart"] */`, which only
+  changes an option) needs a reason after `--`: it does. `@eslint-community/eslint-comments/require-description` stays
+  held, now on q-lint-cmt-oxlint-disable-reason: it reads an `oxlint-disable*` comment only where its
+  `additionalDirectives` option names that spelling (measured, eslint-comments 4.8.1: named, each of the three forms is
+  reported and a described one or an `oxlint-enable` is not), and no answer says whether that spelling needs a reason.
+  Shipped without it, an agent skips the reason by writing `oxlint-disable` (reproduced on a packed install). Correction
+  to the "Only switch-off comments" entry: old, held on q-lint-cmt-inline-config-reason; new, held on
+  q-lint-cmt-oxlint-disable-reason; why, this answer settled rule-setting comments. Its case, rule-setting comments
+  included, is held in `accepted-cmt.ts` (lane RULES-CMT-REASON).
+- Owner 2026-10-29, "Move it into a ruleset" (board card q-lint-ban-ts-comment-editor), answered the question the
+  q-lint-cmt-editor-reach entry left open: whether `@typescript-eslint/ban-ts-comment`, on in every config and in no
+  ruleset, stays in every team's editor. It moves into `type-safety`, whose membership test in
+  [critique r1](ruleset-critique-r1.md) names `@ts-` comments and which that critique already gave it ("removing it
+  changes what tsc reports"). Editors run it only where their rulesets list `type-safety`; the agent build still sets it
+  by `allowSuppressions` whatever is listed. Correction to the 2026-10-10 entry "Both are ALWAYS ON": old, both
+  suppression bans always on, in no ruleset; new, only `house/no-suppressions`; why, this answer. Pinned in rule-data's
+  `canonical-list.test.ts` and `catalog.test.ts` (lane BAN-TS-COMMENT-RULESET).
+- Owner 2026-10-29, "Leave `using` declarations alone" (board card q-lint-immediate-return-using-fix):
+  `sonarjs/prefer-immediate-return` neither reports nor rewrites a returned variable that a `using` or `await using`
+  declaration holds; everywhere else it is unchanged, and `unicorn/no-using-resource-escape` reports the escape. Its fix,
+  `return openFile()`, drops the `using` and so the disposal, and in a TypeScript file check rewrote the line before
+  unicorn's report could be read (measured, eslint-plugin-sonarjs 4.2.2, eslint-plugin-unicorn 78.0.0). The rule takes no
+  option and check's filters go by rule id, so our plugin registry gives sonarjs a copy of the rule that drops those
+  reports, for check and editors alike (`withReturnedUsingResourcesLeftAlone`, `core/returned-using-resources.ts`). A
+  thrown `using` variable is outside the answer and keeps its report and fix. Pinned in
+  `check-immediate-return-of-a-using-resource.integration.test.ts`,
+  `editor-immediate-return-of-a-using-resource.integration.test.ts` and, for the thrown variable,
+  `core/returned-using-resources.test.ts` (lane IMMEDIATE-RETURN-USING).
+- Owner 2026-10-30, "Leave thrown `using` alone too" (board card q-lint-immediate-return-thrown-using):
+  `sonarjs/prefer-immediate-return` neither reports nor rewrites a thrown variable that a `using` or `await using`
+  declaration holds either, so nothing reports that line; its fix, `throw open()`, drops the `using` and so the disposal
+  (measured, eslint-plugin-sonarjs 4.2.2; eslint-plugin-unicorn 78.0.0's `no-using-resource-escape` reports a returned one
+  only). Correction to the 2026-10-29 entry "A thrown `using` variable is outside the answer and keeps its report and
+  fix": old, reported and fixed; new, left alone; why, this answer. Pinned in `core/returned-using-resources.test.ts`,
+  `check-immediate-return-of-a-using-resource.integration.test.ts` and
+  `editor-immediate-return-of-a-using-resource.integration.test.ts` (lane THROWN-USING).
+- Owner 2026-10-30, "Ship it everywhere" (board card q-lint-ug-accessor-override-only-where-silent):
+  `unicorn/no-incomplete-accessor-override` ships in `correctness`, in ESLint (oxlint has no version), untyped, with no
+  options, in every file. Accepted consequence: a setter-only override outside test files is reported twice, by it and
+  by `accessor-pairs`. It has no fix or suggestion, so nothing is withheld (measured, eslint-plugin-unicorn 78.0.0).
+  Correction to the 2026-10-29 entry "Ship it only where accessor-pairs is silent": old, held on this card; new, ships
+  everywhere; why, this answer. Pinned in rule-data's `accepted-1011-ug.integration.test.ts`, the double report
+  included (lane HELD-ANSWERS-1030).
+- Owner 2026-10-30, "Ship both" (board card q-lint-uni-unused-return-only-new-shapes):
+  `unicorn/no-unused-builtin-method-return` ships in `correctness` beside `sonarjs/no-ignored-return`, in ESLint (oxlint
+  has no version), untyped (it reports without type information), with no options. Accepted consequence: a discarded
+  array `.map()` in TypeScript is reported twice. It has no fix or suggestion (measured, eslint-plugin-unicorn 78.0.0).
+  Correction to the 2026-10-29 entry "Ship it only where it adds a shape": old, held on this card; new, ships; why, this
+  answer. Pinned in rule-data's `accepted-1011-uni.integration.test.ts`, the double report included (lane
+  HELD-ANSWERS-1030).
+- Owner 2026-10-30, "Leave both rules out" (board card q-lint-rc-tanstack-property-order-which-skip): neither
+  `@tanstack/query/infinite-query-property-order` nor `@tanstack/router/create-route-property-order` ships, and
+  `perfectionist/sort-objects` keeps no skip; none had been built (`rules.json`'s only `useConfigurationIf` is on
+  `sort-arrays`, and `withheld-fixes.json` keys neither rule). Both are `dropped` in `rule-candidates.json`, the Query
+  rule decided by this card. Correction to the 2026-10-26/27 entry on q-lint-rc-tanstack-property-order-measured, the
+  2026-10-29 entry on q-lint-rc-tanstack-property-order-fix-spread and the two 2026-10-30 corrections to it: old, both
+  ship once sorting's skip is settled; new, neither ships; why, this answer. Pinned in `accepted-tsq.integration.test.ts`,
+  `accepted-candidates.test.ts` and `rule-candidates.test.ts` (lane HELD-ANSWERS-1030).
+- Owner 2026-10-30, "Leave it out" (board card q-lint-rc-tanstack-router-order-spread-crash):
+  `@tanstack/router/create-route-property-order` is `dropped`, decided by this card, its why naming the which-skip
+  answer too. Pinned in `rule-candidates.test.ts` (lane HELD-ANSWERS-1030).
+- Owner 2026-10-30, "Ship them off, fix held back" (board card q-lint-newest-language-fix): the nine newest-language
+  rules (`e18e/prefer-get-or-insert`, and unicorn's `prefer-error-is-error`, `prefer-get-or-insert-computed`,
+  `prefer-iterator-concat`, `prefer-promise-try`, `prefer-regexp-escape`, `prefer-temporal`, `prefer-uint8array-base64`
+  and `prefer-uint8array-hex`) ship off by default (`offByDefault`, ESLint, no options, untyped), so a team turns one on
+  in `agents-inc.lint.mts`; `check` reports it and rewrites nothing, and editors offer neither its fix nor its
+  suggestions (`withheld-fixes.json`, each why naming the API Node 22.23.2 lacks, measured). `prefer-temporal` has a fix
+  too: with `checkDateNow` on, `Date.now()` becomes `Temporal.Now.instant().epochMilliseconds` (measured,
+  eslint-plugin-unicorn 78.0.0). Correction to the "Held 2026-10-30 on a new card, q-lint-newest-language-fix" entry:
+  old, they stay `parked`, unshipped; new, they ship off with their fix withheld; why, this answer. Pinned in
+  `canonical-list.test.ts`, `catalog.test.ts`, `rule-candidates.test.ts` (none also ships),
+  `accepted-e18.integration.test.ts`, `rules-shipped-off.test.ts`, `check-rules-shipped-off.integration.test.ts` and
+  `editor-withheld-fixes.integration.test.ts`. Lane SHIP-OFF-ANSWERS-1030E.
+- Owner 2026-10-30, "Ship them off, fix held back" (board card q-lint-jsdom-off-rules-fix):
+  `unicorn/prefer-dom-node-html-methods` and `unicorn/prefer-location-assign` ship off by default, as above, in every
+  file a team names them for: `prefer-dom-node-html-methods` skipped test files only for its fix, now withheld. `check`
+  reports them and rewrites nothing, and editors offer no fix. Correction to the 2026-10-29 "Turn the rule off" entry: old, held on this
+  card, pinned in `check-withheld-jsdom-fixes.integration.test.ts` (each refused as a rule we do not ship); new, they
+  ship off with their fix withheld, pinned in `rules-shipped-off.test.ts`, `check-rules-shipped-off.integration.test.ts`
+  and `editor-withheld-fixes.integration.test.ts`, and that file keeps only `unicorn/no-useless-spread` refused; why,
+  this answer. Lane SHIP-OFF-ANSWERS-1030E.
+- Owner 2026-10-30, "Keep the repairs" (board card q-lint-team-set-repaired-copies): a rule a team sets keeps our crash
+  repairs. Where the team relies on the plugins our merge registers, typescript-eslint's `no-deprecated` and
+  `consistent-type-exports` run our copy that ends a re-export cycle and functional's `prefer-immutable-types` our
+  per-call cache; the ESLint 10 compat layer reaches `css-modules`, `react` and `react-hook-form` where the team
+  registers them itself too. No code: today's behaviour. Pinned in
+  `editor-merges.team-set-rules-as-shipped.integration.test.ts` (the two typescript-eslint rules end on a re-export
+  cycle; `react-hook-form/no-use-watch` reports through the compat layer); `prefer-immutable-types`, and the compat layer
+  for `css-modules` and `react`, which take the same `withCompatLayerWhereNeeded` path, are not. Correction to the "Yes,
+  the rule is the team's" entry: old, "Still reaching a team's rule, waiting on card q-lint-team-set-repaired-copies";
+  new, they reach it; why, this answer. Lane SHIP-OFF-ANSWERS-1030E.
+- Owner 2026-10-30, "Leave them to oxlint" (board card q-lint-oxlint-null-rule-options-and-settings): both merges read a
+  null among a rule's options or in a field of a plugin's settings as before, and oxlint refuses those it refuses
+  itself, naming the rule but not the file. No code: today's behaviour. Pinned in
+  `merge-other-engine-config.refusals.test.ts` (the "left for oxlint to refuse" cases,
+  `NULLS_OXLINT_REFUSES_FOR_SOME_RULES_OR_SETTINGS` in `team-oxlint-config-null-keys.ts`). Correction to the
+  q-lint-oxlint-null-deeper entry, and to its correction of the q-lint-oxlint-null-other-keys entry: old, those nulls
+  "Held" and "whether to refuse them went back to the owner"; new, left to oxlint; why, this answer. Lane
+  SHIP-OFF-ANSWERS-1030E.
+- Owner 2026-10-30, "The usual names, and rename our bridge to one" (board card q-lint-setup-files-which), which the
+  "Yes, treat them as test files" point of the 2026-10-26/27 merge entry sent back: a file named `vitest.setup.*`,
+  `jest.setup.*`, `setupTests.*` or `test-setup.*` gets test files' relaxed rules. Every rule whose `ignores` in
+  `data/rules.json` names test files skips it too; `ban-ts-comment` allows a described `@ts-expect-error` there
+  (`TEST_FILE_GLOBS` in `generate/build-routing.ts`, the files of `bannedInTestFiles`); Vitest's and Jest's globals are
+  read-only there in every JS and TS extension (`TEST_RUNNER_GLOBALS`, `core/framework-globals.ts`). No runner's config
+  is read. The rules that run in test files alone (Testing Library's, and Playwright's two) keep their `files`: whether
+  they reach setup files went back to the owner. Our mutation-testing bridge is `mutation-testing/vitest.setup.ts`, and
+  its disable comments for `functional/no-return-void` and `functional/no-expression-statements`, which setup files now
+  skip, are gone; those for rules test files keep stay. Pinned in `setup-files.integration.test.ts` and rule-data's
+  `canonical-list.test.ts` ("has no ignores list naming test files without every setup-file glob") and
+  `catalog.test.ts`. Correction to that point: old, not built, went back to the owner; new, built as above; why, this
+  answer. Lane MERGE-ANSWER-4.
+- Owner 2026-10-30, "Keep typescript-eslint's advice there" (board card q-lint-ts-ignore-message-editor): our message
+  for a `@ts-ignore` ("remove it and fix the type error it hides") replaces typescript-eslint's only where
+  `@ts-expect-error` is banned too, which is `check` outside test and setup files; editors, which always allow a
+  described `@ts-expect-error`, and test and setup files keep typescript-eslint's advice to use one. No code beyond
+  setup files: `editor-ts-ignore-message.integration.test.ts` is corrected to it, and `setup-files.integration.test.ts`
+  pins it in setup files. Lane MERGE-ANSWER-4.
+- Owner 2026-10-30, "Remove it there" (board card q-lint-ts-ignore-quick-fix): where our blocks run `ban-ts-comment`
+  banning `@ts-expect-error` too, its report on a `@ts-ignore` carries no suggestion, so nothing offers the swap into
+  the other ban (`suggest: null` beside our message, `core/ts-ignore-message.ts`). Elsewhere typescript-eslint's
+  'Replace "@ts-ignore" with "@ts-expect-error".' stays, and a `ban-ts-comment` the team sets itself keeps all of
+  typescript-eslint's. Today that is `check`'s build outside test and setup files, which prints no suggestion; the
+  editor parts allow suppressions everywhere (`core/editor-parts.ts`), so no editor reaches it. Pinned in
+  `ts-ignore-quick-fix.integration.test.ts` and `core/ts-ignore-message.test.ts`. Correction to the "Say what to do
+  instead" point of the 2026-10-26/27 merge entry: old, whether the suggestion goes too went back to the owner; new,
+  it goes where both are banned; why, this answer. Lane MERGE-ANSWER-4.
+- Owner 2026-10-30, "Yes, both spellings" (board card q-lint-cmt-oxlint-disable-reason): a switch-off comment written
+  oxlint's way needs a reason after `--`, as ESLint's does. `@eslint-community/eslint-comments/require-description`
+  ships in `comments`, on only where suppressions are allowed, with `additionalDirectives` naming `oxlint-disable`,
+  `oxlint-disable-line` and `oxlint-disable-next-line` (the option the plugin's schema and `parseDirectiveText` read,
+  eslint-comments 4.8.1). `oxlint-enable` is not named: enable comments need no reason (the "Only switch-off comments"
+  entry). The rule has no fix, so `withheld-fixes.json` is unchanged. Where suppressions are banned nothing changes:
+  `house/no-suppressions` reports both spellings. Pinned in rule-data's `canonical-list.test.ts` and `accepted-cmt.ts`,
+  and in `check-comment-reasons.integration.test.ts` and `editor-comment-reasons.integration.test.ts`. Correction to
+  the "Yes, always a reason" entry: old, held on q-lint-cmt-oxlint-disable-reason; new, ships reading both spellings;
+  why, this answer. Lane RULES-CMT-REASON-2.
+- Correction to the "Yes, both spellings" entry (2026-10-31): old, `additionalDirectives` named only oxlint's three
+  forms; new, it names `eslint-disable` too; why, oxlint obeys ESLint's whole-file `// eslint-disable <rule>` written
+  as a line comment, which the rule reads only from a block comment unless `additionalDirectives` names
+  `eslint-disable` (`parseDirectiveComment` in eslint-comments 4.8.1's `lib/internal/utils.js`), so that comment
+  silenced a check with no reason asked. Pinned in `canonical-list.test.ts`, `accepted-cmt.ts`,
+  `gate-equivalence.test.ts` and `check-comment-reasons.integration.test.ts`. Lane RULES-CMT-REASON-2, review 1.
+- Owner 2026-10-30, "The bug decides" (board card q-lint-crit2-bug-checks-in-tidying-groups): a rule that catches a real
+  bug sits in `correctness`, however tidy its rewrite looks; a team can still turn any one rule off in `rules`.
+  `no-debugger`, `no-unused-expressions` and `no-new` move there from `redundancy`. Each other rule in a tidying group
+  with `correctness` as its alternative (the command in `ruleset-critique-r2.md` §1) was run alone on code it reports
+  (ESLint 10.12, eslint-plugin-regexp 3.3.1, eslint-plugin-unicorn 78.0.0, Node 23.10); three move and two stay:
+  - `regexp/no-dupe-disjunctions` (from `redundancy`) moves: it reports the second `js` in `/\.(?:js|ts|js)$/`, written
+    for `jsx`, which then does not match `App.jsx`.
+  - `unicorn/no-break-in-nested-loop` (from `complexity`) moves: it reports a `break` in a `switch` inside a `for…of`,
+    written to stop at `END`, which leaves only the `switch`, so `["a", "b", "END", "c"]` keeps `c`.
+  - `unicorn/no-subtraction-comparison` (from `redundancy`) moves: `a.updatedAt - b.updatedAt > 0` on ISO date strings
+    is `NaN > 0`, false where the comparison it suggests is true.
+  - `regexp/optimal-lookaround-quantifier` stays in `redundancy`: `/^(?=[A-Z]+)\w+$/` and its rewrite agree on every
+    input tried, so it removes no bug.
+  - `unicorn/prefer-else-if` stays in `complexity`: it reports two exclusive tests, where `else` only tidies, and two
+    `if`s meant to run one after the other, where the `else` it suggests skips the second.
+  The rules already in `correctness` with a tidying alternative stay. This replaces round 1's question 10 (an order for
+  choosing between groups) for these rules. Reproductions: `<r44>/resume-1029/evidence/CRIT2-ANSWERS/tester/repro-q1/`.
+  Lane CRIT2-ANSWERS.
+- Owner 2026-10-30, "Both ways" (board card q-lint-crit2-type-safety-scope): `type-safety` holds the rules about weaker
+  type checking. `@typescript-eslint/no-unnecessary-type-parameters` (from `redundancy`) and
+  `functional/prefer-property-signatures` (from `immutability`) move into it; the three bans on TypeScript-only syntax
+  Node cannot run, enums (`no-restricted-syntax`), namespaces (`@typescript-eslint/no-namespace`) and parameter
+  properties (`@typescript-eslint/parameter-properties`), move to `conventions`, so leaving `type-safety` out no longer
+  allows them. Lane CRIT2-ANSWERS.
+- Owner 2026-10-30, "Move all eleven" (board card q-lint-crit2-modern-js-scope): `modern-js` holds the rules whose
+  rewrite needs a newer language or platform feature. To `redundancy`: `unicorn/prefer-has-check`,
+  `prefer-array-flat-map`, `prefer-array-from-map`, `prefer-object-iterable-methods`, `prefer-math-abs` and
+  `prefer-temporal-conversion`, `no-object-constructor`, and `no-array-constructor` (from `correctness`). To
+  `conventions`: `unicorn/prefer-object-destructuring-defaults` and `prefer-map-from-entries`. Into `modern-js` from
+  `complexity`: `unicorn/prefer-includes-over-repeated-comparisons`. Lane CRIT2-ANSWERS.
+- Owner 2026-10-30, "conventions" (board card q-lint-crit2-no-children-prop): `react/no-children-prop` leaves `react`
+  for `conventions`, under the 2026-10-10 ruling that `react` keeps what depends on React. A team that leaves
+  `conventions` out loses it, on Hono's classic `jsx()` too, whose empty elements then go unreported. Lane
+  CRIT2-ANSWERS.
+- Owner 2026-10-30, "Move both to correctness" (board card q-lint-crit2-late-event-rules):
+  `unicorn/no-late-event-control` and `unicorn/no-late-current-target-access` move from `browser` to `correctness`, as
+  Node's `EventTarget` has the same bug. Lane CRIT2-ANSWERS.
+- Owner 2026-10-30, "Stop shipping it" (board card q-lint-crit2-post-message-origin):
+  `unicorn/require-post-message-target-origin` is dropped (`rule-candidates.json`), so naming it in
+  `agents-inc.lint.mts` is refused, and a `window.postMessage` with no target origin goes unreported. Lane
+  CRIT2-ANSWERS.
+- Owner 2026-10-30, "Stop shipping it" (board card q-lint-crit2-adjacent-inline): `react/no-adjacent-inline-elements` is
+  dropped (`rule-candidates.json`); run-together inline elements go unreported. Lane CRIT2-ANSWERS.
+- Owner 2026-10-30, "Leave them where they are" (board card q-lint-crit2-library-rules): `sonarjs/memoize-cache-key`
+  (`correctness`), `sonarjs/prefer-native-lodash-alternative` and `prefer-native-axios-alternative` (`modern-js`) and
+  `sonarjs/no-default-utility-imports` (`modules`) keep their groups; no lodash or axios group. It answers round 1's
+  question 12. No change. Lane CRIT2-ANSWERS.
+- Owner 2026-10-30, "Only in declaration files" (board card q-lint-crit2-namespace-keyword):
+  `@typescript-eslint/prefer-namespace-keyword` runs only in `.d.ts`, `.d.*.ts`, `.d.mts` and `.d.cts` files, where
+  `no-namespace` is silent, so its fix no longer writes a `namespace` another rule reports. It runs in ESLint, since
+  the oxlint build turns no rule on in files of its own, and it keeps `modern-js`. Where `no-namespace` is off, no lint
+  rule reports `module Shapes` in other files, though TypeScript 6 rejects it. Pinned in rule-data's
+  `namespace-keyword-in-declaration-files.integration.test.ts` and in `check-ruleset-moves.integration.test.ts`. Lane
+  CRIT2-ANSWERS.
+- Owner 2026-10-30, "Confirm all" (board card q-lint-crit2-single-placements): four rules move, `n/no-unpublished-bin`
+  from `node` to `modules`, `@typescript-eslint/dot-notation` from `conventions` to `redundancy`,
+  `promise/no-promise-in-callback` from `correctness` to `modern-js` and `unicorn/prefer-add-event-listener` from
+  `browser` to `conventions`; seven stay: `@typescript-eslint/prefer-enum-initializers` (`correctness`),
+  `unicorn/no-negated-array-predicate`, `consistent-function-scoping` and `no-declarations-before-early-exit`
+  (`complexity`), `@typescript-eslint/no-dynamic-delete` and `unicorn/no-array-front-mutation` (`immutability`), and
+  `@typescript-eslint/no-deprecated` (`modern-js`). Lane CRIT2-ANSWERS.
+- Owner 2026-10-30, "No to both" (board card q-lint-crit2-suspicious-style): no `suspicious` group and no `style` list.
+  It answers round 1's questions 13 and 14. No change. Lane CRIT2-ANSWERS.
+- Owner 2026-10-10 ruling ("`react` keeps what depends on React"), built on the owner's "do them" of 2026-10-30:
+  `@eslint-react/x-no-leaked-conditional-rendering` moves from `react` to `correctness`, as its purpose is wrong output
+  and Hono renders the leaked `0` (`ruleset-critique-r2.md`, M1). Lane CRIT2-ANSWERS.
+- Owner 2026-10-30, "Keep it unshipped" (board card q-lint-useless-spread-fix-when-on): `unicorn/no-useless-spread`
+  stays `parked` in `rule-candidates.json`, so no team can turn it on through `agents-inc.lint.mts`, and naming it
+  there is refused. No change but its `why`. Lane CRIT2-ANSWERS.
+- All of the 2026-10-30 moves above carry `by: owner-2026-10-30` and the card as `note` in `data/rules.json`, with no
+  `alternative`. Pinned in rule-data's `ruleset-moves.test.ts` and lint-rules' `ruleset-moves.test.ts`. Lane
+  CRIT2-ANSWERS.
+- Owner 2026-10-27, "Keep them in ESLint" (board card q-lint-slice2-autofix), asked whether a rule whose automatic
+  fix only ESLint's version makes, on code oxlint's version reports alike, moves to oxlint anyway: it stays in ESLint,
+  so `check` keeps fixing that code, with the lost fix as its `eslintBecause`, naming the card. Measured 2026-10-31
+  (oxlint 1.87), that keeps `@typescript-eslint/no-inferrable-types`, `no-useless-return` and unicorn's
+  `prefer-array-flat`, `prefer-array-index-of`, `prefer-array-some`, `prefer-date-now`, `prefer-dom-node-remove`,
+  `prefer-export-from`, `prefer-modern-math-apis`, `prefer-native-coercion-functions`, `prefer-number-properties`,
+  `prefer-object-from-entries` and `prefer-string-slice` in ESLint (`jq -r '.[] | select((.eslintBecause // "") |
+  test("q-lint-slice2-autofix")) | .id' packages/rule-data/data/rules.json`). Pinned by the routing guard in
+  `canonical-list.test.ts` (`FIXES_ONLY_ESLINT_MAKES`, `__tests__/cases/routed-to-eslint-for-a-reason.ts`).
+  `unicorn/prefer-modern-dom-apis`, whose fix `check` and the editors withhold anyway, stays in ESLint until the owner
+  answers q-lint-prefer-modern-dom-apis-engine (`RULES_WAITING_ON_AN_OWNER_ANSWER`).
+  Lanes S2-CASES and S2-DATA.

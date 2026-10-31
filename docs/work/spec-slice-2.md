@@ -5,6 +5,11 @@ path is from the repository root. **`<lock>`**: `flock <the session's lint-rules
 from the root; every build, generate, typecheck, test and Stryker run goes through it. **`<S>`**: the lane's scratch
 folder.
 
+Corrections since written (old → new → why):
+
+- Phase 0 and Requires: slice 2 waits for own-lint lane Z → it does not; lane Z runs last, after slice 2 → owner
+  2026-10-28: the own-lint clean-up is a refactor, so it runs after every bug and feature.
+
 <goal>
 Every shipped rule has a case proving it fires on each engine that runs it, and every rule oxlint has a version of
 (without type information) runs in oxlint, unless a recorded measurement shows oxlint's version is worse.
@@ -200,7 +205,7 @@ name.
 
 | Phase | What | Runs |
 | --- | --- | --- |
-| 0 | Waits for own-lint lane Z (own-lint lanes R, S and T own `packages/rule-data/src/**`, `packages/lint-rules/src/__tests__/**` and `src/*.test.ts`) and for the accepted-rules stream's last data step (EFF, a `rules.json` writer), whose lanes also edit `canonical-list.test.ts`. Check `git status --short` and the queue before starting | – |
+| 0 | Waits for the accepted-rules stream's last data step (EFF, a `rules.json` writer), whose lanes also edit `canonical-list.test.ts`. Check `git status --short` and the queue before starting | – |
 | 1 | S2-RUN; then S2-CASES (cases, measurements M1-M5, verdict lists); then S2-FALLBACK | serial (each needs the last) |
 | 2 | S2-DATA: moves, reasons, `no-throw-literal`; regenerate; gates | one developer |
 | 3 | Real run, reviewer, S2-DOCS (phase A done) | serial |
@@ -217,7 +222,7 @@ name.
 
 ## Dependencies
 
-- **Requires:** own-lint lane Z, the accepted-rules stream's data steps; Q1 for the rules waiting on it; Q2 for any
+- **Requires:** the accepted-rules stream's data steps; Q1 for the rules waiting on it; Q2 for any
   unshipped-rule lane.
 - **Blocks:** plan.md Open's first two bullets; the next lint-rules release's note (below).
 

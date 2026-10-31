@@ -61,7 +61,7 @@ tells only the test worker which mutant is on, and reads coverage only from that
 `read-installed.integration.test.ts` runs rule-data's source in a Node process of its own.
 
 `packages/lint-rules/vitest.mutation.config.ts` and `packages/rule-data/vitest.mutation.config.ts`,
-which only Stryker loads, add `packages/lint-rules/mutation-testing/child-process-bridge.ts` to their
+which only Stryker loads, add `packages/lint-rules/mutation-testing/vitest.setup.ts` to their
 package's vitest config. In a mutant run, the bridge
 hands the active mutant to every child through the `__STRYKER_ACTIVE_MUTANT__` variable, which the
 mutated code reads. In the initial run, it loads `mutation-testing/child-coverage-hook.mjs` into every

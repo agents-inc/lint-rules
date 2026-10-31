@@ -7,6 +7,13 @@ Owner-accepted 2026-10-23: "Finish the repo's own lint clean-up so its own ESLin
 Every path below is from the repository root. Written by pm 2026-10-23, revised 2026-10-24 for the owner's answers.
 Read-only.
 
+Corrections since written (old → new → why):
+
+- "Hardening verdict": "The gate holds the class once briefs carry it" → it did not hold for
+  `functional/prefer-immutable-types` until lane LINT-RUN-SET: is-immutable-type's cache made the rule answer by the
+  file it checked first, so a whole-repo run missed findings; the rule now gets a checker of its own per call
+  (`core/immutability-cache-per-call.ts`) → owner 2026-10-28, q-lint-own-gate-per-file (`docs/work/decisions.md`).
+
 **`<lock>`** below means the session's shared build lock: `flock <lock file> bash -c 'cd <repository root> && <command>'`.
 Every build, lint, typecheck, test and Stryker run goes through it. **`<S>`** is the lane's session scratch folder.
 Write engine JSON into `<S>` under the lock, then run `jq` outside it, from the repository root (no nested quotes).

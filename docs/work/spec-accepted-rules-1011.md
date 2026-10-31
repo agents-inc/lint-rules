@@ -397,24 +397,24 @@ it names these verdicts. The release note's list is the section below.
 ## What a consumer sees (for the release note)
 
 Every rule ships at `error`, so this is a minor bump before 1.0 (`docs/release.md`). Each ruleset below is listed by
-`init` by default (`optIn: false`). Rules a lane stops are left out of this list.
+`init` by default (`optIn: false`). Rules a lane stops are left out of this list; the last column names each one and
+the card it waits on, which its `rule-candidates.json` `why` also names.
 
-| Ruleset (domain) | Rules added | Removed |
-| --- | --- | --- |
-| correctness (quality) | `accessor-pairs` (outside test files), `no-array-constructor`, `no-empty`, `no-new-wrappers`, `no-self-compare`, `no-sequences`, `radix`, `sonarjs/no-duplicated-branches`, lane UG's correctness `unicorn/*` guards, `unicorn/no-unused-builtin-method-return` (per U1) | – |
-| type-safety (quality) | `@typescript-eslint/no-namespace`, `parameter-properties`, `use-unknown-in-catch-callback-variable` | – |
-| security (quality) | `unicorn/no-ineffective-csp-directives`, `unicorn/no-invalid-integrity` | – |
-| performance (quality) | `house/no-reduce-accumulator-copy` | – |
-| immutability (quality) | `@typescript-eslint/prefer-readonly` | – |
-| modern-js (quality) | `no-object-constructor`, `prefer-object-has-own`, `@typescript-eslint/prefer-string-starts-ends-with`, `unicorn/prefer-at`, `unicorn/prefer-temporal-conversion` | `unicorn/no-hex-escape` |
-| redundancy (quality) | `no-useless-assignment`, `@typescript-eslint/no-unnecessary-qualifier`, `unicorn/no-useless-set-construction`, `unicorn/prefer-single-call` | – |
-| conventions (quality) | `symbol-description`, `@typescript-eslint/consistent-type-exports`, `consistent-type-imports`, `dot-notation`, `unicorn/prefer-literal-ascii` | – |
-| tests (quality) | `sonarjs/composite-assertions`, `no-duplicate-parameterized-test-case`, `no-empty-parameterized-test-dataset`, `synchronous-exception-assertions` | – |
-| react (ui) | `sonarjs/no-debounce-throttle-in-render` | – |
-| browser (runtimes) | `unicorn/no-invalid-boolean-attribute-value`, `no-invalid-dom-token`, `no-invalid-style-set-property`, `no-prevent-default-in-passive-listener` | – |
+| Ruleset (domain) | Rules added | Removed | Held, not shipped (the card each waits on) |
+| --- | --- | --- | --- |
+| correctness (quality) | `accessor-pairs` (outside test files), `no-array-constructor`, `no-empty`, `no-new-wrappers` (reported, its fix withheld), `no-self-compare`, `no-sequences`, `radix`, `unicorn/no-async-iterator-callback`, `no-conflicting-constraints`, `no-invalid-intl-options`, `no-invalid-property-descriptor`, `no-invalid-response-options`, `no-invalid-temporal-arithmetic`, `no-invalid-url-protocol-comparison`, `no-unsafe-json-serialization`, `no-unused-iterator-helper`, `no-url-in-search-params`, `no-using-resource-escape`, `require-text-decoder-streaming`, `no-incomplete-accessor-override` (a setter-only override outside test files is reported by `accessor-pairs` too), `no-unused-builtin-method-return` (a discarded array `.map()` in TypeScript is reported by `sonarjs/no-ignored-return` too) | – | – |
+| type-safety (quality) | `@typescript-eslint/no-namespace`, `parameter-properties`, `use-unknown-in-catch-callback-variable` | – | – |
+| security (quality) | `unicorn/no-ineffective-csp-directives`, `unicorn/no-invalid-integrity` | – | – |
+| performance (quality) | `house/no-reduce-accumulator-copy` | – | – |
+| immutability (quality) | `@typescript-eslint/prefer-readonly` | – | – |
+| modern-js (quality) | `no-object-constructor`, `prefer-object-has-own`, `@typescript-eslint/prefer-string-starts-ends-with`, `unicorn/prefer-at` (in ESLint), `prefer-temporal-conversion` | `unicorn/no-hex-escape` | – |
+| redundancy (quality) | `no-useless-assignment`, `@typescript-eslint/no-unnecessary-qualifier`, `unicorn/no-useless-set-construction`, `prefer-single-call` (in ESLint, reported, its fix withheld) | – | – |
+| conventions (quality) | `symbol-description`, `@typescript-eslint/consistent-type-exports`, `consistent-type-imports` (typed, in ESLint), `dot-notation`, `unicorn/prefer-literal-ascii` | – | – |
+| tests (quality) | `sonarjs/composite-assertions`, `no-duplicate-parameterized-test-case` (reported, its fix withheld), `no-empty-parameterized-test-dataset`, `synchronous-exception-assertions` | – | – |
+| react (ui) | `sonarjs/no-debounce-throttle-in-render` | – | – |
+| browser (runtimes) | `unicorn/no-invalid-boolean-attribute-value`, `no-invalid-dom-token`, `no-invalid-style-set-property`, `no-prevent-default-in-passive-listener` | – | – |
 
-The typed rules report only in files a tsconfig takes in. `consistent-type-imports` and `prefer-at` autofix: the first
-rewrites imports to `import type`, the second can surface `T | undefined` tsc errors.
+The typed rules report only in files a tsconfig takes in.
 
 <questions>
 

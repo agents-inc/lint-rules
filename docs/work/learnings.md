@@ -80,7 +80,7 @@ Facts found while working. Terse. Full reports (session scratch, may vanish):
 
 
 ## Merging into a team's configs (2026-10-11, fix round 1, scratchpad/fix-run/)
-- oxlint 1.87 runs the `eslint` scope's rules whatever `plugins` lists. A plugin listed only in an override, or in a config extended as an object, still switches that plugin's `categories` on (measured).
+- oxlint 1.87 runs the `eslint` scope's rules whatever `plugins` lists. Correction (2026-10-29, measured by lane OXLINT-OVERRIDE-PLUGINS): "A plugin listed only in an override, or in a config extended as an object, still switches that plugin's `categories` on" is cut; one listed only in overrides switches them on in some files or none ([plan.md](../plan.md), Open, "Limits of reading the team's configs").
 - ESLint's `--cache` key stringifies each plugin from its top-level `name`/`version` first, then `meta.name`/`meta.version`; a plugin with neither keys nothing, so an upgrade can serve stale results.
 - typescript-eslint marks its extension rules with `meta.docs.extendsBaseRule` (true = same name). oxlint's list of core rules typescript-eslint extends misses some (`only-throw-error` → `no-throw-literal`, `prefer-promise-reject-errors`, `prefer-destructuring`, `no-unused-private-class-members`); `recommendedTypeChecked` turns on `only-throw-error` and `prefer-promise-reject-errors`.
 - A team block that turns type information off later (`disableTypeChecked`), or a typed block with `basePath`, makes any typed rule outside that scope throw for the whole ESLint run.
@@ -217,7 +217,7 @@ Nothing catches a recurrence of a fixed anti-pattern below unless its bullet nam
 - Fixed: no tsconfig included `scripts/*.mts` (knip lists it only as an entry), so `bun run typecheck` never type-checked the script. `scripts/tsconfig.json` (extends `@workspace/typescript-config/node.json`) and the root script `typecheck-scripts` (`tsc -p scripts`) check it; the root `typecheck` is `turbo typecheck typecheck-scripts`, and turbo.json's uncached `//#typecheck-scripts` waits for `//#unused-exports`. A scratch tsconfig outside the repo also needs `typeRoots` at the root `node_modules/@types`, or fails with TS2688 'node'.
 - Isolating a scratch copy for mutation probes: one symlink to the shared `node_modules` does not, since bun's workspace links inside it are relative (`@workspace/rule-data -> ../../packages/rule-data`, `@agents-inc/lint-rules -> ../../packages/lint-rules`), so imports by package name resolve into the shared tree. Symlink each top-level entry separately, then point `@workspace/*` and `@agents-inc/lint-rules` at the copy's own packages.
 - A test that loads the ESLint entry (`new ESLint({ cwd })` reading `eslint.config.mjs`, which loads dist and every plugin) or spawns an engine CLI (`oxlintCliOutputIn`) inside the test ran on vitest's 5 s default and timed out under load; `repo-own-lint-configs.integration.test.ts` now calls `allowEveryTestForParallelLoad()`. Proposed standard: every such test calls it; only a gate under load shows a miss. Candidates (count 0): `for f in $(grep -rlE "oxlintCliOutputIn|new ESLint\(\{ cwd: [A-Z_a-z]+ \}\)|spawnSync|execFileSync|runNodeScript\(" packages/*/src --include='*.test.ts'); do echo "$(grep -cE "allowEveryTestForParallelLoad\(\)|timeout|TIMEOUT" $f) $f"; done | sort -n`.
-- Missing guard, owner's choice: nothing removes or reports the sandbox a killed Stryker run leaves in `.stryker-tmp` (`cleanTempDir: 'always'` cleans only after a run that finishes), and it slows the whole-repo walk (the flake above): "matches the project service on this repo, file for file" took 17.9 s alone with one sandbox, about 8 s without, and 59.8 s of its 60 s in a full gate. Lanes leave one in place as not theirs. Options: the gate refuses to start, or reports, when `.stryker-tmp` holds a sandbox and no Stryker run is live; or a rule on who removes one.
+- The sandbox a killed Stryker run leaves in `.stryker-tmp` (`cleanTempDir: 'always'` cleans only after a run that finishes) slows the whole-repo walk (the flake above): "matches the project service on this repo, file for file" took 17.9 s alone with one sandbox, about 8 s without, and 59.8 s of its 60 s in a full gate. `bun run test` names each one before every package's tests and removes none (`scripts/report-leftover-stryker-copies.mts`; owner 2026-10-27, q-gap-lint-stryker-leftover-sandbox).
 - The repo's own `unicorn/consistent-boolean-name` refused `coreStatedHereOrBelow` (now `isCoreStatedHereOrBelow`), while a verb-led `statesEitherName` passes: lint new boolean names before finishing a naming pass.
 - New code writes `.values().toArray()`, not `[...iterator]`, which the repo's own `unicorn/prefer-iterator-to-array` reports (the shared tsconfig's lib and Node 22 have `Iterator#toArray`). Existing spreads stay for the lint clean-up: twin-pairs' `eachOnce`, editor-parts' `standsInForOneRule`, four in `build-eslint-config.ts`.
 - Self-lint of the rounds: two findings were the rounds' own and are fixed (`unicorn/no-negated-array-predicate` in `eachEntrysGlobTakenBack`; `functional/prefer-immutable-types` on `configFileReadAt`'s Map parameter, which now takes `reads: Reads` like its siblings). The rest follow patterns the same rules report on unchanged lines, for plan.md Open's "each area's lint clean-up": `functional/prefer-immutable-types` on every `Catalog`, `Coverage`, `Linter.Config`, `OxlintOverride`, `OxlintConfig`, `Dirent` or AST-node parameter and on each destructure of `CanonicalRule` (mutable fields), so every pure function extracted over them adds one (`Pick<Catalog, 'oxlintRules'>` does not avoid it: a readonly array, not a readonly property); `@typescript-eslint/array-type` on `[string, X][]`; `consistent-conditional-object-spread`; oxlint's `require-unicode-regexp` on `INTRINSIC_TAG`; in `scripts/mutate-changed-lines.mts`, `unicorn(no-array-for-each)` and `eslint(no-await-in-loop)` on a loop sequential on purpose (the runs share Stryker's working copy and report). After `bun run build`, from the root: `npx eslint <files>`; against HEAD: `git show HEAD:<file> | npx eslint --format json --stdin --stdin-filename <file>`.
@@ -308,8 +308,8 @@ Nothing catches a recurrence of a fixed anti-pattern below unless its bullet nam
   program holds the file with the value in a const and the switch on the const (`programWithTheFileRewritten`,
   `shared/program-with-a-file-rewritten.ts`): where that const is never at the default and the rewrite adds no type
   error to the file, the message says to hold the value in a const (q-lint-never-default-unnarrowable). At a file's top
-  level, in a class static block or a setter it suggests the binding before the throw (q-lint-never-default-no-return);
-  a namespace body keeps the return form (owner question). What runs, and a case running on into the default, are
+  level, in a namespace body, a class static block or a setter it suggests the binding before the throw
+  (q-lint-never-default-no-return, q-lint-house-namespace-body). What runs, and a case running on into the default, are
   TypeScript's reading in both programs.
 - Not asked, and why: a part reading a property of a value narrowed at the default to never, or to null or undefined
   alone, does not compile, and asking leaves its error in the program the rule shares (every candidate of the committed
@@ -320,7 +320,7 @@ Nothing catches a recurrence of a fixed anti-pattern below unless its bullet nam
   comparison. TypeScript asserts its host never hands it a redirect (a package installed twice at one version), so the
   second program's host hands it the file the redirect stands for; without that, linting such a file threw.
 - Cost: where no part is never at the default (a case runs into it, or some cases are missing), TypeScript narrows the
-  switch again in the second program (owner question). On this repo the rule took 3.6 ms in house round 7
+  switch again in the second program (accepted: owner 2026-10-27, q-lint-house-rebuild-cost). On this repo the rule took 3.6 ms in house round 7
   (`npx eslint . -f json --stats` from the root, its `stats` times summed over the files).
   Correction (house round 7 review): cut, as no command here repeats them: the 6,000-case switch's 2.5 s against 0.7 s,
   its spec's 4.4 to 5.3 s against 3.0 s, and every other committed case under 10 ms (a script outside the repo and
@@ -379,3 +379,37 @@ Nothing catches a recurrence of a fixed anti-pattern below unless its bullet nam
   `runtime-globals.integration.test.ts`, and rule-data's `oxlint-file-types.integration.test.ts` (rule-data's tests take
   a timeout of their own). Each oxlint run took under 0.2 s alone. Not given one: tests spawning git or `npm pack`
   alone, and `cli/main.test.ts`, whose spawning module is mocked.
+
+## Slice 2, phase A (2026-10-31, oxlint 1.87, lanes S2-CASES and S2-DATA)
+- Fix support read from rule meta is not a measurement. Running both engines' fixes on the cases: `consistent-type-definitions`
+  and `consistent-type-assertions`, read as ESLint-only, fix alike; `unicorn/prefer-date-now` (`new Date() - start`)
+  and `prefer-string-slice`, not read so, fix some shapes only in ESLint.
+- oxlint's version can fix where ESLint's only reports, because the fix changes a result the code uses:
+  `unicorn/prefer-dom-node-append` rewrites `return parent.appendChild(child)` to `parent.append(child)`, which returns
+  undefined.
+- A rule whose ESLint version reads type information where it has it, though not `typed` in `rules.json`
+  (`unicorn/prefer-default-parameters`), measured alike on untyped cases and differs on a typed project.
+- oxlint's `typescript/array-type` fixes one level of a nested generic per run: `Array<Array<number>>` takes two `check`
+  runs to reach `number[][]`; ESLint's version took one.
+- `check` prints a moved rule's finding in oxlint's wording (`prefer-optional-catch-binding`: "Prefer omitting the catch
+  binding parameter if it is unused", ESLint's "Remove unused catch binding `error`.").
+
+## Slice 2, phase B (2026-10-31, oxlint 1.87, lanes S2-OX to S2-NODE, S2-DATA-B and S2-Z)
+- No shipped oxlint-run rule's fallback fixture fires in ESLint but not in oxlint, so phase B moved no rule.
+- A gate fixture seeds a case and proves nothing at our versions: at sonarjs 4.2.2 `no-nested-functions` reports past
+  five levels, not four, and `hardcoded-secret-signatures` skips a placeholder-looking value (`'hardcodedsecretvalue'`).
+- `react-hooks/preserve-manual-memoization` sat on the fallback skip list as "no fixture fires" beside a fixture that
+  fires in both engines (a manual memo the compiler cannot preserve); no test reddened. A skip's reason is checked by
+  nothing, and a stale one drops the rule from ESLint without oxlint.
+- In TS files oxlint reports a duplicate class member through its own check, with no rule code in its JSON, so
+  `no-dupe-class-members` reports nothing there.
+- Every file a `RuleCase` writes is linted (a `package.json` comes back `not linted`), so a rule reporting only beside
+  a stylesheet or a `package.json` (`css-modules/no-undef-class`, `n/no-unpublished-bin`,
+  `sonarjs/no-default-utility-imports`) gets no case.
+- react-hook-form's rules call `context.getScope`, which ESLint 10 removed, so unwrapped they throw; the case runner
+  wraps css-modules, react and react-hook-form in `fixupPluginRules` as the shipped config does (`pluginsAsShipped`).
+- `grep -l "rule: '"` misses case lists built through helpers or naming the rule by a constant (`proof-react.ts`,
+  `proof-unicorn.ts`, `proof-ts.ts`, `proof-test.ts`, `accepted-1011-hra.ts`, `ruleset-moves.ts`) and counts
+  `routed-to-eslint-for-a-reason.ts`, which holds none; `proof-cases.ts` is the index.
+- A hand break that drops a `rules.json` entry and regenerates rewrites files parallel lanes are reading; breaking a
+  catalog copy handed to `setUpRuleCaseOutcomes`, in one lock hold, does not.

@@ -25,6 +25,37 @@ Corrections since written (old → new → why):
   redundancy, outside test files (its row gains it); `unicorn/no-unnecessary-default-arguments` and both
   `drizzle-security/*` rules are `dropped`, each decided by its card, so lane DRZ builds nothing (its rows deleted) →
   owner 2026-10-24 (`docs/work/decisions.md`).
+- The verdicts table's JD, HP, CPT and EFF rows wait on cards J1, H1, C1 and E1 → all four answered: `jest-dom` and
+  `react-ssr` are opt-in, `compat/compat` checks the browsers Vite 8 builds for, and the Effect ruleset is
+  `libs: { effect: ['effect'] }` → owner 2026-10-24 and 2026-10-28 (`docs/work/decisions.md`). "What a consumer sees"
+  now says what each lane shipped and what waits on which card.
+- Lane PW: "No `files` (a page-object file outside tests uses `page`)" → `playwright/no-element-handle` and
+  `playwright/no-wait-for-selector` carry the test-file globs as their `files`, so a page object or other helper outside
+  the test files is not checked by them → owner 2026-10-27, "Only in test files" (q-lint-rc-pw-puppeteer-page;
+  `docs/work/decisions.md`).
+- "The compat answer" and card C1 call `baseline widely available` Vite's default build target → Vite 8 builds for a
+  fixed list, `chrome111`, `edge111`, `firefox114`, `safari16.4`, `ios16.4` (`ESBUILD_BASELINE_WIDELY_AVAILABLE_TARGET`,
+  `node_modules/vite/dist/node/chunks/node.js`, Vite 8.3.4), which `compat/compat` ships as its query; the browserslist
+  query is newer and moves with the date → lane CPT's measurement; owner 2026-10-28 (q-lint-compat-vite-target).
+- Lane CPT and "What a consumer sees": "`@mdn/browser-compat-data` is 20.6 MB unpacked" → figure deleted; what compat
+  adds to every install is in `docs/work/decisions.md` (q-lint-compat-install-size) → that figure is one package's
+  size, not what an install grows by (lane CPT's measurement).
+- "Files no lane touches": `withheld-fixes.json` "(but J1 option 3)" → edited: `check` withholds the fixes of six
+  `jest-dom/*` rules (lane JD) and of `@tanstack/query/stable-query-client` and
+  `zod/prefer-trim-before-string-length-checks` (lane LINT-HELD-RULES) → owner 2026-10-26/27 and 2026-10-28, "report
+  only" on each rule's card (`docs/work/decisions.md`).
+- Lane PW's "The eight rules", lane JD's "7 entries" and lane HP's "6 entries" → seven, six and four ship;
+  `playwright/prefer-web-first-assertions`, `jest-dom/prefer-pressed`, `hydration-proof/no-browser-global-in-render`
+  and `hydration-proof/no-locale-without-explicit-locale` stay `recommended`, each held on the card "What a consumer
+  sees" names, as are the four twins the verdicts table has waiting on P1 (answered: not shipped by default) → owner
+  2026-10-26/27 and 2026-10-28 (`docs/work/decisions.md`).
+- The bullet above → `prefer-web-first-assertions` and the four twins ship off by default
+  (q-lint-pw-off-by-default-where), `jest-dom/prefer-pressed` ships report only (q-lint-rc-pressed-fix-current-jest-dom),
+  and the two `hydration-proof` rules are `dropped` for now (q-lint-hp-left-off-record); the two TanStack property-order
+  rules wait on the cards their 2026-10-29 answer's build raised, not on q-lint-rc-tanstack-property-order-fix-spread →
+  owner 2026-10-29 (`docs/work/decisions.md`).
+- The bullet above → the two TanStack property-order rules are `dropped` (q-lint-rc-tanstack-property-order-which-skip,
+  q-lint-rc-tanstack-router-order-spread-crash) → owner 2026-10-30 (`docs/work/decisions.md`).
 
 Owner verdicts 2026-10-24 on the `rc-*` cards (the answers board,
 https://claude.ai/artifact/4GpMMzy64wzXqSPZaghWTJ). Every path below is from the repository root. Written by pm,
@@ -540,8 +571,7 @@ compat (`eslint-plugin-compat` 7.0.2) is CPT's, after C1.
   whose `package.json` names `last 1 chrome version`: under option 1 still reports (pinned as the written limit), under
   option 2 silent.
 - **Measure:** `check`'s stderr with stale browserslist data (`BROWSERSLIST_IGNORE_OLD_DATA` and baseline-browser-mapping's
-  old-data warning exist in the installed packages); the install-size change (`@mdn/browser-compat-data` is 20.6 MB unpacked,
-  `npm view @mdn/browser-compat-data dist.unpackedSize`), on every install whether or not `browser-targets` is listed.
+  old-data warning exist in the installed packages); the install-size change, on every install whether or not `browser-targets` is listed.
 - Written limits: the agent set has no ESLint `settings`, so a project cannot pass `settings.polyfills`; it narrows the
   target through `rules` instead.
 
@@ -576,27 +606,33 @@ questions.md "Parked" (R's report); plan.md Requirements "npm warnings" (DEP, if
 
 ## What a consumer sees (for the release note)
 
-Every rule ships at `error`, so this is a minor bump before 1.0 (docs/release.md). Existing configs that already list
-these rulesets get the rules on upgrade; `react-ssr`, `playwright`, `jest-dom`, `zod`, `tanstack-query`, `tanstack-router`
-and `drizzle` were created empty on 2026-10-17 and `init` lists them by default.
+Every rule ships at `error`, except those shipped off by default, so this is a minor bump before 1.0
+(docs/release.md). Existing configs that already list these rulesets get the rules on upgrade. `playwright`, `zod`,
+`tanstack-query`, `tanstack-router` and `drizzle` were created empty on 2026-10-17 and `init` lists them by default;
+`react-ssr` and `jest-dom` were too, and are now opt-in.
+"Report only": `check` applies none of the rule's fixes (`withheld-fixes.json`).
 
-| Ruleset (list) | Listed by `init` | Rules added |
-| --- | --- | --- |
-| redundancy (quality) | yes | `unicorn/prefer-logical-operator-over-ternary`; `unicorn/no-repeated-call-wrappers`, outside test and type-test files |
-| modern-js (quality) | yes | `prefer-named-capture-group`, `sonarjs/prefer-native-axios-alternative` |
-| comments (quality) | yes, but these run only where `allowSuppressions` is true, whatever is listed | `@eslint-community/eslint-comments/disable-enable-pair`, `no-duplicate-disable`, `require-description`; `rules` can no longer name them (a type error), as for the other rules `allowSuppressions` sets |
-| zod (libs.validation) | yes | the nine `zod/*` |
-| tanstack-query (libs.data), tanstack-router (libs.routing) | yes | the six `@tanstack/query/*`, the two `@tanstack/router/*` |
-| playwright (libs.testing) | yes | six of the eight `playwright/*`; `no-unnecessary-assertions` and `prefer-web-first-assertions` wait on cards q-lint-rc-unnecessary-assertions-measured and q-lint-rc-web-first-assertions-measured; the four that repeat a `vitest/*` rule are off by default (card P1), a team turns them on for its Playwright folder in `fileOverrides` |
-| jest-dom (libs.testing) | yes, or opt-in per card J1 | the seven `jest-dom/*` |
-| react-ssr (libs.ui) | yes, or opt-in per card H1 | the six `hydration-proof/*` |
-| node (runtimes) | yes | `e18e/prefer-throw-if-no-entry` |
-| tailwind (libs.styling) | opt-in | `shadcn/no-raw-colors` |
-| browser-targets (runtimes) | opt-in | `compat/compat`, with a default browser target (card C1) |
-| a new Effect ruleset | per E1 | the Effect port (card E1) |
+| Ruleset (list) | Listed by `init` | Rules added | Held, not shipped (the card each waits on) |
+| --- | --- | --- | --- |
+| redundancy (quality) | yes | `unicorn/prefer-logical-operator-over-ternary`; `unicorn/no-repeated-call-wrappers`, outside test and type-test files | – |
+| modern-js (quality) | yes | `prefer-named-capture-group`, `sonarjs/prefer-native-axios-alternative` | – |
+| comments (quality) | yes; these run only where `allowSuppressions` is true, and in editors only where the editor rulesets list `comments` | `@eslint-community/eslint-comments/disable-enable-pair`, `no-duplicate-disable`, `require-description`, which reads oxlint's switch-off comments too; `rules` cannot name them (a type error), as for the other rules `allowSuppressions` sets | – |
+| zod (libs.validation) | yes | the nine `zod/*`, `prefer-trim-before-string-length-checks` report only | – |
+| tanstack-query (libs.data), tanstack-router (libs.routing) | yes | `@tanstack/query/exhaustive-deps`, `no-rest-destructuring`, `no-unstable-deps`, `no-void-query-fn`, `stable-query-client` (report only); `@tanstack/router/route-param-names` | – |
+| playwright (libs.testing) | yes | `playwright/no-duplicate-slow`, `no-networkidle`, `no-unnecessary-assertions` (Vitest and Jest files too), `require-to-pass-timeout`, `valid-test-tags`; `no-element-handle` and `no-wait-for-selector` in test files only, so page objects and other helpers outside them go unchecked; in no ruleset, so off until a team names them in `rules`: `prefer-web-first-assertions` (report only) and the four that repeat a `vitest/*` rule, `no-focused-test`, `no-identical-title`, `prefer-hooks-on-top`, `require-to-throw-message` | – |
+| jest-dom (libs.testing) | opt-in | `jest-dom/prefer-checked`, `prefer-empty`, `prefer-in-document`, `prefer-pressed`, `prefer-required`, `prefer-to-have-attribute`, `prefer-to-have-class`, all report only | – |
+| react-ssr (libs.ui) | opt-in | `hydration-proof/no-storage-in-initial-render`, `no-timezone-without-explicit-timezone`, `no-window-render-branch`, `require-stable-server-snapshot` | – |
+| node (runtimes) | yes | `e18e/prefer-throw-if-no-entry` | – |
+| tailwind (libs.styling) | opt-in | `shadcn/no-raw-colors`; where a shadcn `components.json` names a Tailwind v3 stylesheet (`@tailwind` directives) or a ui alias that resolves to no folder, `@shadcn/lint` prints a warning about each on stderr at every run, the stylesheet's wrongly saying it does not import Tailwind and naming a rule we do not ship | – |
+| browser-targets (runtimes) | opt-in | `compat/compat`, against the browsers Vite 8 builds for, plus the project's own browserslist where it names one | – |
+| effect (libs.effect) | yes | `house/no-manual-effect-error-tag` | – |
 
-Also: ten plugins become dependencies (eleven with compat); every new plugin's rules become `RuleId`s a consumer may
-turn on in `rules`; the install grows (DEP's measurement; compat adds `@mdn/browser-compat-data`, 20.6 MB unpacked).
+Also: eslint-plugin-compat and these plugins become dependencies: @eslint-community/eslint-plugin-eslint-comments,
+eslint-plugin-zod, eslint-plugin-playwright, @tanstack/eslint-plugin-query, @tanstack/eslint-plugin-router,
+eslint-plugin-jest-dom, eslint-plugin-hydration-proof, @e18e/eslint-plugin, @shadcn/lint. The install grows (DEP's
+measurement; compat's in `docs/work/decisions.md`, q-lint-compat-install-size). The two `drizzle-security/*` rules
+are dropped (q-lint-dep-drizzle-advisory), so `drizzle` stays empty, and so, for now, are
+`hydration-proof/no-browser-global-in-render` and `no-locale-without-explicit-locale` (q-lint-hp-left-off-record).
 
 <questions>
 

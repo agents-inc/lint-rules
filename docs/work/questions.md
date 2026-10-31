@@ -3,17 +3,17 @@
 Each: question → my default if unanswered → what it blocks.
 
 ## Parked by the owner (address later)
-- **8 modern-js rules that need APIs Node 22 lacks** (owner 2026-10-10: "we will address later"). Shipped off since 2026-10-15, data lane, as the owner's third sweep chose (decisions.md): parked in `rule-candidates.json`. Their autofixes write code that crashes on Node 22. Owner floated a Node-version property; browser code would need browser targets too (plan.md "Target versions … not needed").
-  `unicorn/prefer-regexp-escape`, `unicorn/prefer-error-is-error`, `unicorn/prefer-iterator-concat`, `unicorn/prefer-uint8array-base64`, `unicorn/prefer-temporal`, `unicorn/prefer-get-or-insert-computed`, `unicorn/prefer-promise-try`, `unicorn/prefer-dispose`.
+- **Rules that need APIs Node 22 lacks** (owner 2026-10-10: "we will address later"). They ship off by default (owner 2026-10-29, q-lint-pw-off-by-default-where; 2026-10-30, q-lint-newest-language-fix): a team turns one on by naming it in `agents-inc.lint.mts`, and `check` and editors withhold each one's fix, and prefer-temporal's suggestions (`withheld-fixes.json`). Their fixes or suggestions write code that crashes on Node 22. Owner floated a Node-version property; browser code would need browser targets too.
+  The list: `NEWEST_LANGUAGE_RULES_SHIPPED_OFF`, and `RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD` but for its two jsdom rules, in `packages/rule-data/src/__tests__/cases/round-2-drops.ts`.
 
 ## Open
 1. (moved to Parked)
 2. (Moot 2026-10-11: no extras argument; the team's own config may set our IDs and the merge function makes ours win.)
 3. (Answered on the questions page 2026-10-11 (decisions.md), via #36: typed rules run only on files a tsconfig includes, agents and editors.)
-4. **Rules turned on via `rules` that no fixture proves.** → Default: allowed; routed to oxlint if it has a native non-type-aware version, else ESLint.
+4. (Moot 2026-10-27 (decisions.md, q-lint-unshipped-rules-untested): `rules` takes only the rules we ship.) Was: **Rules turned on via `rules` that no fixture proves.**
 5. (Resolved 2026-10-10, found by the questions-page check 2026-10-11: `hook-file-naming` is configurable with kebab-case as default, `prefer-arrow-callbacks` dropped, D1 fixed; decisions.md "Superseded".)
 6. (Answered on the questions page 2026-10-11 (decisions.md): commands `init` and `check`, no flags.)
-7. **Ruleset critique leftovers** (`ruleset-critique-r1.md` §4 ambiguous, Q15 triage). → Next critique iteration.
+7. (Answered by the owner 2026-10-30 (decisions.md) and built: `ruleset-critique-r2.md` §4, Q1–Q11, which replaced `ruleset-critique-r1.md` §4 and Q15.)
 9. (Done as the owner ruled 2026-10-11 (decisions.md): `~/dev/cli` commit 208ed593 makes agents-inc compile write only the hooks a sub-agent declares, so no generated sub-agent carries the Stop hook.) Was: agents-inc's generated Stop hook vs tests-first.
 13. (Settled 2026-10-10 per decisions.md: `no-eq-null` and `oxc/approx-constant` dropped; both rules-of-hooks checks and `react-hooks/rule-suppression` kept. Leftover double report moved to #35.)
 14. **`npm audit`: high** through our deps (functional → deepmerge-ts). → Before publishing. (Corrected 2026-10-24: was "6 high … (check-file → micromatch → braces; functional → deepmerge-ts)"; a fresh install of the packed package reports only functional → deepmerge-ts, lane DEP.)
@@ -80,7 +80,6 @@ Each: question → my default if unanswered → what it blocks.
 81. (Answered on the questions page 2026-10-20 (lint-a8-check-script-name): keep `unused-exports`, as built.) Was: **The new check's command name.**
 82. (Answered on the questions page 2026-10-20 (lint-a8-check-runs-before-typecheck): before every typecheck, as built.) Was: **Where the new check runs.**
 83. (Answered on the board 2026-10-24 (q-lint-dep-drizzle-advisory): "Leave it out for now"; both rules recorded `dropped` in `rule-candidates.json`, the reason in each `why` (decisions.md).) Was: **eslint-plugin-drizzle-security nests a vulnerable drizzle-orm**.
-8. **Gate defects in ai-benchmarking** (read-only here): no-baseline re-verify `TypeError`; `unicorn/prefer-string-starts-ends-with` runs nowhere; functional rules fire on tests; fixture proof matches bare names across engines; `check_rule_coverage.py` passes `SILENT`.
 
 ## Answered (owner, 2026-10-11)
 - #24 the runner brings its own ESLint and oxlint. #25 only our rules; consumers add supported rules via `rules`. #27 lines from `git diff`, inside `check`. #6 commands `init` and `check`; no flags (second sweep). #28 every change is checked, other sub-agents' included; the instructions say fix your own code, nothing in `check` filters. #29 no whole-file option; the owner tells agents. #26 factories stay exported: the editor set, imported into the team's own configs. Two sets `agentRulesets`/`editorRulesets` (owner 2026-10-10).

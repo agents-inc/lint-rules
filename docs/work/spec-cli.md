@@ -187,7 +187,7 @@ Unchanged from spec-next-batch part 3, with the answer: in files where suppressi
   - `src/cart.ts:30 no-console (warning) — <message>`
   - `src/broken.ts:4 parse error — <message>`
 - **Cut** (c5-again): the longest run of finding lines totalling at most 8,000 characters (a named constant), at least one whole finding, then `+<N> more findings in <M> files. Fix the ones above, then run check again to see them.` The summary still counts everything.
-- **Summary**, the last stdout line, singular forms where a count is 1 (q-c4):
+- **Summary**, the last stdout line, singular forms where a count is 1 (q-c4); "The list is complete" is left out where the list was cut or a file was not checked (Corrections):
   - errors: `check: <E> errors and <W> warnings in <F> of <C> changed files. The list is complete: fix what is in code you wrote, then run check again. Do not read the lint configuration or this package's source; each line says what to fix.`
   - warnings only: `check: no errors; <W> warnings in <F> of <C> changed files. The list is complete.`
   - clean: `check: no findings in <C> changed files.`
