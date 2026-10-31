@@ -11,6 +11,7 @@ import { recordAgentSettings } from './agent-settings.ts'
 import { type EditorParts, editorPartsOf } from './core/editor-parts.ts'
 import { projectedOnto, type Severity } from './core/lint-rules-input.ts'
 import { doesProjectUseOxlint } from './core/project-uses-oxlint.ts'
+import { refuseRulesWeDoNotShip } from './core/rules-we-do-not-ship.ts'
 import { refuseATsconfigRootDirThatIsNoFolder } from './core/tsconfig-root-dir-folder.ts'
 
 type RuleEntry = Severity | readonly [Severity, ...unknown[]]
@@ -138,6 +139,7 @@ export function defineLintRules<
   lintRules: LintRules<Glob, Root, AgentDomain, EditorDomain, Id, EntryAgentDomain, EntryEditorDomain, EntryId> & LintRulesRead,
 ): DefinedLintRules {
   refuseATsconfigRootDirThatIsNoFolder(lintRules.tsconfigRootDir)
+  refuseRulesWeDoNotShip(lintRules, catalog)
   const editorRulesets = editorPartsOf(lintRules, catalog, doesProjectUseOxlint(lintRules.tsconfigRootDir))
   recordAgentSettings(editorRulesets, projectedOnto('agentRulesets', lintRules))
   return { editorRulesets }

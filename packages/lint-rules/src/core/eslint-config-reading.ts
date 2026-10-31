@@ -17,6 +17,9 @@ type PrefixOfOurPlugin = { readonly teams: string; readonly ours: string }
 
 const PREFIX_SEPARATOR = '/'
 
+// A plugin we replaced with a fork is ours under the original's name too (owner, q-gap-lint-a11y-original-prefix).
+const OUR_FORK_BY_ORIGINAL_NAME: ReadonlyMap<string, string> = new Map([['eslint-plugin-jsx-a11y', 'eslint-plugin-jsx-a11y-x']])
+
 /** Every rule of ours the team's blocks set at any severity, sorted. A key under a prefix the team registers one of our plugins under also names our rule (antfu's `react` holds both our @eslint-react and eslint-plugin-react). */
 export function ruleIdsTheTeamsEslintConfigSets(teamBlocks: readonly Linter.Config[], ourPlugins: EslintPluginRegistry, catalog: Readonly<Catalog>): string[] {
   const prefixesOfOurPlugins = prefixesOfOurPluginsIn(pluginsRegisteredBy(teamBlocks), ourPlugins)
@@ -65,7 +68,11 @@ function ourPrefixesOf(teamPlugin: Readonly<ESLint.Plugin>, ourPlugins: EslintPl
 function isTheSamePlugin(teamPlugin: Readonly<ESLint.Plugin>, ourPlugin: Readonly<ESLint.Plugin>): boolean {
   if (teamPlugin === ourPlugin) return true
   const teamPluginName = nameOfPlugin(teamPlugin)
-  return teamPluginName !== undefined && teamPluginName === nameOfPlugin(ourPlugin)
+  return teamPluginName !== undefined && ourNameFor(teamPluginName) === nameOfPlugin(ourPlugin)
+}
+
+function ourNameFor(pluginName: string): string {
+  return OUR_FORK_BY_ORIGINAL_NAME.get(pluginName) ?? pluginName
 }
 
 /** ESLint takes a plugin's name from its top level before its meta. */

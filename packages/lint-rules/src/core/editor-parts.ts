@@ -1,8 +1,9 @@
 // What `agents-inc.lint.mts` exports. Nothing here may import a plugin, the parser, `globals`, typescript-eslint,
 // `@eslint/compat` or import-x: a team's oxlint config imports the parts and must not load ESLint's side.
 
-import { type Catalog, isOxlintRoute, routeOf } from '@workspace/rule-data'
-import { isEslintRoute } from './catalog-lookups.ts'
+import { type Catalog, isOxlintRoute, routeOf, type RuleRoute } from '@workspace/rule-data'
+import { WITHHELD_FIXES } from '../cli/check/withheld-fixes.ts'
+import { isEslintRoute, isSuppressionRoute } from './catalog-lookups.ts'
 import { isRecord } from './is-record.ts'
 import { type FileOverrideInput, type LintRulesInput, projectedOnto, type TwoSetLintRulesInput } from './lint-rules-input.ts'
 import {
@@ -51,10 +52,24 @@ export function isOxlintPart(given: unknown): given is OxlintPart {
 
 export function editorPartsOf(lintRules: TwoSetLintRulesInput, catalog: Readonly<Catalog>, usesOxlint: boolean): EditorParts {
   const settings = editorSettingsOf(lintRules)
+  const editorCatalog = catalogWithEditorRulesets(catalog)
   const { tsconfigRootDir } = lintRules
   return usesOxlint
-    ? partsBesideOxlint(tsconfigRootDir, resolveRuleLayersBesideOxlint(settings, catalog), catalog)
-    : partsWithoutOxlint(tsconfigRootDir, resolveRuleLayers(settings, catalog), catalog)
+    ? partsBesideOxlint(tsconfigRootDir, resolveRuleLayersBesideOxlint(settings, editorCatalog), catalog)
+    : partsWithoutOxlint(tsconfigRootDir, resolveRuleLayers(settings, editorCatalog), catalog)
+}
+
+/** Nothing is in a team's editor config unless its editor rulesets list it, so the editor parts run a rule `allowSuppressions` decides as a rule of its editor ruleset, where it has one. */
+function catalogWithEditorRulesets(catalog: Readonly<Catalog>): Catalog {
+  return { ...catalog, rules: new Map(catalog.rules.entries().map(([id, route]) => [id, routeInEditors(route)])) }
+}
+
+/** At its setting while suppressions are allowed, as they always are in the editor parts. One that setting turns off stays as it is: off in every editor. */
+function routeInEditors(route: RuleRoute): RuleRoute {
+  if (!isSuppressionRoute(route)) return route
+  const { whenSuppressions: { allowed }, editorRuleset, ...shipped } = route.shipped
+  if (editorRuleset === undefined || allowed === 'off') return route
+  return { ...route, shipped: { ...shipped, ruleset: editorRuleset, options: allowed.options } }
 }
 
 function partsWithoutOxlint(tsconfigRootDir: string, layers: RuleLayers, catalog: Readonly<Catalog>): EditorParts {
@@ -77,8 +92,8 @@ function withoutItsSuppressionSetting({ allowSuppressions, ...entry }: FileOverr
 /** A rule a part only turns off is the team's to set in the other engine: our off removes only ours. */
 function partsBesideOxlint(tsconfigRootDir: string, resolved: RuleLayers, catalog: Readonly<Catalog>): EditorParts {
   const layers = layersWithEachTwinPairDecidedBesideOxlint(resolved, catalog)
-  const eslintLayers = layersKeepingRules(layers, ({ id }) => isEslintRoute(routeOf(id, catalog)))
-  const oxlintLayers = layersKeepingRules(layers, ({ id }) => isOxlintRoute(routeOf(id, catalog)))
+  const eslintLayers = layersKeepingRules(layers, ({ id }) => runsInEslintBesideOxlint(id, catalog))
+  const oxlintLayers = layersKeepingRules(layers, ({ id }) => !runsInEslintBesideOxlint(id, catalog))
   return {
     eslint: { engine: 'eslint', tsconfigRootDir, usesOxlint: true, layers: eslintLayers, oxlintLayers },
     oxlint: { engine: 'oxlint', tsconfigRootDir, layers: oxlintLayers, turnedOnInEslint: ruleIdsOnIn(eslintLayers) },
@@ -142,6 +157,14 @@ function keepsNoRule(): boolean {
 }
 
 function runsInEslintWithoutOxlint({ id }: StatedRule, catalog: Readonly<Catalog>): boolean {
-  if (isEslintRoute(routeOf(id, catalog))) return true
-  return catalog.ruleIdsWithAnEslintVersion.has(id) && !catalog.eslintFallbackSkips.has(id)
+  return isEslintRoute(routeOf(id, catalog)) || canEslintTakeOver(id, catalog)
+}
+
+/** oxlint's editor integration offers each fix it has, and its config cannot drop one rule's (1.87), so ESLint, whose merge leaves fixes out, takes over each oxlint rule whose fix check withholds. */
+function runsInEslintBesideOxlint(ruleId: string, catalog: Readonly<Catalog>): boolean {
+  return isEslintRoute(routeOf(ruleId, catalog)) || (WITHHELD_FIXES.has(ruleId) && canEslintTakeOver(ruleId, catalog))
+}
+
+function canEslintTakeOver(ruleId: string, catalog: Readonly<Catalog>): boolean {
+  return catalog.ruleIdsWithAnEslintVersion.has(ruleId) && !catalog.eslintFallbackSkips.has(ruleId)
 }

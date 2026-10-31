@@ -11,6 +11,7 @@ import { slashSeparated } from '../../core/slash-separated.ts'
 import { EXIT_CLEAN } from '../exit-codes.ts'
 import type { Outcome, StdoutIfStopped } from '../outcome.ts'
 import { textOfLines } from '../printed-lines.ts'
+import { silenceBrowserslistsOldDataMessage } from './browserslist-old-data.ts'
 import type { ChangedLines } from './changed-lines.ts'
 import { componentFileBlocksOf, isAComponentExtension } from './component-files.ts'
 import { eslintPartExportedBy, type FoundConfig, nearestConfig, refuseAnotherCopy } from './config-lookup.ts'
@@ -56,6 +57,7 @@ const EXTENSION_DOT = '.'
  * the files it fixed by then.
  */
 export async function checkIn(cwd: string, signal: Readonly<AbortSignal>, ifStopped: StdoutIfStopped): Promise<Outcome> {
+  silenceBrowserslistsOldDataMessage()
   const gitTopLevel = gitTopLevelOf(cwd)
   if (gitTopLevel === null) throw new Error(notInGit(cwd))
   const config = refuseAnotherCopy(nearestConfig(cwd, gitTopLevel))

@@ -23,6 +23,7 @@ import { bothOf, EVERY_FILE, eitherOf, type FilesCondition, type FilesEntry, fil
 import { SVELTE_RUNES, TEST_RUNNER_GLOBALS } from './framework-globals.ts'
 import { normalizeGlob } from './globs.ts'
 import type { LintRulesInput } from './lint-rules-input.ts'
+import { nextJsAppFileTest } from './next-js-apps.ts'
 import type { ProjectFacts } from './project-facts.ts'
 import {
   type EnvChanges,
@@ -40,6 +41,7 @@ import {
   type SuppressionLayer,
   tsFileRulesOf,
 } from './resolve-rule-layers.ts'
+import { withOurTsIgnoreMessage } from './ts-ignore-message.ts'
 import {
   agentBuildLayersOf,
   entryStatements,
@@ -194,6 +196,11 @@ const OPTIONS_PROBE_RULE = 'rule'
 const OPTIONS_PROBE_ID = `${OPTIONS_PROBE_PLUGIN}/${OPTIONS_PROBE_RULE}`
 const OPTIONS_PROBE_FILE = 'options-probe.js'
 const RULE_NAME_SEPARATOR = '/'
+// eslint-plugin-hydration-proof reads its settings under its own name, its rules' prefix. With 'next-app' it skips a
+// file without 'use client' in any folder named app: a Next.js Server Component, but a Remix route there hydrates.
+const HYDRATION_PROOF = 'hydration-proof'
+const SERVER_COMPONENTS_IN_NEXT_JS_APPS: EslintSettings = { [HYDRATION_PROOF]: { serverComponents: 'next-app' } }
+const NEXT_JS_SERVER_COMPONENTS_BLOCK = `${BLOCK}/next-js-server-components`
 
 const DO_NOTHING_RULE: Rule.RuleModule = { meta: { schema: false }, create: listeningToNothing }
 
@@ -203,7 +210,7 @@ const NO_RULE_NAMES: ReadonlyMap<string, readonly string[]> = new Map()
 // Settings for TS files alone exist only beside oxlint, where no core rule is taken over.
 const NO_LAYER_RULES: LayerRules = { settings: [], takeovers: [] }
 
-/** Blocks in order: global ignores, base, Svelte runes, test globals, typed, scopes, file overrides, extension offs, then the oxlint off-switch. */
+/** Blocks in order: global ignores, base, Svelte runes, test globals, Next.js Server Components, typed, scopes, file overrides, extension offs, then the oxlint off-switch. */
 export function buildEslintConfig(
   lintRules: LintRulesInput,
   catalog: Readonly<Catalog>,
@@ -211,9 +218,10 @@ export function buildEslintConfig(
   projectFacts: ProjectFacts,
 ): Linter.Config[] {
   const layers = agentBuildLayersOf(lintRules, catalog)
+  const eslintLayers = layersKeepingRules(layers, ({ id }) => isEslintRoute(routeOf(id, catalog)))
   const source: EslintBlocksSource = {
-    layers: layersKeepingRules(layers, ({ id }) => isEslintRoute(routeOf(id, catalog))),
-    plugins: agentPluginsOf(plugins, catalog),
+    layers: eslintLayers,
+    plugins: agentPluginsOf(plugins, eslintLayers, catalog),
     linterOptions: agentLinterOptionsOf(layers.suppressionMode),
     settings: buildEslintSettings(projectFacts),
     typeInformation: { from: 'ours', tsconfigRootDir: lintRules.tsconfigRootDir, isOutsideEveryTsconfig: projectFacts.isOutsideEveryTsconfig },
@@ -226,8 +234,9 @@ export function buildEslintConfig(
 }
 
 /** The agent build reads no team config, so each plugin is ours, with a stub for each oxlint-run rule's names. */
-function agentPluginsOf(plugins: EslintPluginRegistry, catalog: Readonly<Catalog>): ReadonlyMap<string, ESLint.Plugin> {
-  return pluginsForEveryBlock(plugins, NO_TEAM_PLUGINS, { ruleNamesRun: NO_RULE_NAMES, ruleNamesStubbed: oxlintRuleNamesByPrefix(catalog) })
+function agentPluginsOf(plugins: EslintPluginRegistry, eslintLayers: RuleLayers, catalog: Readonly<Catalog>): ReadonlyMap<string, ESLint.Plugin> {
+  const ourPlugins = pluginsForEveryBlock(plugins, NO_TEAM_PLUGINS, { ruleNamesRun: NO_RULE_NAMES, ruleNamesStubbed: oxlintRuleNamesByPrefix(catalog) })
+  return withOurTsIgnoreMessage(ourPlugins, ruleIdsOnIn(eslintLayers))
 }
 
 /** oxlint runs a core rule and its typescript-eslint extension as one rule, so the extension is off wherever our oxlint part runs that core rule. */
@@ -262,8 +271,7 @@ export function eslintBlocksBeforeTheOffSwitch(source: BlocksSource, catalog: Re
     globalIgnores: globalIgnoresBlocks(eslintGlobalIgnoresOf(layers)),
     base: baseBlock(layers.env, eslintRuleMap(settingsPlaced('plain', topLevelRules.settings)), source),
     afterTheBase: [
-      svelteRunesBlock(),
-      testRunnerGlobalsBlock(),
+      ...blocksStatingNoRule(layers),
       ...topLevelBlocksAfterTheBase(topLevel, across, source),
       ...entries.flatMap((entry, index) => fileOverrideBlocks(entry, index, source, across.inTestFiles)),
     ],
@@ -368,6 +376,10 @@ function baseBlock(
   }
 }
 
+function blocksStatingNoRule(layers: RuleLayers): Linter.Config[] {
+  return [svelteRunesBlock(), testRunnerGlobalsBlock(), ...nextJsServerComponentsBlocks(layers)]
+}
+
 /** Names only Svelte's JS and TS files: naming .svelte files would make ESLint lint them, which our parser cannot read. */
 function svelteRunesBlock(): Linter.Config {
   return { name: SVELTE_RUNES_BLOCK, files: SVELTE_RUNES.files.filter(matchesOnlyJsAndTs), languageOptions: { globals: globalsOfEnv(SVELTE_RUNES.env) } }
@@ -376,6 +388,17 @@ function svelteRunesBlock(): Linter.Config {
 /** Names JS and TS files alone, so ESLint lints no file it would not lint without it. */
 function testRunnerGlobalsBlock(): Linter.Config {
   return { name: TEST_RUNNER_GLOBALS_BLOCK, files: [...TEST_RUNNER_GLOBALS.files], languageOptions: { globals: globalsOf(TEST_RUNNER_GLOBALS.envs) } }
+}
+
+/** Only where a hydration-proof rule of ours runs, kept to the files whose own nearest package.json lists next; a team block after it giving the setting decides. */
+function nextJsServerComponentsBlocks(layers: RuleLayers): Linter.Config[] {
+  if (!runsAHydrationProofRule(layers)) return []
+  const jsAndTsFilesInNextJsApps = filesEntryAlsoMatching(JS_AND_TS_FILES, nextJsAppFileTest())
+  return [{ name: NEXT_JS_SERVER_COMPONENTS_BLOCK, files: [jsAndTsFilesInNextJsApps], settings: SERVER_COMPONENTS_IN_NEXT_JS_APPS }]
+}
+
+function runsAHydrationProofRule(layers: RuleLayers): boolean {
+  return ruleIdsOnIn(layers).some((ruleId) => pluginPrefixOf(ruleId) === HYDRATION_PROOF)
 }
 
 function typedBlocks(
@@ -911,7 +934,7 @@ function globalsOfEnv(env: string): Readonly<Record<string, boolean>> {
   return envGlobals
 }
 
-/** ESLint refuses a suppression comment for a rule it has no definition of, so each oxlint-routed rule ESLint lacks gets a do-nothing stub. */
+/** ESLint refuses a suppression comment for a rule it has no definition of. */
 function pluginUnder(
   prefix: string,
   registry: EslintPluginRegistry,

@@ -1,4 +1,4 @@
-import type { RulesetDefinition, RulesetList } from '@workspace/rule-data'
+import { catalog, pluginPrefixOf, type RuleRoute, type RulesetDefinition, type RulesetList } from '@workspace/rule-data'
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import { THIS_PACKAGE } from '../../core/package-json-files.ts'
 import { textOfLines } from '../printed-lines.ts'
@@ -29,6 +29,9 @@ const INDENT = '  '
 const LIST_DEPTH = 2
 const DOMAIN_DEPTH = 3
 const BARE_KEY = /^[A-Za-z_$][\w$]*$/u
+const PLAYWRIGHT_PLUGIN = 'playwright'
+const PLAYWRIGHT_TESTS_FOLDER = 'e2e/**'
+const PLAYWRIGHT_EXAMPLE_COMMENT = 'Opt-in, so off: uncomment to turn these on for your Playwright tests, matched by folder as here or by file name.'
 
 /**
  * Opt-in rulesets are named only in a comment above their list's key, those that sort code again
@@ -73,7 +76,29 @@ function ignoresLines(): string[] {
 }
 
 function closingLines(): string[] {
-  return ['  rules: {},', '', '  fileOverrides: [],', '})', '', `export const { eslint, oxlint } = config.editorRulesets`]
+  return ['  rules: {},', '', ...fileOverridesLines(), '})', '', `export const { eslint, oxlint } = config.editorRulesets`]
+}
+
+function fileOverridesLines(): string[] {
+  return ['  fileOverrides: [', `${indentOf(LIST_DEPTH)}// ${PLAYWRIGHT_EXAMPLE_COMMENT}`, ...commentedOut(playwrightExampleLines(), LIST_DEPTH), '  ],']
+}
+
+function playwrightExampleLines(): string[] {
+  const ruleLines = playwrightRulesShippedOff().map((id) => `${indentOf(LIST_DEPTH)}${quoted(id)}: 'error',`)
+  return ['{', `${INDENT}files: [${quoted(PLAYWRIGHT_TESTS_FOLDER)}],`, `${INDENT}rules: {`, ...ruleLines, `${INDENT}},`, '},']
+}
+
+/** In ID order, as the catalog holds them. */
+function playwrightRulesShippedOff(): string[] {
+  return catalog.rules.values().toArray().filter(isPlaywrightRuleShippedOff).map(({ id }) => id)
+}
+
+function isPlaywrightRuleShippedOff({ id, shipped }: Readonly<RuleRoute>): boolean {
+  return shipped !== null && 'offByDefault' in shipped && pluginPrefixOf(id) === PLAYWRIGHT_PLUGIN
+}
+
+function commentedOut(lines: readonly string[], depth: number): string[] {
+  return lines.map((line) => `${indentOf(depth)}// ${line}`)
 }
 
 function flatListLines(list: FlatList, definitions: readonly RulesetDefinition[]): string[] {

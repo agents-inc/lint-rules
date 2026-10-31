@@ -1,8 +1,10 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
 import { ruleNameOf } from '@workspace/rule-data/rule-id-parts'
 import { isRecord } from '../../core/is-record.ts'
+import { namedGroupOf } from '../../core/named-groups.ts'
 import { readOnce } from '../../core/read-once.ts'
 import { printedTextOf } from '../printed-lines.ts'
+import { textOfFileAt } from './fix-writes.ts'
 import { OXLINT_PRINTED_NOTHING, oxlintFailed } from './texts.ts'
 
 export type OxlintSpan = { readonly line: number; readonly offset: number; readonly length: number }
@@ -40,6 +42,9 @@ type JsonRead = { readonly json: unknown } | Unreadable
 type Unreadable = { readonly unreadable: unknown }
 
 const SPAN_PLACES = ['line', 'offset', 'length'] as const satisfies ReadonlyArray<keyof OxlintSpan>
+// oxlint names a file it could not open in the message alone, with no `filename`, `code` or place (1.87).
+const COULD_NOT_OPEN = /^Failed to open file (?<path>.+) with error "/u
+const NO_DIAGNOSTICS_IN_THE_JSON = 'the JSON oxlint printed has no diagnostics'
 
 const ruleIdsByCodeOf = new WeakMap<Catalog, ReadonlyMap<string, string>>()
 
@@ -51,7 +56,8 @@ export function labelOfOxlintCode(code: string, catalog: Readonly<Catalog>): str
 
 /**
  * oxlint exits 1 for findings and for a refused config alike (1.87), so only the output tells them
- * apart: anything but the report throws, quoting all oxlint printed.
+ * apart: anything but the report throws, quoting all oxlint printed. A file gone before oxlint opened
+ * it is no failure of oxlint's: check lists that file itself, as it finds it gone.
  */
 export function oxlintReportFrom({ stdout, stderr }: OxlintOutput): OxlintReport {
   const read = reportIn(stdout)
@@ -79,8 +85,10 @@ function diagnosticOf({ code, message, severity, filename, labels = [] }: RawOxl
 function reportIn(stdout: string): ReportRead {
   const read = jsonIn(stdout)
   if ('unreadable' in read) return read
-  const diagnostics = isRecord(read.json) ? read.json['diagnostics'] : undefined
-  if (!isListOfDiagnostics(diagnostics)) return { unreadable: new Error('the JSON oxlint printed has no diagnostics') }
+  const entries = isRecord(read.json) ? read.json.diagnostics : undefined
+  if (!isList(entries)) return { unreadable: new Error(NO_DIAGNOSTICS_IN_THE_JSON) }
+  const diagnostics = entries.filter((entry) => !isAGoneFileOxlintCouldNotOpen(entry))
+  if (!diagnostics.every(isRawOxlintDiagnostic)) return { unreadable: new Error(NO_DIAGNOSTICS_IN_THE_JSON) }
   return { report: { diagnostics } }
 }
 
@@ -93,8 +101,20 @@ function jsonIn(stdout: string): JsonRead {
   }
 }
 
-function isListOfDiagnostics(diagnostics: unknown): diagnostics is readonly RawOxlintDiagnostic[] {
-  return Array.isArray(diagnostics) && diagnostics.every(isRawOxlintDiagnostic)
+function isList(value: unknown): value is readonly unknown[] {
+  return Array.isArray(value)
+}
+
+/** check read each file it names to oxlint, so one oxlint could not open and check now finds no file at went while check ran. */
+function isAGoneFileOxlintCouldNotOpen(entry: unknown): boolean {
+  const path = pathOxlintCouldNotOpen(entry)
+  return path !== null && textOfFileAt(path) === null
+}
+
+function pathOxlintCouldNotOpen(entry: unknown): string | null {
+  const message = isRecord(entry) ? entry.message : undefined
+  const couldNotOpen = isText(message) ? COULD_NOT_OPEN.exec(message) : null
+  return couldNotOpen === null ? null : namedGroupOf(couldNotOpen, 'path')
 }
 
 function isRawOxlintDiagnostic(diagnostic: unknown): diagnostic is RawOxlintDiagnostic {

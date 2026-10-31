@@ -4,6 +4,7 @@ import { pluginPrefixOf, ruleNameOf } from '@workspace/rule-data/rule-id-parts'
 import type { AllowWarnDeny, DummyRuleMap, ExternalPluginEntry, OxlintConfig, OxlintOverride, RuleCategories } from 'oxlint'
 import { type OxlintPlugin, oxlintPluginNamed, sortedUnique, toOxlintPlugin } from './build-oxlint-config.ts'
 import { ruleIdsNamedInEslint } from './catalog-lookups.ts'
+import { isRecord } from './is-record.ts'
 import { namedGroupsOf } from './named-groups.ts'
 import type { OverrideFiles } from './oxlint-override-files.ts'
 
@@ -106,7 +107,7 @@ export function ruleIdsTheTeamsOxlintConfigSets(theirs: Readonly<OxlintConfig>, 
   return sortedUnique([...rulesItsStatementsOrCategoriesSet.map(({ id }) => id), ...ruleIdsKeyedUnderItsJsPlugins(configs, catalog)])
 }
 
-/** At any severity, at a root or in an override, including a statement oxlint skips as its plugin is listed neither there nor at the root (owner 2026-10-22). */
+/** At any severity, at a root or in an override, including a statement oxlint skips as its plugin is listed neither there nor at the root. */
 function rulesItsStatementsSet(configs: readonly OxlintConfig[], bySpelling: OxlintRulesBySpelling): OxlintRule[] {
   return [...configs, ...overridesIn(configs)].flatMap((statingRules) => rulesKeyedIn(rulesOf(statingRules), bySpelling))
 }
@@ -126,21 +127,40 @@ export function pluginsAppliedIn(override: Readonly<OxlintOverride>, team: TeamR
 
 /** A type-aware rule counts only where the config's options turn those on. */
 function rulesItsCategoriesRun(written: CategorySeverities, team: TeamResolution, areTypeAwareRulesRun: boolean, catalog: Readonly<Catalog>): OxlintRule[] {
-  const listedAnywhere = pluginsListedAnywhere(team)
+  const reached = pluginsItsCategoriesReach(team)
   return catalog.oxlintRules
     .filter((rule) => isOn(categorySeverityOf(rule, written)))
-    .filter((rule) => listedAnywhere.has(pluginOf(rule)))
+    .filter((rule) => reached.has(pluginOf(rule)))
     .filter((rule) => areTypeAwareRulesRun || !ruleIdsOxlintRunsTypeAware.has(rule.id))
 }
 
-function pluginsListedAnywhere({ rootPlugins, listings }: TeamResolution): ReadonlySet<OxlintPlugin> {
-  return new Set([ALWAYS_RUN, ...rootPlugins, ...listings.flatMap(({ plugins }) => [...plugins])])
+/** Where every listing lists one set holding each root plugin, oxlint runs the listed plugins' category rules in no file (measured, 1.87). Listings of different sets may match one file as far as their globs tell, so there their plugins count. */
+function pluginsItsCategoriesReach(team: TeamResolution): ReadonlySet<OxlintPlugin> {
+  const atTheRoot = pluginsAppliedAtTheRoot(team)
+  if (areAllListingsOneSetHoldingEachRootPlugin(team)) return atTheRoot
+  return new Set([...atTheRoot, ...pluginsListedInOverrides(team)])
+}
+
+export function pluginsListedInOverrides({ listings }: TeamResolution): OxlintPlugin[] {
+  return listings.flatMap(({ plugins }) => [...plugins])
+}
+
+function areAllListingsOneSetHoldingEachRootPlugin(team: TeamResolution): boolean {
+  const [first, ...others] = team.listings
+  return first !== undefined && listsEveryRootPlugin(first, team) && others.every(({ plugins }) => isTheSameSet(plugins, first.plugins))
+}
+
+export function listsEveryRootPlugin({ plugins }: Listing, { rootPlugins }: TeamResolution): boolean {
+  return rootPlugins.isSubsetOf(plugins)
+}
+
+export function isTheSameSet(first: ReadonlySet<string>, second: ReadonlySet<string>): boolean {
+  return first.size === second.size && first.isSubsetOf(second)
 }
 
 /** `--type-aware` on the command line is out of its sight. */
 function runsTypeAwareRules({ options }: Readonly<OxlintConfig>): boolean {
-  // eslint-disable-next-line @typescript-eslint/prefer-optional-chain -- a team's JSON oxlint config is judged by its keys alone (oxlintConfigInJson), so "options": null reaches here, and `?.` would read it as no options where the merge stops at a TypeError (oxlint-config-reading.test.ts)
-  return options !== undefined && options.typeAware === true
+  return options?.typeAware === true
 }
 
 function ruleIdsKeyedUnderItsJsPlugins(configs: readonly OxlintConfig[], catalog: Readonly<Catalog>): string[] {
@@ -187,8 +207,13 @@ function rulesStatedAtTheRootOf(config: Readonly<OxlintConfig>, bySpelling: Oxli
 
 /** Merged with each config it extends, last first (Oxlintrc::merge). Undefined where none lists any. */
 function resolvedPluginsOf(config: Readonly<OxlintConfig>): readonly OxlintPlugin[] | undefined {
-  const own = config.plugins === undefined ? undefined : config.plugins.map(pluginNamed)
-  return extendedObjectsOf(config).reduceRight<readonly OxlintPlugin[] | undefined>((merged, extended) => pluginListsMerged(merged, resolvedPluginsOf(extended)), own)
+  return extendedObjectsOf(config).reduceRight<readonly OxlintPlugin[] | undefined>((merged, extended) => pluginListsMerged(merged, resolvedPluginsOf(extended)), pluginsWrittenBy(config))
+}
+
+/** oxlint reads a null `plugins` as one left out (measured, 1.87), which a config read from JSON or an untyped module can hold. */
+function pluginsWrittenBy({ plugins }: Readonly<Pick<OxlintConfig, 'plugins'>>): readonly OxlintPlugin[] | undefined {
+  const written: OxlintConfig['plugins'] | null = plugins
+  return written?.map(pluginNamed)
 }
 
 function pluginListsMerged(
@@ -211,11 +236,7 @@ export function leavesCorrectnessAtOxlintsDefault(config: Readonly<OxlintConfig>
 /** The config's own over each config it extends, a later one over an earlier (Oxlintrc::merge). */
 function resolvedCategoriesOf(config: Readonly<OxlintConfig>): RuleCategories {
   const { categories = {} } = config
-  const extended = extendedObjectsOf(config)
-  // A team's JSON config is judged by its keys alone, so `categories` may be null: extending nothing, it reaches its
-  // readers as written, which stop at a TypeError (oxlint-config-reading.test.ts).
-  if (extended.length === 0) return categories
-  return { ...categoriesExtendedBy(extended), ...categories }
+  return { ...categoriesExtendedBy(extendedObjectsOf(config)), ...categories }
 }
 
 function categoriesExtendedBy(extended: readonly OxlintConfig[]): RuleCategories {
@@ -225,11 +246,11 @@ function categoriesExtendedBy(extended: readonly OxlintConfig[]): RuleCategories
 }
 
 function listingOf(override: Readonly<OxlintOverride>): Listing[] {
-  return override.plugins === undefined ? [] : [{ where: whereItApplies(override), plugins: pluginsListedBy(override) }]
+  return pluginsWrittenBy(override) === undefined ? [] : [{ where: whereItApplies(override), plugins: pluginsListedBy(override) }]
 }
 
-function pluginsListedBy({ plugins = [] }: Readonly<OxlintOverride>): ReadonlySet<OxlintPlugin> {
-  return new Set(plugins.map(pluginNamed).filter((plugin) => plugin !== ALWAYS_RUN))
+function pluginsListedBy(override: Readonly<OxlintOverride>): ReadonlySet<OxlintPlugin> {
+  return new Set((pluginsWrittenBy(override) ?? []).filter((plugin) => plugin !== ALWAYS_RUN))
 }
 
 function pluginNamed(name: string): OxlintPlugin {
@@ -272,12 +293,19 @@ function extendedObjectsOf(config: Readonly<OxlintConfig>): OxlintConfig[] {
   return extendedBy(config).filter(isAnObject)
 }
 
-export function extendedBy({ extends: extended = [] }: Readonly<OxlintConfig>): readonly ExtendedConfig[] {
-  return extended
+/** A null, which oxlint refuses, extends none: refuseAPathInExtends reads it before the refusal naming it. */
+export function extendedBy({ extends: extended }: Readonly<OxlintConfig>): readonly ExtendedConfig[] {
+  const written: OxlintConfig['extends'] | null = extended
+  return written ?? []
 }
 
+/** A null in extends, which oxlint refuses, is neither an object nor a path: refuseAPathInExtends reads it before the refusal naming it. */
 export function isAnObject(extended: ExtendedConfig): extended is OxlintConfig {
-  return typeof extended !== 'string'
+  return isRecord(extended)
+}
+
+export function isAPath(extended: ExtendedConfig): extended is string {
+  return typeof extended === 'string'
 }
 
 export function whereItApplies({ files, excludeFiles }: Readonly<OverrideFiles>): OverrideFiles {

@@ -13,6 +13,7 @@ import { keysAnOxlintConfigHolds } from './installed-oxlint.ts'
 import { isRecord } from './is-record.ts'
 import { parsedJsonc } from './jsonc.ts'
 import type { TeamEslintConfig } from './merge-eslint-config.ts'
+import { nullOxlintRefusesIn } from './nulls-oxlint-refuses.ts'
 import { extendedBy, isAnObject } from './oxlint-config-reading.ts'
 import { describeValue } from './value-descriptions.ts'
 
@@ -50,6 +51,8 @@ const JSON_EXTENSION = '.json'
 const ESLINT_CONFIG_HELPERS = 'eslint/config'
 const TOP_LEVEL_AWAIT_REFUSED = 'ERR_REQUIRE_ASYNC_MODULE'
 const KEYS_SEPARATOR = ', '
+// What a refusal of a null in the team's own file names first: nothing, as the refusal names that file already.
+const NAMED_BY_THE_REFUSAL = ''
 // ESLint refuses any other key (measured, 10.12), and defineConfig reads `extends`. Typed so a key
 // ESLint's own type gains or loses fails the typecheck.
 const KEYS_AN_ESLINT_CONFIG_OBJECT_HOLDS: ReadonlySet<string> = new Set(
@@ -145,7 +148,7 @@ function whyUnreadable(error: unknown): string {
 
 function oxlintConfigIn(file: string, keysAConfigHolds: ReadonlySet<string>): OxlintConfig {
   if (extname(file) !== JSON_EXTENSION) return oxlintConfigLoadedFrom(file, keysAConfigHolds)
-  return oxlintConfigInJson(file, keysAConfigHolds)
+  return oxlintConfigInJson(file, keysAConfigHolds, NAMED_BY_THE_REFUSAL)
 }
 
 function oxlintConfigLoadedFrom(file: string, keysAConfigHolds: ReadonlySet<string>): OxlintConfig {
@@ -154,7 +157,14 @@ function oxlintConfigLoadedFrom(file: string, keysAConfigHolds: ReadonlySet<stri
   if (handedByOurMerge.length > 0) return theOneConfigHandedOver(handedByOurMerge, TEAMS_ESLINT_CONFIG.merge)
   if (!isOxlintConfig(defaultExport)) throw new Error(`its default export is ${describeValue(defaultExport)}, not an oxlint config object`)
   refuseKeysNoConfigHolds([defaultExport], keysAConfigHolds, TEAMS_OXLINT_CONFIG)
-  return defaultExport
+  return withNoNullOxlintRefuses(defaultExport, NAMED_BY_THE_REFUSAL)
+}
+
+/** Reading into such a null would stop at a TypeError naming no file. `fileNamed` comes first in the problem. */
+function withNoNullOxlintRefuses(config: Readonly<OxlintConfig>, fileNamed: string): Readonly<OxlintConfig> {
+  const problem = nullOxlintRefusesIn(config)
+  if (problem !== undefined) throw new Error(`${fileNamed}${problem}`)
+  return config
 }
 
 function eslintConfigLoadedFrom(file: string): TeamEslintConfigRead {
@@ -217,19 +227,30 @@ function defaultExportOf(loaded: unknown): unknown {
   return isRecord(loaded) && isModuleNamespaceObject(loaded) ? loaded['default'] : loaded
 }
 
-/** Comments and trailing commas allowed. Judged by its keys before each config it extends by path is read in. */
-function oxlintConfigInJson(file: string, keysAConfigHolds: ReadonlySet<string>): OxlintConfig {
+/** Judged by its keys and its nulls before each config it extends by path is read in. */
+function oxlintConfigInJson(file: string, keysAConfigHolds: ReadonlySet<string>, fileNamed: string): OxlintConfig {
+  const config = withNoNullOxlintRefuses(oxlintConfigWrittenIn(file, keysAConfigHolds), fileNamed)
+  return { ...config, ...extendsReadFrom(config, dirname(file), keysAConfigHolds) }
+}
+
+/** Comments and trailing commas allowed. */
+function oxlintConfigWrittenIn(file: string, keysAConfigHolds: ReadonlySet<string>): OxlintConfig {
   const config = parsedJsonc(readFileSync(file, 'utf8'))
   if (!isOxlintConfig(config)) throw new Error(`${file} holds ${describeValue(config)}, not a JSON object`)
   refuseKeysNoConfigHolds([config], keysAConfigHolds, TEAMS_OXLINT_CONFIG)
-  return { ...config, ...extendsReadFrom(config, dirname(file), keysAConfigHolds) }
+  return config
 }
 
 function extendsReadFrom(config: Readonly<OxlintConfig>, folder: string, keysAConfigHolds: ReadonlySet<string>): Pick<OxlintConfig, 'extends'> {
   if (config.extends === undefined) return {}
   return {
-    extends: extendedBy(config).map((extended) => (isAnObject(extended) ? extended : oxlintConfigInJson(resolve(folder, extended), keysAConfigHolds))),
+    extends: extendedBy(config).map((extended) => (isAnObject(extended) ? extended : oxlintConfigExtendedByPath(resolve(folder, extended), keysAConfigHolds))),
   }
+}
+
+/** A null it holds is refused naming it, after the team's file the refusal names. */
+function oxlintConfigExtendedByPath(file: string, keysAConfigHolds: ReadonlySet<string>): OxlintConfig {
+  return oxlintConfigInJson(file, keysAConfigHolds, `${file}: `)
 }
 
 function eslintBlocksOf(config: unknown): readonly Linter.Config[] {

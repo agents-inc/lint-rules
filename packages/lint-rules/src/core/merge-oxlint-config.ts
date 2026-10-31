@@ -8,6 +8,7 @@ import type { OxlintPart } from './editor-parts.ts'
 import { bothOf, eitherOf, type FilesCondition, keyOfCondition } from './file-conditions.ts'
 import { EVERY_FILE_AT_ANY_DEPTH } from './globs.ts'
 import { isRecord } from './is-record.ts'
+import { nullOxlintRefusesIn } from './nulls-oxlint-refuses.ts'
 import {
   ALWAYS_RUN,
   type CategorySeverities,
@@ -15,15 +16,19 @@ import {
   configsInOxlintOrder,
   extendedBy,
   isAnObject,
+  isAPath,
   isOn,
+  isTheSameSet,
   leavesCorrectnessAtOxlintsDefault,
   type Listing,
+  listsEveryRootPlugin,
   oxlintRuleKeyed,
   oxlintRulesBySpelling,
   type OxlintRulesBySpelling,
   oxlintRuleSpelled,
   pluginOf,
   pluginsAppliedIn,
+  pluginsListedInOverrides,
   type RuleEntry,
   ruleIdsTheTeamsOxlintConfigSets,
   type TeamResolution,
@@ -109,16 +114,22 @@ function asTheTeamsConfigAloneRunsBeside(mergedRootPlugins: readonly OxlintPlugi
 // eslint-disable-next-line functional/no-return-void -- a refusal: a path it finds must stop the merge before it reads the team's ESLint config, so it throws, and where it finds none it has nothing to give back
 export function refuseAPathInExtends(theirs: Readonly<OxlintConfig>, oxlintConfigFile: string): void {
   const pathAt = configsInOxlintOrder(theirs)
-    .map((config) => extendedBy(config).findIndex((extended) => !isAnObject(extended)))
+    .map((config) => extendedBy(config).findIndex(isAPath))
     .find((index) => index !== NOT_FOUND)
   if (pathAt !== undefined) {
     throw configErrorIn(oxlintConfigFile, `extends[${String(pathAt)}] is a path, which oxlint refuses in a JS or TS config: import that file and put the object in extends`)
   }
 }
 
+/** oxlint refuses such a null, and reading into it would stop the merge at a TypeError naming no file, so the merge refuses it first, naming the path to it. */
+// eslint-disable-next-line functional/no-return-void -- a refusal, as refuseAPathInExtends: a null it finds must stop the merge before it reads the team's config, so it throws, and where it finds none it has nothing to give back
+export function refuseANullOxlintRefuses(theirs: Readonly<OxlintConfig>, oxlintConfigFile: string): void {
+  const problem = nullOxlintRefusesIn(theirs)
+  if (problem !== undefined) throw configErrorIn(oxlintConfigFile, problem)
+}
+
 function everyPluginListed(team: TeamResolution, ours: readonly OxlintOverride[], bySpelling: OxlintRulesBySpelling): OxlintPlugin[] {
-  const listedInOverrides = team.listings.flatMap(({ plugins }) => [...plugins])
-  return sortedUnique([...team.rootPlugins, ...listedInOverrides, ...pluginsOfTheRulesIn(ours, bySpelling)])
+  return sortedUnique([...team.rootPlugins, ...pluginsListedInOverrides(team), ...pluginsOfTheRulesIn(ours, bySpelling)])
 }
 
 function pluginsOfTheRulesIn(overrides: readonly OxlintOverride[], bySpelling: OxlintRulesBySpelling): OxlintPlugin[] {
@@ -255,10 +266,6 @@ function categorySwitchesOf(team: TeamResolution, catalog: Readonly<Catalog>): O
   ]
 }
 
-function listsEveryRootPlugin({ plugins }: Listing, { rootPlugins }: TeamResolution): boolean {
-  return rootPlugins.isSubsetOf(plugins)
-}
-
 function categoryRulesSwitchedOnFor(listed: ReadonlySet<OxlintPlugin>, { rootPlugins, categories }: TeamResolution, catalog: Readonly<Catalog>): DummyRuleMap {
   const notAtTheRoot = listed.difference(rootPlugins)
   return categoryRulesOf(notAtTheRoot, categories, catalog)
@@ -322,10 +329,6 @@ function groupsOfAlike<Item>(items: readonly Item[], keyOf: (item: Item) => stri
 
 function asGroupOfAlike<Item>(members: readonly Item[]): GroupOfAlike<Item> {
   return { first: foundOr(members.at(0), 'a group holds at least one item'), members }
-}
-
-function isTheSameSet(first: ReadonlySet<string>, second: ReadonlySet<string>): boolean {
-  return first.size === second.size && first.isSubsetOf(second)
 }
 
 function orderInsensitiveKeyOf(values: readonly string[]): string {

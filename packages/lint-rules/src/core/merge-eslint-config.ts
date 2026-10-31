@@ -28,6 +28,7 @@ import { asFilesEntry, combinationsOf, takesNothingBackFromEslintDefaultIgnores 
 import { eachWithin, groupedByWhere, type Where, type Within, whereOf } from './eslint-off-blocks.ts'
 import { buildEslintSettings, givesTheSetting, type SettingOfOurs, type SettingPath, settingsGiving, settingsOfOurs } from './eslint-settings.ts'
 import { bothOf, eitherOf, type FilesAndIgnores, type FilesCondition, type FilesEntry, filesInScopeOf, globsOf, matchesEveryFile, notOf } from './file-conditions.ts'
+import { withWithheldFixesLeftOut } from './fixes-withheld-in-editors.ts'
 import { keepingNegation, literalGlobOf, withoutLeadingDotSlash } from './globs.ts'
 import { globsReadFromTheRoot } from './globs-read-from-above.ts'
 import { isRecord } from './is-record.ts'
@@ -36,6 +37,7 @@ import { type ProjectFacts, projectFactsOf } from './project-facts.ts'
 import { type RuleLayers, ruleIdsOnIn, runtimeGlobalReadersOnIn } from './resolve-rule-layers.ts'
 import { ourLayersLeavingOut, rulesTheTeamSets } from './rules-the-team-sets.ts'
 import { slashSeparated } from './slash-separated.ts'
+import { withOurTsIgnoreMessage } from './ts-ignore-message.ts'
 import { type OurEslintPart, ourEslintPartOf, whereOurEslintPartRuns } from './where-our-parts-run.ts'
 
 /** Whatever ESLint's `defineConfig` takes. */
@@ -58,10 +60,19 @@ type SettingsWhere = Where & { readonly settings: NonNullable<Linter.Config['set
 
 type SettingsBesideTheTeam = { readonly base: Linter.Config; readonly keptToTheirFiles: readonly Linter.Config[] }
 
+/** The team's blocks, and the one plugin object it registers under each prefix. */
+type TeamRegistrations = { readonly blocks: readonly Linter.Config[]; readonly plugins: ReadonlyMap<string, ESLint.Plugin> }
+
+/** The rule names the team's config turns on, by prefix, and each prefix a plugin of ours or the team's stands under. */
+type TurnedOnByTheTeam = { readonly namesByPrefix: ReadonlyMap<string, readonly string[]>; readonly prefixesBackedByAPlugin: ReadonlySet<string> }
+
+type StubsUnder = readonly [prefix: string, ruleNames: readonly string[]]
+
 /** Our part with the team's rules left out, the one plugin object under each prefix, and what the project's tsconfigs take in. */
 type OurPartBeside = { readonly part: EslintPart; readonly plugins: ReadonlyMap<string, ESLint.Plugin>; readonly projectFacts: ProjectFacts }
 
 const TYPE_INFORMATION_OPTIONS = ['project', 'projectService'] as const
+const OFF_SEVERITIES: ReadonlySet<unknown> = new Set(['off', 0])
 // Joined to a plugin's own version as semver build metadata, so its cache key carries ours too.
 const OUR_BUILD_TAG = 'agents-inc-lint-rules'
 const GLOB_SEPARATOR = '/'
@@ -88,7 +99,8 @@ export function mergeEslintPart(
   const ruleIdsTheTeamSets = rulesTheTeamSets([...ruleIdsTheTeamsEslintConfigSets(teamBlocks, registry, catalog), ...ruleIdsInTheTeamsOxlintConfig], catalog)
   const part = ourPartLeavingOut(ruleIdsTheTeamSets, partGiven)
   const projectFacts = projectFactsOf(part.tsconfigRootDir)
-  const plugins = withOurVersionInEachCacheKey(pluginsForEveryBlock(registry, pluginsRegisteredBy(teamBlocks), pluginNeedsOf(part, catalog)), ourVersion)
+  const team: TeamRegistrations = { blocks: teamBlocks, plugins: pluginsRegisteredBy(teamBlocks) }
+  const plugins = withOurVersionInEachCacheKey(ourPluginsBeside(team, part, registry, catalog), ourVersion)
   return [
     ...ourBlocksBeside(teamBlocks, { part, plugins, projectFacts }, catalog),
     ...teamBlocks.map((block) => teamBlockBeside(block, plugins)),
@@ -244,13 +256,49 @@ function isGlob(value: unknown): value is string {
   return typeof value === 'string'
 }
 
-/** ESLint refuses a suppression of a rule it has no definition of, so each rule a suppression may name gets a stub. */
-function pluginNeedsOf(part: EslintPart, catalog: Readonly<Catalog>): PluginNeeds {
+function pluginNeedsOf(part: EslintPart, team: TeamRegistrations, registry: EslintPluginRegistry, catalog: Readonly<Catalog>): PluginNeeds {
   const ruleIdsRun = ruleIdsOnIn(part.layers)
   return {
     ruleNamesRun: ruleNamesByPrefix([...ruleIdsRun, ...extensionsTakingOverOnTsFiles(ruleIdsRun, part, catalog)]),
-    ruleNamesStubbed: part.usesOxlint ? oxlintRuleNamesByPrefix(catalog) : new Map(),
+    ruleNamesStubbed: part.usesOxlint ? stubsLeavingUndefinedWhatTheTeamTurnsOn(oxlintRuleNamesByPrefix(catalog), team, registry) : new Map(),
   }
+}
+
+function ourPluginsBeside(team: TeamRegistrations, part: EslintPart, registry: EslintPluginRegistry, catalog: Readonly<Catalog>): ReadonlyMap<string, ESLint.Plugin> {
+  const plugins = pluginsForEveryBlock(registry, team.plugins, pluginNeedsOf(part, team, registry, catalog))
+  const ruleIdsRun = ruleIdsOnIn(part.layers)
+  return withOurTsIgnoreMessage(withWithheldFixesLeftOut(plugins, ruleIdsRun), ruleIdsRun)
+}
+
+/** ESLint refuses a rule the team turns on that no plugin it sees defines, as it refuses the team's config alone; a stub would leave that rule silently doing nothing. */
+function stubsLeavingUndefinedWhatTheTeamTurnsOn(
+  ruleNamesStubbed: ReadonlyMap<string, readonly string[]>,
+  team: TeamRegistrations,
+  registry: EslintPluginRegistry,
+): ReadonlyMap<string, readonly string[]> {
+  const turnedOn: TurnedOnByTheTeam = {
+    namesByPrefix: ruleNamesByPrefix(ruleKeysTurnedOnIn(team.blocks)),
+    prefixesBackedByAPlugin: new Set([...Object.keys(registry), ...team.plugins.keys()]),
+  }
+  return new Map([...ruleNamesStubbed].flatMap(([prefix, ruleNames]) => stubsUnderBeside(prefix, ruleNames, turnedOn)))
+}
+
+function stubsUnderBeside(prefix: string, ruleNames: readonly string[], { namesByPrefix, prefixesBackedByAPlugin }: TurnedOnByTheTeam): StubsUnder[] {
+  const namesTurnedOn = namesByPrefix.get(prefix)
+  if (namesTurnedOn === undefined) return [[prefix, ruleNames]]
+  // A plugin of stubs alone would change ESLint's refusal from a missing plugin to a missing rule.
+  if (!prefixesBackedByAPlugin.has(prefix)) return []
+  return [[prefix, ruleNames.filter((ruleName) => !namesTurnedOn.includes(ruleName))]]
+}
+
+function ruleKeysTurnedOnIn(teamBlocks: readonly Linter.Config[]): string[] {
+  return teamBlocks.flatMap((block) => Object.entries(rulesStatedIn(block)).filter(([, entry]) => isTurnedOn(entry)).map(([key]) => key))
+}
+
+/** ESLint looks a rule up only where its severity is not off. */
+function isTurnedOn(entry: Readonly<Linter.RuleEntry>): boolean {
+  const severity: unknown = Array.isArray(entry) ? entry[0] : entry
+  return !OFF_SEVERITIES.has(severity)
 }
 
 /** Without oxlint, typescript-eslint's extension of each core rule ESLint takes over runs on TS files in its place, on our module whatever object the team registers. */
