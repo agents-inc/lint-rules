@@ -1,12 +1,18 @@
 // Sources for the merge specs: each draws the one rule its name says, with the options noted, and
 // nothing else a spec turns on.
 
-/** `@typescript-eslint/array-type`: reported under `array-simple`, as shipped, and not under `generic`. */
-export const genericArrayOfASimpleType = `export const list: Array<string> = []
+/** `@typescript-eslint/no-this-alias`: reported as shipped, and not where `self` is an allowed name. */
+export const thisAliasedAsSelf = `export function countOf(this: { readonly count: number }): number {
+  const self = this
+  return self.count
+}
 `
 
-/** `@typescript-eslint/array-type`: reported under `generic`, and not under `array-simple`, as shipped. */
-export const simpleTypeArrayInBrackets = `export const list: string[] = []
+/** `@typescript-eslint/no-this-alias`: reported where destructuring `this` is not allowed, and not as shipped. */
+export const thisDestructured = `export function countOf(this: { readonly count: number }): number {
+  const { count } = this
+  return count
+}
 `
 
 /** `@typescript-eslint/no-inferrable-types`: an annotation its literal initializer implies, reported as shipped. */

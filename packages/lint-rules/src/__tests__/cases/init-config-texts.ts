@@ -93,7 +93,6 @@ const config = defineLintRules({
 export const { eslint, oxlint } = config.editorRulesets
 `
 
-/** TEXT_WITH_OPT_IN_RULESETS as a team leaves it once it uncomments the Playwright example. */
 export const TEXT_WITH_OPT_IN_RULESETS_AND_THE_PLAYWRIGHT_EXAMPLE_UNCOMMENTED = `/// <reference types="node" />
 import { defineLintRules } from '@agents-inc/lint-rules'
 

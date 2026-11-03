@@ -1,9 +1,4 @@
-import { catalog, routeOf } from '@workspace/rule-data'
-import { foundOr } from '@workspace/rule-data/collections'
-import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
-import { ESLint, type Linter } from 'eslint'
-import tseslint from 'typescript-eslint'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { BOTH_SHELVES_IN_ONE_FILE } from './__tests__/cases/generic-interface-parameter-sources.ts'
 import {
   A_MUTABLE_PICK,
@@ -16,7 +11,6 @@ import {
   NODE_ENV_OUTSIDE_TESTS,
   PARAMETERS_HELD_TO_IMMUTABLE,
   type ParameterSource,
-  parameterImmutabilityMessage,
   RECURSIVE_TURTLES,
 } from './__tests__/cases/pick-parameter-sources.ts'
 import {
@@ -27,10 +21,21 @@ import {
   A_TYPE_MET_WHILE_ITS_HOLDER_IS_HALF_WORKED_OUT,
   A_TYPE_REFERRING_ONLY_TO_ITSELF_BESIDE_AN_OVERWRITABLE_OBJECT,
 } from './__tests__/cases/work-in-progress-parameter-sources.ts'
-import { describeFinding, eslintEngineFindingsIn, fatalMessagesIn } from './__tests__/engine-clis.ts'
-import { moduleText } from './__tests__/factories/check-factories.ts'
-import { buildTeamEslintBlock } from './__tests__/factories/team-config-factories.ts'
-import { buildTsconfig } from './__tests__/factories/tsconfig-factories.ts'
+import {
+  functionalPlugin,
+  IMMUTABLE,
+  installedTypeImmutability,
+  typeImmutabilityAsNpmShipsIt,
+  type Linted,
+  lintedBy,
+  MUTABLE,
+  type NodeEnv,
+  READ_ONLY_SHALLOW,
+  reportedAlone,
+  reportedAtEach,
+  shippedOptions,
+  typedProjectOf,
+} from './__tests__/prefer-immutable-types-runs.ts'
 import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import type { TempProjects } from './__tests__/temp-projects.ts'
 
@@ -38,58 +43,14 @@ import type { TempProjects } from './__tests__/temp-projects.ts'
 // cache keeps one instantiation of a generic from answering for another (its issue #625). Teams install the original,
 // which the registry's per-call cache guards; here functional's plugin runs as npm gives it, so only the patch can.
 
-const FUNCTIONAL = 'functional'
-const RULE_ID = `${FUNCTIONAL}/prefer-immutable-types`
-const READ_ONLY_SHALLOW = 'ReadonlyShallow'
-const IMMUTABLE = 'Immutable'
-const MUTABLE = 'Mutable'
 // eslint-plugin-functional (10.0.1) hands is-immutable-type a cache of the call's own where NODE_ENV is "test".
 const NODE_ENV_TURNING_THE_CACHE_OFF = { NODE_ENV: 'test' } as const
 const TYPED_RUNS: RunsBeforeTheSuiteOptions = { timeoutMs: 300_000, whatFailed: 'the typed lint runs could not be made before the suite' }
 
-type NodeEnv = { readonly NODE_ENV: string }
-
-type Reported = { readonly at: string; readonly message: string }
-
-type Linted = { readonly fatal: readonly string[]; readonly reported: readonly Reported[] }
-
 type CacheOffAndOn = { readonly cacheOff: Linted; readonly cacheOn: Linted }
 
-function shippedOptions(): readonly unknown[] {
-  const { shipped } = routeOf(RULE_ID, catalog)
-  if (shipped === null) throw new Error(`${RULE_ID} is not shipped`)
-  return shipped.options
-}
-
-function typedProjectOf(tempProjects: TempProjects, sources: readonly ParameterSource[]): string {
-  return tempProjects.create({
-    files: {
-      'tsconfig.json': JSON.stringify(buildTsconfig({ include: ['src'] })),
-      ...Object.fromEntries(sources.map(({ file, lines }) => [file, moduleText(...lines)])),
-    },
-  })
-}
-
-function typedBlockOf(projectDir: string, options: readonly unknown[]): Linter.Config {
-  return buildTeamEslintBlock('prefer-immutable-types as npm gives it, typed', {
-    files: ['**/*.ts'],
-    languageOptions: { parser: tseslint.parser, parserOptions: { projectService: true, tsconfigRootDir: projectDir } },
-    plugins: { [FUNCTIONAL]: foundOr(eslintPlugins[FUNCTIONAL], 'rule-data registers no functional plugin') },
-    rules: { [RULE_ID]: ['error', ...options] },
-  })
-}
-
 async function lintedUnder(nodeEnv: NodeEnv, projectDir: string, options: readonly unknown[]): Promise<Linted> {
-  vi.stubEnv('NODE_ENV', nodeEnv.NODE_ENV)
-  try {
-    const results = await new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: typedBlockOf(projectDir, options) }).lintFiles(['.'])
-    return {
-      fatal: fatalMessagesIn(results, projectDir),
-      reported: eslintEngineFindingsIn(results, projectDir).map((finding) => ({ at: describeFinding(finding), message: finding.message })),
-    }
-  } finally {
-    vi.unstubAllEnvs()
-  }
+  return lintedBy({ functional: functionalPlugin(), blockName: 'prefer-immutable-types as npm gives it, typed', nodeEnv }, projectDir, options)
 }
 
 async function lintedWithTheCacheOffAndOn(tempProjects: TempProjects, sources: readonly ParameterSource[], options: readonly unknown[]): Promise<CacheOffAndOn> {
@@ -97,14 +58,6 @@ async function lintedWithTheCacheOffAndOn(tempProjects: TempProjects, sources: r
     cacheOff: await lintedUnder(NODE_ENV_TURNING_THE_CACHE_OFF, typedProjectOf(tempProjects, sources), options),
     cacheOn: await lintedUnder(NODE_ENV_OUTSIDE_TESTS, typedProjectOf(tempProjects, sources), options),
   }
-}
-
-function reportedAlone(at: string, least: string, actual: string): Linted {
-  return reportedAtEach([at], least, actual)
-}
-
-function reportedAtEach(ats: readonly string[], least: string, actual: string): Linted {
-  return { fatal: [], reported: ats.map((at) => ({ at: `${at} ${RULE_ID}`, message: parameterImmutabilityMessage(least, actual) })) }
 }
 
 describe("prefer-immutable-types as npm gives the plugin, over this repo's is-immutable-type, at the shipped options, files linted one after another in one process", () => {
@@ -239,5 +192,21 @@ describe("prefer-immutable-types as npm gives the plugin, over this repo's is-im
     const expected = reportedAlone('src/loop.ts:5', IMMUTABLE, READ_ONLY_SHALLOW)
 
     expect(runs().besideATypeReferringOnlyToItself).toStrictEqual({ cacheOff: expected, cacheOn: expected })
+  })
+})
+
+describe('is-immutable-type as npm ships it, from the copy this repo installs with its patch taken back', () => {
+  it('is made from the copy installed', () => {
+    expect(() => typeImmutabilityAsNpmShipsIt(installedTypeImmutability())).not.toThrow()
+  })
+
+  it('is refused from a copy the patch was never applied to', () => {
+    const asNpmShipsIt = typeImmutabilityAsNpmShipsIt(installedTypeImmutability())
+
+    expect(() => typeImmutabilityAsNpmShipsIt(asNpmShipsIt)).toThrow(new Error('a hunk of the is-immutable-type patch is not in the installed copy once'))
+  })
+
+  it('is refused from a copy differing from the patched one outside what the patch changes', () => {
+    expect(() => typeImmutabilityAsNpmShipsIt(`${installedTypeImmutability()}\n`)).toThrow(/^is-immutable-type with its patch taken back is not the file the patch was made from, blob [\da-f]{40}$/u)
   })
 })

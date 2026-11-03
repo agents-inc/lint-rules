@@ -30,6 +30,7 @@ const TRIPLE = 3
 const PICK_SEPARATOR = '|'
 const POSITION_SEPARATOR = ':'
 const SHAPE_NAME_SEPARATOR = '; '
+const NOT_FOUND = -1
 
 export function shapeNameOf(shape: Shape<{ readonly name: string }>): string {
   return shape.map(({ name }) => name).join(SHAPE_NAME_SEPARATOR)
@@ -119,7 +120,7 @@ function picksOfSeed<V>(dimensions: ReadonlyArray<Dimension<V>>, seed: readonly 
 function pickOf<V>(dimensions: ReadonlyArray<Dimension<V>>, value: V): Pick {
   const picks = dimensions.flatMap(({ values }, dimension): Pick[] => {
     const position = values.indexOf(value)
-    return position === -1 ? [] : [{ dimension, value: position }]
+    return position === NOT_FOUND ? [] : [{ dimension, value: position }]
   })
   const [pick] = picks
   if (pick === undefined || picks.length > 1) {
@@ -154,7 +155,7 @@ function positionsIn<V>(dimensions: ReadonlyArray<Dimension<V>>, shape: Shape<V>
   if (shape.length !== dimensions.length) throw new Error(`a shape gives ${String(shape.length)} values for ${String(dimensions.length)} dimensions`)
   return shape.map((value, dimension) => {
     const position = valuesOf(dimensions, dimension).indexOf(value)
-    if (position === -1) throw new Error(`a shape gives a value ${nameOf(dimensions, dimension)} does not have`)
+    if (position === NOT_FOUND) throw new Error(`a shape gives a value ${nameOf(dimensions, dimension)} does not have`)
     return position
   })
 }

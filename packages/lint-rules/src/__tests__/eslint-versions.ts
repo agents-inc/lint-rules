@@ -1,6 +1,7 @@
 import { catalog, pluginPrefixOf, type RuleRoute } from '@workspace/rule-data'
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
 import { ruleNameOf } from '@workspace/rule-data/rule-id-parts'
+import { coreRuleExtendedBy } from '@workspace/rule-data/test-support/typescript-eslint-extensions'
 import type { ESLint } from 'eslint'
 import { builtinRules } from 'eslint/use-at-your-own-risk'
 
@@ -63,17 +64,10 @@ function currentTypescriptEslintExtensions(): TwinPair[] {
   const plugin = eslintPlugins[TYPESCRIPT_ESLINT_PREFIX]
   if (plugin?.rules === undefined) throw new Error(`no plugin with rules is registered under ${TYPESCRIPT_ESLINT_PREFIX}`)
   return Object.entries(plugin.rules).flatMap(([name, rule]) => {
-    const core = coreRuleExtendedBy(name, rule)
-    return core === null || isDeprecated(rule) ? [] : { core, twin: `${TYPESCRIPT_ESLINT_PREFIX}/${name}` }
+    const twin = `${TYPESCRIPT_ESLINT_PREFIX}/${name}`
+    const core = coreRuleExtendedBy(twin, rule)
+    return core === null || isDeprecated(rule) ? [] : { core, twin }
   })
-}
-
-/** `extendsBaseRule` is true where the core rule has the same name, and the core rule's name where it differs. */
-function coreRuleExtendedBy(name: string, { meta }: Readonly<PluginRule>): string | null {
-  if (meta?.docs === undefined || !('extendsBaseRule' in meta.docs)) return null
-  const { extendsBaseRule } = meta.docs
-  if (extendsBaseRule === true) return name
-  return typeof extendsBaseRule === 'string' ? extendsBaseRule : null
 }
 
 function isDeprecated({ meta }: Readonly<PluginRule>): boolean {

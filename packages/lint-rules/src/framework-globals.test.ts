@@ -1,6 +1,5 @@
 import type { Linter } from 'eslint'
 import { describe, expect, it } from 'vitest'
-import { agentConfigsOf } from './__tests__/agent-configs.ts'
 import {
   ASTRO_GLOBALS,
   FRAMEWORK_FILES,
@@ -8,43 +7,21 @@ import {
   SVELTE_COMPONENT_GLOBALS,
   VUE_SCRIPT_SETUP_MACROS,
 } from './__tests__/cases/framework-components.ts'
-import { ourEditorEslintPartMergedInto } from './__tests__/editor-merges-read-by-eslint.ts'
+import { NO_UNDEF } from './__tests__/cases/svelte-components.ts'
+import { correctnessConfigs } from './__tests__/editor-merges-read-by-eslint.ts'
 import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
 import { namesDefinedIn } from './__tests__/eslint-globals.ts'
-import { buildConsumerLintRules, CORRECTNESS_IN_BOTH_SETS, emptyTsconfigRootDir } from './__tests__/factories/lint-rules-factories.ts'
-import { createProjectListingOxlint } from './__tests__/factories/package-json-factories.ts'
-import { setUpTempProjects } from './__tests__/temp-projects.ts'
-import { defineLintRules, type LintRules } from './index.ts'
 
 // Our ESLint part lints JS and TS files alone, so in ESLint no framework global is ours to give.
 // framework-globals.integration.test.ts runs the rules.
 
-const { calculatedConfigFor, globalsFor } = setUpEslintConfigOracle()
-const tempProjects = setUpTempProjects()
-const projectListingOxlint = createProjectListingOxlint(tempProjects)
+const { calculatedConfigFor, globalsFor, ruleSeverityFor } = setUpEslintConfigOracle()
 
 const EVERY_FRAMEWORK_GLOBAL = [...VUE_SCRIPT_SETUP_MACROS, ...ASTRO_GLOBALS, ...SVELTE_COMPONENT_GLOBALS]
 const COMPONENTS = [FRAMEWORK_FILES.vueComponent, FRAMEWORK_FILES.astroPage, FRAMEWORK_FILES.svelteLegacyComponent]
+const THE_SUPPRESSION_BAN = 'house/no-suppressions'
 
-/** Our settings with the ruleset that ships no-undef in both sets, rooted where given. */
-function correctnessIn(tsconfigRootDir: string): LintRules {
-  return buildConsumerLintRules(tsconfigRootDir, CORRECTNESS_IN_BOTH_SETS)
-}
-
-/** The editor ESLint part merged into a team config with no block. */
-function mergedIntoAnEmptyTeamConfig(tsconfigRootDir: string): Linter.Config[] {
-  return ourEditorEslintPartMergedInto([], correctnessIn(tsconfigRootDir))
-}
-
-/** A config of ours, named in full, and how it is built. */
-type BuiltConfig = { readonly config: string; readonly build: () => Linter.Config[] }
-
-// The config's name in full in its title, which $-interpolation would cut short.
-const CONFIGS: readonly BuiltConfig[] = [
-  { config: 'the agent build', build() { return agentConfigsOf(defineLintRules(correctnessIn(projectListingOxlint))).eslint } },
-  { config: 'the editor part of a project whose package.json lists oxlint, merged into an empty team config', build() { return mergedIntoAnEmptyTeamConfig(projectListingOxlint) } },
-  { config: 'the editor part of a project whose package.json lists no oxlint, merged into an empty team config', build() { return mergedIntoAnEmptyTeamConfig(emptyTsconfigRootDir()) } },
-]
+const CONFIGS = correctnessConfigs()
 
 for (const { config, build } of CONFIGS) {
   describe(`Vue's, Astro's and Svelte's component globals in ESLint, in ${config}`, () => {
@@ -58,3 +35,22 @@ for (const { config, build } of CONFIGS) {
     })
   })
 }
+
+// Else each config above would pass in another's place.
+describe('the configs above, in a JS file using a framework global', () => {
+  it('run no-undef in the editor part of the project listing no oxlint alone, and the ban on suppressions in the agent build alone', async () => {
+    const file = FRAMEWORK_FILES.vueMacroInAJsFile
+    const rulesOfEach = await Promise.all(
+      CONFIGS.map(async ({ config, build }): Promise<[string, Readonly<Record<string, Linter.StringSeverity | undefined>>]> => [
+        config,
+        { [NO_UNDEF.rule]: await ruleSeverityFor(build(), file, NO_UNDEF.rule), [THE_SUPPRESSION_BAN]: await ruleSeverityFor(build(), file, THE_SUPPRESSION_BAN) },
+      ]),
+    )
+
+    expect(Object.fromEntries(rulesOfEach)).toStrictEqual({
+      'the agent build': { [NO_UNDEF.rule]: 'off', [THE_SUPPRESSION_BAN]: 'error' },
+      'the editor part of a project whose package.json lists oxlint, merged into an empty team config': { [NO_UNDEF.rule]: undefined, [THE_SUPPRESSION_BAN]: undefined },
+      'the editor part of a project whose package.json lists no oxlint, merged into an empty team config': { [NO_UNDEF.rule]: 'error', [THE_SUPPRESSION_BAN]: undefined },
+    })
+  })
+})

@@ -36,19 +36,15 @@ export const RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD = [
 
 export const RULES_SHIPPED_OFF = [...PLAYWRIGHT_RULES_SHIPPED_OFF, ...NEWEST_LANGUAGE_RULES_SHIPPED_OFF, ...RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD] as const
 
-/** A Playwright rule nobody accepted: still one we do not ship. */
 export const PLAYWRIGHT_RULE_NOT_ACCEPTED = 'playwright/no-skipped-test'
 
-/** Recommended by a sweep, never accepted by the owner: still one we do not ship. */
 export const RULE_RECOMMENDED_NOT_ACCEPTED = 'no-case-declarations'
 
 /** Where a team keeps its Playwright tests, as the example init writes names them. */
 export const PLAYWRIGHT_TESTS = ['e2e/**'] as const
 
-/** A Playwright test, a Vitest test and a source file: the three kinds of file a shipped-off rule is judged in. */
 export const FILES_JUDGED = { playwrightTest: 'e2e/home.spec.ts', unitTest: 'src/menu.test.ts', source: 'src/menu.ts' } as const
 
-/** A file, the line check reports it on, and the rule that reports it there. */
 type ReportedFile = { readonly file: string; readonly source: string; readonly line: number; readonly rule: string }
 
 const IMPORTS_PLAYWRIGHT = "import { expect, test } from '@playwright/test'\n\n"
@@ -153,7 +149,6 @@ export function readFirstLine(path: string): string {
   },
 ]
 
-/** Each source file a rule of RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD reports, its plugin as shipped offering a fix there, in path order. */
 export const SOURCES_A_WITHHELD_FIX_WOULD_CHANGE: readonly ReportedFile[] = [
   {
     file: 'src/base64-url.ts',

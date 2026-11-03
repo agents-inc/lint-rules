@@ -1,7 +1,8 @@
 import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { installedPackage } from './temp-projects.ts'
+import { buildTsconfigListingNodeTypes } from './factories/tsconfig-factories.ts'
+import { CONSUMER_INSTALL, installedPackage, type ProjectFiles, type TempProjects } from './temp-projects.ts'
 
 export type ProcessResult = { readonly exitCode: number | null; readonly stdout: string; readonly stderr: string }
 
@@ -27,4 +28,14 @@ export function importInNode(file: string): ProcessResult {
 export function typeCheck(projectDir: string): ProcessResult {
   const { status, stdout, stderr } = spawnSync(process.execPath, [TSC, '--noEmit', '-p', projectDir], { cwd: projectDir, encoding: 'utf8' })
   return { exitCode: status, stdout, stderr }
+}
+
+/** tsc over a consumer project whose tsconfig takes in the files given alone, our package and Node's types installed. */
+export function typeCheckedConsumer(tempProjects: TempProjects, files: ProjectFiles): ProcessResult {
+  return typeCheck(
+    tempProjects.create({
+      files: { 'tsconfig.json': `${JSON.stringify(buildTsconfigListingNodeTypes({ include: Object.keys(files) }))}\n`, ...files },
+      linkedPackages: [...CONSUMER_INSTALL, INSTALLED_TYPES_NODE],
+    }),
+  )
 }

@@ -7,7 +7,7 @@ import {
   emptyTsconfigRootDir,
 } from './__tests__/factories/lint-rules-factories.ts'
 import { createProjectListingOxlint } from './__tests__/factories/package-json-factories.ts'
-import { setUpTempProjects } from './__tests__/temp-projects.ts'
+import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 
 // A top-level set with a list left out means that list is empty, as in a fileOverrides entry, and owes
@@ -21,16 +21,12 @@ type SetLeavingListsOut = { readonly leftOut: string; readonly set: Partial<Rule
 /** A project as a title names it, and its folder as a test reads it: the empty one is made then. */
 type ProjectCase = { readonly project: string; readonly projectDir: () => string }
 
-const tempProjects = setUpTempProjects()
-const PROJECT_WITH_OXLINT = createProjectListingOxlint(tempProjects)
+const PROJECT_MADE: RunsBeforeTheSuiteOptions = { timeoutMs: 10_000, whatFailed: 'the project listing oxlint could not be made before the suite' }
+
+const projectWithOxlint = setUpRunsBeforeTheSuite(createProjectListingOxlint, PROJECT_MADE)
 
 const PROJECTS: readonly ProjectCase[] = [
-  {
-    project: 'whose package.json lists oxlint',
-    projectDir() {
-      return PROJECT_WITH_OXLINT
-    },
-  },
+  { project: 'whose package.json lists oxlint', projectDir: projectWithOxlint },
   { project: 'with no package.json', projectDir: emptyTsconfigRootDir },
 ]
 
@@ -59,8 +55,8 @@ describe('an agent set leaving lists out, in a project whose package.json lists 
   const { calculatedRulesOfEach, globalsFor } = setUpEslintConfigOracle()
 
   it.each(SETS_LEAVING_LISTS_OUT)("leaving out $leftOut gives the agent build's oxlint config of the same set with those lists empty", ({ set }) => {
-    const leavingListsOut = agentConfigsOf(defineLintRules(buildConsumerLintRulesLeavingListsOut(PROJECT_WITH_OXLINT, { agentRulesets: set })))
-    const givingThemEmpty = agentConfigsOf(defineLintRules(buildConsumerLintRules(PROJECT_WITH_OXLINT, { agentRulesets: set })))
+    const leavingListsOut = agentConfigsOf(defineLintRules(buildConsumerLintRulesLeavingListsOut(projectWithOxlint(), { agentRulesets: set })))
+    const givingThemEmpty = agentConfigsOf(defineLintRules(buildConsumerLintRules(projectWithOxlint(), { agentRulesets: set })))
 
     expect(leavingListsOut.oxlint).toStrictEqual(givingThemEmpty.oxlint)
   })
@@ -68,8 +64,8 @@ describe('an agent set leaving lists out, in a project whose package.json lists 
   it.each(SETS_LEAVING_LISTS_OUT)(
     "leaving out $leftOut gives, in a file of each kind, the rules and globals the agent build's ESLint config gives with those lists empty",
     async ({ set }) => {
-      const leavingListsOut = agentConfigsOf(defineLintRules(buildConsumerLintRulesLeavingListsOut(PROJECT_WITH_OXLINT, { agentRulesets: set })))
-      const givingThemEmpty = agentConfigsOf(defineLintRules(buildConsumerLintRules(PROJECT_WITH_OXLINT, { agentRulesets: set })))
+      const leavingListsOut = agentConfigsOf(defineLintRules(buildConsumerLintRulesLeavingListsOut(projectWithOxlint(), { agentRulesets: set })))
+      const givingThemEmpty = agentConfigsOf(defineLintRules(buildConsumerLintRules(projectWithOxlint(), { agentRulesets: set })))
       async function globalsOfEach(config: Readonly<typeof leavingListsOut.eslint>): Promise<unknown[]> {
         return Promise.all(A_FILE_OF_EACH_KIND.map(async (file) => globalsFor(config, file)))
       }
@@ -89,6 +85,6 @@ describe('an agent set leaving lists out, in a project whose package.json lists 
 // out, which defineLintRules accepts.
 describe('a top-level set leaving lists out, in agents-inc.lint.mts', () => {
   it('is accepted leaving every list out, in both sets', () => {
-    expect(() => defineLintRules(buildConsumerLintRulesLeavingListsOut(PROJECT_WITH_OXLINT, {}))).not.toThrow()
+    expect(() => defineLintRules(buildConsumerLintRulesLeavingListsOut(projectWithOxlint(), {}))).not.toThrow()
   })
 })

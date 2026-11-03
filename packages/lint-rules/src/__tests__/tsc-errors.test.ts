@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { TSC_STDOUT_OPENING_ON_A_CHAINED_LINE, TSC_STDOUT_WITH_AN_ERROR_OF_NO_FILE, TSC_STDOUT_WITH_CHAINED_ERRORS, TSC_STDOUT_WITH_ONE_LINE_ERRORS } from './cases/tsc-stdouts.ts'
-import { tscErrorsIn } from './tsc-errors.ts'
+import { buildProcessResult } from './factories/process-result-factories.ts'
+import { errorsSaying, tscErrorsIn } from './tsc-errors.ts'
 
 describe('tscErrorsIn', () => {
   it("gives each error's file, line, column, code and message, in the order printed", () => {
@@ -32,5 +33,17 @@ describe('tscErrorsIn', () => {
     { kind: 'an error tsc gives no file', stdout: TSC_STDOUT_WITH_AN_ERROR_OF_NO_FILE, line: "error TS18003: No inputs were found in config file 'tsconfig.json'." },
   ])('throws on $kind, naming the line, so no output goes unread', ({ stdout, line }) => {
     expect(() => tscErrorsIn(stdout)).toThrow(new Error(`tsc printed a line that is part of no error: ${line}`))
+  })
+})
+
+describe('errorsSaying', () => {
+  it("keeps the exit code and reads each error's message, chained lines included, as whether it says the text", () => {
+    expect(errorsSaying(buildProcessResult({ exitCode: 1, stdout: TSC_STDOUT_WITH_CHAINED_ERRORS }), 'Source has 0 element(s)')).toStrictEqual({
+      exitCode: 1,
+      errors: [
+        { file: 'agents-inc.lint.mts', line: 10, column: 7, code: 'TS2322', says: false },
+        { file: 'agents-inc.lint.mts', line: 13, column: 7, code: 'TS2322', says: true },
+      ],
+    })
   })
 })

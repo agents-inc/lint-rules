@@ -1,6 +1,5 @@
 // Measured on eslint-plugin-sonarjs 4.2.2: prefer-immediate-return reports each on its line and offers its fix.
 
-/** A source and the line prefer-immediate-return reports in it. */
 type ReportedSource = { readonly source: string; readonly line: number }
 
 /** The `using` declaration holds the call of a function whose own const is the one returned. */

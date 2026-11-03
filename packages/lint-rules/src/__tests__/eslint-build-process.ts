@@ -9,6 +9,7 @@ import { agentSettingsOf } from '../agent-settings.ts'
 import { mergeEslintConfig } from '../eslint.ts'
 import { defineLintRules, type LintRules } from '../index.ts'
 import type { EslintProcessResult, EslintResultsByBuild } from './eslint-in-its-own-process.ts'
+import { rulesRunIn } from './rules-run.ts'
 
 const [lintRulesJson, teamOxlintConfigFile] = process.argv.slice(2)
 if (lintRulesJson === undefined) throw new Error('usage: eslint-build-process.ts <lint rules JSON> [<team oxlint config file>]')
@@ -32,6 +33,6 @@ function printedResultOf({ filePath, messages, stats }: Readonly<ESLint.LintResu
   return {
     filePath,
     messages: messages.map(({ ruleId, fatal, message, line }) => ({ ruleId, fatal, message, line })),
-    rulesRun: [...new Set(stats.times.passes.flatMap((pass) => Object.keys(pass.rules ?? {})))].toSorted(),
+    rulesRun: rulesRunIn(stats),
   }
 }

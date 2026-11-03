@@ -1,4 +1,4 @@
-import { catalog } from '@workspace/rule-data'
+import { catalog, routeOf } from '@workspace/rule-data'
 import type { ErrorAt } from '../engine-run.ts'
 import { oxlintCodeOf } from '../oxlint-codes.ts'
 
@@ -13,7 +13,5 @@ function buildOxlintError(code: string, line: number): ErrorAt {
 
 /** An error the engine the catalog routes the rule to reports: under its ID in ESLint, its diagnostic code in oxlint. */
 export function buildErrorOnItsRoutedEngine(ruleId: string, line: number): ErrorAt {
-  const route = catalog.rules.get(ruleId)
-  if (route === undefined) throw new Error(`${ruleId} is not in the catalog`)
-  return route.engine === 'eslint' ? buildEslintError(ruleId, line) : buildOxlintError(oxlintCodeOf(ruleId, catalog), line)
+  return routeOf(ruleId, catalog).engine === 'eslint' ? buildEslintError(ruleId, line) : buildOxlintError(oxlintCodeOf(ruleId, catalog), line)
 }

@@ -120,7 +120,7 @@ function agentBuildConfig({ rulesets, rules = {}, legacyEntry }: Listed, catalog
 function editorMergeConfig({ rulesets, rules = {}, legacyEntry }: Listed, catalog: Readonly<Catalog>, usesOxlint: boolean): Linter.Config[] {
   const fileOverrides = legacyEntry === undefined ? [] : [buildTwoSetFileOverride([LEGACY_FILES], { editorRulesets: legacyEntry.rulesets, rules: legacyEntry.rules })]
   const { eslint } = editorPartsOf(buildTwoSetLintRules({ editorRulesets: rulesets }, { rules, fileOverrides }), catalog, usesOxlint)
-  return mergeEslintPart([], eslint, catalog, PLUGIN_REGISTRY, lintRulesPackageVersion(), NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG)
+  return mergeEslintPart([], eslint, catalog, { registry: PLUGIN_REGISTRY, ourVersion: lintRulesPackageVersion(), ruleIdsInTheTeamsOxlintConfig: NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG })
 }
 
 const BUILDS: readonly Build[] = [

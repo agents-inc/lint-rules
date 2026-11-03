@@ -3,6 +3,7 @@ import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
 import { RETURNED_USING_RESOURCES, THROWN_USING_RESOURCES, VALUES_RETURNED_IMMEDIATELY_ONCE_FIXED } from '../__tests__/cases/using-resource-sources.ts'
 import { CONST_RETURNED_INSIDE_A_USING_DECLARATION } from '../__tests__/cases/using-resources-reported-as-before.ts'
+import { rulesOf } from '../__tests__/eslint-plugin-rules.ts'
 import { installedEslintPlugin } from '../__tests__/factories/eslint-merge-factories.ts'
 import { withReturnedUsingResourcesLeftAlone } from './returned-using-resources.ts'
 
@@ -62,11 +63,6 @@ describe('withReturnedUsingResourcesLeftAlone', () => {
     })
   })
 })
-
-function rulesOf(plugin: Readonly<ESLint.Plugin>): NonNullable<ESLint.Plugin['rules']> {
-  if (plugin.rules === undefined) throw new Error('the plugin has no rules')
-  return plugin.rules
-}
 
 function messagesOf(plugin: Readonly<ESLint.Plugin>, source: string): Linter.LintMessage[] {
   return new Linter().verify(source, [{ files: ['**/*.ts'], languageOptions: { parser: tseslint.parser }, plugins: { [SONARJS]: plugin }, rules: { [PREFER_IMMEDIATE_RETURN_ID]: 'error' } }], { filename: 'a.ts' })

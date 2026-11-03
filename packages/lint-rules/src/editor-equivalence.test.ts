@@ -1,4 +1,4 @@
-import { catalog, type RuleRoute } from '@workspace/rule-data'
+import { catalog, routeOf, type RuleRoute } from '@workspace/rule-data'
 import type { Linter } from 'eslint'
 import type { OxlintConfig } from 'oxlint'
 import { describe, expect, it } from 'vitest'
@@ -65,12 +65,6 @@ function oxlintConfigOf({ oxlint }: MergedEditorConfigs): OxlintConfig {
   return oxlint
 }
 
-function routeOf(id: string): RuleRoute {
-  const route = catalog.rules.get(id)
-  if (route === undefined) throw new Error(`${id} is not in the catalog`)
-  return route
-}
-
 /** Every shipped rule allowSuppressions does not decide and no rule shipped off, except each one another rule covers. */
 function shippedRoutesBesidesTheSuppressionRules(): RuleRoute[] {
   return catalog.rules
@@ -81,7 +75,7 @@ function shippedRoutesBesidesTheSuppressionRules(): RuleRoute[] {
 
 /** The rule standing in, without oxlint, for each shipped oxlint-only rule. */
 function standInsOfShippedRules(): string[] {
-  return [...catalog.eslintStandIns].filter(([oxlintRule]) => routeOf(oxlintRule).shipped !== null).map(([, standIn]) => standIn)
+  return [...catalog.eslintStandIns].filter(([oxlintRule]) => routeOf(oxlintRule, catalog).shipped !== null).map(([, standIn]) => standIn)
 }
 
 function shippedOptionsOf(route: Readonly<RuleRoute>): readonly unknown[] {
@@ -147,7 +141,7 @@ describe('the editor ESLint part of a project whose package.json lists no oxlint
   // Twins are read from the installed typescript-eslint. A covered core rule is left out, and so is its twin.
   it("runs every ESLint-routed rule and every moved rule not skipped, with its options, suppressions allowed, typescript-eslint's twin of each moved core rule with the core rule's options, and the stand-in of each oxlint-only rule with none", () => {
     const provenMovedIds = new Set(provenMovedRules().map((route) => route.id))
-    const twinned = twinnedMovedRules().filter(({ core }) => !isCoveredByAShippedRule(routeOf(core)))
+    const twinned = twinnedMovedRules().filter(({ core }) => !isCoveredByAShippedRule(routeOf(core, catalog)))
     const twinnedCoreRules = new Set(twinned.map(({ core }) => core))
     function isRunByEslint(route: Readonly<RuleRoute>): boolean {
       return route.engine === 'eslint' || provenMovedIds.has(route.id) || twinnedCoreRules.has(route.id)
@@ -156,7 +150,7 @@ describe('the editor ESLint part of a project whose package.json lists no oxlint
       ...shippedRoutesBesidesTheSuppressionRules()
         .filter(isRunByEslint)
         .map((route) => onEslint(route.id, shippedOptionsOf(route))),
-      ...twinned.map(({ core, twin }) => onEslint(twin, shippedOptionsOf(routeOf(core)))),
+      ...twinned.map(({ core, twin }) => onEslint(twin, shippedOptionsOf(routeOf(core, catalog)))),
       // Each stand-in, with none of its oxc rule's options.
       ...standInsOfShippedRules().map((standIn) => onEslint(standIn, [])),
       // A moved rule, which ESLint runs here.

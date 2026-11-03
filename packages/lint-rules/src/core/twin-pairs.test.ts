@@ -1,17 +1,15 @@
 import type { Catalog } from '@workspace/rule-data'
-import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
 import { buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import type { Linter } from 'eslint'
 import { describe, expect, it } from 'vitest'
-import { pluginRegisteredUnder } from '../__tests__/eslint-config-reads.ts'
 import { buildCatalog, buildEslintRoute, buildOxlintRoute, buildQualityRuleset } from '../__tests__/factories/catalog-factories.ts'
 import { buildFileOverride, buildLintRules, buildTwoSetFileOverride, buildTwoSetLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { lintRulesPackageVersion } from '../__tests__/factories/package-json-factories.ts'
-import { setUpEslintConfigOracle } from '../__tests__/eslint-config-oracle.ts'
+import { type EslintConfigOracle, setUpEslintConfigOracle } from '../__tests__/eslint-config-oracle.ts'
 import { buildProjectFacts } from '../__tests__/factories/project-facts-factories.ts'
-import { oxlintEntryOfRuleFor, severityOfOxlintEntry } from '../__tests__/oxlint-config-oracle.ts'
+import { eslintRunningEntryFor, NOT_RUN, oxlintRunningEntryOfRuleFor, realTypescriptEslintPlugin } from '../__tests__/running-entries.ts'
 import { NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG } from '../__tests__/team-configs-of-the-other-engine.ts'
-import { buildEslintConfig, type EslintPluginRegistry } from './build-eslint-config.ts'
+import { buildEslintConfig } from './build-eslint-config.ts'
 import { buildOxlintConfig } from './build-oxlint-config.ts'
 import { editorPartsOf } from './editor-parts.ts'
 import type { LintRulesInput, TwoSetLintRulesInput } from './lint-rules-input.ts'
@@ -29,7 +27,6 @@ const TS_FILE = 'src/a.ts'
 const JS_FILE = 'src/a.js'
 const LEGACY_TS_FILE = 'legacy/a.ts'
 const LEGACY_JS_FILE = 'legacy/a.js'
-const NOT_RUN = 'not run'
 const RULESET_OPTIONS = [{ builtinGlobals: true }]
 // An option of no-redeclare that oxlint's copy and typescript-eslint's version both take.
 const TAKEN_OPTION = 'builtinGlobals'
@@ -60,33 +57,29 @@ function lintRulesStatingTheExtensionAlone(): LintRulesInput {
   return buildLintRules({ quality: ['correctness'] }, { rules: { [EXTENSION]: ['error', { [REFUSED_OPTION]: true }] } })
 }
 
-// The real typescript-eslint plugin, whose rules refuse options they do not take.
-function realTypescriptEslintPlugin(): EslintPluginRegistry {
-  return { '@typescript-eslint': pluginRegisteredUnder(eslintPlugins, '@typescript-eslint') }
-}
-
 /** NOT_RUN where no statement of it applies or it is off. */
 function oxlintRunningEntryFor(given: LintRulesInput, file: string): unknown {
   return oxlintRunningEntryUnder(twinCatalog, given, file)
 }
 
 function oxlintRunningEntryUnder(catalog: Readonly<Catalog>, given: LintRulesInput, file: string): unknown {
-  const entry = oxlintEntryOfRuleFor(buildOxlintConfig(given, catalog), file, CORE_SPELLINGS)
-  return entry === undefined || severityOfOxlintEntry(entry) === 'off' ? NOT_RUN : entry
+  return oxlintRunningEntryOfRuleFor(buildOxlintConfig(given, catalog), file, CORE_SPELLINGS)
+}
+
+/** Each file's core rule and extension entries: NOT_RUN where no block sets one, or it is off. */
+async function eslintTwinEntriesIn(oracle: Readonly<EslintConfigOracle>, config: readonly Linter.Config[], files: readonly string[]): Promise<Readonly<Record<string, unknown>>> {
+  const entries = await Promise.all(
+    files.map(async (file) => [file, { core: await eslintRunningEntryFor(oracle, config, file, CORE_RULE), extension: await eslintRunningEntryFor(oracle, config, file, EXTENSION) }] as const),
+  )
+  return Object.fromEntries(entries)
 }
 
 describe('a twin pair whose extension alone our top level states, with an option oxlint refuses, over a ruleset shipping the core rule', () => {
-  const { ruleSeverityFor, ruleEntryFor } = setUpEslintConfigOracle()
-
-  /** NOT_RUN where no block sets it or it is off. */
-  async function runningEntryFor(config: readonly Linter.Config[], file: string, ruleId: string): Promise<unknown> {
-    const severity = await ruleSeverityFor(config, file, ruleId)
-    return severity === undefined || severity === 'off' ? NOT_RUN : ruleEntryFor(config, file, ruleId)
-  }
+  const oracle = setUpEslintConfigOracle()
 
   /** ESLint fills in the default options the rule declares. */
   async function ourSettingAsEslintFillsIn(): Promise<unknown> {
-    return ruleEntryFor([{ files: [TS_FILE], plugins: realTypescriptEslintPlugin(), rules: { [EXTENSION]: ['error', { [REFUSED_OPTION]: true }] } }], TS_FILE, EXTENSION)
+    return oracle.ruleEntryFor([{ files: [TS_FILE], plugins: realTypescriptEslintPlugin(), rules: { [EXTENSION]: ['error', { [REFUSED_OPTION]: true }] } }], TS_FILE, EXTENSION)
   }
 
   it("is run by oxlint on JS files alone, with the ruleset's setting, in the agent build's oxlint config", () => {
@@ -108,8 +101,8 @@ describe('a twin pair whose extension alone our top level states, with an option
     const config = buildEslintConfig(lintRulesStatingTheExtensionAlone(), twinCatalog, realTypescriptEslintPlugin(), buildProjectFacts())
 
     expect({
-      [TS_FILE]: { core: await runningEntryFor(config, TS_FILE, CORE_RULE), extension: await runningEntryFor(config, TS_FILE, EXTENSION) },
-      [JS_FILE]: { core: await runningEntryFor(config, JS_FILE, CORE_RULE), extension: await runningEntryFor(config, JS_FILE, EXTENSION) },
+      [TS_FILE]: { core: await eslintRunningEntryFor(oracle, config, TS_FILE, CORE_RULE), extension: await eslintRunningEntryFor(oracle, config, TS_FILE, EXTENSION) },
+      [JS_FILE]: { core: await eslintRunningEntryFor(oracle, config, JS_FILE, CORE_RULE), extension: await eslintRunningEntryFor(oracle, config, JS_FILE, EXTENSION) },
     }).toStrictEqual({
       [TS_FILE]: { core: NOT_RUN, extension: await ourSettingAsEslintFillsIn() },
       [JS_FILE]: { core: NOT_RUN, extension: NOT_RUN },
@@ -182,20 +175,8 @@ function oxlintRunningEntriesFor(given: LintRulesInput, files: readonly string[]
 
 /** NOT_RUN where no block sets it or it is off. */
 function setUpEslintRunningEntries(): (given: LintRulesInput, files: readonly string[]) => Promise<Readonly<Record<string, unknown>>> {
-  const { ruleSeverityFor, ruleEntryFor } = setUpEslintConfigOracle()
-
-  async function runningEntryFor(config: readonly Linter.Config[], file: string, ruleId: string): Promise<unknown> {
-    const severity = await ruleSeverityFor(config, file, ruleId)
-    return severity === undefined || severity === 'off' ? NOT_RUN : ruleEntryFor(config, file, ruleId)
-  }
-
-  return async (given, files) => {
-    const config = buildEslintConfig(given, twinCatalog, realTypescriptEslintPlugin(), buildProjectFacts())
-    const entries = await Promise.all(
-      files.map(async (file) => [file, { core: await runningEntryFor(config, file, CORE_RULE), extension: await runningEntryFor(config, file, EXTENSION) }] as const),
-    )
-    return Object.fromEntries(entries)
-  }
+  const oracle = setUpEslintConfigOracle()
+  return async (given, files) => eslintTwinEntriesIn(oracle, buildEslintConfig(given, twinCatalog, realTypescriptEslintPlugin(), buildProjectFacts()), files)
 }
 
 /** Where the editor set states both names, as a title names it, and the fields stating them. */
@@ -203,20 +184,16 @@ type StatingBothNames = { readonly where: string; readonly fields: NonNullable<P
 
 /** In the editor ESLint part of a project listing oxlint, merged into an empty team config. */
 function setUpMergedEslintRunningEntries(): (given: TwoSetLintRulesInput, files: readonly string[]) => Promise<Readonly<Record<string, unknown>>> {
-  const { ruleSeverityFor, ruleEntryFor } = setUpEslintConfigOracle()
-
-  async function runningEntryFor(config: readonly Linter.Config[], file: string, ruleId: string): Promise<unknown> {
-    const severity = await ruleSeverityFor(config, file, ruleId)
-    return severity === undefined || severity === 'off' ? NOT_RUN : ruleEntryFor(config, file, ruleId)
-  }
+  const oracle = setUpEslintConfigOracle()
 
   return async (given, files) => {
     const { eslint } = editorPartsOf(given, twinCatalog, true)
-    const config = mergeEslintPart([], eslint, twinCatalog, realTypescriptEslintPlugin(), lintRulesPackageVersion(), NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG)
-    const entries = await Promise.all(
-      files.map(async (file) => [file, { core: await runningEntryFor(config, file, CORE_RULE), extension: await runningEntryFor(config, file, EXTENSION) }] as const),
-    )
-    return Object.fromEntries(entries)
+    const config = mergeEslintPart([], eslint, twinCatalog, {
+      registry: realTypescriptEslintPlugin(),
+      ourVersion: lintRulesPackageVersion(),
+      ruleIdsInTheTeamsOxlintConfig: NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG,
+    })
+    return eslintTwinEntriesIn(oracle, config, files)
   }
 }
 

@@ -1,45 +1,37 @@
-import type { Linter } from 'eslint'
 import { describe, expect, it } from 'vitest'
 import { IMPORTER_IN, PRESERVE, PRESERVING_TSCONFIG_PATH, TEAMS_N_SETTINGS_BLOCKS } from './__tests__/cases/team-legacy-n-settings.ts'
-import { editorProjectsIn, ourEditorEslintPartMergedInto } from './__tests__/editor-merges-read-by-eslint.ts'
+import { NO_UNPUBLISHED_IMPORT } from './__tests__/cases/workspace-package-imports.ts'
+import { editorProjects, modulesRulesetMergedInto, nSettingsReaderOf } from './__tests__/editor-merges-read-by-eslint.ts'
 import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
 import { typescriptSettingsEslintPluginNReads } from './__tests__/eslint-plugin-n-settings.ts'
-import { buildConsumerLintRules, MODULES_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
-import { setUpTempProjects } from './__tests__/temp-projects.ts'
 import { isRecord } from './core/is-record.ts'
 
 // eslint-plugin-n reads typescriptExtensionMap and tsconfigPath from settings.n wherever it is set,
 // else from settings.node, so our settings.n stays out of every file where a team block sets
 // settings.node's tryExtensions or either of those keys, and stays where it sets another key alone.
 
-const { settingsFor } = setUpEslintConfigOracle()
-const tempProjects = setUpTempProjects()
-const N_SETTINGS_KEY = 'n'
+const { ruleSeverityFor, settingsFor } = setUpEslintConfigOracle()
+const nSettingsFor = nSettingsReaderOf(settingsFor)
 
-/** The editor ESLint part of our settings with the ruleset that ships n/no-unpublished-import, rooted where given, merged into the team's blocks. */
-function mergedInto(teamBlocks: readonly Linter.Config[], tsconfigRootDir: () => string): Linter.Config[] {
-  return ourEditorEslintPartMergedInto(teamBlocks, buildConsumerLintRules(tsconfigRootDir(), MODULES_IN_BOTH_SETS))
-}
-
-/** The file's settings.n, undefined where no block gives one. */
-async function nSettingsFor(config: readonly Linter.Config[], file: string): Promise<unknown> {
-  return (await settingsFor(config, file))[N_SETTINGS_KEY]
-}
-
-const PROJECTS = editorProjectsIn(tempProjects)
+const PROJECTS = editorProjects()
 
 for (const { project, tsconfigRootDir } of PROJECTS) {
   describe(`eslint-plugin-n's settings, in the editor part of ${project}, merged into a team config setting settings.node or settings.n in some packages alone`, () => {
     // Else each package owed no settings.n of ours would pass beside a part that gives none anywhere.
     it('hold, merged into a team config with no block, a settings.n of ours', async () => {
-      expect(isRecord(await nSettingsFor(mergedInto([], tsconfigRootDir), IMPORTER_IN.teamSetsNone))).toBe(true)
+      expect(isRecord(await nSettingsFor(modulesRulesetMergedInto([], tsconfigRootDir), IMPORTER_IN.teamSetsNone))).toBe(true)
+    })
+
+    // Else settings.n would pass beside a ruleset that runs no rule reading it.
+    it('are read by n/no-unpublished-import, which our modules ruleset runs, merged into a team config with no block', async () => {
+      expect(await ruleSeverityFor(modulesRulesetMergedInto([], tsconfigRootDir), IMPORTER_IN.teamSetsNone, NO_UNPUBLISHED_IMPORT.rule)).toBe('error')
     })
 
     // Our one key under settings.n is the list, so where the team sets it under settings.node every
     // setting of ours leaves those files: none may stay behind, not even an empty settings.n.
     it("hold no settings.n where a team block sets settings.node's list, alone or beside typescriptExtensionMap, and ours where it sets none or settings.node's version alone", async () => {
-      const ours = await nSettingsFor(mergedInto([], tsconfigRootDir), IMPORTER_IN.teamSetsNone)
-      const merged = mergedInto(TEAMS_N_SETTINGS_BLOCKS, tsconfigRootDir)
+      const ours = await nSettingsFor(modulesRulesetMergedInto([], tsconfigRootDir), IMPORTER_IN.teamSetsNone)
+      const merged = modulesRulesetMergedInto(TEAMS_N_SETTINGS_BLOCKS, tsconfigRootDir)
 
       expect({
         teamSetsNone: await nSettingsFor(merged, IMPORTER_IN.teamSetsNone),
@@ -55,8 +47,8 @@ for (const { project, tsconfigRootDir } of PROJECTS) {
     })
 
     it("hold no settings.n where a team block sets settings.node's typescriptExtensionMap or tsconfigPath, which ours does not set, alone or beside its version, and ours where it sets its version alone", async () => {
-      const ours = await nSettingsFor(mergedInto([], tsconfigRootDir), IMPORTER_IN.teamSetsNone)
-      const merged = mergedInto(TEAMS_N_SETTINGS_BLOCKS, tsconfigRootDir)
+      const ours = await nSettingsFor(modulesRulesetMergedInto([], tsconfigRootDir), IMPORTER_IN.teamSetsNone)
+      const merged = modulesRulesetMergedInto(TEAMS_N_SETTINGS_BLOCKS, tsconfigRootDir)
 
       expect({
         teamSetsLegacyMap: await nSettingsFor(merged, IMPORTER_IN.teamSetsLegacyMap),
@@ -72,7 +64,7 @@ for (const { project, tsconfigRootDir } of PROJECTS) {
     })
 
     it("give eslint-plugin-n the team's typescriptExtensionMap or tsconfigPath in each package where the team sets one, under settings.node or settings.n, and neither in the others", async () => {
-      const merged = mergedInto(TEAMS_N_SETTINGS_BLOCKS, tsconfigRootDir)
+      const merged = modulesRulesetMergedInto(TEAMS_N_SETTINGS_BLOCKS, tsconfigRootDir)
       async function readIn(file: string): Promise<Readonly<Record<string, unknown>>> {
         return typescriptSettingsEslintPluginNReads(await settingsFor(merged, file))
       }

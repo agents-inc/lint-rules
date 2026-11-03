@@ -10,10 +10,8 @@ import { FILES_A_WITHHELD_FIX_WOULD_REWRITE } from './tanstack-zod-check-sources
 // Two projects, as the ordering ruleset sorts JSX props and the react ruleset makes props read-only: in one project
 // with the jest-dom and TanStack files, a fix-on-save would rewrite those lines too.
 
-/** A file, the line a rule reports it on, and that rule. */
 type ReportedFile = { readonly file: string; readonly source: string; readonly line: number; readonly rule: string }
 
-/** A file as written and as a fix leaves it. */
 type FixedFile = { readonly file: string; readonly source: string; readonly fixed: string }
 
 /** Every file a withheld fix would rewrite outside the ordering and react rulesets, under the rule that reports it. */
@@ -30,7 +28,6 @@ export const PLAYWRIGHT_TESTS_A_WITHHELD_FIX_WOULD_CHANGE: readonly ReportedFile
   ({ rule }) => rule === 'playwright/prefer-web-first-assertions',
 )
 
-/** Every file a rule whose fix check withholds reports with a suggested rewrite and no fix, as its plugin ships it. */
 export const FILES_A_WITHHELD_RULE_SUGGESTS_A_REWRITE_IN: readonly ReportedFile[] = [
   {
     file: 'src/mark-next.ts',
@@ -83,7 +80,7 @@ export const FILES_A_WITHHELD_SORTING_OR_REACT_FIX_WOULD_CHANGE: readonly Report
   { file: 'src/size-order.ts', source: moduleText("export const SIZE_ORDER = new Set(['small', 'large'])"), line: 1, rule: 'perfectionist/sort-sets' },
 ]
 
-/** object-shorthand, ESLint, on line 2, and no-useless-rename, oxlint beside oxlint and ESLint without it, on line 2: neither fix is withheld. */
+/** object-shorthand and no-useless-rename, oxlint beside oxlint and ESLint without it, each on line 2: neither fix is withheld. */
 export const FILES_FIXED_BESIDE: readonly FixedFile[] = [
   { file: 'src/wrap.ts', source: moduleText(...WRAP), fixed: moduleText(...WRAP_FIXED) },
   {

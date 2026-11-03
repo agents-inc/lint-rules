@@ -52,11 +52,19 @@ const NO_OPTIONAL_LOCKS = { GIT_OPTIONAL_LOCKS: '0' }
 
 export function createGitProject(tempProjects: TempProjects, { files, repo, linkedPackages = CONSUMER_INSTALL }: GitProjectSpec): GitProject {
   const dir = realpathSync(tempProjects.create({ files, linkedPackages }))
-  if (repo !== 'not a repo') gitIn(dir, ['init', '--quiet'])
-  if (repo === 'committed') {
-    gitIn(dir, ['add', '--all'])
-    gitIn(dir, ['commit', '--quiet', '--allow-empty', '--message', FIRST_COMMIT_MESSAGE])
-  }
+  makeTheRepo(dir, repo)
+  return gitProjectIn(dir)
+}
+
+function makeTheRepo(dir: string, repo: RepoState): void {
+  if (repo === 'not a repo') return
+  gitIn(dir, ['init', '--quiet'])
+  if (repo === 'no commits') return
+  gitIn(dir, ['add', '--all'])
+  gitIn(dir, ['commit', '--quiet', '--allow-empty', '--message', FIRST_COMMIT_MESSAGE])
+}
+
+function gitProjectIn(dir: string): GitProject {
   function pathOf(file: string): string {
     return join(dir, file)
   }

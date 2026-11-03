@@ -26,7 +26,6 @@ function teamPrefixesOfOurPlugins(): Readonly<Record<string, ESLint.Plugin>> {
 describe('mergeEslintConfig, given a team block registering typescript-eslint as ts and eslint-plugin-unicorn as u', () => {
   const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJson()) } })
 
-  /** Our unicorn rule's severity in a source file, beside the team block stating the key given off. */
   async function ourUnicornRuleBeside(teamKey: string): Promise<string | undefined> {
     const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { [OUR_UNICORN_RULE]: 'error' } })).editorRulesets
     const merged = mergeEslintConfig([buildTeamEslintBlock('team', { plugins: teamPrefixesOfOurPlugins(), rules: { [teamKey]: 'off' } })], eslint, NO_TEAM_OXLINT_CONFIG)

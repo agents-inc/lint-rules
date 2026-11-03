@@ -39,6 +39,11 @@ export const { eslint, oxlint } = defineLintRules(${JSON.stringify(lintRules, nu
 * files are written.
 */
 export function agentsIncLintModuleTextRootedAtItsFolder(settings: Omit<LintRules, 'tsconfigRootDir'>): string {
+  return agentsIncLintModuleTextHanding(settings)
+}
+
+/** As agentsIncLintModuleTextRootedAtItsFolder, handing defineLintRules the settings as they are, which may be ones it refuses. */
+export function agentsIncLintModuleTextHanding(settings: unknown): string {
   return `import { defineLintRules } from '${BUILT_PACKAGE}'
 
 export const { eslint, oxlint } = defineLintRules({ tsconfigRootDir: import.meta.dirname, ...${JSON.stringify(settings, null, 2)} }).editorRulesets

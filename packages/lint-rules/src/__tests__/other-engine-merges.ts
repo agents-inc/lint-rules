@@ -1,4 +1,4 @@
-import { catalog } from '@workspace/rule-data'
+import { catalog, routeOf } from '@workspace/rule-data'
 import type { OxlintConfig } from 'oxlint'
 import type { EditorParts, OxlintPart } from '../core/editor-parts.ts'
 import { defineLintRules, type LintRules } from '../index.ts'
@@ -31,8 +31,6 @@ export function ourOxlintPartIn(projectDir: string, rules: OurRules = {}): Oxlin
 
 /** Under any spelling oxlint takes it by: NOT_STATED where none applies there. */
 export function severityStatedFor(merged: Readonly<OxlintConfig>, file: string, ruleId: string): string {
-  const route = catalog.rules.get(ruleId)
-  if (route === undefined) throw new Error(`${ruleId} is no rule of ours`)
-  const entry = oxlintEntryOfRuleFor(merged, file, route.oxlintSpellings)
+  const entry = oxlintEntryOfRuleFor(merged, file, routeOf(ruleId, catalog).oxlintSpellings)
   return entry === undefined ? NOT_STATED : severityOfOxlintEntry(entry)
 }

@@ -23,7 +23,7 @@ describe('the check for exports nothing imports', () => {
   })
 
   it("runs before each package's typecheck, so a finding fails it", () => {
-    expect(TURBO_CONFIG.tasks['typecheck']).toStrictEqual({ dependsOn: ['^typecheck', '^build', UNUSED_EXPORTS_TASK] })
+    expect(TURBO_CONFIG.tasks.typecheck).toStrictEqual({ dependsOn: ['^typecheck', '^build', UNUSED_EXPORTS_TASK] })
   })
 
   it("runs before the typecheck of scripts/ and the root's lint configs, which also waits for lint-rules' build", () => {

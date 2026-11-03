@@ -7,9 +7,11 @@ import { buildOxlintFinding } from './factories/oxlint-finding-factories.ts'
 import { createProjectListingOxlint } from './factories/package-json-factories.ts'
 import { buildTeamOxlintConfig } from './factories/team-config-factories.ts'
 import { ownerOfOxlintFindings, oxlintFindingsOwed, type TeamConfigsRead } from './oxlint-findings-owed.ts'
-import { setUpTempProjects } from './temp-projects.ts'
+import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
 
-const PROJECT_WITH_OXLINT = createProjectListingOxlint(setUpTempProjects())
+const PROJECT_MADE: RunsBeforeTheSuiteOptions = { timeoutMs: 10_000, whatFailed: 'the project listing oxlint could not be made before the suite' }
+
+const projectWithOxlint = setUpRunsBeforeTheSuite(createProjectListingOxlint, PROJECT_MADE)
 
 const NO_STRING_REFS = 'react(no-string-refs)'
 const NO_UNUSED_VARS = 'eslint(no-unused-vars)'
@@ -23,7 +25,7 @@ const NO_DUPLICATE_ENUM_VALUES = 'typescript(no-duplicate-enum-values)'
 function ourParts(): EditorParts {
   return defineLintRules(
     buildConsumerLintRules(
-      PROJECT_WITH_OXLINT,
+      projectWithOxlint(),
       {},
       {
         rules: { 'react/no-string-refs': 'error', 'no-unused-vars': 'error', 'no-debugger': 'off' },
@@ -41,8 +43,13 @@ function teamConfigs(oxlint: Readonly<TeamConfigsRead['oxlint']>, eslintRuleKeys
 // Our ESLint part runs no-this-alias, kept out of dist/**; our oxlint part runs nothing.
 function ourPartsRunningNoThisAliasInEslint(): EditorParts {
   return defineLintRules(
-    buildConsumerLintRules(PROJECT_WITH_OXLINT, {}, { rules: { '@typescript-eslint/no-this-alias': 'error' }, ignores: ['dist/**'] }),
+    buildConsumerLintRules(projectWithOxlint(), {}, { rules: { '@typescript-eslint/no-this-alias': 'error' }, ignores: ['dist/**'] }),
   ).editorRulesets
+}
+
+// Our ESLint part runs typescript-eslint's no-unused-vars, the twin of the core rule oxlint's no-unused-vars is; our oxlint part runs nothing.
+function ourPartsRunningTheTypescriptEslintTwinInEslint(): EditorParts {
+  return defineLintRules(buildConsumerLintRules(projectWithOxlint(), {}, { rules: { '@typescript-eslint/no-unused-vars': 'error' } })).editorRulesets
 }
 
 const TEAM_SETTING_NONE = teamConfigs(buildTeamOxlintConfig({ plugins: ['react'], categories: { correctness: 'off' } }))
@@ -112,6 +119,13 @@ describe('ownerOfOxlintFindings, for a rule our ESLint part runs', () => {
     { how: 'sets it in its ESLint config', team: teamConfigs(buildTeamOxlintConfig(), ['@typescript-eslint/no-this-alias']) },
   ])("gives oxlint's no-this-alias to the team where the team $how", ({ team }) => {
     expect(ownerOfOxlintFindings(ourPartsRunningNoThisAliasInEslint(), team, catalog)('src/a.ts', NO_THIS_ALIAS)).toBe('the team')
+  })
+
+  it.each([
+    { team: teamConfigs(buildTeamOxlintConfig()), owner: 'nobody', where: 'writes no category' },
+    { team: teamConfigs(buildTeamOxlintConfig({ categories: { correctness: 'warn' } })), owner: 'the team', where: 'writes correctness on' },
+  ])("gives oxlint's no-unused-vars to $owner where our ESLint part runs typescript-eslint's twin of it alone and the team $where", ({ team, owner }) => {
+    expect(ownerOfOxlintFindings(ourPartsRunningTheTypescriptEslintTwinInEslint(), team, catalog)('src/a.ts', NO_UNUSED_VARS)).toBe(owner)
   })
 
   it("gives a rule neither part of ours runs to the team where it writes no category, as oxlint's own copy runs it", () => {

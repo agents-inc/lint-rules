@@ -3,13 +3,11 @@
 // of the calls they would order. Each fix was measured by running the plugin's
 // (@tanstack/eslint-plugin-query 5.104.5, @tanstack/eslint-plugin-router 1.162.0, eslint-plugin-zod 5.2.2).
 
-/** A file, the line check reports it on, and the rule that reports it there. */
 type ReportedFile = { readonly file: string; readonly source: string; readonly line: number; readonly rule: string }
 
 /**
  * Each file a withheld fix would rewrite, in path order as check prints their findings. The zod fix moves `.trim()`
- * before `.min(1)`, and the TanStack fix wraps the client in `React.useState`, which this file never imports (owner:
- * "Report only, fix withheld").
+ * before `.min(1)`, and the TanStack fix wraps the client in `React.useState`, which this file never imports.
  */
 export const FILES_A_WITHHELD_FIX_WOULD_REWRITE: readonly ReportedFile[] = [
   {
@@ -36,7 +34,6 @@ export function Providers({ children }: { children: ReactNode }) {
   },
 ]
 
-/** A file, and the lines sort-objects reports in it. */
 type SortedFile = { readonly file: string; readonly source: string; readonly linesSortObjectsReports: readonly number[] }
 
 /**

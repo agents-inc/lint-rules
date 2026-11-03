@@ -22,10 +22,10 @@ export type GridRow = { readonly how: string; readonly ours: OurFields }
 /** Null where the source cannot draw the rule. */
 type GridSource = { readonly text: string; readonly lines: Readonly<Record<GridRuleId, number | null>> }
 
-// typescript/array-type under array-simple (1); no-unused-vars (3), which oxlint's reports in no
+// typescript/no-inferrable-types (1); no-unused-vars (3), which oxlint's reports in no
 // .vue, .svelte or .astro file, at the top level or in a function (measured, oxlint 1.87);
 // no-debugger (4); no-var (6).
-const TS_SOURCE = `export const list: Array<string> = []
+const TS_SOURCE = `export const count: number = 1
 export function stop(): void {
   const unused = 1
   debugger
@@ -33,9 +33,9 @@ export function stop(): void {
 export var counter = 0
 `
 
-const TS: GridSource = { text: TS_SOURCE, lines: { 'no-debugger': 4, '@typescript-eslint/array-type': 1, 'no-var': 6, 'no-unused-vars': 3 } }
+const TS: GridSource = { text: TS_SOURCE, lines: { 'no-debugger': 4, '@typescript-eslint/no-inferrable-types': 1, 'no-var': 6, 'no-unused-vars': 3 } }
 
-// no-unused-vars (2); no-debugger (3); no-var (5). JS has no array type to draw array-type.
+// no-unused-vars (2); no-debugger (3); no-var (5). JS has no type annotation to draw no-inferrable-types.
 const JS: GridSource = {
   text: `export function stop() {
   const unused = 1
@@ -43,11 +43,11 @@ const JS: GridSource = {
 }
 export var counter = 0
 `,
-  lines: { 'no-debugger': 3, '@typescript-eslint/array-type': null, 'no-var': 5, 'no-unused-vars': 2 },
+  lines: { 'no-debugger': 3, '@typescript-eslint/no-inferrable-types': null, 'no-var': 5, 'no-unused-vars': 2 },
 }
 
 // The TS source one line down, in a .vue or .svelte file's script block, or an .astro file's frontmatter.
-const ONE_LINE_DOWN = { 'no-debugger': 5, '@typescript-eslint/array-type': 2, 'no-var': 7, 'no-unused-vars': 4 } as const
+const ONE_LINE_DOWN = { 'no-debugger': 5, '@typescript-eslint/no-inferrable-types': 2, 'no-var': 7, 'no-unused-vars': 4 } as const
 const SCRIPT_BLOCK: GridSource = { text: `<script lang="ts">\n${TS_SOURCE}</script>\n`, lines: ONE_LINE_DOWN }
 const FRONTMATTER: GridSource = { text: `---\n${TS_SOURCE}---\n`, lines: ONE_LINE_DOWN }
 
@@ -90,21 +90,21 @@ export const GRID_JS_AND_TS_FILES = GRID_FILES.filter((file) => !COMPONENT_FILES
 
 export const OUR_GRID_RULES = {
   'no-debugger': 'error',
-  '@typescript-eslint/array-type': 'error',
+  '@typescript-eslint/no-inferrable-types': 'error',
   'no-var': 'error',
   'no-unused-vars': 'error',
 } as const satisfies OurRules
 
 /**
 * Each turned on by the team in the other engine. no-var shows ESLint's reading of our ignores in JS files,
-* where array-type draws nothing.
+* where no-inferrable-types draws nothing.
 */
 export const GRID_RULES: readonly GridRule[] = [
   { rule: 'no-debugger', names: ['no-debugger', 'eslint(no-debugger)'], teamsName: 'no-debugger', teamsEngine: 'eslint' },
   {
-    rule: '@typescript-eslint/array-type',
-    names: ['@typescript-eslint/array-type', 'typescript(array-type)'],
-    teamsName: 'typescript(array-type)',
+    rule: '@typescript-eslint/no-inferrable-types',
+    names: ['@typescript-eslint/no-inferrable-types', 'typescript(no-inferrable-types)'],
+    teamsName: 'typescript(no-inferrable-types)',
     teamsEngine: 'oxlint',
   },
   { rule: 'no-var', names: ['no-var', 'eslint(no-var)'], teamsName: 'eslint(no-var)', teamsEngine: 'oxlint' },
@@ -125,10 +125,10 @@ export const TEAM_GRID_ESLINT_RULES = { 'no-debugger': 'error', '@typescript-esl
 export const TEAM_GRID_OXLINT_CONFIG: OxlintConfig = {
   plugins: ['typescript'],
   categories: { correctness: 'off' },
-  rules: { 'typescript/array-type': 'error', 'no-var': 'error' },
+  rules: { 'typescript/no-inferrable-types': 'error', 'no-var': 'error' },
 }
 
-const OUR_GRID_RULES_OFF = { 'no-debugger': 'off', '@typescript-eslint/array-type': 'off', 'no-var': 'off', 'no-unused-vars': 'off' } as const satisfies OurRules
+const OUR_GRID_RULES_OFF = { 'no-debugger': 'off', '@typescript-eslint/no-inferrable-types': 'off', 'no-var': 'off', 'no-unused-vars': 'off' } as const satisfies OurRules
 
 export const GRID_ROWS: readonly GridRow[] = [
   { how: 'our ignores name a folder bare, generated', ours: { ignores: ['generated'] } },
@@ -281,28 +281,28 @@ export const debuggerSourceFiles = {
   'src/c.astro': `---\n${DEBUGGER_SOURCE}---\n`,
 } as const
 
-// array-type under array-simple (1, one line down in a component).
-const ARRAY_TYPE_SOURCE = `export const list: Array<string> = []
+// no-inferrable-types (1, one line down in a component).
+const INFERRABLE_TYPE_SOURCE = `export const count: number = 1
 `
 
-export const ARRAY_TYPE: RuleByItsNames = {
-  rule: '@typescript-eslint/array-type',
-  names: ['@typescript-eslint/array-type', 'typescript(array-type)'],
+export const NO_INFERRABLE_TYPES: RuleByItsNames = {
+  rule: '@typescript-eslint/no-inferrable-types',
+  names: ['@typescript-eslint/no-inferrable-types', 'typescript(no-inferrable-types)'],
 }
 
-export const OURS_TURNING_ARRAY_TYPE_ON = { '@typescript-eslint/array-type': 'error' } as const satisfies OurRules
+export const OURS_TURNING_NO_INFERRABLE_TYPES_ON = { '@typescript-eslint/no-inferrable-types': 'error' } as const satisfies OurRules
 
-export const TEAM_OXLINT_CONFIG_TURNING_ARRAY_TYPE_ON: OxlintConfig = {
+export const TEAM_OXLINT_CONFIG_TURNING_NO_INFERRABLE_TYPES_ON: OxlintConfig = {
   plugins: ['typescript'],
   categories: { correctness: 'off' },
-  rules: { 'typescript/array-type': 'error' },
+  rules: { 'typescript/no-inferrable-types': 'error' },
 }
 
-export const arrayTypeSourceFiles = {
-  'src/a.ts': ARRAY_TYPE_SOURCE,
-  'src/c.vue': `<script lang="ts">\n${ARRAY_TYPE_SOURCE}</script>\n`,
-  'src/c.svelte': `<script lang="ts">\n${ARRAY_TYPE_SOURCE}</script>\n`,
-  'src/c.astro': `---\n${ARRAY_TYPE_SOURCE}---\n`,
+export const inferrableTypeSourceFiles = {
+  'src/a.ts': INFERRABLE_TYPE_SOURCE,
+  'src/c.vue': `<script lang="ts">\n${INFERRABLE_TYPE_SOURCE}</script>\n`,
+  'src/c.svelte': `<script lang="ts">\n${INFERRABLE_TYPE_SOURCE}</script>\n`,
+  'src/c.astro': `---\n${INFERRABLE_TYPE_SOURCE}---\n`,
 } as const
 
 export const MAX_PARAMS: RuleByItsNames = {
@@ -329,7 +329,6 @@ export const DEFAULT_PARAM_LAST: RuleByItsNames = {
   names: ['default-param-last', '@typescript-eslint/default-param-last', 'eslint(default-param-last)'],
 }
 
-/** The catalog routes the core rule to ESLint; our ignores leave out legacy/. */
 export const OURS_SETTING_THE_DEFAULT_PARAM_LAST_EXTENSION: OurFields = {
   rules: { '@typescript-eslint/default-param-last': 'error' },
   ignores: ['legacy/'],

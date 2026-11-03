@@ -50,6 +50,12 @@ import {
   THROWS_A_CATCH_OR_A_FINALLY_LETS_OUT,
   TWO_FUNCTIONS_CALLING_EACH_OTHER_NEITHER_THROWING,
 } from './cases/collect-time-calls.ts'
+import {
+  A_THROWING_ARROW_HELD_IN_A_CONST,
+  A_THROWING_FUNCTION_EXPRESSION_HELD_IN_A_CONST,
+  A_THROWING_METHOD_CALLED_ON_ITS_OBJECT,
+  HELD_FUNCTIONS_AND_A_METHOD_THAT_CANNOT_THROW,
+} from './cases/collect-time-calls-held-or-methods.ts'
 import { type CollectTimeThrow, collectTimeThrowsIn } from './collect-time-throws.ts'
 import { programOfFiles } from './factories/typescript-program-factories.ts'
 
@@ -120,6 +126,20 @@ describe('collectTimeThrowsIn', () => {
 
   it('finds none in a function outside our files, however it throws', () => {
     expect(collectTimeThrowsOfTestFile(A_THROWING_CALL_OUTSIDE_OUR_FILES)).toStrictEqual([])
+  })
+})
+
+describe('collectTimeThrowsIn, on functions of the test file held in a const or declared as a method', () => {
+  it.each<{ readonly shape: string; readonly text: string; readonly found: readonly CollectTimeThrow[] }>([
+    { shape: 'an arrow held in a const', text: A_THROWING_ARROW_HELD_IN_A_CONST, found: [{ calls: 'lookUpHeld', where: 'top level' }] },
+    { shape: 'a function expression held in a const', text: A_THROWING_FUNCTION_EXPRESSION_HELD_IN_A_CONST, found: [{ calls: 'lookUpExpressed', where: 'top level' }] },
+    { shape: 'a method called on its object', text: A_THROWING_METHOD_CALLED_ON_ITS_OBJECT, found: [{ calls: 'lookUps.byId', where: 'top level' }] },
+  ])('finds the call of $shape that reaches a throw', ({ text, found }) => {
+    expect(collectTimeThrowsOfTestFile(text)).toStrictEqual(found)
+  })
+
+  it('finds none where the held functions and the method cannot throw', () => {
+    expect(collectTimeThrowsOfTestFile(HELD_FUNCTIONS_AND_A_METHOD_THAT_CANNOT_THROW)).toStrictEqual([])
   })
 })
 

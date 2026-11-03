@@ -13,6 +13,7 @@ const MAX_TERMS = 4
 const NEGATED_ONE_IN = 6
 
 export function seededDraws(seed: number): Draw {
+  // eslint-disable-next-line functional/no-let -- TS2588 as a const: each draw advances the state the next draw starts from, and every caller takes one draw function, not a state to pass on
   let state = seed
   return (bound) => {
     state = (state * MULTIPLIER + INCREMENT) % MODULUS

@@ -1,11 +1,14 @@
+import { readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { catalog, routeOf } from '@workspace/rule-data'
 import { compareCodeUnits } from '@workspace/rule-data/collections'
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
 import { pluginPrefixOf } from '@workspace/rule-data/rule-id-parts'
 import type { ESLint, Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
+import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { agentConfigsOf } from './__tests__/agent-configs.ts'
 import { severityOfCalculatedEntry } from './__tests__/calculated-rule-severity.ts'
@@ -13,15 +16,15 @@ import {
   annotationTheInitializerImplies,
   buttonWithoutAType,
   cleanModule,
-  genericArrayOfASimpleType,
   innerHtmlSetDangerously,
   looseNullCheck,
   looseNumberCheck,
   propertyReadIntoAVariable,
-  simpleTypeArrayInBrackets,
   stringLiteralInBracesAsAProp,
   suppressionOfAnOxcRule,
   suppressionOfOxlintsUnicornName,
+  thisAliasedAsSelf,
+  thisDestructured,
   thrownStringLiteral,
   uselessFragment,
 } from './__tests__/cases/editor-merge-sources.ts'
@@ -65,6 +68,7 @@ import { resolversImportXReads } from './__tests__/import-x-settings.ts'
 import { sameModuleNamesOfEach, sameRuleNamesOfEach, type TwinPair, twinPairsOf } from './__tests__/other-eslint-names.ts'
 import { PARALLEL_LOAD_TIMEOUT_MS } from './__tests__/parallel-load.ts'
 import { changesSince, snapshotOf } from './__tests__/plugin-snapshots.ts'
+import { nodesUnder } from './__tests__/repo-programs.ts'
 import { rulesNotFoundAmong } from './__tests__/rules-not-found.ts'
 import { rulesOnInEslint } from './__tests__/rules-on-engines.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
@@ -84,7 +88,7 @@ import { defineLintRules, type LintRules } from './index.ts'
 // makes it the team's in every file. The team's plugins are fakes, so a spec sees whose rule module
 // ran. Each config turns on exactly the rules its spec reads, so no typed rule asks for a project service.
 
-type TeamEslintConfig = Parameters<typeof mergeEslintConfig>[0]
+type TeamEslintConfig = Parameters<typeof defineConfig>[number]
 type SharedFields = Partial<Omit<LintRules, 'tsconfigRootDir' | 'agentRulesets' | 'editorRulesets'>>
 type EditorParts = ReturnType<typeof defineLintRules>['editorRulesets']
 
@@ -149,7 +153,12 @@ type Registration = {
   readonly file: string
 }
 
-const ARRAY_TYPE = '@typescript-eslint/array-type'
+const NO_THIS_ALIAS = '@typescript-eslint/no-this-alias'
+// The team's no-this-alias reports a destructuring of this, which ours leaves, and leaves a self alias, which ours reports.
+const TEAM_NO_THIS_ALIAS_OPTIONS = { allowDestructuring: false, allowedNames: ['self'] }
+// sonarjs's max-lines-per-function ships ignoring test files.
+const MAX_LINES_PER_FUNCTION = 'sonarjs/max-lines-per-function'
+const SONARJS_PREFIX = 'sonarjs'
 const NO_INFERRABLE_TYPES = '@typescript-eslint/no-inferrable-types'
 const FLOATING_PROMISES = '@typescript-eslint/no-floating-promises'
 const TYPED_RULE_ON = { rules: { [FLOATING_PROMISES]: 'error' } } satisfies SharedFields
@@ -238,10 +247,10 @@ const TEAM_NEXT_PLUGIN_VERSION = '2.0.0'
 const TYPESCRIPT_ESLINT_PREFIX = '@typescript-eslint'
 const TYPESCRIPT_ESLINT_PLUGIN_NAME = '@typescript-eslint/eslint-plugin'
 // The prefix antfu's eslint-config registers typescript-eslint under, and two rules under it: our
-// array-type under another name, and typescript-eslint's twin of the core prefer-promise-reject-errors.
+// no-this-alias under another name, and typescript-eslint's twin of the core prefer-promise-reject-errors.
 const TEAM_TS_PREFIX = 'ts'
-const TEAM_TS_RULE_NAMES = ['array-type', 'prefer-promise-reject-errors']
-const TEAM_TS_ARRAY_TYPE = 'ts/array-type'
+const TEAM_TS_RULE_NAMES = ['no-this-alias', 'prefer-promise-reject-errors']
+const TEAM_TS_NO_THIS_ALIAS = 'ts/no-this-alias'
 const TEAM_TS_TWIN = 'ts/prefer-promise-reject-errors'
 const TEAM_OWN_PLUGIN_NAME = 'eslint-plugin-team-ts'
 // Rules only our off-switch states, under the team's `ts`: typescript-eslint's no-explicit-any, which
@@ -250,11 +259,11 @@ const TEAM_OWN_PLUGIN_NAME = 'eslint-plugin-team-ts'
 const TEAM_TS_RULES_ONLY_OUR_OFF_SWITCH_STATES = ['ts/no-explicit-any', 'ts/no-loop-func']
 // eslint-plugin-promise carries no name, so only the very object is recognised as ours.
 const PROMISE_PREFIX = 'promise'
-const OUR_PROMISE_RULE = 'promise/param-names'
+const OUR_PROMISE_RULE = 'promise/valid-params'
 const TEAM_PROMISE_PREFIX = 'promise-x'
-const TEAM_PROMISE_RULE = 'promise-x/param-names'
+const TEAM_PROMISE_RULE = 'promise-x/valid-params'
 const TEAM_LOCAL_PREFIX = 'local'
-const TEAM_LOCAL_PROMISE_NAMED_RULE = 'local/param-names'
+const TEAM_LOCAL_PROMISE_NAMED_RULE = 'local/valid-params'
 // unicorn's prefer-includes, and typescript-eslint's rule of that name under the team's `ts`: another rule.
 const OUR_UNICORN_RULE = 'unicorn/prefer-includes'
 const TEAM_TS_RULE_NAMED_AS_OUR_UNICORN_RULE = 'ts/prefer-includes'
@@ -356,15 +365,13 @@ function inDefaultSortOrder(left: string | null, right: string | null): number {
 }
 
 /** Our editor ESLint part for a config listing no ruleset, with these shared settings, merged into the team's config, the team's oxlint config setting no rule. */
-// eslint-disable-next-line functional/prefer-immutable-types -- TS2345 as Readonly: mergeEslintConfig takes the team's config as a mutable TeamEslintConfig, an InfiniteArray<ConfigWithExtends>
-function mergedEditorEslintConfig(projectDir: string, fields: SharedFields, teamConfig: TeamEslintConfig): Linter.Config[] {
+function mergedEditorEslintConfig(projectDir: string, fields: SharedFields, teamConfig: Readonly<TeamEslintConfig>): Linter.Config[] {
   const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, fields)).editorRulesets
   return mergedBesideATeamOxlintConfigSettingNoRule(teamConfig, eslint)
 }
 
 /** The ESLint part merged into the team's config, beside a team oxlint config setting no rule where the project lists oxlint. */
-// eslint-disable-next-line functional/prefer-immutable-types -- TS2345 as Readonly: mergeEslintConfig takes the team's config as a mutable TeamEslintConfig, an InfiniteArray<ConfigWithExtends>
-function mergedBesideATeamOxlintConfigSettingNoRule(teamConfig: TeamEslintConfig, eslint: EditorParts['eslint']): Linter.Config[] {
+function mergedBesideATeamOxlintConfigSettingNoRule(teamConfig: Readonly<TeamEslintConfig>, eslint: EditorParts['eslint']): Linter.Config[] {
   return mergeEslintConfig(teamConfig, eslint, writeTeamOxlintConfigSettingNoRule(eslint))
 }
 
@@ -473,17 +480,96 @@ function whosePlugin(plugin: Readonly<ESLint.Plugin>, prefix: string, { plugins 
 async function languageOptionsAndSettingsIn(config: readonly Linter.Config[], file: string): Promise<Record<string, unknown>> {
   const { languageOptions, settings } = await lintedConfigFor(config, file)
   if (languageOptions === undefined || settings === undefined) throw new Error(`ESLint calculated no language options or settings for ${file}`)
-  const parser: unknown = languageOptions['parser']
-  const parserOptions: unknown = languageOptions['parserOptions']
-  const globals: unknown = languageOptions['globals']
-  const react: unknown = settings['react']
+  const parser: unknown = languageOptions.parser
+  const parserOptions: unknown = languageOptions.parserOptions
+  const globals: unknown = languageOptions.globals
+  const react: unknown = settings.react
   return {
-    parser: isRecord(parser) && isRecord(parser['meta']) ? parser['meta']['name'] : undefined,
-    jsx: isRecord(parserOptions) && isRecord(parserOptions['ecmaFeatures']) ? parserOptions['ecmaFeatures']['jsx'] : undefined,
-    $state: isRecord(globals) ? globals['$state'] : undefined,
-    reactVersion: isRecord(react) ? react['version'] : undefined,
+    parser: isRecord(parser) && isRecord(parser.meta) ? parser.meta.name : undefined,
+    jsx: isRecord(parserOptions) && isRecord(parserOptions.ecmaFeatures) ? parserOptions.ecmaFeatures.jsx : undefined,
+    $state: isRecord(globals) ? globals.$state : undefined,
+    reactVersion: isRecord(react) ? react.version : undefined,
   }
 }
+
+const OUR_RULES_TAKEN_AS_OXLINT_RUN = [
+  NO_UNUSED_VARS,
+  MAX_PARAMS,
+  PREFER_DESTRUCTURING,
+  NO_DEBUGGER,
+  NO_WARNING_COMMENTS,
+  CORE_RULE_WITH_A_DEPRECATED_EXTENSION,
+  'import-x/first',
+  'unicorn/no-for-each',
+  '@typescript-eslint/no-explicit-any',
+  'react/no-string-refs',
+  'react/react-in-jsx-scope',
+  USELESS_FRAGMENT_UNDER_REACT,
+  'max-lines',
+  'no-console',
+  'no-unused-private-class-members',
+  'oxc/approx-constant',
+  'prefer-promise-reject-errors',
+]
+const OUR_RULES_TAKEN_AS_ESLINT_RUN_BESIDE_OXLINT = [
+  NO_THIS_ALIAS,
+  MAX_LINES_PER_FUNCTION,
+  OUR_PROMISE_RULE,
+  NO_INFERRABLE_TYPES,
+  FLOATING_PROMISES,
+  OUR_CORE_RULE_WITH_A_TWIN,
+  CURLY_BRACE_PRESENCE,
+  OUR_INNER_HTML,
+  OUR_MISSING_KEY,
+  OUR_UNICORN_RULE,
+  'eqeqeq',
+  OUR_USELESS_FRAGMENT,
+  MISSING_KEY_UNDER_ITS_OTHER_NAME,
+  DUPLICATE_KEY,
+  UNUSED_STATE_UNDER_ITS_OTHER_NAME,
+  TYPED_EXTENSION,
+  CORE_TWIN_OF_THE_TYPED_EXTENSION,
+  TWIN_OF_NO_UNUSED_VARS,
+  TWIN_OF_MAX_PARAMS,
+  TWIN_OF_PREFER_DESTRUCTURING,
+  TEAMS_TWIN_OF_OUR_CORE_RULE,
+  '@typescript-eslint/no-invalid-this',
+  'no-invalid-this',
+  '@typescript-eslint/no-unused-private-class-members',
+  '@typescript-eslint/prefer-promise-reject-errors',
+  'dot-notation',
+  'functional/no-expression-statements',
+  'import-x/named',
+  'no-var',
+  'unicorn/prefer-at',
+]
+// Quoted as a ruleset's name, a setting's name and a rule of a made-up catalog: no spec reads their routes.
+const RULE_IDS_QUOTED_AS_SOMETHING_ELSE = ['complexity', 'import-x/extensions', 'n/no-process-exit']
+
+// A rule rerouted leaves the specs that take it to run on its old engine passing on a premise no longer true.
+describe('the rules of ours this file names', () => {
+  it('are every rule ID of the catalog the file quotes', async () => {
+    const thisFile = fileURLToPath(import.meta.url)
+    const source = ts.createSourceFile(thisFile, await readFile(thisFile, 'utf8'), ts.ScriptTarget.Latest)
+    const quoted = nodesUnder(source)
+      .filter((node) => ts.isStringLiteralLike(node))
+      .map(({ text }) => text)
+      .filter((text) => catalog.rules.has(text))
+
+    expect(new Set(quoted).values().toArray().toSorted(compareCodeUnits)).toStrictEqual(
+      [...OUR_RULES_TAKEN_AS_OXLINT_RUN, ...OUR_RULES_TAKEN_AS_ESLINT_RUN_BESIDE_OXLINT, ...RULE_IDS_QUOTED_AS_SOMETHING_ELSE].toSorted(compareCodeUnits),
+    )
+  })
+
+  it('are each routed to the engine the specs take it to run on in a project whose package.json lists oxlint', () => {
+    const routed = [...OUR_RULES_TAKEN_AS_OXLINT_RUN, ...OUR_RULES_TAKEN_AS_ESLINT_RUN_BESIDE_OXLINT].map((id) => ({ id, engine: catalog.rules.get(id)?.engine }))
+
+    expect(routed).toStrictEqual([
+      ...OUR_RULES_TAKEN_AS_OXLINT_RUN.map((id) => ({ id, engine: 'oxlint' })),
+      ...OUR_RULES_TAKEN_AS_ESLINT_RUN_BESIDE_OXLINT.map((id) => ({ id, engine: 'eslint' })),
+    ])
+  })
+})
 
 describe('a team block registering, under the prefix of a rule we run, a plugin object of its own', () => {
   const registrations: readonly Registration[] = [
@@ -541,8 +627,16 @@ describe('a team block registering, under the prefix of a rule we run, a plugin 
 
 function teamRegistering(rules: Readonly<Linter.RulesRecord>): Linter.Config[] {
   return [
-    buildTeamEslintBlock('team', { plugins: { '@typescript-eslint': buildFakePlugin(['array-type']) }, rules }),
+    buildTeamEslintBlock('team', { plugins: { '@typescript-eslint': buildFakePlugin(['no-this-alias']) }, rules }),
   ]
+}
+
+function teamBlockSettingMaxLinesPerFunction(scope: Readonly<Pick<Linter.Config, 'files'>>): Linter.Config {
+  return buildTeamEslintBlock('team', {
+    ...scope,
+    plugins: { [SONARJS_PREFIX]: installedEslintPlugin(SONARJS_PREFIX) },
+    rules: { [MAX_LINES_PER_FUNCTION]: ['error', { maximum: 1 }] },
+  })
 }
 
 // Ours is left out of the team's files rather than put before the team's block: a later bare severity
@@ -550,38 +644,38 @@ function teamRegistering(rules: Readonly<Linter.RulesRecord>): Linter.Config[] {
 describe('a rule our part states, which the team sets too', () => {
 
   it.each(PROJECTS)('is off where the team turned it off, ours not running, in a project $project', async ({ projectDir }) => {
-    const config = mergedEditorEslintConfig(projectDir, { rules: { [ARRAY_TYPE]: 'error' } }, teamRegistering({ [ARRAY_TYPE]: 'off' }))
+    const config = mergedEditorEslintConfig(projectDir, { rules: { [NO_THIS_ALIAS]: 'error' } }, teamRegistering({ [NO_THIS_ALIAS]: 'off' }))
 
-    expect(await ruleIdsReportedOn(config, genericArrayOfASimpleType, 'src/a.ts')).toStrictEqual([])
+    expect(await ruleIdsReportedOn(config, thisAliasedAsSelf, 'src/a.ts')).toStrictEqual([])
   })
 
-  // The team registers typescript-eslint's own plugin: generic reports what our array-simple leaves,
-  // and leaves what ours reports.
+  // The team registers typescript-eslint's own plugin, with options reporting what ours leaves and
+  // leaving what ours reports.
   it.each(PROJECTS)("runs with the team's options where the team gave others, in a project $project", async ({ projectDir }) => {
     const teamConfig = [
       buildTeamEslintBlock('team', {
         plugins: { [TYPESCRIPT_ESLINT_PREFIX]: installedEslintPlugin(TYPESCRIPT_ESLINT_PREFIX) },
-        rules: { [ARRAY_TYPE]: ['error', { default: 'generic' }] },
+        rules: { [NO_THIS_ALIAS]: ['error', TEAM_NO_THIS_ALIAS_OPTIONS] },
       }),
     ]
-    const config = mergedEditorEslintConfig(projectDir, { rules: { [ARRAY_TYPE]: 'error' } }, teamConfig)
+    const config = mergedEditorEslintConfig(projectDir, { rules: { [NO_THIS_ALIAS]: 'error' } }, teamConfig)
 
     expect({
-      whatOursReports: await ruleIdsReportedOn(config, genericArrayOfASimpleType, 'src/a.ts'),
-      whatTheTeamsReports: await ruleIdsReportedOn(config, simpleTypeArrayInBrackets, 'src/a.ts'),
-    }).toStrictEqual({ whatOursReports: [], whatTheTeamsReports: [ARRAY_TYPE] })
+      whatOursReports: await ruleIdsReportedOn(config, thisAliasedAsSelf, 'src/a.ts'),
+      whatTheTeamsReports: await ruleIdsReportedOn(config, thisDestructured, 'src/a.ts'),
+    }).toStrictEqual({ whatOursReports: [], whatTheTeamsReports: [NO_THIS_ALIAS] })
   })
 
   // A key under a prefix both register names our rule, so the rule is the team's, on the team's module:
-  // the team's reports every file, where our array-simple would report the first alone.
+  // the team's reports every file, where ours would report the first alone.
   it.each(PROJECTS)("runs on the team's own module where the team registers a plugin of its own under the prefix, in a project $project", async ({ projectDir }) => {
-    const teamConfig = [buildTeamEslintBlock('team', { plugins: { [TYPESCRIPT_ESLINT_PREFIX]: buildReportingPlugin(['array-type']) }, rules: { [ARRAY_TYPE]: 'error' } })]
-    const config = mergedEditorEslintConfig(projectDir, { rules: { [ARRAY_TYPE]: 'error' } }, teamConfig)
+    const teamConfig = [buildTeamEslintBlock('team', { plugins: { [TYPESCRIPT_ESLINT_PREFIX]: buildReportingPlugin(['no-this-alias']) }, rules: { [NO_THIS_ALIAS]: 'error' } })]
+    const config = mergedEditorEslintConfig(projectDir, { rules: { [NO_THIS_ALIAS]: 'error' } }, teamConfig)
 
     expect({
-      whatOursReports: await ruleIdsReportedOn(config, genericArrayOfASimpleType, 'src/a.ts'),
-      whatOursLeaves: await ruleIdsReportedOn(config, simpleTypeArrayInBrackets, 'src/a.ts'),
-    }).toStrictEqual({ whatOursReports: [ARRAY_TYPE], whatOursLeaves: [ARRAY_TYPE] })
+      whatOursReports: await ruleIdsReportedOn(config, thisAliasedAsSelf, 'src/a.ts'),
+      whatOursLeaves: await ruleIdsReportedOn(config, thisDestructured, 'src/a.ts'),
+    }).toStrictEqual({ whatOursReports: [NO_THIS_ALIAS], whatOursLeaves: [NO_THIS_ALIAS] })
   })
 
   it("runs eqeqeq with the team's smart where the team gave it, in a project whose package.json lists no oxlint, where ESLint runs it", async () => {
@@ -606,31 +700,31 @@ describe('a rule our part states, which the team sets too', () => {
     }).toStrictEqual({ nullCheck: [], numberCheck: ['eqeqeq'] })
   })
 
-  // The team's max-lines stands on .ts, where ours does not run, and on .tsx, where it would.
+  // The team's stands on a test file, where ours does not run, and on .tsx, where it would.
   it.each(PROJECTS)("is the team's, options included, in every file the team sets it in, in a project $project", async ({ projectDir }) => {
-    const teamConfig = [buildTeamEslintBlock('team', { files: ['**/*.{ts,tsx}'], rules: { 'max-lines': ['error', { max: 1 }] } })]
-    const config = mergedEditorEslintConfig(projectDir, { rules: { 'max-lines': 'error' } }, teamConfig)
-    const files = ['src/a.ts', 'src/a.tsx']
+    const teamConfig = [teamBlockSettingMaxLinesPerFunction({ files: ['**/*.{ts,tsx}'] })]
+    const config = mergedEditorEslintConfig(projectDir, { rules: { [MAX_LINES_PER_FUNCTION]: 'error' } }, teamConfig)
+    const files = ['src/a.test.ts', 'src/a.tsx']
 
-    expect(await entriesOf(config, 'max-lines', files)).toStrictEqual(await teamAloneEntriesOf(teamConfig, 'max-lines', files))
+    expect(await entriesOf(config, MAX_LINES_PER_FUNCTION, files)).toStrictEqual(await teamAloneEntriesOf(teamConfig, MAX_LINES_PER_FUNCTION, files))
   })
 
   it.each(PROJECTS)("is the team's, options included, in every file, where only an entry of ours states it, in a project $project", async ({ projectDir }) => {
-    const teamConfig = [buildTeamEslintBlock('team', { rules: { 'max-lines': ['error', { max: 1 }] } })]
-    const fields = { fileOverrides: [{ files: ['legacy/**'], rules: { 'max-lines': 'error' } }] } satisfies SharedFields
+    const teamConfig = [teamBlockSettingMaxLinesPerFunction({})]
+    const fields = { fileOverrides: [{ files: ['legacy/**'], rules: { [MAX_LINES_PER_FUNCTION]: 'error' } }] } satisfies SharedFields
     const config = mergedEditorEslintConfig(projectDir, fields, teamConfig)
     const files = ['src/a.tsx', 'legacy/a.tsx']
 
-    expect(await entriesOf(config, 'max-lines', files)).toStrictEqual(await teamAloneEntriesOf(teamConfig, 'max-lines', files))
+    expect(await entriesOf(config, MAX_LINES_PER_FUNCTION, files)).toStrictEqual(await teamAloneEntriesOf(teamConfig, MAX_LINES_PER_FUNCTION, files))
   })
 
   // Our `off` removes only ours.
   it.each(PROJECTS)("is the team's, options included, in every file, where our top-level rules turn it off, in a project $project", async ({ projectDir }) => {
-    const teamConfig = [buildTeamEslintBlock('team', { rules: { 'max-lines': ['error', { max: 1 }] } })]
-    const config = mergedEditorEslintConfig(projectDir, { rules: { 'max-lines': 'off' } }, teamConfig)
+    const teamConfig = [teamBlockSettingMaxLinesPerFunction({})]
+    const config = mergedEditorEslintConfig(projectDir, { rules: { [MAX_LINES_PER_FUNCTION]: 'off' } }, teamConfig)
     const files = ['src/a.ts', 'src/a.tsx']
 
-    expect(await entriesOf(config, 'max-lines', files)).toStrictEqual(await teamAloneEntriesOf(teamConfig, 'max-lines', files))
+    expect(await entriesOf(config, MAX_LINES_PER_FUNCTION, files)).toStrictEqual(await teamAloneEntriesOf(teamConfig, MAX_LINES_PER_FUNCTION, files))
   })
 })
 
@@ -640,10 +734,10 @@ describe('a rule our part states, which a team block sets in some files under on
   const kinds: readonly NameKind[] = [
     {
       kind: 'its own ID',
-      ours: ARRAY_TYPE,
-      teams: ARRAY_TYPE,
+      ours: NO_THIS_ALIAS,
+      teams: NO_THIS_ALIAS,
       plugins() { return { [TYPESCRIPT_ESLINT_PREFIX]: installedEslintPlugin(TYPESCRIPT_ESLINT_PREFIX) } },
-      entry: ['error', { default: 'generic' }],
+      entry: ['error', TEAM_NO_THIS_ALIAS_OPTIONS],
       projects: PROJECTS,
     },
     {
@@ -672,10 +766,10 @@ describe('a rule our part states, which a team block sets in some files under on
     },
     {
       kind: "its name under the team's ts prefix for typescript-eslint",
-      ours: ARRAY_TYPE,
-      teams: TEAM_TS_ARRAY_TYPE,
+      ours: NO_THIS_ALIAS,
+      teams: TEAM_TS_NO_THIS_ALIAS,
       plugins() { return { [TEAM_TS_PREFIX]: installedEslintPlugin(TYPESCRIPT_ESLINT_PREFIX) } },
-      entry: ['error', { default: 'generic' }],
+      entry: ['error', TEAM_NO_THIS_ALIAS_OPTIONS],
       projects: PROJECTS,
     },
     {
@@ -706,16 +800,18 @@ describe('a rule our part states, which a team block sets in some files under on
 // The team's block sets the rule in the files our off and ignores cover, so the rule is the team's in
 // every file, whatever our layer says.
 describe("our off and our ignores, beside a team block setting the rule in the files they cover", () => {
-  const teamConfig = [
-    buildTeamEslintBlock('team', {
-      files: LEGACY_FILES,
-      plugins: { unicorn: buildReportingPlugin(['no-array-for-each']) },
-      rules: { 'max-lines': ['error', { max: 1 }], 'unicorn/no-array-for-each': ['error', { teamOption: true }] },
-    }),
-  ]
-  const names = ['max-lines', 'unicorn/no-for-each', 'unicorn/no-array-for-each']
-  const bothOn = { 'max-lines': 'error', 'unicorn/no-for-each': 'error' } satisfies SharedFields['rules']
-  const bothOff = { 'max-lines': 'off', 'unicorn/no-for-each': 'off' } satisfies SharedFields['rules']
+  function teamConfig(): Linter.Config[] {
+    return [
+      buildTeamEslintBlock('team', {
+        files: LEGACY_FILES,
+        plugins: { unicorn: buildReportingPlugin(['no-array-for-each']), [SONARJS_PREFIX]: installedEslintPlugin(SONARJS_PREFIX) },
+        rules: { [MAX_LINES_PER_FUNCTION]: ['error', { maximum: 1 }], 'unicorn/no-array-for-each': ['error', { teamOption: true }] },
+      }),
+    ]
+  }
+  const names = [MAX_LINES_PER_FUNCTION, 'unicorn/no-for-each', 'unicorn/no-array-for-each']
+  const bothOn = { [MAX_LINES_PER_FUNCTION]: 'error', 'unicorn/no-for-each': 'error' } satisfies SharedFields['rules']
+  const bothOff = { [MAX_LINES_PER_FUNCTION]: 'off', 'unicorn/no-for-each': 'off' } satisfies SharedFields['rules']
   const layers: ReadonlyArray<{ readonly layer: string; readonly lintRules: (projectDir: string) => LintRules }> = [
     { layer: 'none: our top-level rules turn it on, the allowed case', lintRules(projectDir) { return buildConsumerLintRules(projectDir, {}, { rules: bothOn }) } },
     { layer: 'our top-level rules turning it off', lintRules(projectDir) { return buildConsumerLintRules(projectDir, {}, { rules: bothOff }) } },
@@ -742,8 +838,8 @@ describe("our off and our ignores, beside a team block setting the rule in the f
     async ({ projectDir, lintRules }) => {
       const { eslint } = defineLintRules(lintRules(projectDir)).editorRulesets
 
-      expect(await entriesByFileOf(mergedBesideATeamOxlintConfigSettingNoRule(teamConfig, eslint), names, A1_FILES)).toStrictEqual(
-        await entriesByFileOf(buildTeamConfigAloneLintingEveryJsAndTsFile(teamConfig), names, A1_FILES),
+      expect(await entriesByFileOf(mergedBesideATeamOxlintConfigSettingNoRule(teamConfig(), eslint), names, A1_FILES)).toStrictEqual(
+        await entriesByFileOf(buildTeamConfigAloneLintingEveryJsAndTsFile(teamConfig()), names, A1_FILES),
       )
     },
   )
@@ -767,7 +863,7 @@ describe("our off and our ignores, beside a team block setting the rule in the f
 describe('a team rule our part does not state', () => {
   it.each(PROJECTS)('keeps the setting the team gives it, in a project $project', async ({ projectDir }) => {
     const teamConfig = [buildTeamEslintBlock('team', { rules: { 'no-console': ['warn'] } })]
-    const config = mergedEditorEslintConfig(projectDir, { rules: { [ARRAY_TYPE]: 'error' } }, teamConfig)
+    const config = mergedEditorEslintConfig(projectDir, { rules: { [NO_THIS_ALIAS]: 'error' } }, teamConfig)
 
     expect(await severitiesOf(config, 'no-console', ['src/a.ts'])).toStrictEqual({ 'src/a.ts': 'warn' })
   })
@@ -1046,9 +1142,7 @@ describe('another ESLint name of a rule either editor part states', () => {
         [buildTeamEslintBlockTurningOn('team', ['node/no-process-exit'])],
         eslint,
         smallCatalog,
-        smallRegistry,
-        OUR_VERSION,
-        NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG,
+        { registry: smallRegistry, ourVersion: OUR_VERSION, ruleIdsInTheTeamsOxlintConfig: NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG },
       )
 
       expect(await severitiesOf(config, 'node/no-process-exit', ['src/a.ts'])).toStrictEqual({ 'src/a.ts': 'error' })
@@ -1435,13 +1529,13 @@ describe('a plugin of ours, which the team registers under a prefix of its own',
     "is the team's in every file under its name for a rule our part states, ours not running, when it is $registers, in a project $project",
     async ({ projectDir, plugin }) => {
       const teamConfig = [
-        buildTeamEslintBlock('team', { plugins: { [TEAM_TS_PREFIX]: plugin() }, rules: { [TEAM_TS_ARRAY_TYPE]: ['error', { default: 'generic' }] } }),
+        buildTeamEslintBlock('team', { plugins: { [TEAM_TS_PREFIX]: plugin() }, rules: { [TEAM_TS_NO_THIS_ALIAS]: ['error', TEAM_NO_THIS_ALIAS_OPTIONS] } }),
       ]
-      const config = mergedEditorEslintConfig(projectDir, { rules: { [ARRAY_TYPE]: 'error' } }, teamConfig)
+      const config = mergedEditorEslintConfig(projectDir, { rules: { [NO_THIS_ALIAS]: 'error' } }, teamConfig)
 
-      expect(await severitiesOfEach(config, [TEAM_TS_ARRAY_TYPE, ARRAY_TYPE], ['src/a.ts', 'src/a.js'])).toStrictEqual({
-        'src/a.ts': { [TEAM_TS_ARRAY_TYPE]: 'error', [ARRAY_TYPE]: 'off' },
-        'src/a.js': { [TEAM_TS_ARRAY_TYPE]: 'error', [ARRAY_TYPE]: 'off' },
+      expect(await severitiesOfEach(config, [TEAM_TS_NO_THIS_ALIAS, NO_THIS_ALIAS], ['src/a.ts', 'src/a.js'])).toStrictEqual({
+        'src/a.ts': { [TEAM_TS_NO_THIS_ALIAS]: 'error', [NO_THIS_ALIAS]: 'off' },
+        'src/a.js': { [TEAM_TS_NO_THIS_ALIAS]: 'error', [NO_THIS_ALIAS]: 'off' },
       })
     },
   )
@@ -1452,12 +1546,12 @@ describe('a plugin of ours, which the team registers under a prefix of its own',
       const teamConfig = [
         buildTeamEslintBlock('team', {
           plugins: { [TEAM_TS_PREFIX]: installedEslintPlugin(TYPESCRIPT_ESLINT_PREFIX) },
-          rules: { [TEAM_TS_ARRAY_TYPE]: ['error', { default: 'generic' }] },
+          rules: { [TEAM_TS_NO_THIS_ALIAS]: ['error', TEAM_NO_THIS_ALIAS_OPTIONS] },
         }),
       ]
-      const config = mergedEditorEslintConfig(projectDir, { rules: { [ARRAY_TYPE]: 'off' } }, teamConfig)
+      const config = mergedEditorEslintConfig(projectDir, { rules: { [NO_THIS_ALIAS]: 'off' } }, teamConfig)
 
-      expect(await severitiesOf(config, TEAM_TS_ARRAY_TYPE, ['src/a.ts', 'src/a.js'])).toStrictEqual({ 'src/a.ts': 'error', 'src/a.js': 'error' })
+      expect(await severitiesOf(config, TEAM_TS_NO_THIS_ALIAS, ['src/a.ts', 'src/a.js'])).toStrictEqual({ 'src/a.ts': 'error', 'src/a.js': 'error' })
     },
   )
 
@@ -1497,11 +1591,11 @@ describe('a plugin of ours, which the team registers under a prefix of its own',
     "is the team's in every file under its name for a rule our part states, when it is another object named as ours at its top level, as a plugin written before meta is, in a project $project",
     async ({ projectDir }) => {
       const plugin = buildPluginNamedAtTopLevel(TEAM_TS_RULE_NAMES, { name: TYPESCRIPT_ESLINT_PLUGIN_NAME, version: TEAM_NEXT_PLUGIN_VERSION })
-      const teamConfig = [buildTeamEslintBlock('team', { plugins: { [TEAM_TS_PREFIX]: plugin }, rules: { [TEAM_TS_ARRAY_TYPE]: 'error' } })]
-      const config = mergedEditorEslintConfig(projectDir, { rules: { [ARRAY_TYPE]: 'error' } }, teamConfig)
+      const teamConfig = [buildTeamEslintBlock('team', { plugins: { [TEAM_TS_PREFIX]: plugin }, rules: { [TEAM_TS_NO_THIS_ALIAS]: 'error' } })]
+      const config = mergedEditorEslintConfig(projectDir, { rules: { [NO_THIS_ALIAS]: 'error' } }, teamConfig)
 
-      expect(await severitiesOfEach(config, [TEAM_TS_ARRAY_TYPE, ARRAY_TYPE], ['src/a.ts'])).toStrictEqual({
-        'src/a.ts': { [TEAM_TS_ARRAY_TYPE]: 'error', [ARRAY_TYPE]: 'off' },
+      expect(await severitiesOfEach(config, [TEAM_TS_NO_THIS_ALIAS, NO_THIS_ALIAS], ['src/a.ts'])).toStrictEqual({
+        'src/a.ts': { [TEAM_TS_NO_THIS_ALIAS]: 'error', [NO_THIS_ALIAS]: 'off' },
       })
     },
   )
@@ -1542,7 +1636,7 @@ describe('a plugin of ours, which the team registers under a prefix of its own',
     async ({ projectDir }) => {
       const teamConfig = [
         buildTeamEslintBlock('team', {
-          plugins: { [TEAM_LOCAL_PREFIX]: buildFakePlugin(['param-names']) },
+          plugins: { [TEAM_LOCAL_PREFIX]: buildFakePlugin(['valid-params']) },
           rules: { [TEAM_LOCAL_PROMISE_NAMED_RULE]: 'error' },
         }),
       ]
@@ -1559,14 +1653,14 @@ describe('a plugin of ours, which the team registers under a prefix of its own',
       const teamConfig = [
         buildTeamEslintBlock('team', {
           plugins: { [TEAM_TS_PREFIX]: buildFakePlugin(TEAM_TS_RULE_NAMES, { meta: { name: TEAM_OWN_PLUGIN_NAME, version: TEAM_PLUGIN_VERSION } }) },
-          rules: { [TEAM_TS_ARRAY_TYPE]: 'error', [TEAM_TS_TWIN]: 'error' },
+          rules: { [TEAM_TS_NO_THIS_ALIAS]: 'error', [TEAM_TS_TWIN]: 'error' },
         }),
       ]
-      const fields = { rules: { [ARRAY_TYPE]: 'error', 'prefer-promise-reject-errors': 'error' } } satisfies SharedFields
+      const fields = { rules: { [NO_THIS_ALIAS]: 'error', 'prefer-promise-reject-errors': 'error' } } satisfies SharedFields
       const config = mergedEditorEslintConfig(projectDir, fields, teamConfig)
 
-      expect(await severitiesOfEach(config, [TEAM_TS_ARRAY_TYPE, TEAM_TS_TWIN], ['src/a.ts'])).toStrictEqual({
-        'src/a.ts': { [TEAM_TS_ARRAY_TYPE]: 'error', [TEAM_TS_TWIN]: 'error' },
+      expect(await severitiesOfEach(config, [TEAM_TS_NO_THIS_ALIAS, TEAM_TS_TWIN], ['src/a.ts'])).toStrictEqual({
+        'src/a.ts': { [TEAM_TS_NO_THIS_ALIAS]: 'error', [TEAM_TS_TWIN]: 'error' },
       })
     },
   )
@@ -1738,7 +1832,7 @@ describe('the team config, in any shape defineConfig takes', () => {
     { shape: 'nested arrays', teamConfig: [[teamBlock], []] },
     { shape: 'one block extending another', teamConfig: buildTeamEslintConfigExtending('team', [teamBlock]) },
   ])('keeps its own rules when it is $shape', async ({ teamConfig }) => {
-    const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, { rules: { [ARRAY_TYPE]: 'error' } }, teamConfig)
+    const config = mergedEditorEslintConfig(PROJECT_WITH_OXLINT, { rules: { [NO_THIS_ALIAS]: 'error' } }, teamConfig)
 
     expect(await severitiesOf(config, 'no-console', ['src/a.ts'])).toStrictEqual({ 'src/a.ts': 'warn' })
   })
@@ -1765,8 +1859,8 @@ describe('the merged blocks', () => {
   const teamConfig = [buildTeamEslintBlock('team-first'), buildTeamEslintBlock('team-second')]
   const fields = {
     ignores: ['dist/**'],
-    rules: { 'max-lines': 'error', 'no-debugger': 'error' },
-    fileOverrides: [{ files: ['legacy/**'], rules: { 'max-lines': 'off' } }],
+    rules: { [MAX_LINES_PER_FUNCTION]: 'error', 'no-debugger': 'error' },
+    fileOverrides: [{ files: ['legacy/**'], rules: { [MAX_LINES_PER_FUNCTION]: 'off' } }],
   } satisfies SharedFields
 
   // Beside oxlint, nothing turns the team's copies off after its blocks: only typescript-eslint's
@@ -2010,18 +2104,18 @@ describe("the team's blocks in the merged config", () => {
     buildTeamEslintBlock('team-a', {
       files: ['src/**'],
       ignores: ['src/vendor/**'],
-      plugins: { [TYPESCRIPT_ESLINT_PREFIX]: buildFakePlugin(['array-type']), [TEAM_LOCAL_PREFIX]: buildFakePlugin(['team-only']) },
+      plugins: { [TYPESCRIPT_ESLINT_PREFIX]: buildFakePlugin(['no-this-alias']), [TEAM_LOCAL_PREFIX]: buildFakePlugin(['team-only']) },
       languageOptions: { parserOptions: { ecmaFeatures: { jsx: false } } },
       settings: { team: { setting: true } },
-      rules: { [ARRAY_TYPE]: ['error', { default: 'generic' }], 'local/team-only': 'warn' },
+      rules: { [NO_THIS_ALIAS]: ['error', TEAM_NO_THIS_ALIAS_OPTIONS], 'local/team-only': 'warn' },
     }),
     buildTeamEslintConfigExtending('team-b', [
-      buildTeamEslintBlock('team-b-base', { files: LEGACY_FILES, rules: { 'max-lines': 'off', [OUR_CORE_RULE_WITH_A_TWIN]: 'error' } }),
+      buildTeamEslintBlock('team-b-base', { files: LEGACY_FILES, rules: { [MAX_LINES_PER_FUNCTION]: 'off', [OUR_CORE_RULE_WITH_A_TWIN]: 'error' } }),
     ]),
     // defineConfig refuses a basePath in a config another extends.
-    buildTeamEslintBlock('team-c', { basePath: 'legacy', rules: { [ARRAY_TYPE]: 'off' } }),
+    buildTeamEslintBlock('team-c', { basePath: 'legacy', rules: { [NO_THIS_ALIAS]: 'off' } }),
   ]
-  const fields = { rules: { [ARRAY_TYPE]: 'error', 'max-lines': 'error', [OUR_CORE_RULE_WITH_A_TWIN]: 'error' } } satisfies SharedFields
+  const fields = { rules: { [NO_THIS_ALIAS]: 'error', [MAX_LINES_PER_FUNCTION]: 'error', [OUR_CORE_RULE_WITH_A_TWIN]: 'error' } } satisfies SharedFields
 
   it.each(PROJECTS)(
     "are defineConfig's own, in its order, every rule entry kept, each plugin object the one our base block registers under its prefix, and the team's own elsewhere, in a project $project",
@@ -2074,8 +2168,8 @@ describe('a team block giving types whose basePath lies outside the project', ()
     const typed = await Promise.all(
       FILES_READ.map(async (file): Promise<[string, string]> => {
         const calculated = await calculatedConfigInProjectFor(PROJECT_WITH_OXLINT, [BLOCK_LINTING_EVERY_TS_FILE, ...teamConfig], file)
-        const parserOptions: unknown = calculated?.languageOptions?.['parserOptions']
-        return [file, isRecord(parserOptions) && parserOptions['projectService'] === true ? 'error' : 'off']
+        const parserOptions: unknown = calculated?.languageOptions?.parserOptions
+        return [file, isRecord(parserOptions) && parserOptions.projectService === true ? 'error' : 'off']
       }),
     )
     return Object.fromEntries(typed)
@@ -2324,11 +2418,11 @@ function teamConfigWith(teamTypescriptEslintVersion: string): Linter.Config[] {
 // name@version, so an upgrade of this package must change that key for every plugin our part
 // registers, though some carry no meta and house carries no version.
 describe('the plugins our ESLint part registers, as ESLint names them in its cache key', () => {
-  const fields = { rules: { [ARRAY_TYPE]: 'error', 'react/jsx-curly-brace-presence': 'error' } } satisfies SharedFields
+  const fields = { rules: { [NO_THIS_ALIAS]: 'error', [CURLY_BRACE_PRESENCE]: 'error' } } satisfies SharedFields
 
   function mergedAt(projectDir: string, teamConfig: readonly Linter.Config[], ourVersion: string): Linter.Config[] {
     const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, fields)).editorRulesets
-    return mergeEslintPart([...teamConfig], eslint, catalog, eslintPluginRegistry, ourVersion, NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG)
+    return mergeEslintPart([...teamConfig], eslint, catalog, { registry: eslintPluginRegistry, ourVersion, ruleIdsInTheTeamsOxlintConfig: NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG })
   }
 
   it.each(PROJECTS)(
@@ -2342,7 +2436,7 @@ describe('the plugins our ESLint part registers, as ESLint names them in its cac
         unchanged: Object.keys(after)
           .filter((namespace) => after[namespace] === before[namespace])
           .toSorted(),
-        teamOwn: after['local'],
+        teamOwn: after.local,
       }).toStrictEqual({ unchanged: [ESLINT_CORE_NAMESPACE, 'local'], teamOwn: `local:team-local@${TEAM_PLUGIN_VERSION}` })
     },
   )
@@ -2388,7 +2482,7 @@ describe('the plugins our ESLint part registers, as ESLint names them in its cac
 
     expect(await serializedPluginsFor(mergedBesideATeamOxlintConfigSettingNoRule(teamConfig, eslint), 'src/a.tsx')).toStrictEqual(
       await serializedPluginsFor(
-        mergeEslintPart(teamConfig, eslint, catalog, eslintPluginRegistry, lintRulesPackageVersion(), NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG),
+        mergeEslintPart(teamConfig, eslint, catalog, { registry: eslintPluginRegistry, ourVersion: lintRulesPackageVersion(), ruleIdsInTheTeamsOxlintConfig: NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG }),
         'src/a.tsx',
       ),
     )
@@ -2526,9 +2620,9 @@ describe('a typed rule of ours, in a project with a TS file outside every tsconf
   async function typeInformationAndRulesIn(projectDir: string, config: readonly Linter.Config[], file: string): Promise<Record<string, unknown>> {
     const calculated = await calculatedConfigInProjectFor(projectDir, config, file)
     if (calculated?.rules === undefined || calculated.languageOptions === undefined) throw new Error(`ESLint calculated no rules or language options for ${file}`)
-    const parserOptions: unknown = calculated.languageOptions['parserOptions']
+    const parserOptions: unknown = calculated.languageOptions.parserOptions
     return {
-      projectService: isRecord(parserOptions) ? parserOptions['projectService'] : undefined,
+      projectService: isRecord(parserOptions) ? parserOptions.projectService : undefined,
       typed: severityOfCalculatedEntry(calculated.rules[FLOATING_PROMISES]) ?? 'off',
       untyped: severityOfCalculatedEntry(calculated.rules[NO_INFERRABLE_TYPES]) ?? 'off',
     }
@@ -2558,8 +2652,8 @@ describe('a typed rule of ours, in a project with a TS file outside every tsconf
       const config = mergedEditorEslintConfig(projectDir, TYPED_AND_UNTYPED_RULES_ON, teamConfig)
 
       expect({
-        included: (await typeInformationAndRulesIn(projectDir, config, TS_FILE_A_TSCONFIG_INCLUDES))['typed'],
-        outside: (await typeInformationAndRulesIn(projectDir, config, TS_FILE_OUTSIDE_EVERY_TSCONFIG))['typed'],
+        included: (await typeInformationAndRulesIn(projectDir, config, TS_FILE_A_TSCONFIG_INCLUDES)).typed,
+        outside: (await typeInformationAndRulesIn(projectDir, config, TS_FILE_OUTSIDE_EVERY_TSCONFIG)).typed,
       }).toStrictEqual({ included: 'error', outside: 'error' })
     },
   )
@@ -2920,7 +3014,7 @@ describe('a typed rule of ours, beside a team block that gives type information 
 // ESLint reads a files entry of negations alone as every file but those it names (measured). The team's
 // bare severity would keep the options of any block of ours before it, so none of ours may apply there.
 describe('a team block whose files are a negation alone, stating our rule by a bare severity', () => {
-  const fields = { rules: { [ARRAY_TYPE]: 'error' } } satisfies SharedFields
+  const fields = { rules: { [NO_THIS_ALIAS]: ['error', { allowDestructuring: false }] } } satisfies SharedFields
   const files = ['src/a.ts', 'legacy/a.ts']
 
   it.each(PROJECTS)(
@@ -2930,13 +3024,13 @@ describe('a team block whose files are a negation alone, stating our rule by a b
         buildTeamEslintBlock('team', {
           files: ['!legacy/**'],
           plugins: { [TYPESCRIPT_ESLINT_PREFIX]: installedEslintPlugin(TYPESCRIPT_ESLINT_PREFIX) },
-          rules: { [ARRAY_TYPE]: 'warn' },
+          rules: { [NO_THIS_ALIAS]: 'warn' },
         }),
       ]
       const config = mergedEditorEslintConfig(projectDir, fields, teamConfig)
 
-      expect(await entriesOf(config, ARRAY_TYPE, files)).toStrictEqual({
-        'src/a.ts': entryIn(await teamAloneEntriesOf(teamConfig, ARRAY_TYPE, files), 'src/a.ts'),
+      expect(await entriesOf(config, NO_THIS_ALIAS, files)).toStrictEqual({
+        'src/a.ts': entryIn(await teamAloneEntriesOf(teamConfig, NO_THIS_ALIAS, files), 'src/a.ts'),
         'legacy/a.ts': ABSENT,
       })
     },
@@ -2984,10 +3078,10 @@ describe('a core rule whose typed extension our part runs in its place, the only
 describe('a rule a listed ruleset ships, which our top-level rules turn off, beside a team config that does not set it', () => {
   it.each(PROJECTS)('has no entry in any file, in a project $project', async ({ projectDir }) => {
     const { eslint } = defineLintRules(
-      buildConsumerLintRules(projectDir, { editorRulesets: { quality: ['complexity'] } }, { rules: { 'max-lines': 'off' } }),
+      buildConsumerLintRules(projectDir, { editorRulesets: { quality: ['complexity'] } }, { rules: { [MAX_LINES_PER_FUNCTION]: 'off' } }),
     ).editorRulesets
 
-    expect(await entriesOf(mergedBesideATeamOxlintConfigSettingNoRule([], eslint), 'max-lines', ['src/a.tsx', 'src/a.ts'])).toStrictEqual({ 'src/a.tsx': ABSENT, 'src/a.ts': ABSENT })
+    expect(await entriesOf(mergedBesideATeamOxlintConfigSettingNoRule([], eslint), MAX_LINES_PER_FUNCTION, ['src/a.tsx', 'src/a.ts'])).toStrictEqual({ 'src/a.tsx': ABSENT, 'src/a.ts': ABSENT })
   })
 })
 

@@ -1,4 +1,5 @@
-import { type Catalog, pluginPrefixOf, type RuleRoute } from '@workspace/rule-data'
+import { type Catalog, pluginPrefixOf, routeOf } from '@workspace/rule-data'
+import { foundOr } from '@workspace/rule-data/collections'
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
 import { ruleNameOf } from '@workspace/rule-data/rule-id-parts'
 import { typescriptEslintExtensions } from '@workspace/rule-data/test-support/typescript-eslint-extensions'
@@ -13,7 +14,7 @@ export type TwinPair = { readonly ours: string; readonly theirs: string }
 * one, though oxlint spells some twins as the rule itself: in ESLint it is another rule.
 */
 export function sameRuleNamesOf(id: string, catalog: Readonly<Catalog>): string[] {
-  const { eslintAliases, oxlintSpellings } = routeIn(catalog, id)
+  const { eslintAliases, oxlintSpellings } = routeOf(id, catalog)
   const prefix = pluginPrefixOf(id)
   const spellingsEslintKnows = oxlintSpellings.filter(
     (spelling) => catalog.rules.has(spelling) || pluginPrefixOf(spelling) === prefix,
@@ -69,12 +70,16 @@ export function eslintNamesOf(id: string, catalog: Readonly<Catalog>): string[] 
 
 /** Adds each name under every prefix the team registers that plugin under: `ts/array-type` beside `@typescript-eslint/array-type`. */
 export function withTheTeamsPrefixes(names: readonly string[], teamsPrefixes: ReadonlyMap<string, readonly string[]>): string[] {
-  const underTheTeamsPrefixes = names.flatMap((name) => {
-    const prefix = pluginPrefixOf(name)
-    const teams = prefix === null ? undefined : teamsPrefixes.get(prefix)
-    return prefix === null || teams === undefined ? [] : teams.map((team) => `${team}${name.slice(prefix.length)}`)
-  })
+  const underTheTeamsPrefixes = names.flatMap((name) => nameUnderTheTeamsPrefixes(name, teamsPrefixes))
   return [...new Set([...names, ...underTheTeamsPrefixes])].toSorted()
+}
+
+function nameUnderTheTeamsPrefixes(name: string, teamsPrefixes: ReadonlyMap<string, readonly string[]>): string[] {
+  const prefix = pluginPrefixOf(name)
+  if (prefix === null) return []
+  const teams = teamsPrefixes.get(prefix)
+  if (teams === undefined) return []
+  return teams.map((team) => `${team}${name.slice(prefix.length)}`)
 }
 
 /** None where no plugin of ours is installed under the prefix. */
@@ -83,12 +88,5 @@ function rulesUnder(prefix: string | null): ReadonlyMap<string, unknown> {
   if (prefix === null) return builtinRules
   const plugin = eslintPlugins[prefix]
   if (plugin === undefined) return new Map()
-  if (plugin.rules === undefined) throw new Error(`the plugin installed under ${prefix} has no rules`)
-  return new Map(Object.entries(plugin.rules))
-}
-
-function routeIn(catalog: Readonly<Catalog>, id: string): RuleRoute {
-  const route = catalog.rules.get(id)
-  if (route === undefined) throw new Error(`${id} is not in the catalog`)
-  return route
+  return new Map(Object.entries(foundOr(plugin.rules, `the plugin installed under ${prefix} has no rules`)))
 }

@@ -152,7 +152,7 @@ describe('the ESLint and oxlint @agents-inc/lint-rules runs', () => {
   it('are its own dependencies, pinned to the versions the rule catalog was generated from', () => {
     const dependencies = listedUnder(SHIPPED, 'dependencies')
 
-    expect({ eslint: dependencies['eslint'], oxlint: dependencies['oxlint'] }).toStrictEqual(CATALOG_ENGINES)
+    expect({ eslint: dependencies.eslint, oxlint: dependencies.oxlint }).toStrictEqual(CATALOG_ENGINES)
   })
 
   it('are no peer dependency of it: TypeScript is its only one', () => {

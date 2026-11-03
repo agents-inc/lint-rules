@@ -1,6 +1,5 @@
 import type { Linter } from 'eslint'
 import { describe, expect, it } from 'vitest'
-import { agentConfigsOf } from './__tests__/agent-configs.ts'
 import {
   MODULE_RUNES,
   RUNE_TEST_MODULES,
@@ -8,47 +7,23 @@ import {
   SVELTE_SOURCE_FILES,
   TEST_FILES_OF_NO_RUNE_MODULE,
 } from './__tests__/cases/svelte-components.ts'
-import { ourEditorEslintPartMergedInto } from './__tests__/editor-merges-read-by-eslint.ts'
+import { correctnessConfigs } from './__tests__/editor-merges-read-by-eslint.ts'
 import { setUpEslintConfigOracle } from './__tests__/eslint-config-oracle.ts'
 import { namesDefinedIn } from './__tests__/eslint-globals.ts'
-import { buildConsumerLintRules, CORRECTNESS_IN_BOTH_SETS, emptyTsconfigRootDir } from './__tests__/factories/lint-rules-factories.ts'
-import { createProjectListingOxlint } from './__tests__/factories/package-json-factories.ts'
-import { setUpTempProjects } from './__tests__/temp-projects.ts'
-import { defineLintRules, type LintRules } from './index.ts'
 
 // Svelte 5's runes are globals in .svelte.js and .svelte.ts modules, in every config we write, and in no
 // other JS or TS file. svelte-runes.integration.test.ts runs the rules.
 
 const { globalsFor } = setUpEslintConfigOracle()
-const tempProjects = setUpTempProjects()
-const projectListingOxlint = createProjectListingOxlint(tempProjects)
 
 const RUNE_MODULES = [SVELTE_SOURCE_FILES.jsModule, SVELTE_SOURCE_FILES.tsModule]
 const NO_SVELTE_FILES = [SVELTE_SOURCE_FILES.notARuneModule, SVELTE_SOURCE_FILES.tsFileWritingToARune]
-
-/** Our settings with the ruleset that ships no-undef and no-global-assign in both sets, rooted where given. */
-function correctnessIn(tsconfigRootDir: string): LintRules {
-  return buildConsumerLintRules(tsconfigRootDir, CORRECTNESS_IN_BOTH_SETS)
-}
-
-/** The editor ESLint part merged into a team config with no block. */
-function mergedIntoAnEmptyTeamConfig(tsconfigRootDir: string): Linter.Config[] {
-  return ourEditorEslintPartMergedInto([], correctnessIn(tsconfigRootDir))
-}
 
 async function runesDefinedIn(config: readonly Linter.Config[], file: string, runes: readonly string[]): Promise<string[]> {
   return namesDefinedIn(await globalsFor(config, file), runes)
 }
 
-/** A config of ours, named in full, and how it is built. */
-type BuiltConfig = { readonly config: string; readonly build: () => Linter.Config[] }
-
-// The config's name in full in its title, which $-interpolation would cut short.
-const CONFIGS: readonly BuiltConfig[] = [
-  { config: 'the agent build', build() { return agentConfigsOf(defineLintRules(correctnessIn(projectListingOxlint))).eslint } },
-  { config: 'the editor part of a project whose package.json lists oxlint, merged into an empty team config', build() { return mergedIntoAnEmptyTeamConfig(projectListingOxlint) } },
-  { config: 'the editor part of a project whose package.json lists no oxlint, merged into an empty team config', build() { return mergedIntoAnEmptyTeamConfig(emptyTsconfigRootDir()) } },
-]
+const CONFIGS = correctnessConfigs()
 
 for (const { config, build } of CONFIGS) {
   describe(`Svelte 5's runes in ESLint, in ${config}`, () => {

@@ -1,6 +1,7 @@
 // Never run: typecheck fails when an `@ts-expect-error` below stops meeting a type error, or an
 // allowed call beside it stops compiling.
 import { join } from 'node:path'
+import type { Linter } from 'eslint'
 import {
   buildConsumerLintRulesWithoutAgentRulesets,
   buildConsumerLintRulesWithoutEditorRulesets,
@@ -675,6 +676,11 @@ mergeEslintConfig({ rules: { 'no-console': 'error' } }, eslint, { oxlintConfig: 
 mergeEslintConfig([{ rules: { 'no-console': 'error' } }, { ignores: ['dist/**'] }], eslint, { oxlintConfig: null })
 
 mergeEslintConfig([[{ rules: { 'no-console': 'error' } }], { files: ['**/*.ts'] }], eslint, { oxlintConfig: 'oxlint.config.mts' })
+
+// A list the team holds read-only is taken too.
+const heldReadOnly: readonly Linter.Config[] = [{ rules: { 'no-console': 'error' } }, { ignores: ['dist/**'] }]
+
+mergeEslintConfig(heldReadOnly, eslint, { oxlintConfig: null })
 
 // @ts-expect-error a number is no ESLint config
 mergeEslintConfig(42, eslint, { oxlintConfig: null })

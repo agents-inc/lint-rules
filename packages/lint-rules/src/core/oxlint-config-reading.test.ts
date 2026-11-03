@@ -84,7 +84,7 @@ describe('ruleIdsTheTeamsOxlintConfigSets, given a team JSON config holding an e
 
 // Measured, oxlint 1.87: in a file, a plugin outside the root's runs its category rules only where an override matching
 // the file lists plugins other than the root's and the matching overrides' joined. Lists that differ may match one file
-// as far as their globs tell, so there the rules stay the team's (owner 2026-10-29).
+// as far as their globs tell, so there the rules stay the team's.
 describe('ruleIdsTheTeamsOxlintConfigSets, given correctness on and typescript listed in overrides alone', () => {
   it.each([
     { how: 'one override lists typescript beside a root listing none', team: correctnessOnBeside([], [listing(SOURCES, ['typescript'])]) },

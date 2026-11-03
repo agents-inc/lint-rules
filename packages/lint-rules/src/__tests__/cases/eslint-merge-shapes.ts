@@ -5,13 +5,13 @@ import type { Dimension } from '../pairwise-shapes.ts'
 // The shapes the ESLint merge is checked in against ESLint's own calculated config, each a dimension. The team's
 // config is one block, so no shape runs two names of a rule by the team's own choice.
 
-const ARRAY_TYPE = '@typescript-eslint/array-type'
+const HASHBANG = 'n/hashbang'
+const N = 'n'
 const TYPESCRIPT_ESLINT = '@typescript-eslint'
 const ESLINT_REACT = '@eslint-react'
-// The prefix antfu's eslint-config registers typescript-eslint under.
-const TEAMS_TYPESCRIPT_ESLINT_PREFIX = 'ts'
-// typescript-eslint's array-type under `generic` reports what our shipped `array-simple` leaves.
-const GENERIC_ARRAY_TYPE = [{ default: 'generic' }]
+const TEAMS_PREFIX_FOR_N = 'node'
+// Not the options we ship, so an entry of ours left in the team's place shows.
+const TEAMS_HASHBANG_OPTIONS = [{ ignoreUnpublished: false }]
 // Where our entries apply: inside the folder a team block names, so the two scopes cross.
 const OUR_ENTRY_FILES = ['legacy/old/**']
 const NO_TEAMS_PREFIXES: ReadonlyMap<string, readonly string[]> = new Map()
@@ -32,12 +32,12 @@ export const ESLINT_MERGE_FILES = [
 const TEAM_STATES_ITS_OWN_ID = buildEslintMergeShapeValue('the team states our rule by its own ID', {
   team: {
     stating: {
-      ours: ARRAY_TYPE,
-      teams: ARRAY_TYPE,
+      ours: HASHBANG,
+      teams: HASHBANG,
       plugins() {
-        return { [TYPESCRIPT_ESLINT]: installedEslintPlugin(TYPESCRIPT_ESLINT) }
+        return { [N]: installedEslintPlugin(N) }
       },
-      options: GENERIC_ARRAY_TYPE,
+      options: TEAMS_HASHBANG_OPTIONS,
       teamsPrefixes: NO_TEAMS_PREFIXES,
     },
   },
@@ -85,25 +85,25 @@ const TEAM_STATES_A_SAME_MODULE_NAME = buildEslintMergeShapeValue('the team stat
 const TEAM_STATES_ITS_PREFIX_NAME = buildEslintMergeShapeValue("the team states our rule under the team's own prefix for our plugin", {
   team: {
     stating: {
-      ours: ARRAY_TYPE,
-      teams: `${TEAMS_TYPESCRIPT_ESLINT_PREFIX}/array-type`,
+      ours: HASHBANG,
+      teams: `${TEAMS_PREFIX_FOR_N}/hashbang`,
       plugins() {
-        return { [TEAMS_TYPESCRIPT_ESLINT_PREFIX]: installedEslintPlugin(TYPESCRIPT_ESLINT) }
+        return { [TEAMS_PREFIX_FOR_N]: installedEslintPlugin(N) }
       },
-      options: GENERIC_ARRAY_TYPE,
-      teamsPrefixes: new Map([[TYPESCRIPT_ESLINT, [TEAMS_TYPESCRIPT_ESLINT_PREFIX]]]),
+      options: TEAMS_HASHBANG_OPTIONS,
+      teamsPrefixes: new Map([[N, [TEAMS_PREFIX_FOR_N]]]),
     },
   },
 })
 const TEAM_STATES_A_TWIN = buildEslintMergeShapeValue("the team states typescript-eslint's twin of our rule", {
   team: {
     stating: {
-      ours: 'prefer-promise-reject-errors',
-      teams: '@typescript-eslint/prefer-promise-reject-errors',
+      ours: 'no-throw-literal',
+      teams: '@typescript-eslint/only-throw-error',
       plugins() {
         return { [TYPESCRIPT_ESLINT]: installedEslintPlugin(TYPESCRIPT_ESLINT) }
       },
-      options: [{ allowEmptyReject: true }],
+      options: [{ allowThrowingAny: false }],
       teamsPrefixes: NO_TEAMS_PREFIXES,
     },
   },

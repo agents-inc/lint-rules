@@ -1,12 +1,12 @@
 import type { ESLint, Linter } from 'eslint'
+import type { defineConfig } from 'eslint/config'
 import type { OxlintConfig } from 'oxlint'
 import tseslint from 'typescript-eslint'
 import { ruleNamesByPrefix } from '../../core/build-eslint-config.ts'
-import type { mergeEslintConfig } from '../../eslint.ts'
 import { laidOver } from '../laid-over.ts'
 import { buildReportingPlugin } from './catalog-factories.ts'
 
-type TeamEslintConfig = Parameters<typeof mergeEslintConfig>[0]
+type TeamEslintConfig = Parameters<typeof defineConfig>[number]
 
 export type TeamTypeInformation = 'projectService' | 'project'
 

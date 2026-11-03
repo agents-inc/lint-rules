@@ -138,7 +138,6 @@ export function typescriptEslintListings(manifest: Manifest): Readonly<Record<st
   return Object.fromEntries(Object.entries(listedUnder(manifest, 'dependencies')).filter(([name]) => isTypescriptEslintPackage(name)))
 }
 
-/** Each install of typescript-eslint or of one of its scoped packages, in the order given. */
 export function typescriptEslintInstallsAmong(packages: readonly InstalledPackage[]): InstalledPackage[] {
   return packages.filter(({ name }) => isTypescriptEslintPackage(name))
 }

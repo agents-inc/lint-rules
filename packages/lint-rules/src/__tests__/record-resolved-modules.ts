@@ -7,9 +7,9 @@ import { writeFileSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import { builtEntry } from './built-entries.ts'
 
-type Step = 'oxlint-side' | 'eslint-entry'
+const STEPS = ['oxlint-side', 'eslint-entry'] as const
 
-const STEPS: readonly Step[] = ['oxlint-side', 'eslint-entry']
+type Step = (typeof STEPS)[number]
 
 const [recordFile, distDir, stepArgument, lintRulesJson] = process.argv.slice(2)
 if (recordFile === undefined || distDir === undefined) throw new Error('usage: <record file> <dist dir> <step> [lint rules JSON]')
@@ -28,8 +28,20 @@ process.on('exit', () => {
   writeFileSync(recordFile, JSON.stringify(resolvedUrls))
 })
 
-if (step === 'oxlint-side') await loadTheOxlintSide(distDir, lintRulesJson)
-else await import(builtEntry(distDir, 'eslint.mjs'))
+await loadTheStep(step, distDir, lintRulesJson)
+
+async function loadTheStep(asked: Step, dist: string, lintRules: string | undefined): Promise<void> {
+  switch (asked) {
+    case 'oxlint-side':
+      return loadTheOxlintSide(dist, lintRules)
+    case 'eslint-entry':
+      return loadTheEslintEntry(dist)
+    default: {
+      const unhandled: never = asked
+      return unhandled
+    }
+  }
+}
 
 /** As a team's oxlint config does, naming no ESLint config, so no module of ESLint's side loads to read one. */
 async function loadTheOxlintSide(dist: string, lintRules: string | undefined): Promise<void> {
@@ -39,6 +51,10 @@ async function loadTheOxlintSide(dist: string, lintRules: string | undefined): P
   const { oxlint } = index.defineLintRules(JSON.parse(lintRules) as Parameters<typeof index.defineLintRules>[0]).editorRulesets
   const oxlintEntry = (await import(builtEntry(dist, 'oxlint.mjs'))) as typeof import('../oxlint.ts')
   oxlintEntry.mergeOxlintConfig({}, oxlint, { eslintConfig: null })
+}
+
+async function loadTheEslintEntry(dist: string): Promise<void> {
+  await import(builtEntry(dist, 'eslint.mjs'))
 }
 
 function parseStep(argument: string | undefined): Step {

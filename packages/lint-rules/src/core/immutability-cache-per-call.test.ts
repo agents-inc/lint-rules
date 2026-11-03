@@ -1,10 +1,9 @@
-import { catalog, routeOf } from '@workspace/rule-data'
 import { foundOr } from '@workspace/rule-data/collections'
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
-import { ESLint, Linter } from 'eslint'
+import { type ESLint, Linter } from 'eslint'
 import type ts from 'typescript'
 import tseslint from 'typescript-eslint'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import {
   A_MUTABLE_PICK,
   A_READONLY_PICK,
@@ -20,11 +19,25 @@ import {
   RECURSIVE_TURTLES,
   TWO_INSTANTIATIONS_OF_ONE_GENERIC,
 } from '../__tests__/cases/pick-parameter-sources.ts'
-import { describeFinding, eslintEngineFindingsIn, fatalMessagesIn } from '../__tests__/engine-clis.ts'
+import { rulesOf } from '../__tests__/eslint-plugin-rules.ts'
 import { moduleText } from '../__tests__/factories/check-factories.ts'
-import { buildTeamEslintBlock } from '../__tests__/factories/team-config-factories.ts'
-import { buildTsconfig } from '../__tests__/factories/tsconfig-factories.ts'
 import { exportOf, programOfFiles } from '../__tests__/factories/typescript-program-factories.ts'
+import {
+  FUNCTIONAL,
+  functionalOverTypeImmutabilityAsNpmShipsIt,
+  functionalPlugin,
+  IMMUTABLE,
+  type Linted,
+  lintedBy,
+  MUTABLE,
+  PREFER_IMMUTABLE_TYPES,
+  READ_ONLY_SHALLOW,
+  RULE_ID,
+  reportedAlone,
+  reportedAtEach,
+  shippedOptions,
+  typedProjectOf,
+} from '../__tests__/prefer-immutable-types-runs.ts'
 import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from '../__tests__/runs-before-the-suite.ts'
 import { setUpTempProjects, type TempProjects } from '../__tests__/temp-projects.ts'
 import { eslintPluginRegistry } from '../eslint-plugin-registry.ts'
@@ -35,75 +48,31 @@ import { checkerWithRecursionIdentitiesOfItsOwn, withImmutabilityCachedPerCall }
 // eslint-plugin-functional (10.0.1) turns the cache off where NODE_ENV is "test", as Vitest sets it: each typed run
 // here sets it otherwise, as a team's own run has it.
 
-const FUNCTIONAL = 'functional'
-const PREFER_IMMUTABLE_TYPES = 'prefer-immutable-types'
-const RULE_ID = `${FUNCTIONAL}/${PREFER_IMMUTABLE_TYPES}`
 // typescript-eslint's own refusal of a typed rule on a file it has no type information for (8.71).
 const NEEDS_TYPE_INFORMATION = 'You have used a rule which requires type information'
 const PICKED_FILE = '/project/picked.ts'
-const READ_ONLY_SHALLOW = 'ReadonlyShallow'
-const IMMUTABLE = 'Immutable'
-const MUTABLE = 'Mutable'
 const TYPED_RUNS: RunsBeforeTheSuiteOptions = { timeoutMs: 180_000, whatFailed: 'the typed lint runs could not be made before the suite' }
+const NOTHING_REPORTED = reportedAtEach([], READ_ONLY_SHALLOW, MUTABLE)
 
-type Reported = { readonly at: string; readonly message: string }
-
-type Linted = { readonly fatal: readonly string[]; readonly reported: readonly Reported[] }
-
-function functionalPlugin(): ESLint.Plugin {
-  return foundOr(eslintPlugins[FUNCTIONAL], 'rule-data registers no functional plugin')
-}
-
-function rulesOf(plugin: Readonly<ESLint.Plugin>): NonNullable<ESLint.Plugin['rules']> {
-  if (plugin.rules === undefined) throw new Error('the plugin has no rules')
-  return plugin.rules
-}
+/** Each over a load of its own of is-immutable-type as npm ships it, as a team's run has it. */
+type PerCallAndUnwrapped = { readonly perCall: Linted; readonly unwrapped: Linted }
 
 function preferImmutableTypesOf(plugin: Readonly<ESLint.Plugin>): NonNullable<ESLint.Plugin['rules']>[string] {
   return foundOr(rulesOf(plugin)[PREFER_IMMUTABLE_TYPES], `the plugin has no ${PREFER_IMMUTABLE_TYPES}`)
-}
-
-function shippedOptions(): readonly unknown[] {
-  const { shipped } = routeOf(RULE_ID, catalog)
-  if (shipped === null) throw new Error(`${RULE_ID} is not shipped`)
-  return shipped.options
 }
 
 function declaredTypeOf(program: ts.Program, name: string): ts.Type {
   return program.getTypeChecker().getDeclaredTypeOfSymbol(exportOf(program, PICKED_FILE, name))
 }
 
-/** A project whose tsconfig takes in src, holding the sources given. */
-function typedProjectOf(tempProjects: TempProjects, sources: readonly ParameterSource[]): string {
-  return tempProjects.create({
-    files: {
-      'tsconfig.json': JSON.stringify(buildTsconfig({ include: ['src'] })),
-      ...Object.fromEntries(sources.map(({ file, lines }) => [file, moduleText(...lines)])),
-    },
-  })
-}
-
-/** The functional plugin given, running prefer-immutable-types alone at the options given, with type information. */
-function typedBlockOf(projectDir: string, functional: Readonly<ESLint.Plugin>, options: readonly unknown[]): Linter.Config {
-  return buildTeamEslintBlock('prefer-immutable-types alone, typed', {
-    files: ['**/*.ts'],
-    languageOptions: { parser: tseslint.parser, parserOptions: { projectService: true, tsconfigRootDir: projectDir } },
-    plugins: { [FUNCTIONAL]: functional },
-    rules: { [RULE_ID]: ['error', ...options] },
-  })
-}
-
-/** Every file of the project linted in this process, one after another, with NODE_ENV as a team's own run has it. */
 async function lintedWithTheCacheOn(projectDir: string, functional: Readonly<ESLint.Plugin>, options: readonly unknown[]): Promise<Linted> {
-  vi.stubEnv('NODE_ENV', NODE_ENV_OUTSIDE_TESTS.NODE_ENV)
-  try {
-    const results = await new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: typedBlockOf(projectDir, functional, options) }).lintFiles(['.'])
-    return {
-      fatal: fatalMessagesIn(results, projectDir),
-      reported: eslintEngineFindingsIn(results, projectDir).map((finding) => ({ at: describeFinding(finding), message: finding.message })),
-    }
-  } finally {
-    vi.unstubAllEnvs()
+  return lintedBy({ functional, blockName: 'prefer-immutable-types alone, typed', nodeEnv: NODE_ENV_OUTSIDE_TESTS }, projectDir, options)
+}
+
+async function lintedPerCallAndUnwrapped(tempProjects: TempProjects, sources: readonly ParameterSource[], options: readonly unknown[]): Promise<PerCallAndUnwrapped> {
+  return {
+    perCall: await lintedWithTheCacheOn(typedProjectOf(tempProjects, sources), withImmutabilityCachedPerCall(FUNCTIONAL, await functionalOverTypeImmutabilityAsNpmShipsIt()), options),
+    unwrapped: await lintedWithTheCacheOn(typedProjectOf(tempProjects, sources), await functionalOverTypeImmutabilityAsNpmShipsIt(), options),
   }
 }
 
@@ -248,5 +217,53 @@ describe('prefer-immutable-types with its cache per call, parameters held to Imm
       fatal: [],
       reported: [{ at: 'src/turtles.ts:6 functional/prefer-immutable-types', message: parameterImmutabilityMessage(IMMUTABLE, MUTABLE) }],
     })
+  })
+})
+
+describe('prefer-immutable-types with its cache per call, over is-immutable-type as npm ships it, at the shipped options, files linted one after another in one process', () => {
+  const runs = setUpRunsBeforeTheSuite(async (tempProjects) => {
+    const options = shippedOptions()
+    return {
+      bothInOneFile: await lintedPerCallAndUnwrapped(tempProjects, [BOTH_PICKS_IN_ONE_FILE], options),
+      readOnlyPickFirst: await lintedPerCallAndUnwrapped(tempProjects, [A_READONLY_PICK, B_MUTABLE_PICK], options),
+      overwritablePickFirst: await lintedPerCallAndUnwrapped(tempProjects, [A_MUTABLE_PICK, B_READONLY_PICK], options),
+      readOnlyRequiredFirst: await lintedPerCallAndUnwrapped(tempProjects, [A_READONLY_REQUIRED, B_MUTABLE_REQUIRED], options),
+      turtles: await lintedPerCallAndUnwrapped(tempProjects, [RECURSIVE_TURTLES], options),
+    }
+  }, TYPED_RUNS)
+
+  it('reports an overwritable Pick parameter after a read-only one in the same file, and not the read-only one, which the plugin unwrapped misses', () => {
+    expect(runs().bothInOneFile).toStrictEqual({ perCall: reportedAlone('src/c-both-in-one-file.ts:8', READ_ONLY_SHALLOW, MUTABLE), unwrapped: NOTHING_REPORTED })
+  })
+
+  it('reports an overwritable Pick parameter in a file linted after one holding a read-only one, and not the read-only one, which the plugin unwrapped misses', () => {
+    expect(runs().readOnlyPickFirst).toStrictEqual({ perCall: reportedAlone('src/b-mutable-pick.ts:3', READ_ONLY_SHALLOW, MUTABLE), unwrapped: NOTHING_REPORTED })
+  })
+
+  it('reports no read-only Pick parameter in a file linted after one holding an overwritable one, which it reports, where the plugin unwrapped reports both', () => {
+    expect(runs().overwritablePickFirst).toStrictEqual({
+      perCall: reportedAlone('src/a-mutable-pick.ts:3', READ_ONLY_SHALLOW, MUTABLE),
+      unwrapped: reportedAtEach(['src/a-mutable-pick.ts:3', 'src/b-readonly-pick.ts:3'], READ_ONLY_SHALLOW, MUTABLE),
+    })
+  })
+
+  it('reports an overwritable Required parameter in a file linted after one holding a read-only one, and not the read-only one, which the plugin unwrapped misses', () => {
+    expect(runs().readOnlyRequiredFirst).toStrictEqual({ perCall: reportedAlone('src/b-mutable-required.ts:3', READ_ONLY_SHALLOW, MUTABLE), unwrapped: NOTHING_REPORTED })
+  })
+
+  it('reports the parameter of a type recursing without end that is overwritable all the way down, as Mutable, and not the one immutable all the way down, as the plugin unwrapped does', () => {
+    const expected = reportedAlone('src/turtles.ts:6', READ_ONLY_SHALLOW, MUTABLE)
+
+    expect(runs().turtles).toStrictEqual({ perCall: expected, unwrapped: expected })
+  })
+})
+
+describe('prefer-immutable-types with its cache per call, over is-immutable-type as npm ships it, parameters held to Immutable, on a type recursing without end', () => {
+  const runs = setUpRunsBeforeTheSuite(async (tempProjects) => ({ turtles: await lintedPerCallAndUnwrapped(tempProjects, [RECURSIVE_TURTLES], PARAMETERS_HELD_TO_IMMUTABLE) }), TYPED_RUNS)
+
+  it('ends, reporting the parameter overwritable all the way down as Mutable, and not the other, as the plugin unwrapped does', () => {
+    const expected = reportedAlone('src/turtles.ts:6', IMMUTABLE, MUTABLE)
+
+    expect(runs().turtles).toStrictEqual({ perCall: expected, unwrapped: expected })
   })
 })

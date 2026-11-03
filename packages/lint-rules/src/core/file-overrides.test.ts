@@ -198,8 +198,8 @@ describe('file overrides', () => {
       const lintRules = buildLintRules(everyTopLevelRuleset, fields)
       const globals = await globalsFor(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'apps/api/a.ts')
 
-      expect(['off', undefined]).not.toContain(globals['console'])
-      expect(globals['window']).toBe('off')
+      expect(['off', undefined]).not.toContain(globals.console)
+      expect(globals.window).toBe('off')
     })
 
     it('switches only the browser env off in oxlint', () => {

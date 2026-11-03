@@ -24,7 +24,7 @@ export const NO_UNUSED_EXPRESSIONS: RuleByItsNames = {
   rule: 'no-unused-expressions',
   names: ['no-unused-expressions', '@typescript-eslint/no-unused-expressions', 'eslint(no-unused-expressions)'],
 }
-export const MAX_LINES: RuleByItsNames = { rule: 'max-lines', names: ['max-lines', 'eslint(max-lines)'] }
+export const REQUIRE_ATOMIC_UPDATES: RuleByItsNames = { rule: 'require-atomic-updates', names: ['require-atomic-updates'] }
 export const FLOATING_PROMISES: RuleByItsNames = {
   rule: '@typescript-eslint/no-floating-promises',
   names: ['@typescript-eslint/no-floating-promises', 'typescript(no-floating-promises)'],
@@ -67,9 +67,17 @@ export const UNUSED_SOURCE = `export function stop(flag: boolean): void {
 }
 `
 
-// no-debugger (2); max-lines under a max of 2 (3).
+// no-debugger (2).
 export const DEBUGGER_SOURCE = `export function stop(): void {
   debugger
+}
+`
+
+// no-debugger (3); a module variable updated across an await (4).
+export const DEBUGGER_AND_UPDATE_ACROSS_AN_AWAIT_SOURCE = `let total = 0
+export async function add(next: Promise<number>): Promise<void> {
+  debugger
+  total += await next
 }
 `
 
@@ -191,15 +199,15 @@ export const TEAMS_ESLINT_TWIN_OF_NO_UNUSED_VARS =
 
 export const TEAMS_OXLINT_NO_UNUSED_VARS: OxlintConfig = { categories: { correctness: 'off' }, rules: { 'no-unused-vars': 'warn' } }
 
-/** oxlint runs both. */
-export const OURS_DEBUGGER_AND_MAX_LINES: OurRules = { 'no-debugger': 'error', 'max-lines': ['error', { max: 2 }] }
+/** oxlint runs no-debugger; ESLint runs require-atomic-updates, which oxlint has no version of. */
+export const OURS_DEBUGGER_AND_ATOMIC_UPDATES: OurRules = { 'no-debugger': 'error', 'require-atomic-updates': 'error' }
 
 export const TEAMS_OXLINT_DEBUGGER_OFF_IN_LEGACY: OxlintConfig = {
   categories: { correctness: 'off' },
   overrides: [{ files: ['legacy/**'], rules: { 'no-debugger': 'off' } }],
 }
 
-export const TEAMS_ESLINT_MAX_LINES_IN_LEGACY = teamBlockSourceOf({ files: ['legacy/**'], rules: { 'max-lines': ['error', { max: 2 }] } })
+export const TEAMS_ESLINT_ATOMIC_UPDATES_IN_LEGACY = teamBlockSourceOf({ files: ['legacy/**'], rules: { 'require-atomic-updates': 'error' } })
 
 export const OURS_DEBUGGER: OurRules = { 'no-debugger': 'error' }
 
@@ -237,7 +245,7 @@ export const JSX_A11Y_FORK_IMPORT = "import jsxA11y from 'eslint-plugin-jsx-a11y
 
 /**
  * Registers the original eslint-plugin-jsx-a11y under a11y: our fork's rules under the original's name stand in for it,
- * which we no longer install.
+ * which we do not install.
  */
 export const TEAMS_ESLINT_ORIGINAL_JSX_A11Y_UNDER_A11Y =
   "{ files: ['**/*.tsx'], plugins: { a11y: { meta: { name: 'eslint-plugin-jsx-a11y', version: '6.10.2' }, rules: jsxA11y.rules } }, rules: { 'a11y/alt-text': 'error' } }"

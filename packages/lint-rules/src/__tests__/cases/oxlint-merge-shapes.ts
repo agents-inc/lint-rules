@@ -10,7 +10,7 @@ export const OXLINT_MERGE_LINTED_DIRS = ['src', 'lib', 'app']
 
 // Rule each line draws: 1 typescript/no-require-imports, 2 oxc/erasing-op, 3 unicorn/no-useless-spread,
 // 4 typescript/no-duplicate-enum-values, 5 no-compare-neg-zero, 6 typescript/array-type, 7 promise/param-names,
-// 9 typescript/no-this-alias, 10 no-unused-vars.
+// 9 typescript/no-this-alias, 10 no-unused-vars, 11 typescript/no-inferrable-types, 12 promise/valid-params.
 const TYPESCRIPT_SOURCE = `export const thing = require('./thing')
 export const isZero = (value: number): boolean => value * 0 === 0
 export const copy = [...[1, 2]]
@@ -21,18 +21,22 @@ export const waited = new Promise((ok, fail) => ok(fail))
 export const typed: unknown = thing
 export const aliased = function (this: unknown): unknown { const self = this; return self }
 const unused = 1
+export const count: number = 1
+export const settled = Promise.resolve(1, 2)
 `
 
-// Lines 2, 3, 5 and 7 above, as JavaScript.
+// Lines 2, 3, 5, 7 and 12 above, as JavaScript.
 const JAVASCRIPT_SOURCE = `export const isZero = (value) => value * 0 === 0
 export const copy = [...[1, 2]]
 export const isNegativeZero = (value) => value === -0
 export const waited = new Promise((ok, fail) => ok(fail))
+export const settled = Promise.resolve(1, 2)
 `
 
-// Draws react/jsx-no-duplicate-props, react/no-string-refs, then jsx-a11y/alt-text.
+// Draws react/jsx-no-duplicate-props, react/no-string-refs, jsx-a11y/alt-text, then react/jsx-curly-brace-presence.
 const JSX_LINES = `export const List = () => <ul id="a" id="b"><li ref="item" /></ul>
 export const Logo = () => <img src="logo.png" />
+export const Braced = () => <div title={'braced'} />
 `
 
 // A test file, as oxlint runs jest's rules in test files only (measured, 1.87). Rule each line draws (key):
@@ -391,40 +395,55 @@ const NO_CATEGORIES = buildTeamShapeValue('categories left out', {})
 const STYLE_ON = buildTeamShapeValue('categories { style: warn }', { categories: { style: 'warn' } })
 const CORRECTNESS_OFF = buildTeamShapeValue('categories { correctness: off }', { categories: { correctness: 'off' } })
 
+// Our rules, each held to the engine it is taken to run on by a test of its own.
+const OUR_OXLINT_RULE_OF_A_DEFAULT_PLUGIN = '@typescript-eslint/no-require-imports'
+const OUR_OXLINT_REACT_RULE = 'react/no-string-refs'
+const OUR_OXLINT_CORE_RULE = 'no-compare-neg-zero'
+const OUR_ESLINT_RULE_OF_A_DEFAULT_PLUGIN = '@typescript-eslint/no-inferrable-types'
+const OUR_ESLINT_REACT_RULE = 'react/jsx-curly-brace-presence'
+const OUR_ESLINT_PROMISE_RULE = 'promise/valid-params'
+const OUR_ESLINT_RULE_IN_OXLINTS_DEFAULT_CATEGORY = '@typescript-eslint/no-this-alias'
+const OUR_ESLINT_TWIN_RULE_IN_OXLINTS_DEFAULT_CATEGORY = '@typescript-eslint/no-unused-vars'
+export const OUR_RULES_TAKEN_AS_OXLINT_RUN = [OUR_OXLINT_RULE_OF_A_DEFAULT_PLUGIN, OUR_OXLINT_REACT_RULE, OUR_OXLINT_CORE_RULE]
+export const OUR_RULES_TAKEN_AS_ESLINT_RUN = [
+  OUR_ESLINT_RULE_OF_A_DEFAULT_PLUGIN,
+  OUR_ESLINT_REACT_RULE,
+  OUR_ESLINT_PROMISE_RULE,
+  OUR_ESLINT_RULE_IN_OXLINTS_DEFAULT_CATEGORY,
+  OUR_ESLINT_TWIN_RULE_IN_OXLINTS_DEFAULT_CATEGORY,
+]
+
 const NO_RULE_OF_A_DEFAULT_PLUGIN = buildOurShapeValue('ours: no typescript rule', {})
-const OUR_RULE_OF_A_DEFAULT_PLUGIN = buildOurShapeValue('ours: @typescript-eslint/no-require-imports', {
-  rules: { '@typescript-eslint/no-require-imports': 'error' },
+const OUR_RULE_OF_A_DEFAULT_PLUGIN = buildOurShapeValue(`ours: ${OUR_OXLINT_RULE_OF_A_DEFAULT_PLUGIN}`, {
+  rules: { [OUR_OXLINT_RULE_OF_A_DEFAULT_PLUGIN]: 'error' },
 })
-const OUR_RULE_OF_A_DEFAULT_PLUGIN_OFF_IN_AN_ENTRY = buildOurShapeValue(
-  'ours: @typescript-eslint/no-require-imports, off in an entry for src/**',
-  {
-    rules: { '@typescript-eslint/no-require-imports': 'error' },
-    fileOverrides: [{ files: SRC_FILES, rules: { '@typescript-eslint/no-require-imports': 'off' } }],
-  },
-)
+const OUR_RULE_OF_A_DEFAULT_PLUGIN_OFF_IN_AN_ENTRY = buildOurShapeValue(`ours: ${OUR_OXLINT_RULE_OF_A_DEFAULT_PLUGIN}, off in an entry for src/**`, {
+  rules: { [OUR_OXLINT_RULE_OF_A_DEFAULT_PLUGIN]: 'error' },
+  fileOverrides: [{ files: SRC_FILES, rules: { [OUR_OXLINT_RULE_OF_A_DEFAULT_PLUGIN]: 'off' } }],
+})
 
 const NO_REACT_RULE = buildOurShapeValue('ours: no react rule', {})
-const OUR_REACT_RULE = buildOurShapeValue('ours: react/no-string-refs', { rules: { 'react/no-string-refs': 'error' } })
-const OUR_REACT_RULE_OFF_IN_AN_ENTRY = buildOurShapeValue('ours: react/no-string-refs, off in an entry for lib/**', {
-  rules: { 'react/no-string-refs': 'error' },
-  fileOverrides: [{ files: LIB_FILES, rules: { 'react/no-string-refs': 'off' } }],
+const OUR_REACT_RULE = buildOurShapeValue(`ours: ${OUR_OXLINT_REACT_RULE}`, { rules: { [OUR_OXLINT_REACT_RULE]: 'error' } })
+const OUR_REACT_RULE_OFF_IN_AN_ENTRY = buildOurShapeValue(`ours: ${OUR_OXLINT_REACT_RULE}, off in an entry for lib/**`, {
+  rules: { [OUR_OXLINT_REACT_RULE]: 'error' },
+  fileOverrides: [{ files: LIB_FILES, rules: { [OUR_OXLINT_REACT_RULE]: 'off' } }],
 })
-const OUR_ENTRY_TURNING_OFF_A_RULE_WE_DO_NOT_RUN = buildOurShapeValue('ours: react/no-string-refs off in an entry for lib/**, and on nowhere', {
-  fileOverrides: [{ files: LIB_FILES, rules: { 'react/no-string-refs': 'off' } }],
+const OUR_ENTRY_TURNING_OFF_A_RULE_WE_DO_NOT_RUN = buildOurShapeValue(`ours: ${OUR_OXLINT_REACT_RULE} off in an entry for lib/**, and on nowhere`, {
+  fileOverrides: [{ files: LIB_FILES, rules: { [OUR_OXLINT_REACT_RULE]: 'off' } }],
 })
-const OUR_REACT_RULE_ONLY_IN_AN_ENTRY = buildOurShapeValue('ours: react/no-string-refs on in an entry for lib/** only', {
-  fileOverrides: [{ files: LIB_FILES, rules: { 'react/no-string-refs': 'error' } }],
+const OUR_REACT_RULE_ONLY_IN_AN_ENTRY = buildOurShapeValue(`ours: ${OUR_OXLINT_REACT_RULE} on in an entry for lib/** only`, {
+  fileOverrides: [{ files: LIB_FILES, rules: { [OUR_OXLINT_REACT_RULE]: 'error' } }],
 })
 // Our top-level off removes only ours: the team's config alone decides the rule.
-const OUR_REACT_RULE_OFF_AT_THE_TOP_LEVEL = buildOurShapeValue('ours: react/no-string-refs off at the top level', {
-  rules: { 'react/no-string-refs': 'off' },
+const OUR_REACT_RULE_OFF_AT_THE_TOP_LEVEL = buildOurShapeValue(`ours: ${OUR_OXLINT_REACT_RULE} off at the top level`, {
+  rules: { [OUR_OXLINT_REACT_RULE]: 'off' },
 })
 
 // A core rule of oxlint's: its plugin is eslint, which oxlint always runs.
 const NO_CORE_RULE = buildOurShapeValue('ours: no core rule', {})
-const OUR_CORE_RULE = buildOurShapeValue('ours: no-compare-neg-zero', { rules: { 'no-compare-neg-zero': 'error' } })
-const OUR_CORE_RULE_ONLY_IN_AN_ENTRY = buildOurShapeValue('ours: no-compare-neg-zero on in an entry for lib/** only', {
-  fileOverrides: [{ files: LIB_FILES, rules: { 'no-compare-neg-zero': 'error' } }],
+const OUR_CORE_RULE = buildOurShapeValue(`ours: ${OUR_OXLINT_CORE_RULE}`, { rules: { [OUR_OXLINT_CORE_RULE]: 'error' } })
+const OUR_CORE_RULE_ONLY_IN_AN_ENTRY = buildOurShapeValue(`ours: ${OUR_OXLINT_CORE_RULE} on in an entry for lib/** only`, {
+  fileOverrides: [{ files: LIB_FILES, rules: { [OUR_OXLINT_CORE_RULE]: 'error' } }],
 })
 
 // Our ignores remove only our rules from the files they match; the team's findings there stay.
@@ -434,26 +453,26 @@ const OUR_IGNORES = buildOurShapeValue('ours: ignores lib/**', { ignores: LIB_FI
 const OUR_IGNORES_OF_A_FOLDER = buildOurShapeValue('ours: ignores lib, a folder', { ignores: ['lib'] })
 const OUR_IGNORES_OF_A_FOLDER_ENDING_IN_A_SLASH = buildOurShapeValue('ours: ignores lib/, a folder', { ignores: ['lib/'] })
 
-// Our ESLint-run rules are off in oxlint only where ESLint runs them: not in our ignores or entries turning them off.
 const NO_RULE_ESLINT_RUNS = buildOurShapeValue('ours: no rule ESLint runs', {})
-const OUR_RULES_ESLINT_RUNS = buildOurShapeValue('ours: @typescript-eslint/array-type and promise/param-names, which ESLint runs', {
-  rules: { '@typescript-eslint/array-type': 'error', 'promise/param-names': 'error' },
-})
+const OUR_RULES_ESLINT_RUNS = buildOurShapeValue(
+  `ours: ${OUR_ESLINT_RULE_OF_A_DEFAULT_PLUGIN}, ${OUR_ESLINT_REACT_RULE} and ${OUR_ESLINT_PROMISE_RULE}, which ESLint runs`,
+  { rules: { [OUR_ESLINT_RULE_OF_A_DEFAULT_PLUGIN]: 'error', [OUR_ESLINT_REACT_RULE]: 'error', [OUR_ESLINT_PROMISE_RULE]: 'error' } },
+)
 // oxlint's own correctness: warn runs its no-this-alias copy under typescript, a default plugin; the merge turns it off everywhere.
 const OUR_RULE_ESLINT_RUNS_IN_OXLINTS_DEFAULT_CATEGORY = buildOurShapeValue(
-  "ours: @typescript-eslint/no-this-alias, which ESLint runs, and oxlint's correctness category holds",
-  { rules: { '@typescript-eslint/no-this-alias': 'error' } },
+  `ours: ${OUR_ESLINT_RULE_IN_OXLINTS_DEFAULT_CATEGORY}, which ESLint runs, and oxlint's correctness category holds`,
+  { rules: { [OUR_ESLINT_RULE_IN_OXLINTS_DEFAULT_CATEGORY]: 'error' } },
 )
 // Likewise the core no-unused-vars, twin of typescript-eslint's, which correctness: warn runs under eslint.
 const OUR_TWIN_RULE_ESLINT_RUNS_IN_OXLINTS_DEFAULT_CATEGORY = buildOurShapeValue(
-  "ours: @typescript-eslint/no-unused-vars, which ESLint runs, whose core twin oxlint's correctness category holds",
-  { rules: { '@typescript-eslint/no-unused-vars': 'error' } },
+  `ours: ${OUR_ESLINT_TWIN_RULE_IN_OXLINTS_DEFAULT_CATEGORY}, which ESLint runs, whose core twin oxlint's correctness category holds`,
+  { rules: { [OUR_ESLINT_TWIN_RULE_IN_OXLINTS_DEFAULT_CATEGORY]: 'error' } },
 )
 const OUR_RULES_ESLINT_RUNS_OFF_IN_AN_ENTRY = buildOurShapeValue(
-  'ours: @typescript-eslint/array-type and promise/param-names, which ESLint runs, array-type off in an entry for src/**',
+  `ours: ${OUR_ESLINT_RULE_OF_A_DEFAULT_PLUGIN}, ${OUR_ESLINT_REACT_RULE} and ${OUR_ESLINT_PROMISE_RULE}, which ESLint runs, no-inferrable-types off in an entry for src/**`,
   {
-    rules: { '@typescript-eslint/array-type': 'error', 'promise/param-names': 'error' },
-    fileOverrides: [{ files: SRC_FILES, rules: { '@typescript-eslint/array-type': 'off' } }],
+    rules: { [OUR_ESLINT_RULE_OF_A_DEFAULT_PLUGIN]: 'error', [OUR_ESLINT_REACT_RULE]: 'error', [OUR_ESLINT_PROMISE_RULE]: 'error' },
+    fileOverrides: [{ files: SRC_FILES, rules: { [OUR_ESLINT_RULE_OF_A_DEFAULT_PLUGIN]: 'off' } }],
   },
 )
 

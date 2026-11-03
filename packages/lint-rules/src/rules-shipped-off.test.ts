@@ -17,9 +17,6 @@ import { NOT_LINTED, setUpEslintConfigOracle } from './__tests__/eslint-config-o
 import { buildConsumerLintRules, emptyTsconfigRootDir, EVERY_RULESET } from './__tests__/factories/lint-rules-factories.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 
-// A rule we keep off by default still ships, so a team can turn it on; it is off until a team names it in
-// agents-inc.lint.mts, in check and in the editor alike. A rule we do not ship is still refused there.
-
 const oracle = setUpEslintConfigOracle()
 
 type FileKind = keyof typeof FILES_JUDGED

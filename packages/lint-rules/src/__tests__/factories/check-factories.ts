@@ -89,14 +89,6 @@ export function checkConfigText(agentRulesets: Partial<Rulesets>, fields: Shared
   return agentsIncLintModuleTextRootedAtItsFolder(buildConsumerSettings({ agentRulesets }, fields))
 }
 
-/** Hands defineLintRules the settings as they are, which may be ones it refuses. */
-export function checkConfigTextHanding(settings: unknown): string {
-  return `import { defineLintRules } from '${BUILT_PACKAGE}'
-
-export const { eslint, oxlint } = defineLintRules({ tsconfigRootDir: import.meta.dirname, ...${JSON.stringify(settings, null, 2)} }).editorRulesets
-`
-}
-
 /** Exports an equal copy of the ESLint part defineLintRules returned, which is not that part. */
 export function checkConfigTextExportingACopy(agentRulesets: Partial<Rulesets>): string {
   return `import { defineLintRules } from '${BUILT_PACKAGE}'
@@ -263,8 +255,10 @@ export function buildLintResult(filePath: string, fields: Partial<ESLint.LintRes
 export type EslintEngineCall = { readonly engine: string; readonly method: keyof EslintEngine; readonly path: string }
 
 /** A stand-in that finds nothing and records each call under its name. */
+// eslint-disable-next-line functional/prefer-immutable-types -- TS2339 as readonly: a readonly array has no push, and the two stand-ins a test makes record into this one list, so it reads the calls in the order both took them
 export function eslintEngineRecording(engine: string, calls: EslintEngineCall[]): EslintEngine {
   function recorded<Answer>(method: keyof EslintEngine, path: string, answer: Answer): Promise<Answer> {
+    // eslint-disable-next-line functional/immutable-data -- the stand-in records each call, which the test reads once the calls settle
     calls.push({ engine, method, path })
     return Promise.resolve(answer)
   }

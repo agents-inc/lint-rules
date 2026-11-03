@@ -1,4 +1,4 @@
-import { catalog } from '@workspace/rule-data'
+import { catalog, routeOf } from '@workspace/rule-data'
 import type { Linter } from 'eslint'
 import type { OxlintConfig } from 'oxlint'
 
@@ -20,15 +20,16 @@ function isOn(entry: unknown): entry is readonly [unknown, ...unknown[]] {
   return Array.isArray(entry) && entry[0] !== 'off' && entry[0] !== 0
 }
 
-/** Once per place it is turned on. */
-export function rulesOnInOxlint({ rules = {}, overrides = [] }: Readonly<OxlintConfig>): RuleOnEngine[] {
+/** Once per place it is turned on, in each config it extends too. */
+export function rulesOnInOxlint({ rules = {}, overrides = [], extends: extended = [] }: Readonly<OxlintConfig>): RuleOnEngine[] {
   // An override may switch only env, with no rules.
   const ruleMaps = [rules, ...overrides.map((override) => override.rules ?? {})]
-  return ruleMaps.flatMap((ruleMap) =>
+  const ownRulesOn = ruleMaps.flatMap((ruleMap) =>
     Object.entries(ruleMap).flatMap(([oxlintName, entry]): RuleOnEngine[] =>
       isOn(entry) ? [{ id: canonicalIdOfOxlintName(oxlintName), engine: 'oxlint', options: entry.slice(1) }] : [],
     ),
   )
+  return [...ownRulesOn, ...extended.flatMap(rulesOnInOxlint)]
 }
 
 /** Once per block that turns it on. */
@@ -46,9 +47,7 @@ export function ruleIdsStatedInEslint(config: readonly Linter.Config[]): string[
 }
 
 export function onItsEngine(id: string, options: readonly unknown[]): RuleOnEngine {
-  const rule = catalog.rules.get(id)
-  if (rule === undefined) throw new Error(`${id} is not a RuleId`)
-  return { id, engine: rule.engine, options }
+  return { id, engine: routeOf(id, catalog).engine, options }
 }
 
 export function onEslint(id: string, options: readonly unknown[]): RuleOnEngine {

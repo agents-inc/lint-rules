@@ -1,15 +1,13 @@
 import type { Catalog } from '@workspace/rule-data'
-import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
 import { buildShippedRule } from '@workspace/rule-data/test-support/shipped-rule-factories'
 import type { Linter } from 'eslint'
 import { describe, expect, it } from 'vitest'
 import { setUpEslintConfigOracle } from '../__tests__/eslint-config-oracle.ts'
-import { pluginRegisteredUnder } from '../__tests__/eslint-config-reads.ts'
 import { buildCatalog, buildEslintRoute, buildOxlintRoute, buildQualityRuleset } from '../__tests__/factories/catalog-factories.ts'
 import { buildFileOverride, buildLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { buildProjectFacts } from '../__tests__/factories/project-facts-factories.ts'
-import { oxlintEntryOfRuleFor, severityOfOxlintEntry } from '../__tests__/oxlint-config-oracle.ts'
-import { buildEslintConfig, type EslintPluginRegistry } from './build-eslint-config.ts'
+import { NOT_RUN, oxlintRunningEntryOfRuleFor, realTypescriptEslintPlugin, runningSeverityOf } from '../__tests__/running-entries.ts'
+import { buildEslintConfig } from './build-eslint-config.ts'
 import { buildOxlintConfig } from './build-oxlint-config.ts'
 import type { LintRulesInput } from './lint-rules-input.ts'
 
@@ -25,7 +23,6 @@ const LEGACY_TS_FILE = 'legacy/a.ts'
 const LEGACY_JS_FILE = 'legacy/a.js'
 const EVERY_FILE = [LEGACY_TS_FILE, LEGACY_JS_FILE, TS_FILE, JS_FILE]
 const LEGACY_FILES = ['legacy/**']
-const NOT_RUN = 'not run'
 // Each setting below is distinct, so an entry of either engine tells which layer and name set it.
 const TAKEN_OPTION = 'builtinGlobals'
 const RULESET_SETTING = ['error', { [TAKEN_OPTION]: true }] as const
@@ -59,20 +56,10 @@ function twinCatalogShippingBothNames(): Catalog {
   })
 }
 
-// The real typescript-eslint plugin, whose rules refuse options they do not take.
-function realTypescriptEslintPlugin(): EslintPluginRegistry {
-  return { '@typescript-eslint': pluginRegisteredUnder(eslintPlugins, '@typescript-eslint') }
-}
-
 /** NOT_RUN where none applies, or it is off. */
 function oxlintRunningEntriesFor(given: LintRulesInput, catalog: Readonly<Catalog>, files: readonly string[]): RunningEntries {
   const config = buildOxlintConfig(given, catalog)
-  return Object.fromEntries(
-    files.map((file) => {
-      const entry = oxlintEntryOfRuleFor(config, file, CORE_SPELLINGS)
-      return [file, entry === undefined || severityOfOxlintEntry(entry) === 'off' ? NOT_RUN : entry]
-    }),
-  )
+  return Object.fromEntries(files.map((file) => [file, oxlintRunningEntryOfRuleFor(config, file, CORE_SPELLINGS)]))
 }
 
 /** NOT_RUN where no block sets it, or it is off. */
@@ -80,8 +67,7 @@ function setUpEslintExtensionSeverities(): (given: LintRulesInput, catalog: Read
   const { ruleSeverityFor } = setUpEslintConfigOracle()
 
   async function runningSeverityFor(config: readonly Linter.Config[], file: string): Promise<string> {
-    const severity = await ruleSeverityFor(config, file, EXTENSION)
-    return severity === undefined || severity === 'off' ? NOT_RUN : severity
+    return runningSeverityOf(await ruleSeverityFor(config, file, EXTENSION))
   }
 
   return async (given, catalog, files) => {

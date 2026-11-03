@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util'
-import { catalog, type RuleRoute } from '@workspace/rule-data'
+import { catalog, routeOf } from '@workspace/rule-data'
 import type { DummyRuleMap, OxlintConfig, OxlintOverride } from 'oxlint'
 import { describe, expect, it } from 'vitest'
 import { oxlintPartOf } from './__tests__/agent-configs.ts'
@@ -33,6 +33,8 @@ type Statement = readonly [key: string, entry: DummyRuleMap[string]]
 /** What a part of the merged overrides is, by the place the precedence contract gives it. */
 type PartOfTheMerge = 'ours' | "the team's" | 'none of these'
 
+type Switch = Pick<OxlintOverride, 'files' | 'excludeFiles'> & { readonly severities: readonly string[] }
+
 const OXLINT_DEFAULT_PLUGINS = ['oxc', 'typescript', 'unicorn']
 const NO_INFERRABLE_TYPES = '@typescript-eslint/no-inferrable-types'
 const NO_STRING_REFS = 'react/no-string-refs'
@@ -48,6 +50,9 @@ const NO_NON_NULL_ASSERTION = '@typescript-eslint/no-non-null-assertion'
 const BARE_NAME_OF_A_TYPE_AWARE_RULE = 'prefer-string-starts-ends-with'
 const TYPESCRIPTS_RULE_OF_THAT_NAME = 'typescript/prefer-string-starts-ends-with'
 const TEST_TSX_FILES = ['**/*.test.tsx']
+const TEST_TS_FILES = ['**/*.test.ts']
+const TSX_FILES = ['**/*.tsx']
+const EVERY_FILE = ['**/*']
 const COMMENTS_AND_REACT = { quality: ['comments'], libs: { ui: ['react'] } } as const satisfies Partial<LintRules['editorRulesets']>
 // A team root listing the plugin of every rule our parts in these specs state, oxlint's or ESLint's,
 // so the merge lists no plugin the team's root does not, and writes no compensation.
@@ -134,18 +139,25 @@ function firstExtendedObjectOf(config: Readonly<OxlintConfig>): OxlintConfig {
 /** The config's entry of each key the rule has in oxlint, in the file: oxlint reads any of them as the rule. */
 function entriesOfTheRuleIn(config: Readonly<OxlintConfig>, file: string, ruleId: string): Readonly<Record<string, unknown>> {
   const { rules } = oxlintConfigForFile(config, file)
-  return Object.fromEntries(Object.entries(rules).filter(([key]) => routeOf(ruleId).oxlintSpellings.includes(key)))
+  return Object.fromEntries(Object.entries(rules).filter(([key]) => routeOf(ruleId, catalog).oxlintSpellings.includes(key)))
 }
 
 /** The entry oxlint applies to the rule in the file, whichever of its keys states it last. */
 function entryOfTheRuleIn(config: Readonly<OxlintConfig>, file: string, ruleId: string): unknown {
-  return oxlintEntryOfRuleFor(config, file, routeOf(ruleId).oxlintSpellings)
+  return oxlintEntryOfRuleFor(config, file, routeOf(ruleId, catalog).oxlintSpellings)
 }
 
 /** Every override of the config, as oxlint lines them up: those of the configs it extends as objects first. */
 function overridesInLine(config: Readonly<OxlintConfig>): OxlintOverride[] {
   const { extends: extended = [], overrides = [] } = config
   return [...extended.filter((each): each is OxlintConfig => typeof each !== 'string').flatMap(overridesInLine), ...overrides]
+}
+
+/** Each override in line that states rules, in order. */
+function switchesInLine(config: Readonly<OxlintConfig>): Switch[] {
+  return overridesInLine(config)
+    .filter(({ rules }) => rules !== undefined)
+    .map(({ files, excludeFiles, rules = {} }) => ({ files, ...(excludeFiles !== undefined && { excludeFiles }), severities: [...new Set(Object.values(rules).map(severityOfOxlintEntry))] }))
 }
 
 function statementsOf(overrides: readonly OxlintOverride[]): Statement[] {
@@ -302,7 +314,7 @@ describe('mergeOxlintConfig, given a team config setting every key', () => {
   it('states, in no oxlint spelling, an ESLint-run rule of ours that oxlint has', () => {
     const applied = oxlintConfigForFile(merged(), 'src/a.ts').rules
 
-    expect(routeOf(NO_INFERRABLE_TYPES).oxlintSpellings.filter((spelling) => Object.hasOwn(applied, spelling))).toStrictEqual([])
+    expect(routeOf(NO_INFERRABLE_TYPES, catalog).oxlintSpellings.filter((spelling) => Object.hasOwn(applied, spelling))).toStrictEqual([])
   })
 
   // Our top-level rules turning a rule off remove only ours.
@@ -356,8 +368,33 @@ describe('mergeOxlintConfig, given a team config leaving out plugins', () => {
   })
 })
 
+// Our part states no rule, so every switch in line is one for the team's listings.
+describe("the category switches mergeOxlintConfig writes beside the plugins a team's overrides list", () => {
+  it("turns [promise]'s category rules off in every file and on in its listing's files, writing none for an [import] listing that adds no plugin to the root's", () => {
+    const team = buildTeamOxlintConfig({
+      plugins: ['import'],
+      categories: { correctness: 'error' },
+      overrides: [
+        { files: TSX_FILES, plugins: ['import'] },
+        { files: TEST_TS_FILES, plugins: ['promise'] },
+      ],
+    })
+
+    expect(switchesInLine(mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, {}, team))).toStrictEqual([
+      { files: EVERY_FILE, severities: ['off'] },
+      { files: TEST_TS_FILES, severities: ['error'] },
+    ])
+  })
+
+  it("turns [promise]'s category rules off in every file alone, where the team's one listing holds every root plugin and switches them on in its files", () => {
+    const team = buildTeamOxlintConfig({ plugins: ['import'], categories: { correctness: 'error' }, overrides: [{ files: TEST_TS_FILES, plugins: ['import', 'promise'] }] })
+
+    expect(switchesInLine(mergedEditorOxlintConfig(PROJECT_WITH_OXLINT, {}, team))).toStrictEqual([{ files: EVERY_FILE, severities: ['off'] }])
+  })
+})
+
 // The team's statement of a rule our part states makes the rule the team's in every file, a line oxlint
-// skips for the team included (owner 2026-10-22).
+// skips for the team included.
 describe('mergeOxlintConfig, given a team config stating a rule our part runs', () => {
   const ours = { rules: { [NO_STRING_REFS]: 'error' } } satisfies SharedFields
 
@@ -561,7 +598,7 @@ describe('mergeOxlintConfig, given the options and env of the team', () => {
     const { oxlint } = ourEditorParts({}, { editorRulesets: { runtimes: ['browser'] } })
     const { env } = oxlintConfigForFile(mergeOxlintConfig(buildTeamOxlintConfig({ env: { browser: false } }), oxlint, NO_TEAM_ESLINT_CONFIG), 'src/a.ts')
 
-    expect({ browser: env['browser'], es2024: env['es2024'] }).toStrictEqual({ browser: false, es2024: true })
+    expect({ browser: env.browser, es2024: env.es2024 }).toStrictEqual({ browser: false, es2024: true })
   })
 
   // No override of ours turns a rule on here, so our env stands in an override of its own. es2024 is
@@ -577,7 +614,7 @@ describe('mergeOxlintConfig, given the options and env of the team', () => {
     )
 
     expect({
-      es2024: oxlintConfigForFile(config, 'src/a.ts').env['es2024'],
+      es2024: oxlintConfigForFile(config, 'src/a.ts').env.es2024,
       rulesTheOverridesTurnOn: rulesOnInOxlint({ overrides: overridesOf(config) }),
     }).toStrictEqual({ es2024: true, rulesTheOverridesTurnOn: [] })
   })
@@ -589,8 +626,8 @@ describe('mergeOxlintConfig, given the options and env of the team', () => {
     const config = mergeOxlintConfig(buildTeamOxlintConfig({ overrides: [{ files: ['**/*.test.js'], env: { browser: false } }] }), oxlint, NO_TEAM_ESLINT_CONFIG)
 
     expect({
-      inTheTeamsFiles: oxlintConfigForFile(config, 'src/a.test.js').env['browser'],
-      elsewhere: oxlintConfigForFile(config, 'src/a.js').env['browser'],
+      inTheTeamsFiles: oxlintConfigForFile(config, 'src/a.test.js').env.browser,
+      elsewhere: oxlintConfigForFile(config, 'src/a.js').env.browser,
     }).toStrictEqual({ inTheTeamsFiles: false, elsewhere: true })
   })
 })
@@ -636,20 +673,14 @@ describe('the team config mergeOxlintConfig is given', () => {
   })
 })
 
-function routeOf(id: string): RuleRoute {
-  const route = catalog.rules.get(id)
-  if (route === undefined) throw new Error(`${id} is not in the catalog`)
-  return route
-}
-
 function oxlintPluginOf(id: string): string {
-  const { oxlintPlugin } = routeOf(id)
+  const { oxlintPlugin } = routeOf(id, catalog)
   if (oxlintPlugin === null) throw new Error(`${id} has no oxlint plugin`)
   return oxlintPlugin
 }
 
 function oxlintNameOf(id: string): string {
-  const { oxlintName } = routeOf(id)
+  const { oxlintName } = routeOf(id, catalog)
   if (oxlintName === null) throw new Error(`${id} has no oxlint name`)
   return oxlintName
 }

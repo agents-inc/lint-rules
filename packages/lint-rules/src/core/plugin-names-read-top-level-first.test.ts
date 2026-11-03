@@ -45,7 +45,7 @@ function oursSetBesideTeamPrefixFor(plugin: Readonly<ESLint.Plugin>): string[] {
 function mergedBesideTeamPluginUnderOurPrefix(plugin: Readonly<ESLint.Plugin>): Linter.Config[] {
   const { eslint } = defineLintRules(buildConsumerLintRules(emptyTsconfigRootDir(), {}, { rules: { [ARRAY_TYPE]: 'error' } })).editorRulesets
   const teamBlock = buildTeamEslintBlock('team', { plugins: { [OUR_PREFIX]: plugin } })
-  return mergeEslintPart([teamBlock], eslint, catalog, eslintPluginRegistry, OUR_VERSION, NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG)
+  return mergeEslintPart([teamBlock], eslint, catalog, { registry: eslintPluginRegistry, ourVersion: OUR_VERSION, ruleIdsInTheTeamsOxlintConfig: NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG })
 }
 
 describe('a team plugin named at its top level and in its meta, registered under a prefix of the team\'s own', () => {

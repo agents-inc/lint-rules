@@ -14,6 +14,10 @@ const oxlintConfig: OxlintConfig = {
   ],
 }
 
+const oxlintConfigExtendingTwoDeep: OxlintConfig = {
+  extends: [{ rules: { 'no-debugger': ['error'] }, extends: [{ overrides: [{ files: ['**/*'], rules: { 'typescript/ban-ts-comment': ['error'] } }] }] }],
+}
+
 const eslintConfig: Linter.Config[] = [
   { name: 'first', rules: { 'no-console': ['error'], 'no-alert': 'off' } },
   { name: 'second' },
@@ -25,6 +29,13 @@ describe('rulesOnInOxlint', () => {
     expect(rulesOnInOxlint(oxlintConfig)).toStrictEqual([
       { id: 'no-debugger', engine: 'oxlint', options: [] },
       { id: '@typescript-eslint/ban-ts-comment', engine: 'oxlint', options: [{ 'ts-ignore': true }] },
+    ])
+  })
+
+  it('reads the rules turned on in each config it extends and in each config that one extends, overrides included', () => {
+    expect(rulesOnInOxlint(oxlintConfigExtendingTwoDeep)).toStrictEqual([
+      { id: 'no-debugger', engine: 'oxlint', options: [] },
+      { id: '@typescript-eslint/ban-ts-comment', engine: 'oxlint', options: [] },
     ])
   })
 

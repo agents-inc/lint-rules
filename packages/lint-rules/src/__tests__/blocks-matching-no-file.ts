@@ -19,8 +19,8 @@ const GLOB_KEY = 'glob '
 /** `name: files and ignores` for each block of an ESLint config whose files no path can match. */
 export function eslintBlocksMatchingNoFile(config: readonly Linter.Config[]): string[] {
   return config.flatMap((block, index) => {
+    if (!isEslintBlockMatchingNoFile(block)) return []
     const { files, ignores = [] } = block
-    if (files === undefined || files.map(globsOfEntry).some((entry) => !isEslintEntryMatchingNoFile(entry, ignores))) return []
     return `${blockName(block.name, index)}: ${JSON.stringify({ files, ignores })}`
   })
 }
@@ -39,6 +39,11 @@ function globsOfEntry(entry: string | readonly string[]): readonly string[] {
   // Parse boundary: ESLint's types give globs alone, and a block may AND a function with them.
   const matchers: readonly unknown[] = typeof entry === 'string' ? [entry] : entry
   return matchers.filter((matcher) => typeof matcher === 'string')
+}
+
+function isEslintBlockMatchingNoFile({ files, ignores = [] }: Readonly<Linter.Config>): boolean {
+  if (files === undefined) return false
+  return files.map(globsOfEntry).every((entry) => isEslintEntryMatchingNoFile(entry, ignores))
 }
 
 /**

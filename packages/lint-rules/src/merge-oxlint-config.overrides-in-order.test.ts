@@ -6,6 +6,7 @@ import { buildConsumerLintRules } from './__tests__/factories/lint-rules-factori
 import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildTeamOxlintConfig, buildTeamOxlintConfigFrom } from './__tests__/factories/team-config-factories.ts'
 import { oxlintSeverityFor } from './__tests__/oxlint-config-oracle.ts'
+import { NOT_RUN, runningSeverityOf } from './__tests__/running-entries.ts'
 import { NO_TEAM_ESLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
 import { defineLintRules, type LintRules } from './index.ts'
@@ -19,7 +20,6 @@ const tempProjects = setUpTempProjects()
 
 const NO_DEBUGGER = 'no-debugger'
 const JSX_KEY = 'react/jsx-key'
-const NOT_RUN = 'not run'
 
 const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) }, linkedPackages: [INSTALLED_OXLINT] })
 
@@ -30,12 +30,7 @@ function mergedWith(fields: Partial<Omit<LintRules, 'tsconfigRootDir'>>, team: R
 
 /** The severity oxlint runs the rule at in each file given: NOT_RUN where it is off or no statement applies. */
 function severitiesIn(merged: Readonly<OxlintConfig>, oxlintName: string, files: readonly string[]): Readonly<Record<string, string>> {
-  return Object.fromEntries(
-    files.map((file) => {
-      const severity = oxlintSeverityFor(merged, file, oxlintName)
-      return [file, severity === undefined || severity === 'off' ? NOT_RUN : severity]
-    }),
-  )
+  return Object.fromEntries(files.map((file) => [file, runningSeverityOf(oxlintSeverityFor(merged, file, oxlintName))]))
 }
 
 describe('mergeOxlintConfig, given our entries turning no-debugger off in legacy/** and then on again in legacy/keep/**', () => {

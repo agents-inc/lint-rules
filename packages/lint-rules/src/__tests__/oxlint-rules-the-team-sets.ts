@@ -9,11 +9,11 @@ import { oxlintPluginListedAs, oxlintRuleKeyedBy } from './oxlint-rule-keys.ts'
 // - A root merges with every config it extends: `plugins` lists unite, and one left out adds oxlint's defaults.
 //   Categories merge key by key, the extending config's winning; oxlint's own `correctness: warn` sets no rule.
 // - A statement sets its rule wherever it stands, at a root or in an override, at any severity, though oxlint skips
-//   one whose plugin is listed neither at the root nor in that override (owner 2026-10-22).
+//   one whose plugin is listed neither at the root nor in that override.
 // - A category on at the root runs its rules whose plugin is eslint or listed anywhere, nursery included
 //   (measured: `nursery: 'warn'` runs import/named), type-aware ones only with `options.typeAware`. Where every
 //   override listing plugins lists one set holding each root plugin, it runs those of the plugins only overrides
-//   list in no file (measured), and they count nowhere (owner 2026-10-29).
+//   list in no file (measured), and they count nowhere.
 // - A key under a JS plugin's prefix sets the rule of ours that key is an ESLint name of.
 
 /** Keyed by the path `extends` gives. */

@@ -40,7 +40,8 @@ export function ownerOfOxlintFindings(parts: EditorParts, team: TeamConfigsRead,
     const rule = ruleByCode.get(code)
     if (rule === undefined || isSetByTheTeam(rule.id, namesTheTeamSets, catalog)) return 'the team'
     if (runsIn(ourPartAlone, file, rule)) return 'ours'
-    return [rule.id, ...typescriptEslintTwinsOf(rule.id)].some((id) => ourEslintPartRuns.has(id)) ? 'nobody' : 'the team'
+    if (isRunByOurEslintPart(rule.id, ourEslintPartRuns)) return 'nobody'
+    return 'the team'
   }
 }
 
@@ -69,6 +70,11 @@ function isSetByTheTeam(ruleId: string, namesTheTeamSets: ReadonlySet<string>, c
 /** Every ESLint name of a rule the catalog routes; a twin it does not route goes by its ID alone. */
 function eslintNamesOfARuleOfOurs(ruleId: string, catalog: Readonly<Catalog>): string[] {
   return catalog.rules.has(ruleId) ? eslintNamesOf(ruleId, catalog) : [ruleId]
+}
+
+/** A core rule and its twin counting as one. */
+function isRunByOurEslintPart(ruleId: string, ourEslintPartRuns: ReadonlySet<string>): boolean {
+  return [ruleId, ...typescriptEslintTwinsOf(ruleId)].some((id) => ourEslintPartRuns.has(id))
 }
 
 function runsIn(config: Readonly<OxlintConfig>, file: string, { oxlintName }: OxlintRule): boolean {

@@ -41,6 +41,15 @@ export const OXLINT_READING_FILES: readonly string[] = [
 */
 const IGNORES_TAKING_NODE_MODULES_FILES_BACK: ReadonlyArray<readonly string[]> = [['!node_modules/x/**'], ['!**/a.js']]
 
+/** A negated folder line before and after a left-out one: one path, a folder below it, every folder of a name. */
+const IGNORES_TAKING_BACK_FROM_A_LEFT_OUT_FOLDER: ReadonlyArray<readonly string[]> = [
+  ['src/legacy/', '!src/legacy/'],
+  ['!src/legacy/', 'src/legacy/'],
+  ['src/legacy/', '!src/legacy/keep/'],
+  ['src/legacy/', '!**/keep/'],
+  ['!legacy/', 'legacy/'],
+]
+
 /**
 * Where a negated line takes back a folder, oxlint decides a file under a deeper folder of the left-out name by
 * that folder, which the globs cannot tell (measured, oxlint 1.87): a pinned limit.
@@ -84,4 +93,5 @@ export const IGNORES_READ_AS_OXLINT_READS_THEM: ReadonlyArray<readonly string[]>
   ...IGNORES_TAKING_FILES_BACK_FROM_ESLINT_DEFAULTS,
   ...ESLINT_READING_LIMITS.map(({ ignores }) => ignores),
   ...IGNORES_TAKING_NODE_MODULES_FILES_BACK,
+  ...IGNORES_TAKING_BACK_FROM_A_LEFT_OUT_FOLDER,
 ].filter((ignores) => !LIMITED.has(JSON.stringify(ignores)))

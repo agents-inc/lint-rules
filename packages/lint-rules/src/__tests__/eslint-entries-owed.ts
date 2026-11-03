@@ -1,4 +1,5 @@
 import type { Catalog } from '@workspace/rule-data'
+import { isList } from '../core/is-record.ts'
 import { type CalculatedRules, type CalculatedRulesOrNotLinted, NOT_LINTED } from './eslint-config-oracle.ts'
 import { eslintNamesOf, typescriptEslintTwinsOf, withTheTeamsPrefixes } from './other-eslint-names.ts'
 
@@ -56,11 +57,6 @@ export function calculatedEntryOf(rules: CalculatedRules, name: string): Calcula
   if (entry === undefined) return ABSENT
   if (!isList(entry)) throw new TypeError(`ESLint calculates a rule entry as [severity, ...options], not ${JSON.stringify(entry)}`)
   return entry
-}
-
-// Array.isArray narrows to any[], whose members would read as anything.
-function isList(value: unknown): value is readonly unknown[] {
-  return Array.isArray(value)
 }
 
 /** NOT_LINTED where ESLint lints no such file. */

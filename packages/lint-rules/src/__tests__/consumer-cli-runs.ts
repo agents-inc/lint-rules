@@ -3,12 +3,12 @@ import {
   describeOxlintFindings,
   type EngineFinding,
   type EslintCliOutcome,
-  type EslintCliResult,
   eslintCliOutcomeOf,
   eslintEngineFindingsIn,
   eslintFindingsIn,
   fatalMessagesIn,
   type OxlintCliOutcome,
+  type OxlintCliRun,
   oxlintCliOutcomeOf,
   oxlintEngineFindingsIn,
   oxlintFindingsIn,
@@ -91,15 +91,18 @@ export function bothEnginesFindingsOf(runs: ConsumerCliRuns): EngineFinding[] {
 }
 
 /** Under oxlint's code for the rule (`eslint(no-debugger)`): throws where it refused the config. */
-function oxlintEngineFindingsOf({ projectDir, oxlint }: ConsumerCliRuns): EngineFinding[] {
-  if (oxlint.outcome === 'refused') throw new Error(`oxlint could not run on ${projectDir}: ${oxlint.output}`)
-  return oxlintEngineFindingsIn(oxlint.run.report)
+function oxlintEngineFindingsOf(runs: ConsumerCliRuns): EngineFinding[] {
+  return oxlintEngineFindingsIn(oxlintRunOf(runs).report)
 }
 
 /** As `file:line code severity`, sorted: throws where oxlint refused the config. */
-export function oxlintFindingsWithSeverityOf({ projectDir, oxlint }: ConsumerCliRuns, { names }: RuleByItsNames): string[] {
+export function oxlintFindingsWithSeverityOf(runs: ConsumerCliRuns, { names }: RuleByItsNames): string[] {
+  return describeOxlintFindings(oxlintFindingsWithSeverityIn(oxlintRunOf(runs).report).filter(({ rule }) => names.includes(rule)))
+}
+
+function oxlintRunOf({ projectDir, oxlint }: ConsumerCliRuns): OxlintCliRun {
   if (oxlint.outcome === 'refused') throw new Error(`oxlint could not run on ${projectDir}: ${oxlint.output}`)
-  return describeOxlintFindings(oxlintFindingsWithSeverityIn(oxlint.run.report).filter(({ rule }) => names.includes(rule)))
+  return oxlint.run
 }
 
 export function oxlintReportOf({ oxlint }: ConsumerCliRuns): EngineReport {
@@ -113,29 +116,28 @@ export function eslintReportOf({ projectDir, eslint }: ConsumerEslintCliRun): En
 }
 
 /** Parse errors included: throws where ESLint could not run, which no list of messages describes. */
-export function eslintFatalMessagesOf({ projectDir, eslint }: ConsumerEslintCliRun): string[] {
-  return fatalMessagesIn(eslintResultsOf({ projectDir, eslint }), projectDir)
+export function eslintFatalMessagesOf(run: ConsumerEslintCliRun): string[] {
+  return fatalMessagesIn(lintedEslintOf(run).results, run.projectDir)
 }
 
 /** Throws where ESLint could not run. */
-export function eslintEngineFindingsOf({ projectDir, eslint }: ConsumerEslintCliRun): EngineFinding[] {
-  return eslintEngineFindingsIn(eslintResultsOf({ projectDir, eslint }), projectDir)
+export function eslintEngineFindingsOf(run: ConsumerEslintCliRun): EngineFinding[] {
+  return eslintEngineFindingsIn(lintedEslintOf(run).results, run.projectDir)
 }
 
 /** Sorted, by path in the project: throws where ESLint could not run. */
-export function eslintLintedFilesOf({ projectDir, eslint }: ConsumerEslintCliRun): string[] {
-  return eslintResultsOf({ projectDir, eslint })
-    .map((result) => projectPathOf(result.filePath, projectDir))
-    .toSorted()
+export function eslintLintedFilesOf(run: ConsumerEslintCliRun): string[] {
+  return lintedEslintOf(run).results.map((result) => projectPathOf(result.filePath, run.projectDir)).toSorted()
 }
 
 /** A plugin's own warnings among it: throws where ESLint could not run. */
-export function eslintStderrOf({ projectDir, eslint }: ConsumerEslintCliRun): string {
-  if (eslint.outcome === 'refused') throw new Error(`ESLint could not run on ${projectDir}: ${eslint.output}`)
-  return eslint.stderr
+export function eslintStderrOf(run: ConsumerEslintCliRun): string {
+  return lintedEslintOf(run).stderr
 }
 
-function eslintResultsOf({ projectDir, eslint }: ConsumerEslintCliRun): readonly EslintCliResult[] {
+type LintedEslintCli = Extract<EslintCliOutcome, { readonly outcome: 'linted' }>
+
+function lintedEslintOf({ projectDir, eslint }: ConsumerEslintCliRun): LintedEslintCli {
   if (eslint.outcome === 'refused') throw new Error(`ESLint could not run on ${projectDir}: ${eslint.output}`)
-  return eslint.results
+  return eslint
 }

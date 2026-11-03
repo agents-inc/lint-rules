@@ -1,4 +1,4 @@
-import type { Catalog, OxlintRule } from '@workspace/rule-data'
+import { type Catalog, type OxlintRule, routeOf } from '@workspace/rule-data'
 import { readOnce } from '../core/read-once.ts'
 
 // How oxlint 1.87 reads a rule key and a `plugins` name (rules.rs, plugins.rs), modelled apart from
@@ -86,13 +86,7 @@ function oxlintRulesBySpelling(catalog: Readonly<Catalog>): ReadonlyMap<string, 
 }
 
 function oxlintRulesBySpellingIn(catalog: Readonly<Catalog>): ReadonlyMap<string, OxlintRule> {
-  return new Map(catalog.oxlintRules.flatMap((rule) => spellingsOf(rule, catalog).map((spelling): [string, OxlintRule] => [spelling, rule])))
-}
-
-function spellingsOf({ id }: OxlintRule, catalog: Readonly<Catalog>): readonly string[] {
-  const route = catalog.rules.get(id)
-  if (route === undefined) throw new Error(`${id}: oxlint has it, so the catalog routes it`)
-  return route.oxlintSpellings
+  return new Map(catalog.oxlintRules.flatMap((rule) => routeOf(rule.id, catalog).oxlintSpellings.map((spelling): [string, OxlintRule] => [spelling, rule])))
 }
 
 /** A key starting with a scope is cut at its last slash, as the scope holds one; any other at its first. Undefined where it has no slash. */

@@ -6,13 +6,10 @@ import { buildBundlerTsconfig } from '../factories/tsconfig-factories.ts'
 export const PREFER_IMMEDIATE_RETURN = 'sonarjs/prefer-immediate-return'
 export const USING_RESOURCE_ESCAPE = 'unicorn/no-using-resource-escape'
 
-/** A file and its text as written. */
 type WrittenFile = { readonly file: string; readonly source: string }
 
-/** A file, its text as written, and the line its rule reports. */
 type ReportedFile = WrittenFile & { readonly line: number }
 
-/** A file prefer-immediate-return reports, and its text as the rule's fix leaves it. */
 type FixedFile = ReportedFile & { readonly fixed: string }
 
 /** Lib ESNext declares Disposable and AsyncDisposable. */

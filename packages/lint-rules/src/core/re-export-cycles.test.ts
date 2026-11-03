@@ -4,6 +4,7 @@ import { type ESLint, Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
 import { A_CHAIN_THAT_ENDS, A_FILE_RE_EXPORTING_ITSELF, TWO_FILES_RE_EXPORTING_EACH_OTHER } from '../__tests__/cases/re-export-chains.ts'
+import { rulesOf } from '../__tests__/eslint-plugin-rules.ts'
 import { exportOf, programOfFiles } from '../__tests__/factories/typescript-program-factories.ts'
 import { checkerCuttingReExportCycles, withReExportCyclesCut } from './re-export-cycles.ts'
 
@@ -53,7 +54,7 @@ describe('withReExportCyclesCut', () => {
   it("gives typescript-eslint's two rules that follow re-exports modules of their own and keeps the rest, beside another plugin, kept as it is", () => {
     const cut = rulesOf(withReExportCyclesCut(TYPESCRIPT_ESLINT, typescriptEslint))
     const ours = rulesOf(typescriptEslint)
-    const unicorn = foundOr(eslintPlugins['unicorn'], 'rule-data registers no unicorn plugin')
+    const unicorn = foundOr(eslintPlugins.unicorn, 'rule-data registers no unicorn plugin')
 
     expect({
       replaced: Object.keys(ours).filter((name) => cut[name] !== ours[name]),
@@ -72,11 +73,6 @@ describe('withReExportCyclesCut', () => {
     expect([verified(withReExportCyclesCut(TYPESCRIPT_ESLINT, typescriptEslint)), verified(typescriptEslint)].map((verify) => messageThrownBy(verify).includes(NEEDS_TYPE_INFORMATION))).toStrictEqual([true, true])
   })
 })
-
-function rulesOf(plugin: Readonly<ESLint.Plugin>): NonNullable<ESLint.Plugin['rules']> {
-  if (plugin.rules === undefined) throw new Error('the plugin has no rules')
-  return plugin.rules
-}
 
 function verified(plugin: Readonly<ESLint.Plugin>): () => void {
   return () => {

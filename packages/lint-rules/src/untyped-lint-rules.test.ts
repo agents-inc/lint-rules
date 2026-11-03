@@ -9,19 +9,19 @@ import {
   CORRECTNESS_IN_BOTH_SETS,
 } from './__tests__/factories/lint-rules-factories.ts'
 import { createProjectListingOxlint } from './__tests__/factories/package-json-factories.ts'
-import { setUpTempProjects } from './__tests__/temp-projects.ts'
+import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import type { EditorParts } from './core/editor-parts.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 
 // What an untyped agents-inc.lint.mts does: a .mjs file, or a .mts file whose type errors nobody reads. The types
-// refuse every value below and, a rule ID aside, no check of ours on the config refuses it at run time (owner,
-// 2026-10-19: "if they use mjs it's on them"), so each is measured beside the typed config it builds the same as, or by
-// the error it stops at.
+// refuse every value below and, a rule ID aside, no check of ours on the config refuses it at run time, so each is
+// measured beside the typed config it builds the same as, or by the error it stops at.
 
 type Built = { readonly agentBuild: AgentBuildSettings; readonly editorParts: EditorParts }
 
-const tempProjects = setUpTempProjects()
-const PROJECT_WITH_OXLINT = createProjectListingOxlint(tempProjects)
+const PROJECT_MADE: RunsBeforeTheSuiteOptions = { timeoutMs: 10_000, whatFailed: 'the project listing oxlint could not be made before the suite' }
+
+const projectWithOxlint = setUpRunsBeforeTheSuite(createProjectListingOxlint, PROJECT_MADE)
 const NO_DEBUGGER = 'no-debugger'
 const EQEQEQ = 'eqeqeq'
 const ROOT_GIVEN_AS_A_NUMBER = 42
@@ -37,71 +37,73 @@ function builtFrom(lintRules: LintRules): Built {
 // Without these, an agent build compared below that lost what it sets would still compare equal.
 describe('the agent build compared in this file', () => {
   it('tells apart a config allowing suppressions from one banning them', () => {
-    const allowing = builtFrom(buildConsumerLintRules(PROJECT_WITH_OXLINT, CORRECTNESS_IN_BOTH_SETS, { allowSuppressions: true })).agentBuild
+    const allowing = builtFrom(buildConsumerLintRules(projectWithOxlint(), CORRECTNESS_IN_BOTH_SETS, { allowSuppressions: true })).agentBuild
 
-    expect(allowing).not.toStrictEqual(builtFrom(buildConsumerLintRules(PROJECT_WITH_OXLINT, CORRECTNESS_IN_BOTH_SETS, { allowSuppressions: false })).agentBuild)
+    expect(allowing).not.toStrictEqual(builtFrom(buildConsumerLintRules(projectWithOxlint(), CORRECTNESS_IN_BOTH_SETS, { allowSuppressions: false })).agentBuild)
   })
 
   it('tells apart a config turning a libs ruleset on from one turning none on', () => {
-    const turningReactOn = builtFrom(buildConsumerLintRules(PROJECT_WITH_OXLINT, { agentRulesets: { libs: { ui: ['react'] } } })).agentBuild
+    const turningReactOn = builtFrom(buildConsumerLintRules(projectWithOxlint(), { agentRulesets: { libs: { ui: ['react'] } } })).agentBuild
 
-    expect(turningReactOn).not.toStrictEqual(builtFrom(buildConsumerLintRules(PROJECT_WITH_OXLINT, {})).agentBuild)
+    expect(turningReactOn).not.toStrictEqual(builtFrom(buildConsumerLintRules(projectWithOxlint(), {})).agentBuild)
   })
 })
 
 describe('a ruleset name no ruleset has, in an untyped agents-inc.lint.mts', () => {
   it('in the agent set builds what the set with that list empty builds: the name turns nothing on', () => {
     // @ts-expect-error corectness is no quality ruleset
-    const untyped = buildConsumerLintRules(PROJECT_WITH_OXLINT, { agentRulesets: { quality: ['corectness'] } })
+    const untyped = buildConsumerLintRules(projectWithOxlint(), { agentRulesets: { quality: ['corectness'] } })
 
-    expect(builtFrom(untyped)).toStrictEqual(builtFrom(buildConsumerLintRules(PROJECT_WITH_OXLINT, { agentRulesets: { quality: [] } })))
+    expect(builtFrom(untyped)).toStrictEqual(builtFrom(buildConsumerLintRules(projectWithOxlint(), { agentRulesets: { quality: [] } })))
   })
 
   it('in the editor set builds what the set with that list empty builds: the name turns nothing on', () => {
     // @ts-expect-error corectness is no quality ruleset
-    const untyped = buildConsumerLintRules(PROJECT_WITH_OXLINT, { editorRulesets: { quality: ['corectness'] } })
+    const untyped = buildConsumerLintRules(projectWithOxlint(), { editorRulesets: { quality: ['corectness'] } })
 
-    expect(builtFrom(untyped)).toStrictEqual(builtFrom(buildConsumerLintRules(PROJECT_WITH_OXLINT, { editorRulesets: { quality: [] } })))
+    expect(builtFrom(untyped)).toStrictEqual(builtFrom(buildConsumerLintRules(projectWithOxlint(), { editorRulesets: { quality: [] } })))
   })
 })
 
-describe('a ruleset name filed under another list or domain, in an untyped agents-inc.lint.mts', () => {
-  const reactUnderUi = buildConsumerLintRules(PROJECT_WITH_OXLINT, { agentRulesets: { libs: { ui: ['react'] } } })
+function reactUnderUi(): LintRules {
+  return buildConsumerLintRules(projectWithOxlint(), { agentRulesets: { libs: { ui: ['react'] } } })
+}
 
+describe('a ruleset name filed under another list or domain, in an untyped agents-inc.lint.mts', () => {
   it('in the quality list builds what it builds in its own domain: the ruleset is on', () => {
     // @ts-expect-error react is a libs ruleset, not a quality one
-    const untyped = buildConsumerLintRules(PROJECT_WITH_OXLINT, { agentRulesets: { quality: ['react'] } })
+    const untyped = buildConsumerLintRules(projectWithOxlint(), { agentRulesets: { quality: ['react'] } })
 
-    expect(builtFrom(untyped)).toStrictEqual(builtFrom(reactUnderUi))
+    expect(builtFrom(untyped)).toStrictEqual(builtFrom(reactUnderUi()))
   })
 
   it('under a libs domain no ruleset has builds what it builds in its own domain: the ruleset is on', () => {
     // @ts-expect-error database is not a libs domain
-    const untyped = buildConsumerLintRules(PROJECT_WITH_OXLINT, { agentRulesets: { libs: { database: ['react'] } } })
+    const untyped = buildConsumerLintRules(projectWithOxlint(), { agentRulesets: { libs: { database: ['react'] } } })
 
-    expect(builtFrom(untyped)).toStrictEqual(builtFrom(reactUnderUi))
+    expect(builtFrom(untyped)).toStrictEqual(builtFrom(reactUnderUi()))
   })
 
   it('under another libs domain builds what it builds in its own domain: the ruleset is on', () => {
     // @ts-expect-error react belongs to the ui domain, not testing
-    const untyped = buildConsumerLintRules(PROJECT_WITH_OXLINT, { agentRulesets: { libs: { testing: ['react'] } } })
+    const untyped = buildConsumerLintRules(projectWithOxlint(), { agentRulesets: { libs: { testing: ['react'] } } })
 
-    expect(builtFrom(untyped)).toStrictEqual(builtFrom(reactUnderUi))
+    expect(builtFrom(untyped)).toStrictEqual(builtFrom(reactUnderUi()))
   })
 })
 
 describe('an allowSuppressions that is not true or false, in an untyped agents-inc.lint.mts', () => {
   it("as the string 'false' gives the agent build true gives: the string is truthy, so suppressions are allowed", () => {
     // @ts-expect-error allowSuppressions is true or false
-    const untyped = buildConsumerLintRules(PROJECT_WITH_OXLINT, CORRECTNESS_IN_BOTH_SETS, { allowSuppressions: 'false' })
+    const untyped = buildConsumerLintRules(projectWithOxlint(), CORRECTNESS_IN_BOTH_SETS, { allowSuppressions: 'false' })
 
-    expect(builtFrom(untyped).agentBuild).toStrictEqual(builtFrom(buildConsumerLintRules(PROJECT_WITH_OXLINT, CORRECTNESS_IN_BOTH_SETS, { allowSuppressions: true })).agentBuild)
+    expect(builtFrom(untyped).agentBuild).toStrictEqual(builtFrom(buildConsumerLintRules(projectWithOxlint(), CORRECTNESS_IN_BOTH_SETS, { allowSuppressions: true })).agentBuild)
   })
 
   it("as the string 'yes' in an entry gives the agent build true gives there", () => {
     // @ts-expect-error allowSuppressions is true or false in a file override too
-    const untyped = buildConsumerLintRules(PROJECT_WITH_OXLINT, CORRECTNESS_IN_BOTH_SETS, { fileOverrides: [{ files: ['legacy/**'], allowSuppressions: 'yes' }] })
-    const typed = buildConsumerLintRules(PROJECT_WITH_OXLINT, CORRECTNESS_IN_BOTH_SETS, { fileOverrides: [{ files: ['legacy/**'], allowSuppressions: true }] })
+    const untyped = buildConsumerLintRules(projectWithOxlint(), CORRECTNESS_IN_BOTH_SETS, { fileOverrides: [{ files: ['legacy/**'], allowSuppressions: 'yes' }] })
+    const typed = buildConsumerLintRules(projectWithOxlint(), CORRECTNESS_IN_BOTH_SETS, { fileOverrides: [{ files: ['legacy/**'], allowSuppressions: true }] })
 
     expect(builtFrom(untyped).agentBuild).toStrictEqual(builtFrom(typed).agentBuild)
   })
@@ -110,40 +112,39 @@ describe('an allowSuppressions that is not true or false, in an untyped agents-i
 describe('a suppression rule set in the top-level rules of an untyped agents-inc.lint.mts', () => {
   it('gives the agent build of the config setting no rules: allowSuppressions alone still decides it', () => {
     // @ts-expect-error house/no-suppressions is set by allowSuppressions
-    const untyped = buildConsumerLintRules(PROJECT_WITH_OXLINT, CORRECTNESS_IN_BOTH_SETS, { rules: { 'house/no-suppressions': 'off' } })
+    const untyped = buildConsumerLintRules(projectWithOxlint(), CORRECTNESS_IN_BOTH_SETS, { rules: { 'house/no-suppressions': 'off' } })
 
-    expect(builtFrom(untyped).agentBuild).toStrictEqual(builtFrom(buildConsumerLintRules(PROJECT_WITH_OXLINT, CORRECTNESS_IN_BOTH_SETS)).agentBuild)
+    expect(builtFrom(untyped).agentBuild).toStrictEqual(builtFrom(buildConsumerLintRules(projectWithOxlint(), CORRECTNESS_IN_BOTH_SETS)).agentBuild)
   })
 })
 
 describe('a severity that is none of error, warn or off, in an untyped agents-inc.lint.mts', () => {
   it("is written into the agent build's oxlint config as given, for oxlint to refuse", () => {
     // @ts-expect-error warning is not a severity
-    const untyped = buildConsumerLintRules(PROJECT_WITH_OXLINT, CORRECTNESS_IN_BOTH_SETS, { rules: { [NO_DEBUGGER]: 'warning' } })
+    const untyped = buildConsumerLintRules(projectWithOxlint(), CORRECTNESS_IN_BOTH_SETS, { rules: { [NO_DEBUGGER]: 'warning' } })
 
     expect(agentConfigsOf(defineLintRules(untyped)).oxlint.rules).toHaveProperty([NO_DEBUGGER], ['warning'])
   })
 
   it("is written, with its options, into the agent build's ESLint config as given, for ESLint to refuse", () => {
     // @ts-expect-error the options must follow a severity
-    const untyped = buildConsumerLintRules(PROJECT_WITH_OXLINT, CORRECTNESS_IN_BOTH_SETS, { rules: { [EQEQEQ]: ['warning', 'always'] } })
+    const untyped = buildConsumerLintRules(projectWithOxlint(), CORRECTNESS_IN_BOTH_SETS, { rules: { [EQEQEQ]: ['warning', 'always'] } })
     const { eslint } = agentConfigsOf(defineLintRules(untyped))
 
     expect(eslint.flatMap(({ rules }) => (rules !== undefined && Object.hasOwn(rules, EQEQEQ) ? [rules[EQEQEQ]] : []))).toStrictEqual([['warning', 'always']])
   })
 })
 
-// Refused as every rule we do not ship is (owner, q-lint-unshipped-rules-channel), not at the catalog's look-up.
 describe('a rule ID no rule in the catalog has, in an untyped agents-inc.lint.mts', () => {
   it("stops, naming the file, the key and the ID, and pointing to the team's own ESLint or oxlint config", () => {
     // @ts-expect-error not-a/rule is no rule ID
-    const untyped = buildConsumerLintRules(PROJECT_WITH_OXLINT, {}, { rules: { [NO_RULE_IN_THE_CATALOG]: 'error' } })
+    const untyped = buildConsumerLintRules(projectWithOxlint(), {}, { rules: { [NO_RULE_IN_THE_CATALOG]: 'error' } })
 
     expect(() => defineLintRules(untyped)).toThrow(new Error(unshippedRuleRefusal('rules', NO_RULE_IN_THE_CATALOG)))
   })
 
   it('is not what a shipped rule ID stops at', () => {
-    expect(() => defineLintRules(buildConsumerLintRules(PROJECT_WITH_OXLINT, {}, { rules: { [NO_DEBUGGER]: 'error' } }))).not.toThrow()
+    expect(() => defineLintRules(buildConsumerLintRules(projectWithOxlint(), {}, { rules: { [NO_DEBUGGER]: 'error' } }))).not.toThrow()
   })
 })
 
@@ -161,15 +162,15 @@ describe('a required key left out of an untyped agents-inc.lint.mts', () => {
   // The text is V8's, and names whichever list of the set is read first.
   it('stops, where the agent set is left out, at a TypeError', () => {
     // @ts-expect-error agentRulesets is required
-    expect(() => defineLintRules(buildConsumerLintRulesWithoutAgentRulesets(PROJECT_WITH_OXLINT))).toThrow(TypeError)
+    expect(() => defineLintRules(buildConsumerLintRulesWithoutAgentRulesets(projectWithOxlint()))).toThrow(TypeError)
   })
 
   it('stops, where the editor set is left out, at a TypeError', () => {
     // @ts-expect-error editorRulesets is required
-    expect(() => defineLintRules(buildConsumerLintRulesWithoutEditorRulesets(PROJECT_WITH_OXLINT))).toThrow(TypeError)
+    expect(() => defineLintRules(buildConsumerLintRulesWithoutEditorRulesets(projectWithOxlint()))).toThrow(TypeError)
   })
 
   it('builds where tsconfigRootDir and both sets are given', () => {
-    expect(() => defineLintRules(buildConsumerLintRules(PROJECT_WITH_OXLINT, {}))).not.toThrow()
+    expect(() => defineLintRules(buildConsumerLintRules(projectWithOxlint(), {}))).not.toThrow()
   })
 })

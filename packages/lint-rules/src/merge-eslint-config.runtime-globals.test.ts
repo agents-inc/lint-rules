@@ -39,7 +39,7 @@ function runtimeGlobalsBlocks(): Linter.Config[] {
 }
 
 function globalsOf({ languageOptions }: Readonly<Linter.Config>): Record<string, unknown> {
-  const globals: unknown = languageOptions?.['globals']
+  const globals: unknown = languageOptions?.globals
   if (!isRecord(globals)) throw new Error('a runtime-globals block gives globals')
   return globals
 }

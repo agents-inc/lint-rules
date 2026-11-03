@@ -77,7 +77,7 @@ type FindingLine = { readonly location: string; readonly message: string }
 function findingLinesIn(stdout: string): FindingLine[] {
   return linesOf(stdout).flatMap((line): FindingLine[] => {
     const separatorAt = line.indexOf(MESSAGE_SEPARATOR)
-    if (separatorAt === -1) return []
+    if (separatorAt === NOT_FOUND) return []
     const location = line.slice(0, separatorAt)
     return FINDING_LOCATION.test(location) ? [{ location, message: line.slice(separatorAt + MESSAGE_SEPARATOR.length) }] : []
   })

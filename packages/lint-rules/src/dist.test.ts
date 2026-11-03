@@ -12,7 +12,7 @@ const PACKAGE_DIR = fileURLToPath(new URL('..', import.meta.url))
 const DIST_DIR = join(PACKAGE_DIR, 'dist')
 const ENTRY_FILES = ['eslint.d.mts', 'eslint.mjs', 'index.d.mts', 'index.mjs', 'oxlint.d.mts', 'oxlint.mjs']
 const BUILT_MODULE = /\.(?:mjs|d\.mts)$/u
-const DECLARATION_FILE = /\.d\.mts$/u
+const DECLARATION_EXTENSION = '.d.mts'
 const PRIVATE_WORKSPACE_SCOPE = '@workspace/'
 // The internal lookup `check` uses: no consumer may reach it.
 const INTERNAL_HOOK = 'agentSettingsOf'
@@ -125,7 +125,7 @@ describe('the public surface of the built package', () => {
   })
 
   it("names the internal hook in no declaration file, while each entry's declarations name its public function", () => {
-    const declarations = builtModules().filter((file) => DECLARATION_FILE.test(file))
+    const declarations = builtModules().filter((file) => file.endsWith(DECLARATION_EXTENSION))
 
     expect({
       namingTheHook: declarations.filter((file) => readBuilt(file).includes(INTERNAL_HOOK)),

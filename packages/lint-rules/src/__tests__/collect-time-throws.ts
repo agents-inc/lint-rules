@@ -14,6 +14,7 @@ export type CollectTimeThrow = { readonly calls: string; readonly where: Collect
 const TEST_HELPER_FOLDER = /\/__tests__\//u
 const SUITES: ReadonlySet<string> = new Set(['describe', 'suite'])
 const EACH = 'each'
+const NOT_FOUND = -1
 // Array and object methods that call the function they are given before they return.
 const CALLING_NOW: ReadonlySet<string> = new Set(['map', 'flatMap', 'filter', 'find', 'findIndex', 'some', 'every', 'forEach', 'reduce', 'toSorted', 'sort', 'from', 'fromEntries'])
 
@@ -147,20 +148,30 @@ function withVerdictResting(fn: ts.Node, { depth, shallowest }: { readonly depth
 // The depth of the open read a function's verdict waits on: its own read, still open, or one it rests on.
 function restingDepthOf(fn: ts.Node, reads: Reads): number | undefined {
   const openAt = reads.openReads.indexOf(fn)
-  return openAt === -1 ? reads.restingDepthByFunction.get(fn) : openAt
+  return openAt === NOT_FOUND ? reads.restingDepthByFunction.get(fn) : openAt
+}
+
+/** The first declaration of what the callee names, an import followed to what it imports. */
+function declarationCalledBy(callee: Readonly<ts.Expression>, checker: ts.TypeChecker): ts.Declaration | undefined {
+  const symbol = checker.getSymbolAtLocation(ts.isPropertyAccessExpression(callee) ? callee.name : callee)
+  if (symbol === undefined) return undefined
+  const target = (symbol.flags & ts.SymbolFlags.Alias) === 0 ? symbol : checker.getAliasedSymbol(symbol)
+  const [declaration] = target.declarations ?? []
+  return declaration
+}
+
+function functionDeclaredBy(declaration: Readonly<ts.Declaration>): ts.FunctionLikeDeclaration | null {
+  if (ts.isFunctionDeclaration(declaration) || ts.isMethodDeclaration(declaration)) return declaration
+  const initializer = ts.isVariableDeclaration(declaration) ? declaration.initializer : undefined
+  return initializer !== undefined && (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer)) ? initializer : null
 }
 
 /** Reads, through the type checker, which functions of ours a call reaches and whether any of them throws. */
 function throwFinderOf(checker: ts.TypeChecker, isOurs: (file: string) => boolean): ThrowFinder {
   function functionOf(callee: Readonly<ts.Expression>): ts.FunctionLikeDeclaration | null {
-    const symbol = checker.getSymbolAtLocation(ts.isPropertyAccessExpression(callee) ? callee.name : callee)
-    if (symbol === undefined) return null
-    const target = (symbol.flags & ts.SymbolFlags.Alias) === 0 ? symbol : checker.getAliasedSymbol(symbol)
-    const [declaration] = target.declarations ?? []
+    const declaration = declarationCalledBy(callee, checker)
     if (declaration === undefined || !isOurs(declaration.getSourceFile().fileName)) return null
-    if (ts.isFunctionDeclaration(declaration) || ts.isMethodDeclaration(declaration)) return declaration
-    const initializer = ts.isVariableDeclaration(declaration) ? declaration.initializer : undefined
-    return initializer !== undefined && (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer)) ? initializer : null
+    return functionDeclaredBy(declaration)
   }
 
   // A throw it reaches as it runs: not one a try catches, and not one in a function it only makes.

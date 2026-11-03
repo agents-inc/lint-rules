@@ -13,7 +13,6 @@ export type PackageJson = {
   readonly type: 'module'
   readonly dependencies?: Readonly<Record<string, string>>
   readonly devDependencies?: Readonly<Record<string, string>>
-  /** The browsers the project targets, as browserslist reads them from a package.json. */
   readonly browserslist?: readonly string[]
 }
 
@@ -66,7 +65,6 @@ export function buildPackageJson(fields: Pick<PackageJson, DependencyField> = {}
   return { name: PROJECT_NAME, private: true, type: 'module', ...fields }
 }
 
-/** One naming the browsers it targets: each a browserslist query. */
 export function buildPackageJsonNamingBrowsers(queries: readonly string[]): PackageJson {
   return { ...buildPackageJson(), browserslist: queries }
 }
@@ -81,7 +79,6 @@ export function createProjectListingOxlint(tempProjects: TempProjects): string {
   return tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) } })
 }
 
-/** A Next.js app's. */
 export function buildPackageJsonListingNext(field: DependencyField = 'dependencies'): PackageJson {
   const next = { [NEXT]: NEXT_RANGE }
   return buildPackageJson(field === 'dependencies' ? { dependencies: next } : { devDependencies: next })

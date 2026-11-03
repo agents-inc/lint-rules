@@ -9,12 +9,13 @@ import {
   type EngineFinding,
   eslintEngineFindingsIn,
   fatalMessagesIn,
-  oxlintCliOutcomeOf,
   oxlintEngineFindingsIn,
+  runOxlintCli,
   writeOxlintConfigFile,
 } from './engine-clis.ts'
 import {
   agentsIncLintModuleText,
+  CONSUMER_CONFIG_FILES,
   emptyTeamEslintModuleText,
   mergedEslintConfigText,
   mergedOxlintConfigText,
@@ -43,8 +44,6 @@ export type BothEnginesProject = {
   /** May take files back from ESLint's default ignores. */
   readonly teamEslintGlobalIgnores?: TeamGlobalIgnoresBlock
   readonly teamOxlintConfig: OxlintConfig
-  /** Keeps a config oxlint refuses as a refusal with no findings; unless given, the runs fail. */
-  readonly keepsOxlintRefusals?: true
   /** Gives oxlint each source file, as an editor does, not the folder, whose walk skips every .git folder (measured, oxlint 1.87). */
   readonly oxlintGivenEachSourceFile?: true
 }
@@ -61,33 +60,28 @@ export type BothEnginesRuns = {
   readonly eslintFatalMessagesInEachBuild: Readonly<Record<BuildName, readonly string[]>>
   /** Every file each ESLint run gives a result for, sorted. */
   readonly eslintLintedFiles: Readonly<Record<BuildName, readonly string[]>>
-  /** `run: what oxlint printed`, where the project keeps refusals. */
-  readonly oxlintRefusals: readonly string[]
 }
 
 type BuildName = 'agent' | 'mergedIntoEmptyTeamConfigs' | 'mergedIntoTheTeamsConfigs' | 'teamAlone'
 
-type BuildConfigs = { readonly name: string; readonly eslint: string | Linter.Config[]; readonly oxlintConfigFile: string }
-
-type OxlintRuns = { readonly paths: readonly string[]; readonly keepsRefusals: boolean }
+type BuildConfigs = { readonly name: string; readonly eslint: string | readonly Linter.Config[]; readonly oxlintConfigFile: string }
 
 type BuildRun = {
   readonly findings: readonly EngineFinding[]
   readonly eslintFatalMessages: readonly string[]
   readonly eslintLintedFiles: readonly string[]
-  readonly oxlintRefusals: readonly string[]
 }
+
+type RunsOfEachBuild = Readonly<Record<BuildName, BuildRun>>
 
 const LINKED_PACKAGES = [THIS_PACKAGE, INSTALLED_OXLINT, installedPackage('typescript-eslint')]
 const BOTH_ENGINES_RUNS: RunsBeforeTheSuiteOptions = { timeoutMs: 480_000, whatFailed: 'the engines could not lint the project before the suite' }
 const EVERYTHING = '.'
-const LINT_RULES_MODULE = 'agents-inc.lint.mts'
-const TEAM_ESLINT_MODULE = 'team.eslint.mjs'
 const EMPTY_TEAM_ESLINT_MODULE = 'empty-team.eslint.mjs'
 const AGENT = { name: 'agent build', oxlintConfigFile: 'oxlint.agent.json' } as const
 const MERGED_INTO_EMPTY_TEAM_CONFIGS = { name: 'merged into empty team configs', eslint: 'eslint.merged-into-empty.mjs', oxlintConfigFile: 'oxlint.merged-into-empty.mts' } as const
 const MERGED_INTO_THE_TEAMS_CONFIGS = { name: "merged into the team's configs", eslint: 'eslint.merged.mjs', oxlintConfigFile: 'oxlint.merged.mts' } as const
-const TEAM_ALONE = { name: "the team's configs alone", eslint: 'eslint.team-alone.mjs', oxlintConfigFile: 'oxlint.team-alone.json' } as const
+const TEAM_ALONE = { name: "the team's configs alone", eslint: CONSUMER_CONFIG_FILES.teamAloneEslint, oxlintConfigFile: CONSUMER_CONFIG_FILES.teamAloneOxlint } as const
 
 /** Lints the project with each build, by the real oxlint CLI and ESLint Node API. Registers hooks: call it in a describe block. */
 export function setUpBothEnginesRuns(project: BothEnginesProject): () => BothEnginesRuns {
@@ -108,37 +102,39 @@ async function bothEnginesRunsOf(tempProjects: TempProjects, project: BothEngine
   writeConsumerFiles(projectDir, lintRules, project)
   const agent = agentConfigsOf(defineLintRules(lintRules))
   writeOxlintConfigFile(projectDir, AGENT.oxlintConfigFile, agent.oxlint)
-  const oxlintRuns = oxlintRunsFor(project)
-  const runs: Readonly<Record<BuildName, BuildRun>> = {
-    agent: await runOf(projectDir, { ...AGENT, eslint: agent.eslint }, oxlintRuns),
-    mergedIntoEmptyTeamConfigs: await runOf(projectDir, MERGED_INTO_EMPTY_TEAM_CONFIGS, oxlintRuns),
-    mergedIntoTheTeamsConfigs: await runOf(projectDir, MERGED_INTO_THE_TEAMS_CONFIGS, oxlintRuns),
-    teamAlone: await runOf(projectDir, TEAM_ALONE, oxlintRuns),
-  }
+  const runs = await runsOfEachBuild(projectDir, agent.eslint, oxlintPathsFor(project))
+  return bothEnginesRunsFrom(runs)
+}
+
+async function runsOfEachBuild(projectDir: string, agentEslint: readonly Linter.Config[], oxlintPaths: readonly string[]): Promise<RunsOfEachBuild> {
   return {
-    agent: runs.agent.findings,
-    mergedIntoEmptyTeamConfigs: runs.mergedIntoEmptyTeamConfigs.findings,
-    mergedIntoTheTeamsConfigs: runs.mergedIntoTheTeamsConfigs.findings,
-    teamAlone: runs.teamAlone.findings,
-    eslintFatalMessages: Object.values(runs).flatMap(({ eslintFatalMessages }) => eslintFatalMessages),
-    eslintFatalMessagesInEachBuild: {
-      agent: runs.agent.eslintFatalMessages,
-      mergedIntoEmptyTeamConfigs: runs.mergedIntoEmptyTeamConfigs.eslintFatalMessages,
-      mergedIntoTheTeamsConfigs: runs.mergedIntoTheTeamsConfigs.eslintFatalMessages,
-      teamAlone: runs.teamAlone.eslintFatalMessages,
-    },
-    eslintLintedFiles: {
-      agent: runs.agent.eslintLintedFiles,
-      mergedIntoEmptyTeamConfigs: runs.mergedIntoEmptyTeamConfigs.eslintLintedFiles,
-      mergedIntoTheTeamsConfigs: runs.mergedIntoTheTeamsConfigs.eslintLintedFiles,
-      teamAlone: runs.teamAlone.eslintLintedFiles,
-    },
-    oxlintRefusals: Object.values(runs).flatMap(({ oxlintRefusals }) => oxlintRefusals),
+    agent: await runOf(projectDir, { ...AGENT, eslint: agentEslint }, oxlintPaths),
+    mergedIntoEmptyTeamConfigs: await runOf(projectDir, MERGED_INTO_EMPTY_TEAM_CONFIGS, oxlintPaths),
+    mergedIntoTheTeamsConfigs: await runOf(projectDir, MERGED_INTO_THE_TEAMS_CONFIGS, oxlintPaths),
+    teamAlone: await runOf(projectDir, TEAM_ALONE, oxlintPaths),
   }
 }
 
-function oxlintRunsFor({ sources, keepsOxlintRefusals, oxlintGivenEachSourceFile }: BothEnginesProject): OxlintRuns {
-  return { paths: oxlintGivenEachSourceFile === true ? Object.keys(sources) : [EVERYTHING], keepsRefusals: keepsOxlintRefusals === true }
+function bothEnginesRunsFrom(runs: RunsOfEachBuild): BothEnginesRuns {
+  return {
+    ...byBuild(runs, 'findings'),
+    eslintFatalMessages: Object.values(runs).flatMap((run) => run.eslintFatalMessages),
+    eslintFatalMessagesInEachBuild: byBuild(runs, 'eslintFatalMessages'),
+    eslintLintedFiles: byBuild(runs, 'eslintLintedFiles'),
+  }
+}
+
+function byBuild<Field extends keyof BuildRun>(runs: RunsOfEachBuild, field: Field): Readonly<Record<BuildName, BuildRun[Field]>> {
+  return {
+    agent: runs.agent[field],
+    mergedIntoEmptyTeamConfigs: runs.mergedIntoEmptyTeamConfigs[field],
+    mergedIntoTheTeamsConfigs: runs.mergedIntoTheTeamsConfigs[field],
+    teamAlone: runs.teamAlone[field],
+  }
+}
+
+function oxlintPathsFor({ sources, oxlintGivenEachSourceFile }: BothEnginesProject): readonly string[] {
+  return oxlintGivenEachSourceFile === true ? Object.keys(sources) : [EVERYTHING]
 }
 
 /** Suppressions allowed, as the editor set always allows them, so the agent build states its rules. */
@@ -151,38 +147,37 @@ function writeConsumerFiles(
   lintRules: LintRules,
   { teamEslintRules, teamJsAndTsExtensions, teamEslintGlobalIgnores, teamOxlintConfig }: BothEnginesProject,
 ): void {
+  const { lintRules: lintRulesModule, teamEslintModule } = CONSUMER_CONFIG_FILES
   const files: ProjectFiles = {
-    [LINT_RULES_MODULE]: agentsIncLintModuleText(lintRules),
-    [TEAM_ESLINT_MODULE]: teamEslintModuleText(teamEslintRules, teamJsAndTsExtensions, teamEslintGlobalIgnores),
+    [lintRulesModule]: agentsIncLintModuleText(lintRules),
+    [teamEslintModule]: teamEslintModuleText(teamEslintRules, teamJsAndTsExtensions, teamEslintGlobalIgnores),
     [EMPTY_TEAM_ESLINT_MODULE]: emptyTeamEslintModuleText(),
-    [MERGED_INTO_EMPTY_TEAM_CONFIGS.eslint]: mergedEslintConfigText(LINT_RULES_MODULE, EMPTY_TEAM_ESLINT_MODULE, {
+    [MERGED_INTO_EMPTY_TEAM_CONFIGS.eslint]: mergedEslintConfigText(lintRulesModule, EMPTY_TEAM_ESLINT_MODULE, {
       oxlintConfig: MERGED_INTO_EMPTY_TEAM_CONFIGS.oxlintConfigFile,
     }),
-    [MERGED_INTO_EMPTY_TEAM_CONFIGS.oxlintConfigFile]: mergedOxlintConfigText(LINT_RULES_MODULE, EMPTY_TEAM_OXLINT_CONFIG, {
+    [MERGED_INTO_EMPTY_TEAM_CONFIGS.oxlintConfigFile]: mergedOxlintConfigText(lintRulesModule, EMPTY_TEAM_OXLINT_CONFIG, {
       eslintConfig: MERGED_INTO_EMPTY_TEAM_CONFIGS.eslint,
     }),
-    [MERGED_INTO_THE_TEAMS_CONFIGS.eslint]: mergedEslintConfigText(LINT_RULES_MODULE, TEAM_ESLINT_MODULE, {
+    [MERGED_INTO_THE_TEAMS_CONFIGS.eslint]: mergedEslintConfigText(lintRulesModule, teamEslintModule, {
       oxlintConfig: MERGED_INTO_THE_TEAMS_CONFIGS.oxlintConfigFile,
     }),
-    [MERGED_INTO_THE_TEAMS_CONFIGS.oxlintConfigFile]: mergedOxlintConfigText(LINT_RULES_MODULE, teamOxlintConfig, {
+    [MERGED_INTO_THE_TEAMS_CONFIGS.oxlintConfigFile]: mergedOxlintConfigText(lintRulesModule, teamOxlintConfig, {
       eslintConfig: MERGED_INTO_THE_TEAMS_CONFIGS.eslint,
     }),
-    [TEAM_ALONE.eslint]: teamAloneEslintConfigText(TEAM_ESLINT_MODULE),
+    [TEAM_ALONE.eslint]: teamAloneEslintConfigText(teamEslintModule),
   }
   for (const [file, text] of Object.entries(files)) writeFileSync(join(projectDir, file), text)
   writeOxlintConfigFile(projectDir, TEAM_ALONE.oxlintConfigFile, teamOxlintConfig)
 }
 
-/** ESLint first, in this process, then the oxlint CLI. A config oxlint refuses fails the run or, where refusals are kept, reports nothing. */
-async function runOf(projectDir: string, { name, eslint, oxlintConfigFile }: BuildConfigs, oxlintRuns: OxlintRuns): Promise<BuildRun> {
+/** ESLint first, in this process, then the oxlint CLI. A config oxlint refuses fails the run. */
+async function runOf(projectDir: string, { name, eslint, oxlintConfigFile }: BuildConfigs, oxlintPaths: readonly string[]): Promise<BuildRun> {
   const results = await eslintFor(projectDir, eslint).lintFiles([EVERYTHING])
-  const linting = oxlintCliOutcomeOf(projectDir, oxlintConfigFile, oxlintRuns.paths)
-  if (linting.outcome === 'refused' && !oxlintRuns.keepsRefusals) throw new Error(`oxlint could not lint with ${oxlintConfigFile}: ${linting.output}`)
+  const oxlint = runOxlintCli(projectDir, oxlintConfigFile, oxlintPaths)
   return {
-    findings: [...eslintEngineFindingsIn(results, projectDir), ...(linting.outcome === 'linted' ? oxlintEngineFindingsIn(linting.run.report) : [])],
+    findings: [...eslintEngineFindingsIn(results, projectDir), ...oxlintEngineFindingsIn(oxlint.report)],
     eslintFatalMessages: fatalMessagesIn(results, projectDir).map((message) => `${name}, ${message}`),
     eslintLintedFiles: results.map((result) => projectPathOf(result.filePath, projectDir)).toSorted(),
-    oxlintRefusals: linting.outcome === 'refused' ? [`${name}: ${linting.output}`] : [],
   }
 }
 

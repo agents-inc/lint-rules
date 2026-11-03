@@ -9,7 +9,7 @@ import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
 // A throw while vitest collects a file fails the whole file: a plain run reports a file error naming no
 // assertion, and Stryker reads the mutant behind it as Survived. So nothing that can throw runs then.
-const TEST_FILE = /\.test\.ts$/u
+const TEST_FILE_SUFFIX = '.test.ts'
 
 // The finder names a helper module as the program holds it, by its path on this machine.
 function withTheModuleByRepoPath({ module, ...found }: CollectTimeThrow): CollectTimeThrow {
@@ -20,7 +20,7 @@ describe("the repo's test files, as vitest collects them", () => {
   const collectTimeThrows = setUpRunsBeforeTheSuite(
     () =>
       repoSourceFiles()
-        .filter(({ path }) => TEST_FILE.test(path))
+        .filter(({ path }) => path.endsWith(TEST_FILE_SUFFIX))
         .flatMap(({ path, sourceFile, checker }) =>
           collectTimeThrowsIn(sourceFile, checker, isRepoSource).map((found) => ({ file: path, ...withTheModuleByRepoPath(found) })),
         ),

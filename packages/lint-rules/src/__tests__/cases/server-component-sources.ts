@@ -66,7 +66,6 @@ const DATE_IN_A_ROUTE = `export default function Index({ at }: { at: string }) {
 }
 `
 
-/** The source each file of the cases above holds. */
 export const SOURCES_OF_A_NEXT_APP: ProjectFiles = {
   [SERVER_PAGE]: PAGE_SHOWING_A_DATE,
   [SERVER_PAGE_BRANCHING_ON_WINDOW]: PAGE_BRANCHING_ON_WINDOW,
@@ -80,10 +79,8 @@ export const SOURCES_OF_A_NEXT_APP: ProjectFiles = {
 
 export const SOURCES_OF_A_REMIX_APP: ProjectFiles = { [REMIX_ROUTE]: DATE_IN_A_ROUTE }
 
-/** A Server Component's source, alone. */
 export const SERVER_PAGE_SOURCE = PAGE_SHOWING_A_DATE
 
-/** A Remix route's source, alone. */
 export const REMIX_ROUTE_SOURCE = DATE_IN_A_ROUTE
 
 /** A team block after ours giving the plugin's setting its other value: the team's own setting stands. */

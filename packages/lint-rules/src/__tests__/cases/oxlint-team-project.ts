@@ -4,9 +4,9 @@
 export const LINTED_DIR = 'src'
 
 export const sourceFiles = {
-  // no-debugger (line 1); typescript/array-type under array-simple (2); eqeqeq under always, not smart (3)
+  // no-debugger (line 1); typescript/no-inferrable-types (2); eqeqeq under always, not smart (3)
   'src/a.ts': `debugger
-export const list: Array<string> = []
+export const count: number = 1
 export const isMissing = (value: unknown): boolean => value == null
 `,
   // no-debugger, in a file a test override matches
@@ -81,62 +81,56 @@ export const browserSourceFilesInTwoFolders = {
 
 export const BROWSER_LINTED_DIRS = ['src', 'lib']
 
-// typescript/array-type under array-simple (1); a second line, so a max-lines of 1 reports the file.
-const ARRAY_TYPE_SOURCE = `export const list: Array<string> = []
-export const other = 1
+// typescript/no-inferrable-types (1); react-hooks/rules-of-hooks, a hook called conditionally (2).
+const INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE = `export const count: number = 1
+export function useThing(on: boolean): void { if (on) useOther() }
 `
 
-const ARRAY_TYPE_TSX_SOURCE = `export const list: Array<string> = []
-export const View = () => <div />
-`
-
-/** Our ESLint part runs a rule here or not by our ignores (dist, generated), an entry (legacy), and max-lines' own files (.tsx but tests). */
+/** Our ESLint part runs a rule here or not by our ignores (dist, generated), an entry (legacy), and rules-of-hooks' own ignores (test files). */
 export const crossEngineSourceFiles = {
-  'src/a.ts': ARRAY_TYPE_SOURCE,
-  'dist/a.ts': ARRAY_TYPE_SOURCE,
-  'legacy/a.ts': ARRAY_TYPE_SOURCE,
-  'generated/a.ts': ARRAY_TYPE_SOURCE,
-  'src/generated/a.ts': ARRAY_TYPE_SOURCE,
-  'src/f.tsx': ARRAY_TYPE_TSX_SOURCE,
-  'src/f.test.tsx': ARRAY_TYPE_TSX_SOURCE,
+  'src/a.ts': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
+  'dist/a.ts': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
+  'legacy/a.ts': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
+  'generated/a.ts': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
+  'src/generated/a.ts': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
+  'src/f.tsx': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
+  'src/f.test.tsx': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
 } as const
 
 export const CROSS_ENGINE_LINTED_DIRS = ['src', 'dist', 'legacy', 'generated']
 
 /** An ignore ending in a slash tells the root and src legacy folders apart by engine. */
 export const trailingSlashSourceFiles = {
-  'src/a.ts': ARRAY_TYPE_SOURCE,
-  'legacy/a.ts': ARRAY_TYPE_SOURCE,
-  'src/legacy/a.ts': ARRAY_TYPE_SOURCE,
+  'src/a.ts': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
+  'legacy/a.ts': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
+  'src/legacy/a.ts': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
 } as const
 
 export const TRAILING_SLASH_LINTED_DIRS = ['src', 'legacy']
 
-// typescript/array-type under array-simple (1); eqeqeq under always (2); no-warning-comments under
-// its default terms (3).
-const ARRAY_TYPE_AND_LOOSE_EQUALITY_SOURCE = `export const list: Array<string> = []
+// typescript/no-inferrable-types (1); eqeqeq under always (2); no-warning-comments under its default terms (3).
+const INFERRABLE_TYPE_AND_LOOSE_EQUALITY_SOURCE = `export const count: number = 1
 export const same = (a: number, b: number): boolean => a == b
 // todo: remove this
 `
 
 /** Files a lib/** ignore and a negated line taking lib/a.ts back tell apart: one at the root, one in src, two in lib. */
 export const negatedIgnoresSourceFiles = {
-  'a.ts': ARRAY_TYPE_AND_LOOSE_EQUALITY_SOURCE,
-  'src/a.ts': ARRAY_TYPE_AND_LOOSE_EQUALITY_SOURCE,
-  'lib/a.ts': ARRAY_TYPE_AND_LOOSE_EQUALITY_SOURCE,
-  'lib/b.ts': ARRAY_TYPE_AND_LOOSE_EQUALITY_SOURCE,
+  'a.ts': INFERRABLE_TYPE_AND_LOOSE_EQUALITY_SOURCE,
+  'src/a.ts': INFERRABLE_TYPE_AND_LOOSE_EQUALITY_SOURCE,
+  'lib/a.ts': INFERRABLE_TYPE_AND_LOOSE_EQUALITY_SOURCE,
+  'lib/b.ts': INFERRABLE_TYPE_AND_LOOSE_EQUALITY_SOURCE,
 } as const
 
 /** The root file by name, so oxlint lints no config file written beside it. */
 export const NEGATED_IGNORES_LINTED_PATHS = ['a.ts', 'src', 'lib']
 
-/** Each file has a second line, so a max-lines of 1 reports it. */
-export const maxLinesSourceFiles = {
-  'src/f.tsx': ARRAY_TYPE_TSX_SOURCE,
-  'src/a.ts': ARRAY_TYPE_SOURCE,
-  'lib/m.tsx': ARRAY_TYPE_TSX_SOURCE,
-  'lib/m.test.tsx': ARRAY_TYPE_TSX_SOURCE,
-  'lib/b.ts': ARRAY_TYPE_SOURCE,
+export const rulesOfHooksSourceFiles = {
+  'src/f.tsx': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
+  'src/a.ts': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
+  'lib/m.tsx': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
+  'lib/m.test.tsx': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
+  'lib/b.ts': INFERRABLE_TYPE_AND_CONDITIONAL_HOOK_SOURCE,
 } as const
 
-export const MAX_LINES_LINTED_DIRS = ['src', 'lib']
+export const RULES_OF_HOOKS_LINTED_DIRS = ['src', 'lib']

@@ -43,7 +43,6 @@ async function oursBeside(prefix: string, plugin: Readonly<ESLint.Plugin>, ruleN
   return ruleSeverityInProjectFor(projectDir, merged, SOURCE_FILE, ourRule)
 }
 
-/** The severities of our rule and the team's key given in a source file, beside a team block registering the plugin given under the prefix given and turning the rule under it on at TEAM_SEVERITY. */
 async function bothBesideTheTeamTurningItOn(prefix: string, plugin: Readonly<ESLint.Plugin>, ruleName: string, ourRule: string): Promise<Readonly<Record<string, string | undefined>>> {
   const { eslint } = defineLintRules(buildConsumerLintRules(projectDir, {}, { rules: { [ourRule]: 'error' } })).editorRulesets
   const teamKey = `${prefix}/${ruleName}`

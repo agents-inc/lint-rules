@@ -6,7 +6,7 @@ import type { OurFields } from './both-engines-grid.ts'
 
 // Projects the editor-merges.*.integration tests lint on both real engines through the built package. Each line
 // of the TS source draws one rule, noted beside it; the JS source holds the same lines, types removed. The team
-// runs in ESLint the rules our oxlint part runs, and in oxlint those our ESLint part runs.
+// runs in ESLint the rules our oxlint part runs and eqeqeq, and in oxlint the others our ESLint part runs.
 
 export type OurRulesets = Parameters<typeof buildConsumerLintRules>[1]
 
@@ -25,10 +25,10 @@ export type CorpusCase = {
   readonly teamOxlintConfig?: OxlintConfig
 }
 
-// ban-ts-comment (1); array-type (2); no-unused-vars (4); prefer-const (5); eqeqeq (6); no-var (8);
+// ban-ts-comment (1); no-inferrable-types (2); no-unused-vars (4); prefer-const (5); eqeqeq (6); no-var (8);
 // getter-return (9); max-params of 4 or fewer (10); no-undef, for process outside the node runtime (13).
 const TS_SOURCE = `// @ts-ignore
-export const list: Array<string> = []
+export const count: number = 1
 export function same(a: number, b: number): boolean {
   const unused = 1
   let neverReassigned = 2
@@ -43,7 +43,7 @@ export const exited = () => process.exit(1)
 `
 
 const JS_SOURCE = `// @ts-ignore
-export const list = []
+export const count = 1
 export function same(a, b) {
   const unused = 1
   let neverReassigned = 2
@@ -57,7 +57,7 @@ export function five(a, b, c, d, e) {
 export const exited = () => process.exit(1)
 `
 
-const COMMONJS_SOURCE = `${JS_SOURCE.replaceAll('export ', '')}module.exports = { list, same, counter, o, five, exited }
+const COMMONJS_SOURCE = `${JS_SOURCE.replaceAll('export ', '')}module.exports = { count, same, counter, o, five, exited }
 `
 
 // A type nobody uses (1) and a function of five parameters (2): no-unused-vars reports both.
@@ -109,7 +109,10 @@ function corpusSourceOf(file: string): string {
 }
 
 export const EQEQEQ: RuleByItsNames = { rule: 'eqeqeq', names: ['eqeqeq', 'eslint(eqeqeq)'] }
-export const ARRAY_TYPE: RuleByItsNames = { rule: '@typescript-eslint/array-type', names: ['@typescript-eslint/array-type', 'typescript(array-type)'] }
+export const NO_INFERRABLE_TYPES: RuleByItsNames = {
+  rule: '@typescript-eslint/no-inferrable-types',
+  names: ['@typescript-eslint/no-inferrable-types', 'typescript(no-inferrable-types)'],
+}
 export const NO_VAR: RuleByItsNames = { rule: 'no-var', names: ['no-var', 'eslint(no-var)'] }
 export const NO_UNUSED_VARS: RuleByItsNames = {
   rule: 'no-unused-vars',
@@ -123,7 +126,7 @@ export const BAN_TS_COMMENT: RuleByItsNames = {
 }
 export const MAX_PARAMS: RuleByItsNames = { rule: 'max-params', names: ['max-params', '@typescript-eslint/max-params', 'eslint(max-params)'] }
 
-export const CORPUS_RULES: readonly RuleByItsNames[] = [EQEQEQ, ARRAY_TYPE, NO_VAR, NO_UNUSED_VARS, PREFER_CONST, GETTER_RETURN]
+export const CORPUS_RULES: readonly RuleByItsNames[] = [EQEQEQ, NO_INFERRABLE_TYPES, NO_VAR, NO_UNUSED_VARS, PREFER_CONST, GETTER_RETURN]
 
 const CORPUS_RULE_IDS_THE_TEAM_SETS: ReadonlySet<string> = new Set([...CORPUS_RULES.map(({ rule }) => rule), BAN_TS_COMMENT.rule, MAX_PARAMS.rule, 'no-undef'])
 
@@ -131,10 +134,9 @@ export function corpusRulesTheTeamSets(rules: readonly RuleByItsNames[]): string
   return rules.map(({ rule }) => rule).filter((ruleId) => CORPUS_RULE_IDS_THE_TEAM_SETS.has(ruleId))
 }
 
-/** Three our oxlint part runs, two our ESLint part runs, and no-unused-vars, a twin. */
 export const OUR_CORPUS_RULES = {
   eqeqeq: 'error',
-  '@typescript-eslint/array-type': 'error',
+  '@typescript-eslint/no-inferrable-types': 'error',
   'no-var': 'error',
   'no-unused-vars': 'error',
   'prefer-const': 'error',
@@ -143,7 +145,7 @@ export const OUR_CORPUS_RULES = {
 
 /** For settings that turn eqeqeq on only in an entry. */
 export const OUR_CORPUS_RULES_BUT_EQEQEQ = {
-  '@typescript-eslint/array-type': 'error',
+  '@typescript-eslint/no-inferrable-types': 'error',
   'no-var': 'error',
   'no-unused-vars': 'error',
   'prefer-const': 'error',
@@ -153,14 +155,14 @@ export const OUR_CORPUS_RULES_BUT_EQEQEQ = {
 /** For settings that turn prefer-const, which our oxlint part runs, on only in an entry. */
 export const OUR_CORPUS_RULES_BUT_PREFER_CONST = {
   eqeqeq: 'error',
-  '@typescript-eslint/array-type': 'error',
+  '@typescript-eslint/no-inferrable-types': 'error',
   'no-var': 'error',
   'no-unused-vars': 'error',
   'getter-return': 'error',
 } as const satisfies OurRules
 
-/** For settings that turn array-type on only in an entry. */
-export const OUR_CORPUS_RULES_BUT_ARRAY_TYPE = {
+/** For settings that turn no-inferrable-types on only in an entry. */
+export const OUR_CORPUS_RULES_BUT_NO_INFERRABLE_TYPES = {
   eqeqeq: 'error',
   'no-var': 'error',
   'no-unused-vars': 'error',
@@ -168,7 +170,6 @@ export const OUR_CORPUS_RULES_BUT_ARRAY_TYPE = {
   'getter-return': 'error',
 } as const satisfies OurRules
 
-/** Those our oxlint part runs, max-params at its default of 3, and the twins of typescript-eslint. */
 export const TEAM_CORPUS_ESLINT_RULES = {
   eqeqeq: 'error',
   'prefer-const': 'error',
@@ -180,16 +181,15 @@ export const TEAM_CORPUS_ESLINT_RULES = {
 
 export const TEAM_CORPUS_JS_AND_TS_EXTENSIONS: readonly string[] = ['js', 'mjs', 'cjs', 'ts', 'tsx']
 
-/** The rules our ESLint part runs, and no-undef; nothing by category. */
 export const TEAM_CORPUS_OXLINT_CONFIG: OxlintConfig = {
   plugins: ['typescript'],
   categories: { correctness: 'off' },
-  rules: { 'typescript/array-type': 'error', 'no-var': 'error', 'no-undef': 'error' },
+  rules: { 'typescript/no-inferrable-types': 'error', 'no-var': 'error', 'no-undef': 'error' },
 }
 
 /** Also turns on the core rule of each twin pair the corpus holds: no-unused-vars, and max-params at oxlint's default of 3. */
 export const TEAM_CORPUS_OXLINT_CONFIG_TURNING_TWIN_CORE_RULES_ON: OxlintConfig = {
   plugins: ['typescript'],
   categories: { correctness: 'off' },
-  rules: { 'typescript/array-type': 'error', 'no-var': 'error', 'no-undef': 'error', 'no-unused-vars': 'error', 'max-params': 'error' },
+  rules: { 'typescript/no-inferrable-types': 'error', 'no-var': 'error', 'no-undef': 'error', 'no-unused-vars': 'error', 'max-params': 'error' },
 }

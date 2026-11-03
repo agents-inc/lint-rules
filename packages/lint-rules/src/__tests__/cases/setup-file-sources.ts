@@ -1,9 +1,7 @@
 import { describedTsExpectError, tsIgnore } from './suppression-comments.ts'
 
-/** One file a case writes: the path, from the project root, and what it holds. */
 export type SetupFileCase = { readonly file: string; readonly source: string }
 
-/** The usual names of a test runner's setup file, by the runner or tool that names it so. */
 export const SETUP_FILE_NAMES: readonly string[] = ['vitest.setup', 'jest.setup', 'setupTests', 'test-setup']
 
 /** A name no runner gives its setup file, so the file is a source file like any other. */
@@ -14,7 +12,6 @@ export const TEST_FILE_NAME = 'remember.test'
 /** A hook's file, by each naming the hook-file skips match. */
 export const HOOK_FILE_NAMES: readonly string[] = ['useRemember', 'use-remember']
 
-/** The module extensions besides `ts` and `js`, which a test or setup file can take too. */
 export const OTHER_TS_EXTENSIONS: readonly string[] = ['mts', 'cts']
 export const OTHER_JS_EXTENSIONS: readonly string[] = ['mjs', 'cjs']
 
@@ -99,12 +96,10 @@ function projectFilesOf(cases: readonly SetupFileCase[]): Readonly<Record<string
   return Object.fromEntries(cases.map(({ file, source }) => [file, source]))
 }
 
-/** Every case in a file of each setup-file name, and in one named like no setup file. */
 export function setupFileProjectFiles(): Readonly<Record<string, string>> {
   return projectFilesOf([...SETUP_FILE_NAMES, NOT_A_SETUP_FILE_NAME].flatMap((name) => [stateAHookKeepsIn(name), hookCalledAsAGlobalIn(name), describedTsExpectErrorIn(name), tsIgnoreIn(name)]))
 }
 
-/** The cases in the other module extensions, in a test file, a file of each setup-file name, one named like no setup file, and a hook's TS files. */
 export function otherExtensionProjectFiles(): Readonly<Record<string, string>> {
   return projectFilesOf([
     ...[TEST_FILE_NAME, ...SETUP_FILE_NAMES, NOT_A_SETUP_FILE_NAME].flatMap((name) => otherExtensionCasesIn(name)),

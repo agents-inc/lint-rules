@@ -90,14 +90,7 @@ export function setUpEslintConfigOracle(): EslintConfigOracle {
     files: readonly string[],
   ): Promise<Readonly<Record<string, CalculatedRulesOrNotLinted>>> {
     const eslint = eslintFor(config)
-    const byFile = await Promise.all(
-      files.map(async (file): Promise<[string, CalculatedRulesOrNotLinted]> => {
-        const calculated = await calculatedConfigOf(eslint, file)
-        if (calculated === undefined) return [file, NOT_LINTED]
-        // ESLint leaves `rules` out where no block that applies sets a rule.
-        return [file, calculated.rules === undefined ? {} : { ...calculated.rules }]
-      }),
-    )
+    const byFile = await Promise.all(files.map(async (file) => [file, await calculatedRulesOrNotLintedOf(eslint, file)] as const))
     return Object.fromEntries(byFile)
   }
 
@@ -161,12 +154,12 @@ export function setUpEslintConfigOracle(): EslintConfigOracle {
     },
     ruleSeverityInProjectFor,
     async globalsFor(config, file) {
-      const globals = (await lintedConfigFor(config, file)).languageOptions?.['globals']
+      const globals = (await lintedConfigFor(config, file)).languageOptions?.globals
       if (!isRecord(globals)) throw new Error(`no globals apply to ${file}`)
       return globals
     },
     async parserOptionsFor(config, file) {
-      const parserOptions = (await lintedConfigFor(config, file)).languageOptions?.['parserOptions']
+      const parserOptions = (await lintedConfigFor(config, file)).languageOptions?.parserOptions
       if (!isRecord(parserOptions)) throw new Error(`no parser options apply to ${file}`)
       return parserOptions
     },
@@ -189,18 +182,25 @@ async function calculatedConfigOf(eslint: ESLint, file: string): Promise<Linter.
   throw new TypeError(`ESLint calculated a ${typeof calculated} for ${file}, not a config`)
 }
 
+async function calculatedRulesOrNotLintedOf(eslint: ESLint, file: string): Promise<CalculatedRulesOrNotLinted> {
+  const calculated = await calculatedConfigOf(eslint, file)
+  if (calculated === undefined) return NOT_LINTED
+  // ESLint leaves `rules` out where no block that applies sets a rule.
+  return calculated.rules === undefined ? {} : { ...calculated.rules }
+}
+
 // Every field of a calculated config is optional, and each caller reads the field it asked for: an object is one.
 function isCalculatedConfig(value: unknown): value is Linter.Config {
   return isRecord(value)
 }
 
 function isSerializableConfig(value: unknown): value is SerializableConfig {
-  return isRecord(value) && isRecord(value['plugins']) && typeof value['toJSON'] === 'function'
+  return isRecord(value) && isRecord(value.plugins) && typeof value.toJSON === 'function'
 }
 
 function serializedPluginEntriesOf(serialized: unknown): string[] {
-  if (!isRecord(serialized) || !Array.isArray(serialized['plugins'])) throw new Error('ESLint serialized a config without plugins')
-  const entries: unknown[] = serialized['plugins']
+  if (!isRecord(serialized) || !Array.isArray(serialized.plugins)) throw new Error('ESLint serialized a config without plugins')
+  const entries: unknown[] = serialized.plugins
   return entries.map((entry) => {
     if (typeof entry !== 'string') throw new TypeError(`ESLint serialized a plugin as ${JSON.stringify(entry)}, not a string`)
     return entry

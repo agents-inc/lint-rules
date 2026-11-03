@@ -4,15 +4,17 @@ import { oxlintCliOutputIn } from '@workspace/rule-data/test-support/oxlint-cli'
 import { ESLint, type Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
 import type { OxlintConfig } from 'oxlint'
+import { isEmpty } from '../core/is-empty.ts'
 import { mergeEslintConfig } from '../eslint.ts'
 import { mergeOxlintConfig } from '../oxlint.ts'
 import { agentConfigsOf, type DefinedLintRules } from './agent-configs.ts'
-import { fatalMessagesIn, lineOfDiagnostic, type OxlintCliDiagnostic, writeOxlintConfigFile } from './engine-clis.ts'
+import { fatalMessagesIn, lineOfDiagnostic, type OxlintCliDiagnostic, sortableLineOf, writeOxlintConfigFile } from './engine-clis.ts'
 import { projectPathOf } from './project-paths.ts'
 import { rulesNotFoundAmong } from './rules-not-found.ts'
+import { rulesRunIn } from './rules-run.ts'
 import { setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
 import { NO_TEAM_ESLINT_CONFIG, type TeamEslintConfigPath } from './team-configs-of-the-other-engine.ts'
-import { INSTALLED_OXLINT, type LinkedPackage, type ProjectFiles } from './temp-projects.ts'
+import { INSTALLED_OXLINT, type ProjectFiles } from './temp-projects.ts'
 
 type ProcessOutput = { readonly exitCode: number | null; readonly stdout: string }
 
@@ -25,7 +27,7 @@ export type ErrorAt = { readonly engine: 'eslint' | 'oxlint'; readonly rule: str
 type OxlintReport = { readonly diagnostics: readonly OxlintCliDiagnostic[]; readonly number_of_rules: number }
 
 export type TeamConfigs = {
-  readonly teamEslintConfig: Parameters<typeof mergeEslintConfig>[0]
+  readonly teamEslintConfig: Parameters<typeof defineConfig>[number]
   readonly teamOxlintConfig: Parameters<typeof mergeOxlintConfig>[0]
 }
 
@@ -81,8 +83,6 @@ const TEAM_OXLINT_CONFIG_FILE = 'team.oxlintrc.json'
 const ESLINT_ERROR = 2
 const OXLINT_ERROR = 'error'
 const ENGINE_ORDER = ['eslint', 'oxlint']
-// A finding without a line is about the whole file, so it sorts before line 1.
-const WHOLE_FILE_LINE = 0
 
 export type WrittenFiles = ProjectFiles
 
@@ -96,11 +96,11 @@ export function setUpEngineRun(
   configFor: (projectDir: string) => DefinedLintRules,
   writtenFiles: WrittenFiles = {},
   build: EngineBuild | (() => EngineBuild) = AGENT_BUILD,
-  linkedPackages: readonly LinkedPackage[] = [],
 ): EngineRun {
   const completedRun = setUpRunsBeforeTheSuite(async (tempProjects) => {
-    const projectDir = tempProjects.create({ fixturesDir, files: writtenFiles, linkedPackages: [INSTALLED_OXLINT, ...linkedPackages] })
-    return runBothEngines(projectDir, emittedConfigsOf(projectDir, configFor(projectDir), typeof build === 'function' ? build() : build))
+    const projectDir = tempProjects.create({ fixturesDir, files: writtenFiles, linkedPackages: [INSTALLED_OXLINT] })
+    const emitted = emittedConfigsOf(projectDir, configFor(projectDir), typeof build === 'function' ? build() : build)
+    return runBothEngines(projectDir, emitted)
   })
 
   function oxlintRun(): OxlintRun {
@@ -153,18 +153,12 @@ export function setUpEngineRun(
       return eslintResultFor(file).messages.map(({ ruleId, severity, line }) => ({ ruleId, severity, line }))
     },
     errorsOn(file) {
-      const eslintErrors = eslintResultFor(file)
-        .messages.filter((message) => message.severity === ESLINT_ERROR)
-        .map(({ ruleId, line }): ErrorAt => ({ engine: 'eslint', rule: ruleId, line }))
-      const oxlintErrors = oxlintReport()
-        .diagnostics.filter((diagnostic) => diagnostic.filename === file && diagnostic.severity === OXLINT_ERROR)
-        .map((diagnostic): ErrorAt => ({ engine: 'oxlint', rule: diagnostic.code, line: lineOfDiagnostic(diagnostic) }))
-      return [...eslintErrors, ...oxlintErrors].toSorted(byLineThenEngine)
+      return [...eslintErrorsIn(eslintResultFor(file)), ...oxlintErrorsOn(oxlintReport(), file)].toSorted(byLineThenEngine)
     },
     eslintRulesRunOn(file) {
       const { stats } = eslintResultFor(file)
       if (stats === undefined) throw new Error('ESLint ran without stats')
-      return [...new Set(stats.times.passes.flatMap((pass) => Object.keys(pass.rules ?? {})))].sort()
+      return rulesRunIn(stats)
     },
     eslintRulesNotFound() {
       const { projectDir, eslintResults } = completedRun()
@@ -196,7 +190,7 @@ function emittedConfigsOf(projectDir: string, defined: DefinedLintRules, build: 
 */
 // eslint-disable-next-line functional/prefer-immutable-types -- TS2345 as Readonly: defineConfig takes a mutable InfiniteArray<ConfigWithExtends>
 function teamEslintConfigSettingNoRule(teamEslintConfig: TeamConfigs['teamEslintConfig']): TeamEslintConfigPath {
-  const statingRules = defineConfig(teamEslintConfig).filter(({ rules = {} }) => Object.keys(rules).length > 0)
+  const statingRules = defineConfig(teamEslintConfig).filter(({ rules = {} }) => !isEmpty(rules))
   if (statingRules.length > 0) throw new Error("an editor build's team ESLint config states no rule: the oxlint merge could not read it")
   return NO_TEAM_ESLINT_CONFIG
 }
@@ -204,12 +198,9 @@ function teamEslintConfigSettingNoRule(teamEslintConfig: TeamConfigs['teamEslint
 async function runBothEngines(projectDir: string, emitted: EmittedConfigs): Promise<CompletedRun> {
   // Stats record which rules ran on each file.
   const eslint = new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: emitted.eslint, stats: true })
-  return {
-    projectDir,
-    oxlint: emitted.oxlint === null ? null : await runOxlintWith(projectDir, emitted.oxlint),
-    emittedEslintConfig: emitted.eslint,
-    eslintResults: await eslint.lintFiles(['.']),
-  }
+  const oxlint = emitted.oxlint === null ? null : await runOxlintWith(projectDir, emitted.oxlint)
+  const eslintResults = await eslint.lintFiles(['.'])
+  return { projectDir, oxlint, emittedEslintConfig: emitted.eslint, eslintResults }
 }
 
 async function runOxlintWith(projectDir: string, emittedConfig: Readonly<OxlintConfig>): Promise<OxlintRun> {
@@ -221,8 +212,16 @@ async function runOxlintWith(projectDir: string, emittedConfig: Readonly<OxlintC
   }
 }
 
-function sortableLineOf({ line }: ErrorAt): number {
-  return line === null ? WHOLE_FILE_LINE : line
+function eslintErrorsIn({ messages }: Readonly<ESLint.LintResult>): ErrorAt[] {
+  return messages
+    .filter((message) => message.severity === ESLINT_ERROR)
+    .map(({ ruleId, line }): ErrorAt => ({ engine: 'eslint', rule: ruleId, line }))
+}
+
+function oxlintErrorsOn({ diagnostics }: OxlintReport, file: string): ErrorAt[] {
+  return diagnostics
+    .filter((diagnostic) => diagnostic.filename === file && diagnostic.severity === OXLINT_ERROR)
+    .map((diagnostic): ErrorAt => ({ engine: 'oxlint', rule: diagnostic.code, line: lineOfDiagnostic(diagnostic) }))
 }
 
 function byLineThenEngine(first: ErrorAt, second: ErrorAt): number {

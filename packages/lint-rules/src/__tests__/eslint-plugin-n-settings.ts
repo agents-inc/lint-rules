@@ -10,7 +10,8 @@ const TRY_EXTENSIONS = 'tryExtensions'
 // set at all, whatever keys it holds, and from settings.node only where it is not
 // (lib/util/get-typescript-extension-map.js, getTypescriptExtensionMap: `settings.n ?? settings.node`).
 const SETTINGS_READ_AS_ONE_OBJECT = ['typescriptExtensionMap', 'tsconfigPath'] as const
-const [N_SETTINGS_KEY, LEGACY_SETTINGS_KEY] = SETTINGS_KEYS_IN_THE_ORDER_READ
+export const [N_SETTINGS_KEY] = SETTINGS_KEYS_IN_THE_ORDER_READ
+const [, LEGACY_SETTINGS_KEY] = SETTINGS_KEYS_IN_THE_ORDER_READ
 
 /** The first `tryExtensions` array of settings.n and settings.node; undefined where neither holds one. */
 export function tryExtensionsEslintPluginNReads(settings: unknown): string[] | undefined {

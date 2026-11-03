@@ -126,7 +126,7 @@ describe('resolveRuleLayers', () => {
     it('keep the shipped options when they give only a severity', () => {
       const lintRules = buildLintRules({ quality: ['correctness'] }, { rules: { eqeqeq: 'warn' } })
 
-      expect(resolveRuleLayers(lintRules, catalog).rules['eqeqeq']).toStrictEqual({
+      expect(resolveRuleLayers(lintRules, catalog).rules.eqeqeq).toStrictEqual({
         severity: 'warn',
         options: ['always'],
         files: null,
@@ -140,7 +140,7 @@ describe('resolveRuleLayers', () => {
         { rules: { eqeqeq: ['error', 'smart'] } },
       )
 
-      expect(resolveRuleLayers(lintRules, catalog).rules['eqeqeq']).toStrictEqual({
+      expect(resolveRuleLayers(lintRules, catalog).rules.eqeqeq).toStrictEqual({
         severity: 'error',
         options: ['smart'],
         files: null,

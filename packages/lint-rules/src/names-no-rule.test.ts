@@ -11,7 +11,7 @@ import { nodesUnder } from './__tests__/repo-programs.ts'
 // moving a rule or changing its settings is then a change to rule-data's data alone.
 
 const SOURCE_DIR = fileURLToPath(new URL('.', import.meta.url))
-const TYPESCRIPT_SOURCE = /\.ts$/u
+const TYPESCRIPT_EXTENSION = '.ts'
 const TEST_SOURCE = /(?:\.test\.ts|\.test-d\.ts)$|^__tests__\//u
 // The published entry points: a scan that misses them has read the wrong directory.
 const ENTRY_POINTS = ['eslint.ts', 'index.ts', 'oxlint.ts']
@@ -26,7 +26,7 @@ function ruleIdsNamedIn(source: string): string[] {
 
 async function nonTestSourceFiles(): Promise<string[]> {
   const files = await readdir(SOURCE_DIR, { recursive: true })
-  return files.filter((file) => TYPESCRIPT_SOURCE.test(file) && !TEST_SOURCE.test(file)).sort()
+  return files.filter((file) => file.endsWith(TYPESCRIPT_EXTENSION) && !TEST_SOURCE.test(file)).sort()
 }
 
 describe('the scan for rule IDs', () => {

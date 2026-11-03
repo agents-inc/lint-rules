@@ -27,9 +27,9 @@ describe("mergeOxlintConfig, given a team config whose root does or does not set
     const projectDir = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()) }, linkedPackages: [INSTALLED_OXLINT] })
 
     expect({
-      rootTurnsItOff: envOfAJsFileMergedInto(projectDir, buildTeamOxlintConfig({ env: { browser: false } }))['browser'],
-      rootSetsAnother: envOfAJsFileMergedInto(projectDir, buildTeamOxlintConfig({ env: { node: true } }))['browser'],
-      rootSetsNone: envOfAJsFileMergedInto(projectDir, buildTeamOxlintConfig())['browser'],
+      rootTurnsItOff: envOfAJsFileMergedInto(projectDir, buildTeamOxlintConfig({ env: { browser: false } })).browser,
+      rootSetsAnother: envOfAJsFileMergedInto(projectDir, buildTeamOxlintConfig({ env: { node: true } })).browser,
+      rootSetsNone: envOfAJsFileMergedInto(projectDir, buildTeamOxlintConfig()).browser,
     }).toStrictEqual({ rootTurnsItOff: false, rootSetsAnother: true, rootSetsNone: true })
   })
 })

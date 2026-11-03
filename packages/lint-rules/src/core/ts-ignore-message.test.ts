@@ -2,6 +2,7 @@ import { type ESLint, Linter } from 'eslint'
 import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
 import { describedTsExpectError, tsIgnore, tsNocheck } from '../__tests__/cases/suppression-comments.ts'
+import { rulesOf } from '../__tests__/eslint-plugin-rules.ts'
 import { installedEslintPlugin } from '../__tests__/factories/eslint-merge-factories.ts'
 import { withOurTsIgnoreMessage } from './ts-ignore-message.ts'
 
@@ -11,9 +12,8 @@ const TS_COMMENT_BAN_ID = `${TYPESCRIPT_ESLINT}/${TS_COMMENT_BAN}`
 const BOTH_BANNED = { 'ts-expect-error': true, 'ts-ignore': true, 'ts-nocheck': true }
 const DESCRIBED_EXPECT_ERROR_ALLOWED = { 'ts-expect-error': 'allow-with-description', 'ts-ignore': true, 'ts-nocheck': true }
 const THE_OTHER_COMMENT = '@ts-expect-error'
-const FIX_THE_TYPE_ERROR = /\bfix\b.*\btype error\b/iu
+const FIX_THE_TYPE_ERROR = /\bfix\b.+\btype error\b/iu
 
-/** One report as an editor offers it: the message, and each suggestion its quick-fix menu would list. */
 type Offered = { readonly line: number; readonly message: string; readonly suggestions: readonly string[] }
 
 describe('withOurTsIgnoreMessage', () => {
@@ -93,11 +93,6 @@ function pluginUnder(plugins: ReadonlyMap<string, ESLint.Plugin>, prefix: string
   const plugin = plugins.get(prefix)
   if (plugin === undefined) throw new Error(`no plugin under ${prefix}`)
   return plugin
-}
-
-function rulesOf(plugin: Readonly<ESLint.Plugin>): NonNullable<ESLint.Plugin['rules']> {
-  if (plugin.rules === undefined) throw new Error('the plugin has no rules')
-  return plugin.rules
 }
 
 function offeredBy(plugin: Readonly<ESLint.Plugin>, source: string, options: Readonly<Record<string, unknown>>): Offered[] {

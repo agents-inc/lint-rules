@@ -176,6 +176,6 @@ function byFileLineThenRule(first: Finding, second: Finding): number {
   )
 }
 
-function sortableLineOf({ line }: Finding): number {
+export function sortableLineOf({ line }: { readonly line: number | null }): number {
   return line === null ? WHOLE_FILE_LINE : line
 }

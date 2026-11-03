@@ -7,14 +7,16 @@ import { buildConsumerLintRules } from './factories/lint-rules-factories.ts'
 import { createProjectListingOxlint } from './factories/package-json-factories.ts'
 import { oxlintSeverityFor } from './oxlint-config-oracle.ts'
 import { oxlintPartAlone } from './oxlint-part-alone.ts'
-import { setUpTempProjects } from './temp-projects.ts'
+import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
 
-const PROJECT_WITH_OXLINT = createProjectListingOxlint(setUpTempProjects())
+const PROJECT_MADE: RunsBeforeTheSuiteOptions = { timeoutMs: 10_000, whatFailed: 'the project listing oxlint could not be made before the suite' }
+
+const projectWithOxlint = setUpRunsBeforeTheSuite(createProjectListingOxlint, PROJECT_MADE)
 
 function ourOxlintPart(): OxlintPart {
   const parts = defineLintRules(
     buildConsumerLintRules(
-      PROJECT_WITH_OXLINT,
+      projectWithOxlint(),
       {},
       {
         rules: { 'react/no-string-refs': 'error', '@typescript-eslint/no-inferrable-types': 'error', '@typescript-eslint/no-non-null-assertion': 'error' },

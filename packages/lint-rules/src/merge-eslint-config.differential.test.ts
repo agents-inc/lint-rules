@@ -101,6 +101,13 @@ const MODES = [
   { mode: 'beside oxlint', usesOxlint: true },
   { mode: 'without oxlint', usesOxlint: false },
 ]
+const ENGINE_EACH_RULE_OF_OURS_RUNS_ON_BESIDE_OXLINT = {
+  'n/hashbang': 'eslint',
+  'import-x/first': 'oxlint',
+  'unicorn/no-for-each': 'oxlint',
+  '@eslint-react/x-no-missing-key': 'eslint',
+  'no-throw-literal': 'eslint',
+}
 
 const { calculatedRulesOfEach } = setUpEslintConfigOracle()
 
@@ -214,6 +221,13 @@ describe('the ESLint merge shapes', () => {
     )
 
     expect(notInPlay.map(shapeStating)).toStrictEqual([])
+  })
+
+  // A rule rerouted leaves the shapes beside oxlint passing on a premise no longer true.
+  it('state rules of ours each routed to the engine the shapes take it to run on beside oxlint', () => {
+    const ours = [...new Set(builtShapes().map((shape) => buildEslintMergeShape(PROJECT, shape).stating.ours))]
+
+    expect(Object.fromEntries(ours.map((id) => [id, catalog.rules.get(id)?.engine]))).toStrictEqual(ENGINE_EACH_RULE_OF_OURS_RUNS_ON_BESIDE_OXLINT)
   })
 
   // A block no path can match changes nothing, so the merge should never write one.

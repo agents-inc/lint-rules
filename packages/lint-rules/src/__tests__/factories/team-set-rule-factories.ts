@@ -6,7 +6,6 @@ import { buildTeamEslintBlock } from './team-config-factories.ts'
 const TS_AND_TSX_FILES = ['**/*.ts', '**/*.tsx']
 const TEAM_BLOCK = 'team'
 
-/** The team's own block turning rules on over TS and TSX files, registering under each prefix given the plugin installed there, or none. */
 export function buildTeamBlockSettingRules(rules: Readonly<Linter.RulesRecord>, prefixesRegistered: readonly string[]): Linter.Config {
   return buildTeamEslintBlock(TEAM_BLOCK, { files: TS_AND_TSX_FILES, plugins: pluginsAsShippedUnder(prefixesRegistered), rules: { ...rules } })
 }

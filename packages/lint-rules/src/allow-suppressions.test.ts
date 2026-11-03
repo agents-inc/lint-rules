@@ -1,4 +1,4 @@
-import { catalog, type RuleRoute } from '@workspace/rule-data'
+import { catalog, routeOf } from '@workspace/rule-data'
 import type { Linter } from 'eslint'
 import type { OxlintConfig } from 'oxlint'
 import { describe, expect, it } from 'vitest'
@@ -15,6 +15,7 @@ import { oxlintConfigForFile, oxlintSeverityFor } from './__tests__/oxlint-confi
 import { buildTeamEslintBlock } from './__tests__/factories/team-config-factories.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG, NO_TEAM_ESLINT_CONFIG, writeTeamOxlintConfigSettingNoRule } from './__tests__/team-configs-of-the-other-engine.ts'
 import { INSTALLED_OXLINT, setUpTempProjects } from './__tests__/temp-projects.ts'
+import { isList } from './core/is-record.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules, type LintRules } from './index.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
@@ -58,7 +59,6 @@ type TopLevelCase = { readonly config: string; readonly lintRulesIn: (tsconfigRo
 /** A project as a title names it, its folder as a test reads it, and what the editor parts set there. */
 type EditorProjectCase = { readonly project: string; readonly projectDir: () => string; readonly editorExpected: SuppressionSettings }
 
-/** A config as a title names it, built in the folder a test gives, the file read, and what the editor parts set there beside oxlint and without it. */
 type EditorListingCase = {
   readonly config: string
   readonly lintRulesIn: (tsconfigRootDir: string) => LintRules
@@ -163,7 +163,7 @@ async function suppressionSettingsFor(configs: BuiltConfigs, file: string): Prom
 
 /** The ban's entry from the routed engine, ESLint's numeric severity read by name so both compare alike; off, with whatever options, is off. */
 function tsCommentBanIn({ oxlint }: BuiltConfigs, calculated: Readonly<Linter.Config>, file: string): unknown {
-  const { engine, oxlintName } = routeOfTheTsCommentBan()
+  const { engine, oxlintName } = routeOf(TS_COMMENT_BAN, catalog)
   if (oxlint !== null && engine === 'oxlint') return oxlintConfigForFile(oxlint, file).rules[oxlintName]
   if (calculatedSeverityOf(calculated, TS_COMMENT_BAN) === 'off') return 'off'
   const entry = calculatedEntryOf(calculated, TS_COMMENT_BAN)
@@ -172,25 +172,11 @@ function tsCommentBanIn({ oxlint }: BuiltConfigs, calculated: Readonly<Linter.Co
   return [severityOfCalculatedEntry(entry), ...options]
 }
 
-function isList(value: unknown): value is readonly unknown[] {
-  return Array.isArray(value)
-}
-
-function routeOfTheTsCommentBan(): RuleRoute {
-  return routeOf(TS_COMMENT_BAN)
-}
-
 function routedSeverityIn({ oxlint }: BuiltConfigs, calculated: Readonly<Linter.Config>, file: string, ruleId: string): Linter.StringSeverity {
-  const { engine, oxlintName } = routeOf(ruleId)
+  const { engine, oxlintName } = routeOf(ruleId, catalog)
   if (oxlint === null || engine !== 'oxlint') return calculatedSeverityOf(calculated, ruleId)
   const severity = oxlintSeverityFor(oxlint, file, oxlintName)
   return severity === undefined ? 'off' : severity
-}
-
-function routeOf(ruleId: string): RuleRoute {
-  const route = catalog.rules.get(ruleId)
-  if (route === undefined) throw new Error(`${ruleId} is not in the catalog`)
-  return route
 }
 
 function calculatedEntryOf({ rules }: Readonly<Linter.Config>, ruleId: string): unknown {
@@ -208,6 +194,26 @@ function calculatedSeverityOf(calculated: Readonly<Linter.Config>, ruleId: strin
 function readsDirectives({ linterOptions }: Readonly<Linter.Config>): boolean {
   if (linterOptions === undefined) throw new Error('ESLint calculated no linterOptions for the file')
   return linterOptions.noInlineConfig !== true
+}
+
+function nothingListedSuppressionsAllowed(tsconfigRootDir: string): LintRules {
+  return buildConsumerLintRules(tsconfigRootDir, {}, { allowSuppressions: true })
+}
+
+function allThreeListedForAgentsAloneSuppressionsAllowed(tsconfigRootDir: string): LintRules {
+  return buildConsumerLintRules(tsconfigRootDir, { agentRulesets: THE_THREE_RULESETS }, { allowSuppressions: true })
+}
+
+function allThreeListedInAnEntryForLegacy(tsconfigRootDir: string): LintRules {
+  return buildConsumerLintRules(tsconfigRootDir, {}, { fileOverrides: [{ files: ['legacy/**'], editorRulesets: THE_THREE_RULESETS }] })
+}
+
+function allThreeListedThenNoneInAnEntryForBare(tsconfigRootDir: string): LintRules {
+  return buildConsumerLintRules(
+    tsconfigRootDir,
+    { editorRulesets: THE_THREE_RULESETS },
+    { fileOverrides: [{ files: ['bare/**'], editorRulesets: NO_RULESETS }] },
+  )
 }
 
 describe('allowSuppressions at the top level, in the agent build', () => {
@@ -469,24 +475,7 @@ describe('the editor parts, merged into a team config, beside the agent build of
 // A team's editor config holds only what its editor rulesets list: a rule allowSuppressions turns on that
 // belongs to a ruleset joins the editor parts where the editor rulesets list that ruleset, and nowhere else.
 describe('the suppression rules of the comments, react and type-safety rulesets (all three), in the editor parts merged into a team config', () => {
-  function nothingListedSuppressionsAllowed(tsconfigRootDir: string): LintRules {
-    return buildConsumerLintRules(tsconfigRootDir, {}, { allowSuppressions: true })
-  }
-  function allThreeListedForAgentsAloneSuppressionsAllowed(tsconfigRootDir: string): LintRules {
-    return buildConsumerLintRules(tsconfigRootDir, { agentRulesets: THE_THREE_RULESETS }, { allowSuppressions: true })
-  }
-  function allThreeListedInAnEntryForLegacy(tsconfigRootDir: string): LintRules {
-    return buildConsumerLintRules(tsconfigRootDir, {}, { fileOverrides: [{ files: ['legacy/**'], editorRulesets: THE_THREE_RULESETS }] })
-  }
-  function allThreeListedThenNoneInAnEntryForBare(tsconfigRootDir: string): LintRules {
-    return buildConsumerLintRules(
-      tsconfigRootDir,
-      { editorRulesets: THE_THREE_RULESETS },
-      { fileOverrides: [{ files: ['bare/**'], editorRulesets: NO_RULESETS }] },
-    )
-  }
-
-  const projects = [
+  const projects: ReadonlyArray<Omit<EditorProjectCase, 'editorExpected'> & { readonly usesOxlint: boolean }> = [
     {
       project: 'whose package.json lists oxlint',
       projectDir() {

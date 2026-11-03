@@ -5,6 +5,7 @@ import { buildPublishedPackageJson, fileInPackage, filesUnderPackage, packageDir
 import { jsonFileText } from '../factories/team-config-file-factories.ts'
 import { buildBundlerTsconfig } from '../factories/tsconfig-factories.ts'
 import type { RuleByItsNames } from '../findings-beside-the-team.ts'
+import type { ResolversImportXReads } from '../import-x-settings.ts'
 import type { ProjectFiles } from '../temp-projects.ts'
 
 // import-x 4.17.1 uses settings['import-x/resolver-next'] wherever it holds anything, and a legacy resolver key
@@ -22,7 +23,10 @@ export const TEAMS_NODE_RESOLVER_OPTIONS = { extensions: TEAMS_EXTENSIONS }
 export const TEAMS_RESOLVER_NAME = 'team-resolver'
 
 /** The name of the resolver ours is: eslint-import-resolver-typescript 4.4.5's (lib/constants.js, IMPORT_RESOLVER_NAME). */
-export const OUR_RESOLVER_NAME = 'eslint-import-resolver-typescript'
+const OUR_RESOLVER_NAME = 'eslint-import-resolver-typescript'
+
+/** What import-x reads where our resolver-next is the only resolver set. */
+export const OURS: ResolversImportXReads = { key: 'import-x/resolver-next', names: [OUR_RESOLVER_NAME] }
 
 const TEAMS_CORE_MODULES = ['virtual:team-module']
 

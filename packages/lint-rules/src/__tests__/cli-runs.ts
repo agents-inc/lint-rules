@@ -11,7 +11,7 @@ import { assertNoFindingWasCut } from './check-output.ts'
 import { escapeForPattern, type FolderWatch } from './folder-watch.ts'
 import { createGitProject, type GitProject, testEnv } from './git-projects.ts'
 import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './runs-before-the-suite.ts'
-import type { ProjectFiles } from './temp-projects.ts'
+import { type ProjectFiles, textsOf } from './temp-projects.ts'
 
 /** The built bin, which `npx agents-inc-lint` runs. */
 export const CLI_FILE = fileURLToPath(new URL('../../dist/cli.mjs', import.meta.url))
@@ -32,6 +32,13 @@ export type CliOptions = {
   readonly env?: Readonly<Record<string, string>>
   /** The Node that runs the bin: the one running the tests, unless given. */
   readonly node?: string
+}
+
+type CheckRunTwice = {
+  readonly first: CliRun
+  readonly afterFirst: Readonly<Record<string, string>>
+  readonly second: CliRun
+  readonly afterSecond: Readonly<Record<string, string>>
 }
 
 type StartedCli = {
@@ -55,10 +62,9 @@ export type RunBesideAnotherWriter = { readonly wrote: boolean; readonly run: Cl
 
 export type FileHolding = { readonly path: string; readonly text: string }
 
-/**
- * A file another writer deletes in one of check's oxlint runs (`fix`, with `--fix`, or `lint`), at a point oxlint's own
- * progress sets: before oxlint opens it, or as the run ends, once oxlint read every file.
- */
+/** The file check changes, and what another writer writes once it has. */
+type AnotherWriterOnceTheFileChanges = { readonly path: string; readonly anotherWriter: () => void }
+
 export type DeletionWhileOxlintRuns = { readonly path: string; readonly run: 'fix' | 'lint'; readonly when: 'before oxlint opens it' | 'as the run ends' }
 
 // check needs Node 22.18 or later.
@@ -82,13 +88,11 @@ const WRITES_AS_OXLINT_LINT_RUN_ENDS = 'AGENTS_INC_TEST_WRITES_AS_OXLINT_LINT_RU
 const OXLINT_HOLDING_ON_AFTER_A_STOP = new URL('./oxlint-holding-on-after-a-stop.mjs', import.meta.url).href
 // Read by oxlint-holding-on-after-a-stop.mjs, under the same name there.
 const OXLINT_HOLDING_ON = 'AGENTS_INC_TEST_OXLINT_HOLDING_ON'
-// Imported into each Node process of a check run: in the oxlint run the variable below names, it deletes a file.
 const ANOTHER_WRITER_DELETING_WHILE_OXLINT_RUNS = new URL('./another-writer-deleting-while-oxlint-runs.mjs', import.meta.url).href
 // Read by another-writer-deleting-while-oxlint-runs.mjs and oxlint-plugin-deleting-a-file.mjs, under the same name there.
 const DELETES_WHILE_OXLINT_RUNS = 'AGENTS_INC_TEST_DELETES_WHILE_OXLINT_RUNS'
 // Written once the file is deleted, in the folder above the project, which is in no repo.
 const DELETION_MARKER = 'deleted-while-oxlint-ran'
-// Imported into each Node process of a run: it moves the clock forward by the months the variable below names.
 const CLOCK_MOVED_FORWARD = new URL('./clock-moved-forward.mjs', import.meta.url).href
 // Read by clock-moved-forward.mjs, under the same name there.
 const CLOCK_MONTHS_AHEAD = 'AGENTS_INC_TEST_CLOCK_MONTHS_AHEAD'
@@ -98,21 +102,18 @@ const BROWSERSLIST_IGNORE_OLD_DATA = 'BROWSERSLIST_IGNORE_OLD_DATA'
 const NO_SUCH_PROCESS = 'ESRCH'
 
 export function runCli(cwd: string, args: readonly string[], { env = {}, node = process.execPath }: CliOptions = {}): CliRun {
-  const { status, signal, stdout, stderr } = spawnSync(node, [CLI_FILE, ...args], {
-    cwd,
-    env: testEnv(env),
-    encoding: 'utf8',
-    timeout: CLI_TIMEOUT_MS,
-    killSignal: KILLED_PAST_THE_TIMEOUT,
-  })
-  return { exitCode: status, signal, stdout, stderr }
+  return runToItsEnd(cwd, node, [CLI_FILE, ...args], env)
 }
 
 /** A command line's words, then the arguments given, run as an agent's shell runs them: by the name on PATH. */
 export function runCommandLine(cwd: string, commandLine: string, args: readonly string[], { env = {} }: Pick<CliOptions, 'env'> = {}): CliRun {
   const [command, ...words] = commandLine.split(WORD_SEPARATOR)
   if (command === undefined || command === '') throw new Error(`the command line "${commandLine}" names no command`)
-  const { status, signal, stdout, stderr } = spawnSync(command, [...words, ...args], {
+  return runToItsEnd(cwd, command, [...words, ...args], env)
+}
+
+function runToItsEnd(cwd: string, command: string, args: readonly string[], env: Readonly<Record<string, string>>): CliRun {
+  const { status, signal, stdout, stderr } = spawnSync(command, args, {
     cwd,
     env: testEnv(env),
     encoding: 'utf8',
@@ -125,6 +126,15 @@ export function runCommandLine(cwd: string, commandLine: string, args: readonly 
 /** Throws where check cut its list short. */
 export function runCheck(cwd: string, options: CliOptions = {}): CliRun {
   return withNoFindingCut(runCli(cwd, ['check'], options))
+}
+
+/** Throws where check cut either list short. `afterFirst` and `afterSecond`: the texts of the files at `paths` after each run. */
+export function checkRunTwice(cwd: string, paths: readonly string[]): CheckRunTwice {
+  const first = runCheck(cwd)
+  const afterFirst = textsOf(cwd, paths)
+  const second = runCheck(cwd)
+  const afterSecond = textsOf(cwd, paths)
+  return { first, afterFirst, second, afterSecond }
 }
 
 export function runInit(cwd: string, options: CliOptions = {}): CliRun {
@@ -190,14 +200,13 @@ export async function checkSignalledOnceItsConfigAppears(
 
 /** Signals once the file changes, as a fix check writes makes it; a run that ends first is not signalled. */
 export async function checkSignalledOnceTheFileChanges(cwd: string, path: string, signal: NodeJS.Signals, options: CliOptions = {}): Promise<BackgroundRun> {
-  return checkSignalledAfterAnotherWriter(cwd, path, () => undefined, signal, options)
+  return checkSignalledAfterAnotherWriter(cwd, { path, anotherWriter() {} }, signal, options)
 }
 
 /** As checkSignalledOnceTheFileChanges, with `anotherWriter` writing before the signal. */
 export async function checkSignalledAfterAnotherWriter(
   cwd: string,
-  path: string,
-  anotherWriter: () => void,
+  { path, anotherWriter }: AnotherWriterOnceTheFileChanges,
   signal: NodeJS.Signals,
   options: CliOptions = {},
 ): Promise<BackgroundRun> {
@@ -213,9 +222,7 @@ export async function checkSignalledAfterAnotherWriter(
 /** As checkSignalledAfterAnotherWriter, signalling once check has fixed what that writer wrote. */
 export async function checkSignalledOnceItFixedAnotherWritersText(
   cwd: string,
-  path: string,
-  anotherWriter: () => void,
-  fixed: FileHolding,
+  { path, anotherWriter, fixed }: AnotherWriterOnceTheFileChanges & { readonly fixed: FileHolding },
   signal: NodeJS.Signals,
   options: CliOptions = {},
 ): Promise<BackgroundRun> {
@@ -236,15 +243,13 @@ export async function checkRunningOnBesideAnotherWriter(cwd: string, path: strin
 /** `wrote`: whether the writer deleted the file at the point given, which the marker it leaves names. */
 export function checkBesideAWriterDeletingWhileOxlintRuns(cwd: string, deletion: DeletionWhileOxlintRuns): RunBesideAnotherWriter {
   const marker = join(dirname(cwd), DELETION_MARKER)
-  const nodeOptions = [process.env.NODE_OPTIONS, `--import=${ANOTHER_WRITER_DELETING_WHILE_OXLINT_RUNS}`].filter((option) => option !== undefined && option !== '').join(' ')
-  const run = runCheck(cwd, { env: { NODE_OPTIONS: nodeOptions, [DELETES_WHILE_OXLINT_RUNS]: JSON.stringify({ ...deletion, marker }) } })
+  const run = runCheck(cwd, importedIntoEachNodeProcess(ANOTHER_WRITER_DELETING_WHILE_OXLINT_RUNS, { [DELETES_WHILE_OXLINT_RUNS]: JSON.stringify({ ...deletion, marker }) }))
   return { wrote: existsSync(marker) && readFileSync(marker, 'utf8') === deletion.when, run }
 }
 
 /** The writer writes after oxlint read each file, and before check reads it again to place what oxlint reported. */
 export function anotherWriterAsOxlintsLintRunEnds(writes: readonly FileHolding[]): CliOptions {
-  const nodeOptions = [process.env['NODE_OPTIONS'], `--import=${WRITER_AS_OXLINT_LINT_RUN_ENDS}`].filter((option) => option !== undefined && option !== '').join(' ')
-  return { env: { NODE_OPTIONS: nodeOptions, [WRITES_AS_OXLINT_LINT_RUN_ENDS]: JSON.stringify(writes) } }
+  return importedIntoEachNodeProcess(WRITER_AS_OXLINT_LINT_RUN_ENDS, { [WRITES_AS_OXLINT_LINT_RUN_ENDS]: JSON.stringify(writes) })
 }
 
 /** First signal once oxlint's fix run holds on after a stop, the second once check asked it to end; then ends that oxlint. */
@@ -263,13 +268,20 @@ export async function checkSignalledTwiceWhileOxlintHoldsOn(
 
 /** Each Node process of the run reads the clock the months given ahead, with browserslist left free to warn that its data is old. */
 export function clockMovedForward(months: number): Required<Pick<CliOptions, 'env'>> {
-  const nodeOptions = [process.env['NODE_OPTIONS'], `--import=${CLOCK_MOVED_FORWARD}`].filter((option) => option !== undefined && option !== '').join(' ')
-  return { env: { NODE_OPTIONS: nodeOptions, [CLOCK_MONTHS_AHEAD]: String(months), [BROWSERSLIST_IGNORE_OLD_DATA]: '' } }
+  return importedIntoEachNodeProcess(CLOCK_MOVED_FORWARD, { [CLOCK_MONTHS_AHEAD]: String(months), [BROWSERSLIST_IGNORE_OLD_DATA]: '' })
 }
 
 function oxlintHoldingOnAfterAStop(markers: OxlintHoldingOn): CliOptions {
-  const nodeOptions = [process.env['NODE_OPTIONS'], `--import=${OXLINT_HOLDING_ON_AFTER_A_STOP}`].filter((option) => option !== undefined && option !== '').join(' ')
-  return { env: { NODE_OPTIONS: nodeOptions, [OXLINT_HOLDING_ON]: JSON.stringify(markers) } }
+  return importedIntoEachNodeProcess(OXLINT_HOLDING_ON_AFTER_A_STOP, { [OXLINT_HOLDING_ON]: JSON.stringify(markers) })
+}
+
+function importedIntoEachNodeProcess(moduleUrl: string, variablesItReads: Readonly<Record<string, string>>): Required<Pick<CliOptions, 'env'>> {
+  return { env: { NODE_OPTIONS: nodeOptionsImporting(moduleUrl), ...variablesItReads } }
+}
+
+/** The NODE_OPTIONS the tests run with, then an import of the module given into each Node process of the run. */
+function nodeOptionsImporting(moduleUrl: string): string {
+  return [process.env.NODE_OPTIONS, `--import=${moduleUrl}`].filter((option) => option !== undefined && option !== '').join(' ')
 }
 
 /** Ends the process where it still runs: whether it did. */
@@ -367,7 +379,7 @@ export function idOfAnEndedProcess(): number {
 
 /** PATH less the folders holding a bin of our name, as a workspace install or `bun run` puts this repo's own there. */
 export function searchPathWithoutOurBin(): string {
-  const searchPath = process.env['PATH']
+  const searchPath = process.env.PATH
   if (searchPath === undefined) throw new Error('the tests run with no PATH')
   return searchPath
     .split(delimiter)
@@ -376,7 +388,7 @@ export function searchPathWithoutOurBin(): string {
 }
 
 export function nodeBelowTheFloor(): OldNode | undefined {
-  const searchPath = process.env['PATH']
+  const searchPath = process.env.PATH
   if (searchPath === undefined) return undefined
   return searchPath
     .split(delimiter)

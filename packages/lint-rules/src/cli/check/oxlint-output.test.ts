@@ -23,6 +23,10 @@ const REFUSED_CONFIG = 'refused.json'
 const REFUSED_OPTION_CONFIG = 'refused-option.json'
 const ACCEPTED_CONFIG = 'accepted.json'
 const LINTED_FILE = 'src/a.ts'
+const REACT_RULES_CONFIG = 'react-rules.json'
+const FILE_BREAKING_REACT_RULES = 'src/hooks.jsx'
+// oxlint 1.87 prints rules-of-hooks and exhaustive-deps under react-hooks, and purity, as the rest of its react plugin, under react.
+const REACT_RULES_BROKEN = ['react-hooks/rules-of-hooks', 'react-hooks/exhaustive-deps', 'react-hooks/purity']
 // oxlint 1.87 printed its refusals on stdout alone; this stands in for anything it adds on stderr.
 const A_LINE_ON_STDERR = 'a line oxlint printed on stderr'
 const JSON_HOLDING_NO_REPORT = [JSON.stringify({ number_of_files: 1 }), JSON.stringify({ diagnostics: {} }), JSON.stringify([])]
@@ -59,6 +63,15 @@ const PROJECT = tempProjects.create({
     [REFUSED_OPTION_CONFIG]: JSON.stringify({ rules: { [MAX_PARAMS]: ['error', MAX_PARAMS_OPTION_OXLINT_REFUSES] } }),
     [ACCEPTED_CONFIG]: JSON.stringify({ rules: { 'no-debugger': 'error' } }),
     [LINTED_FILE]: moduleText('debugger'),
+    [REACT_RULES_CONFIG]: JSON.stringify({ plugins: ['react'], rules: { 'react/rules-of-hooks': 'error', 'react/exhaustive-deps': 'error', 'react/purity': 'error' } }),
+    [FILE_BREAKING_REACT_RULES]: moduleText(
+      "import { useEffect, useState } from 'react'",
+      'export function useThing(on, value) {',
+      '  if (on) useState(0)',
+      '  useEffect(() => { console.log(value) }, [])',
+      '}',
+      'export function Clock() { return <p>{Date.now()}</p> }',
+    ),
   },
 })
 
@@ -67,6 +80,12 @@ describe('labelOfOxlintCode', () => {
     const misread = catalog.oxlintRules.filter((rule) => labelOfOxlintCode(oxlintCodeOfRule(rule), catalog) !== rule.id)
 
     expect(misread).toStrictEqual([])
+  })
+
+  it("gives each finding oxlint reports for a rule of its react plugin back as the rule's ID, whichever prefix oxlint prints it under", () => {
+    const { diagnostics } = oxlintReportFrom(rawOxlintOutput(PROJECT, REACT_RULES_CONFIG, [FILE_BREAKING_REACT_RULES]))
+
+    expect(new Set(diagnostics.map(({ code }) => (code === null ? code : labelOfOxlintCode(code, catalog))))).toStrictEqual(new Set(REACT_RULES_BROKEN))
   })
 
   it('gives a code no rule in the catalog has as oxlint wrote it, beside those rules, which it gives as their IDs', () => {

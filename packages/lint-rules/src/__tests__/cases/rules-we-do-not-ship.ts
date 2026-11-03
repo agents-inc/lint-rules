@@ -1,14 +1,11 @@
-// Owner, q-lint-unshipped-rules-channel: our rules list accepts only rules we ship; naming any other rule there stops
-// with a message pointing to the team's own ESLint or oxlint config. Each unshipped rule here was dropped from the
-// candidates by the owner, so no lane is about to ship it; unshipped-rules-refused.test.ts holds each to the catalog.
+// Our rules list accepts only rules we ship; naming any other rule there stops with a message pointing to the team's
+// own ESLint or oxlint config. The owner dropped each unshipped rule here from the candidates, so none is about to ship;
+// unshipped-rules-refused.test.ts holds each to the catalog.
 
-/** In the catalog, unshipped, oxlint having a version of it (owner 2026-10-24: "Reject", rc-no-console). */
 export const UNSHIPPED_RUN_BY_OXLINT = 'no-console'
-/** In the catalog, unshipped, ESLint alone running it (dropped for house/no-classic-loops, owner 2026-10-10). */
 export const UNSHIPPED_RUN_BY_ESLINT = 'functional/no-loop-statements'
 export const SHIPPED_RUN_BY_OXLINT = 'no-debugger'
 export const SHIPPED_RUN_BY_ESLINT = 'eqeqeq'
-/** No route in the catalog has it. */
 export const NO_RULE_IN_THE_CATALOG = 'not-a/rule'
 
 export const ENTRY_GLOBS = ['legacy/**'] as const

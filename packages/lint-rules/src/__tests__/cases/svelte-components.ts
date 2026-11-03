@@ -151,7 +151,6 @@ const FRAMEWORK_GLOBALS_OXLINT_OVERRIDES: readonly OxlintOverride[] = [
 /** The block every ESLint config of ours holds right after its base block, giving the rune modules the runes. */
 export const SVELTE_RUNES_ESLINT_BLOCK_NAME = 'agents-inc/svelte-runes'
 
-/** Vitest's and Jest's globals, read-only, in test, type-test and setup files of every JS and TS extension. */
 const TEST_RUNNER_GLOBALS_OXLINT_OVERRIDE: OxlintOverride = {
   files: [
     '**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}',

@@ -1,11 +1,9 @@
-// Each fix check would apply here turned a passing Vitest test red under jsdom 29.1.1 or 30.1.3 (measured with
+// Each fix here turned a passing Vitest test red under jsdom 29.1.1 or 30.1.3 (measured with
 // eslint-plugin-unicorn 78.0.0, eslint-plugin-testing-library and oxlint 1.87.0), apart from the three the owner kept
 // and the plain useless spread.
 
-/** A file, the line check reports it on, and the rule that reports it there. */
 type ReportedFile = { readonly file: string; readonly source: string; readonly line: number; readonly rule: string }
 
-/** A file as written and as a fix leaves it. */
 type FixedFile = { readonly file: string; readonly source: string; readonly fixed: string }
 
 type WrittenFile = { readonly file: string; readonly source: string }

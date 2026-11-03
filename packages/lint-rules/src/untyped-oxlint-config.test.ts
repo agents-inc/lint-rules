@@ -1,20 +1,34 @@
+import { join } from 'node:path'
 import type { OxlintConfig } from 'oxlint'
 import { describe, expect, it } from 'vitest'
 import { oxlintPartOf } from './__tests__/agent-configs.ts'
 import { NO_DEBUGGER, NO_EMPTY_PATTERN, NO_INFERRABLE_TYPES, NO_VAR, OURS_RUN_BY_ESLINT, OURS_RUN_BY_OXLINT } from './__tests__/cases/other-engine-configs.ts'
 import { THE_PARTS_NAME, THIRD_ARGUMENTS_HOLDING_NO_PATH } from './__tests__/cases/untyped-oxlint-config-arguments.ts'
+import { importInNode, type ProcessResult } from './__tests__/config-file-loads.ts'
+import { CONSUMER_CONFIG_FILES, projectNamingEachConfigText } from './__tests__/factories/consumer-project-factories.ts'
+import { buildConsumerSettings } from './__tests__/factories/lint-rules-factories.ts'
+import { buildOxlintConfigModule, oxlintConfigModuleText } from './__tests__/factories/oxlint-config-module-factories.ts'
+import { buildPackageJsonListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildTeamOxlintConfig } from './__tests__/factories/team-config-factories.ts'
 import { NOT_STATED, ourPartsIn, projectListingOxlintIn, severityStatedFor } from './__tests__/other-engine-merges.ts'
-import { NO_TEAM_ESLINT_CONFIG, TEAM_ESLINT_CONFIG_SETTING_NO_RULE, teamEslintConfigSettingNoRuleFiles } from './__tests__/team-configs-of-the-other-engine.ts'
-import { setUpTempProjects } from './__tests__/temp-projects.ts'
+import { type RunOfAKind, runMadeFor, setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
+import {
+  EMPTY_TEAM_OXLINT_CONFIG,
+  NO_TEAM_ESLINT_CONFIG,
+  TEAM_ESLINT_CONFIG_SETTING_NO_RULE,
+  teamEslintConfigSettingNoRuleFiles,
+} from './__tests__/team-configs-of-the-other-engine.ts'
+import { CONSUMER_INSTALL, installedPackage, setUpTempProjects, type TempProjects } from './__tests__/temp-projects.ts'
 import type { EditorParts } from './core/editor-parts.ts'
 import { mergeOxlintConfig } from './oxlint.ts'
 
 // What an untyped oxlint.config.mts does: one whose type errors nobody reads. The types refuse every value below as
-// mergeOxlintConfig's second or third argument, and no check of ours refuses it at run time (owner, 2026-10-20), so
+// mergeOxlintConfig's second or third argument, and no check of ours refuses it at run time, so
 // each is measured beside the call the types take, by what it builds or the error it stops at.
 
 type OurRulesStated = Readonly<Record<string, string>>
+
+type EslintConfigLoad = RunOfAKind & { readonly folder: string; readonly imported: ProcessResult }
 
 const tempProjects = setUpTempProjects()
 const projectDir = projectListingOxlintIn(tempProjects, teamEslintConfigSettingNoRuleFiles)
@@ -26,10 +40,30 @@ const OUR_RULES = [NO_DEBUGGER, NO_EMPTY_PATTERN, NO_VAR, NO_INFERRABLE_TYPES]
 const INSTALLED_OXLINT_LOOKED_UP_FROM_NO_FOLDER = 'oxlint.config.mts: a package.json lists oxlint, yet it does not resolve from undefined: install it'
 // Node's error for an argument of the wrong type, such as a path that is no string.
 const NODE_REFUSING_A_PATH_THAT_IS_NO_STRING = { name: 'TypeError', code: 'ERR_INVALID_ARG_TYPE' }
+const TYPESCRIPT_ESLINT = installedPackage('typescript-eslint')
+const NAMING_THE_ESLINT_CONFIG = { kind: 'naming the ESLint config', mergeArguments: `{}, oxlint, { eslintConfig: '${CONSUMER_CONFIG_FILES.eslint}' }` }
+// readOn: what V8's TypeError says eslintConfig was read on.
+const THIRD_ARGUMENTS_NO_OBJECT = [
+  { kind: 'left out', mergeArguments: '{}, oxlint', readOn: 'undefined' },
+  { kind: 'null', mergeArguments: '{}, oxlint, null', readOn: 'null' },
+]
 
 // Two rules oxlint runs for us, and two ESLint does, whose copies oxlint's default correctness category would run.
 function ourEditorParts(): EditorParts {
   return ourPartsIn(projectDir, { ...OURS_RUN_BY_OXLINT, ...OURS_RUN_BY_ESLINT })
+}
+
+/** As ESLint loads eslint.config.mjs, whose mergeEslintConfig reads oxlint.config.mts, here merging with `mergeArguments`. */
+function eslintConfigLoadBeside(projects: TempProjects, { kind, mergeArguments }: { readonly kind: string; readonly mergeArguments: string }): EslintConfigLoad {
+  const folder = projects.create({
+    files: {
+      'package.json': packageJsonText(buildPackageJsonListingOxlint()),
+      ...projectNamingEachConfigText(buildConsumerSettings({}), { eslintBlockSources: [], oxlint: EMPTY_TEAM_OXLINT_CONFIG }),
+      [CONSUMER_CONFIG_FILES.oxlint]: oxlintConfigModuleText(buildOxlintConfigModule({ mergeArguments })),
+    },
+    linkedPackages: [...CONSUMER_INSTALL, TYPESCRIPT_ESLINT],
+  })
+  return { kind, folder, imported: importInNode(join(folder, CONSUMER_CONFIG_FILES.eslint)) }
 }
 
 /** How the merged config sets each of our rules in a TS source file. */
@@ -107,6 +141,23 @@ describe("mergeOxlintConfig's third argument, in an untyped oxlint.config.mts", 
       [NO_EMPTY_PATTERN]: 'error',
       [NO_VAR]: 'off',
       [NO_INFERRABLE_TYPES]: 'off',
+    })
+  })
+
+  describe('while mergeEslintConfig reads oxlint.config.mts, as ESLint loading eslint.config.mjs makes it', () => {
+    const loads = setUpRunsBeforeTheSuite((projects) => [NAMING_THE_ESLINT_CONFIG, ...THIRD_ARGUMENTS_NO_OBJECT].map((call) => eslintConfigLoadBeside(projects, call)))
+
+    it('loads where eslintConfig names the ESLint config', () => {
+      expect(runMadeFor(loads(), NAMING_THE_ESLINT_CONFIG.kind).imported).toStrictEqual({ exitCode: 0, stdout: 'default\n', stderr: '' })
+    })
+
+    it.each(THIRD_ARGUMENTS_NO_OBJECT)("stops, where it is $kind, at V8's TypeError, the error naming eslint.config.mjs and the oxlint config's path", ({ kind, readOn }) => {
+      const { folder, imported } = runMadeFor(loads(), kind)
+
+      expect({ exitCode: imported.exitCode, stdout: imported.stdout }).toStrictEqual({ exitCode: 1, stdout: '' })
+      expect(imported.stderr).toContain(
+        `Error: ${CONSUMER_CONFIG_FILES.eslint}: could not read your oxlint config at ${join(folder, CONSUMER_CONFIG_FILES.oxlint)}: Cannot read properties of ${readOn} (reading 'eslintConfig')\n`,
+      )
     })
   })
 })

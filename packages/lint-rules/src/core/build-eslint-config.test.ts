@@ -6,6 +6,7 @@ import tseslint from 'typescript-eslint'
 import { describe, expect, it } from 'vitest'
 import { SVELTE_RUNES_ESLINT_BLOCK_NAME, TEST_RUNNER_GLOBALS_ESLINT_BLOCK_NAME } from '../__tests__/cases/svelte-components.ts'
 import { blockNamed, pluginRegisteredUnder } from '../__tests__/eslint-config-reads.ts'
+import { rulesOf } from '../__tests__/eslint-plugin-rules.ts'
 import {
   buildCatalog,
   buildEslintRoute,
@@ -20,6 +21,7 @@ import {
 import { buildFileOverride, buildLintRules } from '../__tests__/factories/lint-rules-factories.ts'
 import { setUpEslintConfigOracle } from '../__tests__/eslint-config-oracle.ts'
 import { buildProjectFacts, outsideEveryTsconfigAmong } from '../__tests__/factories/project-facts-factories.ts'
+import { eslintRunningEntryFor, NOT_RUN } from '../__tests__/running-entries.ts'
 import { buildEslintConfig, eslintBlocksBeforeTheOffSwitch, type TypeInformation } from './build-eslint-config.ts'
 import type { LintRulesInput, RuleSettingsInput } from './lint-rules-input.ts'
 import { buildEslintSettings } from './eslint-settings.ts'
@@ -234,11 +236,6 @@ function ruleNamesOf(plugin: Readonly<ESLint.Plugin> | undefined): string[] {
   return Object.keys(plugin.rules)
 }
 
-function rulesOf(plugin: Readonly<ESLint.Plugin>): NonNullable<ESLint.Plugin['rules']> {
-  if (plugin.rules === undefined) throw new Error('plugin has no rules')
-  return plugin.rules
-}
-
 /** 'own' where it is the original's very rule module, 'stub' otherwise. */
 function ruleProvenanceOf(plugin: Readonly<ESLint.Plugin>, original: Readonly<ESLint.Plugin>): Record<string, 'own' | 'stub'> {
   const originalRules = rulesOf(original)
@@ -274,6 +271,22 @@ function causeOfTheErrorThrownBy(build: () => unknown): unknown {
     throw error
   }
   throw new Error('the build threw nothing')
+}
+
+/** Each file's entry for each rule: NOT_RUN where no block sets it or it is off. */
+async function entriesIn(
+  config: readonly Linter.Config[],
+  files: readonly string[],
+  ruleIds: readonly string[],
+): Promise<Record<string, Record<string, unknown>>> {
+  return Object.fromEntries(
+    await Promise.all(
+      files.map(async (file): Promise<[string, Record<string, unknown>]> => [
+        file,
+        Object.fromEntries(await Promise.all(ruleIds.map(async (ruleId): Promise<[string, unknown]> => [ruleId, await eslintRunningEntryFor({ ruleEntryFor, ruleSeverityFor }, config, file, ruleId)]))),
+      ]),
+    ),
+  )
 }
 
 /** How a typed rule is turned on, as a title names it, the lint rules doing so, and the rule's severity there. */
@@ -368,7 +381,7 @@ describe('buildEslintConfig', () => {
         'unicorn',
         'vitest',
       ])
-      expect(plugins['demo']).toBe(registeredPlugin('demo'))
+      expect(plugins.demo).toBe(registeredPlugin('demo'))
     })
 
     it('gives each stub plugin one rule per oxlint-routed ID under its prefix, listed or not', () => {
@@ -377,9 +390,9 @@ describe('buildEslintConfig', () => {
 
       expect({
         'import-x': ruleNamesOf(plugins['import-x']),
-        oxc: ruleNamesOf(plugins['oxc']),
+        oxc: ruleNamesOf(plugins.oxc),
         'react-perf': ruleNamesOf(plugins['react-perf']),
-        vitest: ruleNamesOf(plugins['vitest']),
+        vitest: ruleNamesOf(plugins.vitest),
       }).toStrictEqual({
         'import-x': ['no-cycle'],
         oxc: ['approx-constant'],
@@ -394,8 +407,8 @@ describe('buildEslintConfig', () => {
         blockNamed(buildEslintConfig(lintRules, catalog, pluginRegistry, buildProjectFacts()), 'agents-inc/base'),
       )
 
-      expect(languageOptions['parser']).toBe(tseslint.parser)
-      expect(languageOptions['parserOptions']).toStrictEqual({
+      expect(languageOptions.parser).toBe(tseslint.parser)
+      expect(languageOptions.parserOptions).toStrictEqual({
         ecmaFeatures: { jsx: true },
         ecmaVersion: 'latest',
         sourceType: 'module',
@@ -455,10 +468,10 @@ describe('buildEslintConfig', () => {
       const nodeGlobals = await globalsFor(nodeOnly, 'src/a.ts')
       const browserGlobals = await globalsFor(browserOnly, 'src/a.ts')
 
-      expect(['off', undefined]).not.toContain(nodeGlobals['process'])
-      expect(nodeGlobals['window']).toBeUndefined()
-      expect(['off', undefined]).not.toContain(browserGlobals['window'])
-      expect(browserGlobals['process']).toBeUndefined()
+      expect(['off', undefined]).not.toContain(nodeGlobals.process)
+      expect(nodeGlobals.window).toBeUndefined()
+      expect(['off', undefined]).not.toContain(browserGlobals.window)
+      expect(browserGlobals.process).toBeUndefined()
     })
   })
 
@@ -557,7 +570,7 @@ describe('buildEslintConfig', () => {
           const typedLinting = await Promise.all(
             [...CONSUMER_CONFIG_FILES, ORDINARY_MTS_FILE].map(async (file) => ({
               file,
-              projectService: (await parserOptionsFor(config, file))['projectService'],
+              projectService: (await parserOptionsFor(config, file)).projectService,
               severity: (await ruleSeverityFor(config, file, ruleId)) ?? 'off',
             })),
           )
@@ -582,7 +595,7 @@ describe('buildEslintConfig', () => {
           const typedLinting = await Promise.all(
             CONSUMER_CONFIG_FILES_AND_A_STRAY_OUTSIDE_EVERY_TSCONFIG.map(async (file) => ({
               file,
-              projectService: (await parserOptionsFor(config, file))['projectService'],
+              projectService: (await parserOptionsFor(config, file)).projectService,
               severity: (await ruleSeverityFor(config, file, ruleId)) ?? 'off',
             })),
           )
@@ -617,7 +630,7 @@ describe('buildEslintConfig', () => {
           const typedLinting = await Promise.all(
             [...TS_FILES_OUTSIDE_EVERY_TSCONFIG, FILE_THE_PATH_READ_AS_A_GLOB_MATCHES, ORDINARY_MTS_FILE].map(async (file) => ({
               file,
-              projectService: (await parserOptionsFor(config, file))['projectService'],
+              projectService: (await parserOptionsFor(config, file)).projectService,
               severity: (await ruleSeverityFor(config, file, ruleId)) ?? 'off',
             })),
           )
@@ -665,7 +678,7 @@ describe('buildEslintConfig', () => {
         const config = buildEslintConfig(lintRulesStatingBothNames(), catalogWithATypedExtension, registryWithTheExtension, buildProjectFacts())
 
         expect({
-          projectService: (await parserOptionsFor(config, ORDINARY_MTS_FILE))['projectService'],
+          projectService: (await parserOptionsFor(config, ORDINARY_MTS_FILE)).projectService,
           entry: await ruleEntryFor(config, ORDINARY_MTS_FILE, TYPED_EXTENSION),
         }).toStrictEqual({ projectService: true, entry: [ERROR, AN_OPTION_OXLINT_REFUSES] })
       })
@@ -1111,7 +1124,6 @@ describe('buildEslintConfig', () => {
     const PREFER_DESTRUCTURING_TWIN = '@typescript-eslint/prefer-destructuring'
     const NO_LOOP_FUNC_ALIAS = '@typescript-eslint/no-loop-func'
     const DEFAULT_PARAM_LAST_TWIN = '@typescript-eslint/default-param-last'
-    const NOT_RUN = 'not run'
     const TS_FILE = 'src/a.ts'
     const JS_FILE = 'src/a.js'
     const STRAY_TS_FILE = 'scripts/stray.ts'
@@ -1196,27 +1208,6 @@ describe('buildEslintConfig', () => {
         twinsCatalog,
       )
       return [...globalIgnores, base, ...afterTheBase]
-    }
-
-    /** NOT_RUN where no block sets it or it is off. */
-    async function entriesIn(
-      config: readonly Linter.Config[],
-      files: readonly string[],
-      ruleIds: readonly string[],
-    ): Promise<Record<string, Record<string, unknown>>> {
-      return Object.fromEntries(
-        await Promise.all(
-          files.map(async (file): Promise<[string, Record<string, unknown>]> => [
-            file,
-            Object.fromEntries(await Promise.all(ruleIds.map(async (ruleId): Promise<[string, unknown]> => [ruleId, await runningEntryFor(config, file, ruleId)]))),
-          ]),
-        ),
-      )
-    }
-
-    async function runningEntryFor(config: readonly Linter.Config[], file: string, ruleId: string): Promise<unknown> {
-      const severity = await ruleSeverityFor(config, file, ruleId)
-      return severity === undefined || severity === 'off' ? NOT_RUN : ruleEntryFor(config, file, ruleId)
     }
 
     /** ESLint fills in the default options the rule declares. */
@@ -1528,7 +1519,7 @@ describe('a rule split by types with another, as the data gives it', () => {
 
 describe('buildEslintSettings', () => {
   it('gives eslint-plugin-react React 18.3.0', () => {
-    expect(buildEslintSettings(buildProjectFacts())['react']).toStrictEqual({ version: REACT_VERSION })
+    expect(buildEslintSettings(buildProjectFacts()).react).toStrictEqual({ version: REACT_VERSION })
   })
 })
 

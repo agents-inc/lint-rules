@@ -42,6 +42,6 @@ function tarballNamedBy({ exitCode, stdout, output }: ProcessRun): string {
   // Parse boundary: npm's JSON report of what it packed.
   const packed: unknown = JSON.parse(stdout)
   const entry: unknown = Array.isArray(packed) ? packed[0] : undefined
-  if (!isRecord(entry) || typeof entry['filename'] !== 'string') throw new Error(`npm pack printed no tarball: ${stdout}`)
-  return entry['filename']
+  if (!isRecord(entry) || typeof entry.filename !== 'string') throw new Error(`npm pack printed no tarball: ${stdout}`)
+  return entry.filename
 }

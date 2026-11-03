@@ -152,7 +152,6 @@ export const maxParamsSourceFilesInLegacyAndSrc = {
   'src/b.js': JS_SOURCE,
 } as const
 
-/** A TS and a JS file in src/ and in scripts/. */
 export const unusedParameterSourceFiles = {
   'src/a.ts': TS_UNUSED_PARAMETER_SOURCE,
   'src/b.js': JS_UNUSED_PARAMETER_SOURCE,

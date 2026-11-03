@@ -56,7 +56,6 @@ const TSCONFIGS_EXTENDING_SHARED_ONES: readonly NotAConfigFile[] = [
   },
 ]
 
-/** Our no-var and no-inferrable-types, which ESLint runs for us. */
 export const OURS_RUN_BY_ESLINT: OurRules = { [NO_VAR]: 'error', [NO_INFERRABLE_TYPES]: 'error' }
 
 /** Our no-debugger and no-empty-pattern, which oxlint runs for us. */

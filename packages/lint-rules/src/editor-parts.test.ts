@@ -11,7 +11,7 @@ import {
 import { buildPackageJsonListingOthers, createProjectListingOxlint, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { buildProjectFacts } from './__tests__/factories/project-facts-factories.ts'
 import { pathsOfFunctionsIn } from './__tests__/functions-in.ts'
-import { setUpTempProjects } from './__tests__/temp-projects.ts'
+import { type RunsBeforeTheSuiteOptions, setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { buildEslintConfig } from './core/build-eslint-config.ts'
 import { editorPartsOf } from './core/editor-parts.ts'
 import type { RuleSetting, RuleSettings } from './core/resolve-rule-layers.ts'
@@ -22,18 +22,24 @@ import { defineLintRules } from './index.ts'
 
 const EDITOR_PART_KEYS: ReadonlySet<string> = new Set(['eslint', 'oxlint'])
 
-const tempProjects = setUpTempProjects()
-const PROJECT_WITH_OXLINT = createProjectListingOxlint(tempProjects)
-const PROJECT_WITHOUT_OXLINT = tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOthers()) } })
+const PROJECTS_MADE: RunsBeforeTheSuiteOptions = { timeoutMs: 10_000, whatFailed: 'the projects listing oxlint and not could not be made before the suite' }
+
+const projects = setUpRunsBeforeTheSuite(
+  (tempProjects) => ({
+    withOxlint: createProjectListingOxlint(tempProjects),
+    withoutOxlint: tempProjects.create({ files: { 'package.json': packageJsonText(buildPackageJsonListingOthers()) } }),
+  }),
+  PROJECTS_MADE,
+)
 
 const PROJECTS = [
-  { project: 'whose package.json lists oxlint', projectDir: PROJECT_WITH_OXLINT, partTypes: { eslint: 'object', oxlint: 'object' } },
-  { project: 'whose package.json lists no oxlint', projectDir: PROJECT_WITHOUT_OXLINT, partTypes: { eslint: 'object', oxlint: 'undefined' } },
-]
+  { project: 'whose package.json lists oxlint', made: 'withOxlint', partTypes: { eslint: 'object', oxlint: 'object' } },
+  { project: 'whose package.json lists no oxlint', made: 'withoutOxlint', partTypes: { eslint: 'object', oxlint: 'undefined' } },
+] as const
 
 describe('what defineLintRules returns', () => {
-  it.each(PROJECTS)('is the editor parts and nothing else, for a project $project', ({ projectDir }) => {
-    const config = defineLintRules(buildEveryRulesetLintRules(projectDir))
+  it.each(PROJECTS)('is the editor parts and nothing else, for a project $project', ({ made }) => {
+    const config = defineLintRules(buildEveryRulesetLintRules(projects()[made]))
 
     expect({
       keys: Object.keys(config),
@@ -41,8 +47,8 @@ describe('what defineLintRules returns', () => {
     }).toStrictEqual({ keys: ['editorRulesets'], partKeysBesideTheTwo: [] })
   })
 
-  it.each(PROJECTS)('holds parts that are data, with no function anywhere in them, for a project $project', ({ projectDir, partTypes }) => {
-    const { editorRulesets } = defineLintRules(buildEveryRulesetLintRules(projectDir))
+  it.each(PROJECTS)('holds parts that are data, with no function anywhere in them, for a project $project', ({ made, partTypes }) => {
+    const { editorRulesets } = defineLintRules(buildEveryRulesetLintRules(projects()[made]))
 
     expect({
       partTypes: { eslint: typeof editorRulesets.eslint, oxlint: typeof editorRulesets.oxlint },
@@ -51,13 +57,13 @@ describe('what defineLintRules returns', () => {
   })
 
   it('holds both parts for a project whose package.json lists oxlint', () => {
-    const { eslint, oxlint } = defineLintRules(buildEveryRulesetLintRules(PROJECT_WITH_OXLINT)).editorRulesets
+    const { eslint, oxlint } = defineLintRules(buildEveryRulesetLintRules(projects().withOxlint)).editorRulesets
 
     expect({ eslint: typeof eslint, oxlint: typeof oxlint }).toStrictEqual({ eslint: 'object', oxlint: 'object' })
   })
 
   it('holds no oxlint part for a project whose package.json lists none', () => {
-    const { eslint, oxlint } = defineLintRules(buildEveryRulesetLintRules(PROJECT_WITHOUT_OXLINT)).editorRulesets
+    const { eslint, oxlint } = defineLintRules(buildEveryRulesetLintRules(projects().withoutOxlint)).editorRulesets
 
     expect({ eslint: typeof eslint, oxlint }).toStrictEqual({ eslint: 'object', oxlint: undefined })
   })
@@ -68,7 +74,7 @@ describe('what defineLintRules returns', () => {
 // off oxlint's silent copies of them.
 describe('the parts of a project whose package.json lists oxlint', () => {
   it("hold their engine, the project root and their layers, the ESLint part beside oxlint the oxlint part's layers too, the oxlint part the rules the ESLint part turns on, and nothing else", () => {
-    const { eslint, oxlint } = defineLintRules(buildEveryRulesetLintRules(PROJECT_WITH_OXLINT)).editorRulesets
+    const { eslint, oxlint } = defineLintRules(buildEveryRulesetLintRules(projects().withOxlint)).editorRulesets
 
     expect({ eslint: Object.keys(eslint).toSorted(), oxlint: oxlint === undefined ? undefined : Object.keys(oxlint).toSorted() }).toStrictEqual({
       eslint: ['engine', 'layers', 'oxlintLayers', 'tsconfigRootDir', 'usesOxlint'],
@@ -215,7 +221,7 @@ describe('the stand-ins for oxlint-only rules', () => {
   })
 })
 
-// Nothing is in a team's editor config unless its editor rulesets list it (owner, 2026-10-27), so a rule
+// Nothing is in a team's editor config unless its editor rulesets list it, so a rule
 // allowSuppressions decides runs in the editor parts as a rule of its editor ruleset, at its allowed setting.
 describe('a rule allowSuppressions decides, with an editor ruleset', () => {
   const ON_WHERE_ALLOWED = 'demo/blanket'

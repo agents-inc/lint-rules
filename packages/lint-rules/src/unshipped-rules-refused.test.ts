@@ -13,8 +13,8 @@ import {
 import { buildConsumerLintRules, emptyTsconfigRootDir } from './__tests__/factories/lint-rules-factories.ts'
 import { defineLintRules } from './index.ts'
 
-// Owner, q-lint-unshipped-rules-channel: our rules list accepts only rules we ship; naming any other rule there stops
-// with a message pointing to the team's own ESLint or oxlint config. Any setting counts as naming it, off included.
+// Our rules list accepts only rules we ship; naming any other rule there stops with a message pointing to the team's
+// own ESLint or oxlint config. Any setting counts as naming it, off included.
 
 type RouteHeld = { readonly id: string; readonly engine: 'oxlint' | 'eslint'; readonly shipped: boolean } | { readonly id: string; readonly route: 'none' }
 
@@ -23,7 +23,6 @@ function routeHeldFor(id: string): RouteHeld {
   return route === undefined ? { id, route: 'none' } : { id, engine: route.engine, shipped: route.shipped !== null }
 }
 
-/** Each ESLint block's setting of the rule, in the agent build check makes. */
 function eslintSettingsOf(id: string, defined: ReturnType<typeof defineLintRules>): unknown[] {
   return agentConfigsOf(defined).eslint.flatMap(({ rules }) => (rules !== undefined && Object.hasOwn(rules, id) ? [rules[id]] : []))
 }

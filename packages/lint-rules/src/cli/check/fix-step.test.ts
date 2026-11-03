@@ -232,10 +232,8 @@ describe("a fix step git's failure stops after oxlint fixed", () => {
       contents: { [FIRST]: FIRST_AFTER_OXLINT, [SECOND]: SECOND_BEFORE_FIXES },
     })
   })
-
 })
 
-// What check cannot run is skipped and listed; the step goes on.
 describe('a fix step past a failure that is no signal', () => {
   it("keeps oxlint's fix the guard passes where oxlint's own run fails after writing, writes back the one the guard fails, records the kept one, and goes on to ESLint's fixes", async () => {
     const projectDir = tempProjects.create({ files: BEFORE_FIXES })
@@ -261,8 +259,6 @@ describe('a fix step past a failure that is no signal', () => {
     })
   })
 
-  // Another writer edits a file after oxlint's run, while ESLint fixes an earlier one; ESLint then reads
-  // that writer's text, fixes and writes it; then ESLint fails on a later file.
   it("keeps ESLint's fix of the text another writer wrote before ESLint read it, that writer's line with it, records the file, and goes on past a later file ESLint fails on", async () => {
     const projectDir = tempProjects.create({ files: { [FIRST]: FIRST_BEFORE_FIXES, [SECOND]: moduleText(exportedLet('second')), [THIRD]: THIRD_BEFORE_FIXES } })
     const writersText = moduleText(exportedLet('second'), exportedConstant('writtenByAnotherWriter'))
@@ -380,7 +376,6 @@ describe('a fix step a signal stops', () => {
 })
 
 describe('a file whose path another writer leaves with no file while oxlint fixes', () => {
-  // check lists the path as not checked, and goes on.
   it.each(NO_FILE_THERE)("where it $how: keeps oxlint's fix in the other file, records it, leaves the path as that writer left it, and goes on", async ({ remove, left }) => {
     const projectDir = tempProjects.create({ files: BEFORE_FIXES })
     const fixingThenRemoved: InPlaceFixer = async (paths, signal) => {
@@ -395,5 +390,19 @@ describe('a file whose path another writer leaves with no file while oxlint fixe
       first: FIRST_AFTER_OXLINT,
       second: left,
     })
+  })
+})
+
+describe('the files a fix step says its fixes changed', () => {
+  it('are those holding a fix oxlint or ESLint kept, and not one whose every fix the guard dropped', async () => {
+    const projectDir = tempProjects.create({ files: { ...BEFORE_FIXES, [THIRD]: THIRD_BEFORE_FIXES } })
+    const { settled } = await fixStepOver([...filesIn(projectDir), ...wholeFilesIn(projectDir, [THIRD])], {
+      oxlint: oxlintFixRunWriting(projectDir, AFTER_OXLINT),
+      eslint: eslintFixingLets({ whileFixing() {}, crashesOn: null }),
+      changedLinesNow: GIT_READ_AS_IT_IS,
+    })
+    if (!('gave' in settled)) throw new Error('the fix step stopped')
+
+    expect(settled.gave.textChangedIn).toStrictEqual([join(projectDir, FIRST), join(projectDir, THIRD)])
   })
 })

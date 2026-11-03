@@ -6,10 +6,8 @@ import { FILES_A_WITHHELD_FIX_WOULD_CHANGE, FILES_A_WITHHELD_RULE_SUGGESTS_A_REW
 import { CLASS_LIST } from './routed-to-eslint-check-sources.ts'
 import { tsIgnore } from './suppression-comments.ts'
 
-/** A file, the line a rule reports it on, and that rule. */
 export type ReportedFile = { readonly file: string; readonly source: string; readonly line: number; readonly rule: string }
 
-/** A rule a team's ESLint config turns on under a name no plugin its config alone registers defines, and the prefixes it registers there. */
 type RuleNoPluginDefines = { readonly names: string; readonly rule: string; readonly registersItsPluginItself: boolean; readonly prefixesRegisteredAlone: readonly string[] }
 
 const SINGLE_CALL = 'unicorn/prefer-single-call'
@@ -34,7 +32,6 @@ export const RULES_THE_TEAM_SETS: Readonly<Linter.RulesRecord> = {
 /** The prefixes of RULES_THE_TEAM_SETS, whose plugins the team's config alone registers as they ship. */
 export const PREFIXES_OF_THE_RULES_THE_TEAM_SETS: readonly string[] = ['unicorn', '@typescript-eslint']
 
-/** A @ts-ignore outside test files, which ban-ts-comment reports on line 1. */
 export const TS_IGNORE_FILE: ReportedFile = { file: 'src/ts-ignore.ts', source: tsIgnore, line: 1, rule: TS_COMMENT_BAN }
 
 /** Each file a rule the team sets reports: prefer-single-call with a fix, and with a suggestion; ban-ts-comment with a suggestion. */
@@ -78,7 +75,6 @@ export const SUPPRESSION_OF_A_JSDOC_RULE = {
 /** no-new-wrappers, whose fix check withholds and which ESLint takes over from oxlint for us, as the team's own oxlint config sets it. */
 export const TEAMS_OXLINT_CONFIG_SETTING_NEW_WRAPPERS: OxlintConfig = { rules: { [NEW_WRAPPERS]: 'error' } }
 
-/** no-new-wrappers by its ESLint ID and by oxlint's code. */
 export const NEW_WRAPPERS_NAMES: readonly string[] = [NEW_WRAPPERS, `eslint(${NEW_WRAPPERS})`]
 
 /** no-new-wrappers reports line 2; its fix drops the `new`. */
@@ -89,7 +85,6 @@ export const NEW_BOOLEAN_FILE: ReportedFile = {
   rule: NEW_WRAPPERS,
 }
 
-/** The same code, which the team's oxlint config alone fixes. */
 export const NEW_BOOLEAN_FILE_FIXED_BY_THE_TEAM_ALONE = { file: 'src/feature-label-alone.ts', source: NEW_BOOLEAN_FILE.source }
 
 /** prefer-single-call, ours beside the team's oxlint config, its fix withheld. */

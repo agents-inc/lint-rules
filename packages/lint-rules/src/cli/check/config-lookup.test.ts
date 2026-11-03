@@ -41,6 +41,14 @@ describe('the config check reads', () => {
       new Error(`there is no agents-inc.lint.mts in ${cwd} or any folder above it up to ${topLevel}. Run "agents-inc-lint init" in the folder of the package to lint.`),
     )
   })
+
+  it('is refused naming the folder once where check runs at the git top level and none is there', () => {
+    const topLevel = join(repoHoldingConfigsIn(''), PACKAGE_FOLDER)
+
+    expect(() => nearestConfig(topLevel, topLevel)).toThrow(
+      new Error(`there is no agents-inc.lint.mts in ${topLevel}. Run "agents-inc-lint init" in the folder of the package to lint.`),
+    )
+  })
 })
 
 describe('the package the config imports', () => {

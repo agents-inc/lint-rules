@@ -1,9 +1,4 @@
-// Imported into every Node process a check run starts (cli-runs.ts puts it in NODE_OPTIONS), never by a test. In the
-// oxlint run the variable below names (`fix`, with `--fix`, or `lint`), it deletes a file at a point oxlint's own
-// progress sets, where a real writer lands by chance:
-// - `as the run ends`: as the process exits, after oxlint read every file and wrote its fixes;
-// - `before oxlint opens it`: oxlint runs on one thread, so it opens the files one at a time, in the order check names
-//   them, and loads oxlint-plugin-deleting-a-file.mjs, whose rule deletes it while oxlint lints the first.
+// Imported into every Node process a check run starts (cli-runs.ts puts it in NODE_OPTIONS), never by a test.
 // Plain JS, as another-writer-as-oxlint-lint-run-ends.mjs is.
 import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -21,23 +16,27 @@ const PLUGIN = fileURLToPath(new URL('./oxlint-plugin-deleting-a-file.mjs', impo
 const PLUGIN_RULE = 'another-writer/deletes-a-file'
 const FIRST_ARGUMENT = 2
 
-const deletion = process.env[DELETION_VARIABLE]
 const [, script, ...args] = process.argv
 
-if (deletion !== undefined && script !== undefined && script.endsWith(OXLINT_BIN)) {
+deleteInTheRunTheVariableNames()
+
+function deleteInTheRunTheVariableNames() {
+  const deletion = process.env[DELETION_VARIABLE]
+  if (deletion === undefined || script === undefined || !script.endsWith(OXLINT_BIN)) return
   const { path, run, when, marker } = JSON.parse(deletion)
-  if ((run === 'fix') === args.includes(FIX_FLAG)) {
-    if (when === AS_THE_RUN_ENDS) {
-      process.on('exit', () => {
-        rmSync(path)
-        writeFileSync(marker, when)
-      })
-    } else {
-      // oxlint reads its arguments once this module has run.
-      process.argv.splice(FIRST_ARGUMENT, 0, ONE_THREAD)
-      const configPath = args[args.indexOf(CONFIG_FLAG) + 1]
-      const config = JSON.parse(readFileSync(configPath, 'utf8'))
-      writeFileSync(configPath, JSON.stringify({ ...config, jsPlugins: [...(config.jsPlugins ?? []), PLUGIN], rules: { ...config.rules, [PLUGIN_RULE]: 'error' } }))
-    }
+  if ((run === 'fix') !== args.includes(FIX_FLAG)) return
+  if (when === AS_THE_RUN_ENDS) {
+    process.on('exit', () => {
+      rmSync(path)
+      writeFileSync(marker, when)
+    })
+    return
   }
+  // Before oxlint opens a file: oxlint runs on one thread, so it opens the files one at a time, in the order
+  // check names them, and loads oxlint-plugin-deleting-a-file.mjs, whose rule deletes it while oxlint lints the
+  // first. oxlint reads its arguments once this module has run.
+  process.argv.splice(FIRST_ARGUMENT, 0, ONE_THREAD)
+  const configPath = args[args.indexOf(CONFIG_FLAG) + 1]
+  const config = JSON.parse(readFileSync(configPath, 'utf8'))
+  writeFileSync(configPath, JSON.stringify({ ...config, jsPlugins: [...(config.jsPlugins ?? []), PLUGIN], rules: { ...config.rules, [PLUGIN_RULE]: 'error' } }))
 }

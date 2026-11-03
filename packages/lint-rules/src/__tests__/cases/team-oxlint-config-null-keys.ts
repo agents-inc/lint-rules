@@ -24,16 +24,13 @@ export type NullKey = 'categories' | 'env' | 'extends' | 'globals' | 'ignorePatt
 /** Where the null sits below the root of the config named: in a file it extends by path, or at the path to an object it extends, as `extends[0].`. */
 type HeldBelowTheRoot = { readonly heldIn?: string; readonly at?: string }
 
-/** A file named as the team's oxlint config, and the key the refusal names. */
 export type FileHoldingANullKey = ConfigFile & HeldBelowTheRoot & { readonly what: string; readonly key: NullKey }
 
-/** A file named as the team's oxlint config, which the merge reads. */
 export type FileRead = ConfigFile & { readonly what: string }
 
 /** A config handed to mergeOxlintConfig, typed unknown as an oxlint.config.mts nobody type-checks may write it. */
 export type TheirsGiven = { readonly what: string; readonly theirs: unknown }
 
-/** And the key the refusal names. */
 export type TheirsHoldingANullKey = TheirsGiven & Pick<HeldBelowTheRoot, 'at'> & { readonly key: NullKey }
 
 /** The path a refusal names to a null below a key, as `overrides[0].rules["no-debugger"]`. */
@@ -64,7 +61,6 @@ const WHAT_OXLINT_TAKES_AT: Readonly<Record<NullKey, string>> = {
 const CORRECTNESS_ON = buildTeamOxlintConfig({ categories: { correctness: 'error' } })
 const CORRECTNESS_ON_LISTING_IMPORT = buildTeamOxlintConfig({ ...CORRECTNESS_ON, plugins: ['import'] })
 const CORRECTNESS_ON_LISTING_NO_PLUGIN = buildTeamOxlintConfig({ ...CORRECTNESS_ON, plugins: [] })
-// The source files each override below applies in.
 const SOURCES = 'src/**'
 // Each null oxlint takes in an override (measured, 1.87).
 const OVERRIDE_HOLDING_NULLS_OXLINT_TAKES = { files: [SOURCES], env: null, globals: null, plugins: null, jsPlugins: null }
@@ -213,12 +209,10 @@ const NULLS_OXLINT_REFUSES_FOR_SOME_RULES_OR_SETTINGS: readonly ConfigHoldingANu
   { what: "a null in react's formComponents", slug: 'react-form-components-slot-null', config: { settings: { react: { formComponents: [null] } } } },
 ]
 
-/** The team's own JSON config. */
 function oxlintrcHolding({ what, slug, config, location }: NullBelowAKey): FileHoldingANullBelowAKey {
   return { what, file: `${slug}.oxlintrc.json`, text: jsonFileText(config), location }
 }
 
-/** Written beside the team's JSON config extending it. */
 function fileExtendedHolding({ slug, config }: NullBelowAKey): ConfigFile {
   return { file: `${slug}.base.oxlintrc.json`, text: jsonFileText(config) }
 }

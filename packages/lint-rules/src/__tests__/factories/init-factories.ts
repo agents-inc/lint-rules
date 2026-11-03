@@ -223,7 +223,7 @@ function valueText(value: PackageJsonValue, depth: number, layout: JsonLayout): 
 }
 
 function isWrittenAsIs(value: WrittenAsIs | PackageJsonObject): value is WrittenAsIs {
-  return typeof value['writtenAsIs'] === 'string' && Object.keys(value).length === 1
+  return typeof value.writtenAsIs === 'string' && Object.keys(value).length === 1
 }
 
 /** init's two writes into the project, in the order given: package.json's edit, and the config. */

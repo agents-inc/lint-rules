@@ -1,8 +1,8 @@
 // Parameters typed by instantiations of one generic mapped type (Pick, Required), read-only beside overwritable. Under
 // the shipped options, functional/prefer-immutable-types reports each overwritable one (measured: eslint-plugin-functional
-// 10.0.1, is-immutable-type 5.0.4). Engines lint files in path order, so a file named a- is linted before one named b-.
+// 10.0.1, is-immutable-type 5.0.4). lintedBy lints each file in turn in path order, so a file named a- is linted before
+// one named b-.
 
-/** A file's path in the project, and its lines. */
 export type ParameterSource = { readonly file: string; readonly lines: readonly string[] }
 
 /**

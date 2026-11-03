@@ -54,7 +54,7 @@ export type TeamBlockScope = Pick<Linter.Config, 'files' | 'ignores' | 'basePath
 export type PluginIdentity = { readonly name: string; readonly version: string }
 
 /** As buildTeamEslintBlockTurningOn, within the scope given. */
-export function buildTeamEslintBlockTurningOnWithin(name: string, ruleIds: readonly string[], scope: TeamBlockScope): Linter.Config {
+export function buildTeamEslintBlockTurningOnWithin(name: string, ruleIds: readonly string[], scope: Readonly<TeamBlockScope>): Linter.Config {
   return { ...buildTeamEslintBlockTurningOn(name, ruleIds), ...scope }
 }
 
