@@ -187,7 +187,7 @@ function installedEslintRule(id: string, rule: Readonly<RuleWithMeta>, sameModul
  * typescript-eslint's `extendsBaseRule`: true where the core rule has the rule's own name, the core
  * rule's name where it differs.
  */
-function coreRuleExtendedBy(id: string, { meta }: Readonly<RuleWithMeta>): string | null {
+export function coreRuleExtendedBy(id: string, { meta }: Readonly<RuleWithMeta>): string | null {
   const docs = meta?.docs
   if (docs === undefined || !('extendsBaseRule' in docs)) return null
   const { extendsBaseRule } = docs

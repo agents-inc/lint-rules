@@ -1,8 +1,7 @@
-import { mkdir, writeFile } from 'node:fs/promises'
-import { dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { rulesetDefinitions } from '../ruleset-definitions.ts'
+import { writeFileCreatingItsDir } from '../write-file-creating-its-dir.ts'
 import { buildInventory } from './build-inventory.ts'
 import { buildRouting } from './build-routing.ts'
 import { canonicalRules } from './canonical-rules.ts'
@@ -33,10 +32,7 @@ async function writeGeneratedFiles(): Promise<void> {
 }
 
 async function writeGeneratedFile({ path, contents }: Readonly<GeneratedFile>): Promise<void> {
-  const target = fileURLToPath(new URL(path, PACKAGE_ROOT))
-  // eslint-disable-next-line functional/no-expression-statements -- without it the write after it fails with ENOENT where the folder is missing; what mkdir answers, the first folder it made, is read by nothing
-  await mkdir(dirname(target), { recursive: true })
-  await writeFile(target, contents)
+  await writeFileCreatingItsDir(fileURLToPath(new URL(path, PACKAGE_ROOT)), contents)
 }
 
 function isRunAsScript(): boolean {

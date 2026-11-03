@@ -77,6 +77,9 @@ export const eslintPlugins: Readonly<Record<string, ESLint.Plugin>> = {
   zod,
 }
 
+/** Their rules call context methods ESLint 10 removed, which `fixupPluginRules` puts back: without it, react's `version: 'detect'` aborts the run. */
+export const PREFIXES_NEEDING_COMPAT: ReadonlySet<string> = new Set(['css-modules', 'react', 'react-hook-form'])
+
 /**
  * A plugin whose types do not show an `ESLint.Plugin` with rules, checked at load instead: some publish
  * no types, the jsx-a11y fork types only its configs, storybook's break under

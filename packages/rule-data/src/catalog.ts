@@ -179,7 +179,7 @@ export const catalog: Catalog = {
  * The RuleId of each rule the oxlint we install runs only with type information, which a config
  * turns on with `options.typeAware`: a category never runs one otherwise.
  */
-export const ruleIdsOxlintRunsTypeAware: ReadonlySet<string> = new Set(inventory.rules.filter(isRunTypeAwareByOxlint).map(({ id }) => id))
+export const ruleIdsOxlintRunsTypeAware: ReadonlySet<string> = new Set(inventory.rules.filter(({ oxlint }) => oxlint?.typeAware === true).map(({ id }) => id))
 
 export function routeOf(id: string, { rules }: Readonly<Pick<Catalog, 'rules'>>): RuleRoute {
   return foundOr(rules.get(id), `unknown rule ID "${id}"`)
@@ -193,10 +193,6 @@ export function isOxlintRoute(route: RuleRoute): route is OxlintRoute {
 export function shippedRuleOf({ id, shipped }: Readonly<RuleRoute>): ShippedRule {
   if (shipped === null) throw new Error(`${id} is not shipped`)
   return shipped
-}
-
-function isRunTypeAwareByOxlint({ oxlint }: Readonly<InventoryRule>): boolean {
-  return oxlint?.typeAware === true
 }
 
 function oxlintRuleOf({ id, oxlint }: Readonly<InventoryRule>): OxlintRule[] {

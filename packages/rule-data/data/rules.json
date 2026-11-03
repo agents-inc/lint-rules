@@ -1892,6 +1892,7 @@
     "id": "@typescript-eslint/prefer-function-type",
     "ruleset": "conventions",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version fixes an interface whose call signature returns this to a function type returning this, which TypeScript refuses (TS2526), where ESLint's version reports it and leaves it as written (q-lint-slice2-oxlint-fix-changes-meaning; measured, oxlint 1.87, typescript-eslint 8.71.2, TypeScript 6.0.3)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -5004,6 +5005,7 @@
     "id": "no-var",
     "ruleset": "modern-js",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version fixes a var read before its declaration, or declared twice, to a const, which then throws a ReferenceError or does not parse, and a loop's var its closures read to a let, which changes what they return, where ESLint's version reports each and leaves it as written (q-lint-slice2-oxlint-fix-changes-meaning; measured, oxlint 1.87, ESLint 10.12, Node 23.10)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -12325,6 +12327,7 @@
     "id": "unicorn/prefer-dom-node-append",
     "ruleset": "browser",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version fixes appendChild to append where the call's value is used, but append returns undefined, so the node returned is lost and a call chained on it throws, where ESLint's version reports it and leaves it as written (q-lint-slice2-oxlint-fix-changes-meaning; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0, Chrome 151)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -12371,6 +12374,7 @@
     "id": "unicorn/prefer-dom-node-text-content",
     "ruleset": "browser",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version fixes innerText to textContent, which, unlike innerText, reads the text of hidden elements and writes a line break as a newline rather than a <br>, where ESLint's version reports it and leaves it as written (q-lint-slice2-oxlint-fix-changes-meaning; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0, Chrome 151)",
     "options": [],
     "typed": false,
     "assignment": {
@@ -12727,7 +12731,8 @@
   {
     "id": "unicorn/prefer-modern-dom-apis",
     "ruleset": "browser",
-    "engine": "eslint",
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-modern-dom-apis",
     "options": [],
     "typed": false,
     "assignment": {
@@ -12951,6 +12956,7 @@
     "id": "unicorn/prefer-regexp-test",
     "ruleset": "performance",
     "engine": "eslint",
+    "eslintBecause": "oxlint's version fixes s.match(re) in a condition to re.test(s), which throws a TypeError when re is a string and, when re is a global regex, leaves its lastIndex moved so the next call misses, where ESLint's version reports it and leaves it as written (q-lint-slice2-oxlint-fix-changes-meaning; measured, oxlint 1.87, eslint-plugin-unicorn 78.0.0, Node 23.10)",
     "options": [],
     "typed": false,
     "assignment": {

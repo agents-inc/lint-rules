@@ -5,7 +5,7 @@ const ENGINES: readonly Engine[] = ['oxlint', 'eslint']
 
 const RULESET_LISTS: readonly RulesetList[] = ['quality', 'libs', 'runtimes', 'languages']
 
-const OXLINT_CATEGORIES: readonly OxlintCategory[] = [
+export const OXLINT_CATEGORIES: readonly OxlintCategory[] = [
   'correctness',
   'nursery',
   'pedantic',
