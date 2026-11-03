@@ -7,6 +7,48 @@ Each release has detailed notes in its own file under [`changelogs/`](./changelo
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-11-03
+
+**Ten more ESLint plugins and the rules accepted on 11, 24 and 28 October ship at `error`, the round-2 critique regroups rules, oxlint runs 36 more, and a team config names only rules we ship**
+
+- #83: nine more ESLint plugins are pinned dependencies; eslint-plugin-drizzle-security stays out.
+- owner-2026-10-11: the rules accepted on the old candidates page ship, `house/no-reduce-accumulator-copy` in `performance` among them.
+- 2026-10-24 rule-candidate cards (`rc-…`): zod, TanStack, Playwright, e18e, shadcn and four core rules ship.
+- q-lint-jest-dom-without-jest-dom: `jest-dom` is opt-in and ships seven rules, their fixes withheld.
+- q-lint-react-ssr-in-client-apps: `react-ssr` is opt-in and ships four hydration rules.
+- q-lint-compat-default-target: `compat/compat` ships in `browser-targets`, at Vite 8's build target.
+- q-lint-effect-ruleset-name: a new `effect` ruleset holds `house/no-manual-effect-error-tag`.
+- q-lint-rc-duplicate-disable-measured: three eslint-comments rules ship in `comments`, run where suppressions are allowed.
+- q-lint-pw-off-by-default-where: 18 rules ship off by default, on where `rules` names them.
+- #7: the round-2 critique moves 23 shipped rules between rulesets.
+- q-lint-slice2-autofix: oxlint runs 36 more rules; 18 stay in ESLint, each naming its card.
+- q-lint-unshipped-rules-channel: `rules` and `fileOverrides[].rules` refuse a rule we do not ship (#4).
+- q-lint-oxlint-null-options: the editor merges refuse a null oxlint refuses, naming the file.
+- q-lint-presence-queries-attribute-fix: `check` reports and never rewrites eight rules whose fixes broke jsdom tests.
+- q-lint-jd-editor-fixes: editors get no fix and no suggestion for a rule whose fix `check` withholds.
+- q-lint-cmt-editor-reach: editors run a rule only where `editorRulesets` lists its ruleset; `ban-ts-comment` moves into `type-safety`.
+- q-gap-lint-ts-comment-message: where `@ts-expect-error` is banned too, a `@ts-ignore` is told to fix the type error.
+- q-gap-lint-a11y-original-prefix: the editor merges read more of a team's plugins and oxlint overrides as the team's.
+- q-gap-lint-unused-vars-scripts-config: `no-unused-vars` checks `scripts/` and `*.config.*` files.
+- q-lint-setup-files-which: test setup files get test files' rules.
+- q-lint-compat-stale-data-warning: `check` silences browserslist's old-data message.
+- q-gap-lint-typescript-eslint-version: every typescript-eslint package a user's install reaches is listed at 8.71.2.
+- q-lint-own-published-types: the merges take a read-only `theirs`.
+- Tests: a proof per engine for every shipped rule, and no test calls what can throw while vitest collects it.
+- Tooling: the mutation round script, the leftover-Stryker report and the typecheck of the root lint configs.
+- Refactor: the repo passes its own lint, with no change in behaviour.
+- q-lint-own-gate-per-file: `functional/prefer-immutable-types` answers each call afresh.
+- q-lint-immediate-return-using-fix: `sonarjs/prefer-immediate-return` leaves a `using` variable alone.
+- q-lint-barrel-entry-how: `unicorn/no-barrel-files` skips `src/index.*`.
+- q-lint-check-no-config-folder-twice: `check` names the folder once.
+- check labels oxlint's react-hooks findings as react-hooks/…, as ESLint's are.
+- check survives a changed file deleted while oxlint runs, keeping oxlint's other findings.
+- `plugins: null` in a team's oxlint config: both merges read it as oxlint does.
+- Globs cover every JS and TS extension: `.mts`, `.cts`, `.mjs` and `.cjs` test files, and stories.
+- #7, r2-d68, q-lint-useless-spread-fix-when-on: four rules no longer ship.
+
+See [changelogs/0.3.0.md](./changelogs/0.3.0.md) for full details.
+
 ## [0.2.0] - 2026-10-23
 
 **A rule the team's oxlint config states is the team's even in a line oxlint skips, and our typed blocks ask per file whether a tsconfig takes it in**
