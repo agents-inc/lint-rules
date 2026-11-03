@@ -27987,9 +27987,9 @@
   },
   {
     "id": "unicorn/prefer-modern-dom-apis",
-    "engine": "eslint",
-    "oxlintName": null,
-    "oxlintPlugin": null,
+    "engine": "oxlint",
+    "oxlintName": "unicorn/prefer-modern-dom-apis",
+    "oxlintPlugin": "unicorn",
     "typed": false,
     "eslintAliases": [],
     "oxlintSpellings": [
