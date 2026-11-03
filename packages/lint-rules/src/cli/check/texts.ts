@@ -72,7 +72,8 @@ export function notInGit(cwd: string): string {
 }
 
 export function noConfig(cwd: string, gitTopLevel: string, configFile: string): string {
-  return `there is no ${configFile} in ${cwd} or any folder above it up to ${gitTopLevel}. Run "agents-inc-lint init" in the folder of the package to lint.`
+  const foldersSearched = cwd === gitTopLevel ? cwd : `${cwd} or any folder above it up to ${gitTopLevel}`
+  return `there is no ${configFile} in ${foldersSearched}. Run "agents-inc-lint init" in the folder of the package to lint.`
 }
 
 export function anotherCopy(configFile: string, packageName: string, importedFrom: string, ours: string): string {

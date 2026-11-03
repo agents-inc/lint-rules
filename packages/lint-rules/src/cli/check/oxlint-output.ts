@@ -1,6 +1,6 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
 import { ruleNameOf } from '@workspace/rule-data/rule-id-parts'
-import { isRecord } from '../../core/is-record.ts'
+import { isList, isRecord } from '../../core/is-record.ts'
 import { namedGroupOf } from '../../core/named-groups.ts'
 import { readOnce } from '../../core/read-once.ts'
 import { printedTextOf } from '../printed-lines.ts'
@@ -45,6 +45,9 @@ const SPAN_PLACES = ['line', 'offset', 'length'] as const satisfies ReadonlyArra
 // oxlint names a file it could not open in the message alone, with no `filename`, `code` or place (1.87).
 const COULD_NOT_OPEN = /^Failed to open file (?<path>.+) with error "/u
 const NO_DIAGNOSTICS_IN_THE_JSON = 'the JSON oxlint printed has no diagnostics'
+// oxlint prints these two of its react plugin's rules under react-hooks, and the rest of them under react (1.87).
+const RULES_OXLINT_PRINTS_UNDER_REACT_HOOKS: ReadonlySet<string> = new Set(['react/rules-of-hooks', 'react/exhaustive-deps'])
+const REACT_HOOKS = 'react-hooks'
 
 const ruleIdsByCodeOf = new WeakMap<Catalog, ReadonlyMap<string, string>>()
 
@@ -66,7 +69,11 @@ export function oxlintReportFrom({ stdout, stderr }: OxlintOutput): OxlintReport
 }
 
 function oxlintCodeOfRule({ oxlintName, oxlintPlugin }: OxlintRule): string {
-  return `${oxlintPlugin}(${ruleNameOf(oxlintName)})`
+  return `${pluginOxlintPrintsFor(oxlintName, oxlintPlugin)}(${ruleNameOf(oxlintName)})`
+}
+
+function pluginOxlintPrintsFor(oxlintName: string, oxlintPlugin: string): string {
+  return RULES_OXLINT_PRINTS_UNDER_REACT_HOOKS.has(oxlintName) ? REACT_HOOKS : oxlintPlugin
 }
 
 function ruleIdsByCode(catalog: Readonly<Catalog>): ReadonlyMap<string, string> {
@@ -101,11 +108,6 @@ function jsonIn(stdout: string): JsonRead {
   }
 }
 
-function isList(value: unknown): value is readonly unknown[] {
-  return Array.isArray(value)
-}
-
-/** check read each file it names to oxlint, so one oxlint could not open and check now finds no file at went while check ran. */
 function isAGoneFileOxlintCouldNotOpen(entry: unknown): boolean {
   const path = pathOxlintCouldNotOpen(entry)
   return path !== null && textOfFileAt(path) === null
@@ -128,7 +130,7 @@ function isOptional(value: unknown, isGiven: (given: unknown) => boolean): boole
 }
 
 function isListOfLabels(labels: unknown): labels is readonly RawOxlintLabel[] {
-  return Array.isArray(labels) && labels.every((label) => isRecord(label) && isOxlintSpan(label['span']))
+  return Array.isArray(labels) && labels.every((label) => isRecord(label) && isOxlintSpan(label.span))
 }
 
 function isOxlintSpan(span: unknown): span is OxlintSpan {
