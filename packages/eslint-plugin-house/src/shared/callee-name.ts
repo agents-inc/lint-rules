@@ -18,3 +18,11 @@ export function dottedPropertyNameOf(node: Readonly<TSESTree.Node>): string | nu
     ? node.property.name
     : null
 }
+
+/** The name `object.name` and `object['name']` both read; null for `object[name]`, `object.#name` and anything else. */
+export function staticPropertyNameOf(node: Readonly<TSESTree.Node>): string | null {
+  if (node.type !== AST_NODE_TYPES.MemberExpression) return null
+  if (!node.computed) return dottedPropertyNameOf(node)
+  const { property } = node
+  return property.type === AST_NODE_TYPES.Literal && typeof property.value === 'string' ? property.value : null
+}

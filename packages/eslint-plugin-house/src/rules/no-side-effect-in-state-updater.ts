@@ -3,11 +3,9 @@ import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/u
 import { callReceiving } from '../shared/call-arguments.ts'
 import { dottedPropertyNameOf, methodNameOf } from '../shared/callee-name.ts'
 import { childNodesOf } from '../shared/child-nodes.ts'
-import { isFunctionNode } from '../shared/function-name.ts'
+import { type FunctionExpressionNode, isFunctionExpression, isFunctionNode } from '../shared/function-name.ts'
 
 type MessageId = 'effect' | 'nestedUpdate' | 'outerMutation' | 'refMutation' | 'refWrite'
-
-type Updater = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression
 
 type Link = { readonly node: TSESTree.Node; readonly up: Link | null }
 
@@ -93,16 +91,10 @@ function isStateSetter(callee: Readonly<TSESTree.Expression>): boolean {
   return callee.type === AST_NODE_TYPES.MemberExpression && !callee.computed && callee.property.name === 'setState'
 }
 
-function isUpdater(argument: TSESTree.CallExpressionArgument | undefined): argument is Updater {
-  return (
-    argument?.type === AST_NODE_TYPES.ArrowFunctionExpression || argument?.type === AST_NODE_TYPES.FunctionExpression
-  )
-}
-
-function updaterPassedTo(call: Readonly<TSESTree.CallExpression>): Updater | null {
+function updaterPassedTo(call: Readonly<TSESTree.CallExpression>): FunctionExpressionNode | null {
   if (!isStateSetter(call.callee) || call.arguments.length > MAX_SETTER_ARGUMENTS) return null
   const [updater] = call.arguments
-  return isUpdater(updater) ? updater : null
+  return updater !== undefined && isFunctionExpression(updater) ? updater : null
 }
 
 // `{ a: b }` binds through its value `b`; `{ ...rest }` binds through the rest element itself.
@@ -240,20 +232,26 @@ function writeFinding(target: Readonly<TSESTree.Node>, local: ReadonlySet<string
   return { node: target, messageId: dottedPropertyNameOf(target) === REF_VALUE ? 'refWrite' : 'outerMutation' }
 }
 
+// Only a bare `setX(…)` or `….setState(…)`: `el.setAttribute` updates no state. A one-argument pure
+// helper is returned, not discarded.
+function queuesAnotherUpdate(call: Readonly<TSESTree.CallExpression>, link: Link): boolean {
+  return isStateSetter(call.callee) && call.arguments.length <= 1 && isDiscarded(link)
+}
+
+function mutationFindingOf(callee: Readonly<TSESTree.Expression>, path: readonly string[]): Finding | null {
+  if (callee.type !== AST_NODE_TYPES.MemberExpression || !isMutatorCall(path)) return null
+  // `urlsRef.current.delete(url)`: the same hazard, but there is nothing to copy.
+  return { node: callee, messageId: path.includes(REF_VALUE) ? 'refMutation' : 'outerMutation' }
+}
+
 function callFinding(call: Readonly<TSESTree.CallExpression>, link: Link, local: ReadonlySet<string>): Finding | null {
   const { callee } = call
   const root = rootNameOf(callee)
   if (root !== null && local.has(root)) return null
   const path = memberPathOf(callee)
   if (path !== null && isKnownEffect(path)) return { node: callee, messageId: 'effect' }
-  // Only a bare `setX(…)` or `….setState(…)`: `el.setAttribute` updates no state. A one-argument pure
-  // helper is returned, not discarded.
-  if (isStateSetter(callee) && call.arguments.length <= 1 && isDiscarded(link)) {
-    return { node: callee, messageId: 'nestedUpdate' }
-  }
-  if (path === null || callee.type !== AST_NODE_TYPES.MemberExpression || !isMutatorCall(path)) return null
-  // `urlsRef.current.delete(url)`: the same hazard, but there is nothing to copy.
-  return { node: callee, messageId: path.includes(REF_VALUE) ? 'refMutation' : 'outerMutation' }
+  if (queuesAnotherUpdate(call, link)) return { node: callee, messageId: 'nestedUpdate' }
+  return path === null ? null : mutationFindingOf(callee, path)
 }
 
 // `link` is the node's parent: whether a call's result is discarded depends on it.
@@ -283,7 +281,7 @@ function findingsUnder(node: Readonly<TSESTree.Node>, link: Link, local: Readonl
 }
 
 // Mutating the updater's own argument, or a copy it built, is how a correct updater builds the next state.
-function sideEffectsIn(updater: Readonly<Updater>): Finding[] {
+function sideEffectsIn(updater: Readonly<FunctionExpressionNode>): Finding[] {
   const local: ReadonlySet<string> = new Set(namesBoundIn(updater))
   return findingsUnder(updater.body, { node: updater, up: null }, local)
 }

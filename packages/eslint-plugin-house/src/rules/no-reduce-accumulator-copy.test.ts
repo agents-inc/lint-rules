@@ -27,11 +27,8 @@ import { lintWithHouseRule } from '../__tests__/house-linter.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
 
-// A port of anti-slop/no-reduce-accumulator-copy: it reports a reduce or reduceRight callback that copies its
-// accumulator (concat, slice, toSorted, toReversed, toSpliced, with, Array.from, Object.assign into a new object),
-// matching the accumulator by its node's range where upstream reads oxlint's `.start`. Spreads are
-// oxc/no-accumulating-spread's. It reads no types, so any receiver of a reduce call counts: upstream PR #51's opt-in
-// guard, which keeps only receivers with local signs of an array, would silence the corpus's one authored report.
+// It reads no types, so any receiver of a reduce call counts: upstream PR #51's opt-in guard, which keeps only
+// receivers with local signs of an array, would silence the corpus's one authored report.
 
 houseRuleTester.run('no-reduce-accumulator-copy', housePlugin.rules['no-reduce-accumulator-copy'], {
   valid: [

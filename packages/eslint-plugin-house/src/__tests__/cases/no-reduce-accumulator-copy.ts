@@ -1,20 +1,13 @@
-// Reducers for the house port of anti-slop/no-reduce-accumulator-copy (dmmulroy/anti-slop, commit c44ef22). A reducer
-// that copies its accumulator on every step does quadratic work: flatMap, map or Object.fromEntries build the result
-// in one pass.
-
-/** The candidates page's example: each step concatenates the tags so far into a new array. */
 export const tagsCollectedByConcat = `type Post = { tags: string[] }
 
 export const allTags = (posts: Post[]) => posts.reduce<string[]>((tags, post) => tags.concat(post.tags), [])
 `
 
-/** The page's fix: flatMap builds the one array in one pass. */
 export const tagsCollectedByFlatMap = `type Post = { tags: string[] }
 
 export const allTags = (posts: Post[]) => posts.flatMap((post) => post.tags)
 `
 
-/** The page's example as JavaScript, whose receiver carries no type. */
 export const tagsCollectedByConcatAsJavaScript = `export const allTags = (posts) => posts.reduce((tags, post) => tags.concat(post.tags), [])
 `
 
@@ -42,7 +35,6 @@ export const boardCopiedByToSorted = `export const leaderboard = (scores: readon
   }, [])
 `
 
-/** A named function expression: upstream, matching by oxlint's `.start`, finds the function's name, not its accumulator. */
 export const tagsCollectedByANamedReducer = `type Post = { tags: string[] }
 
 export const allTags = (posts: Post[]) =>
@@ -51,12 +43,10 @@ export const allTags = (posts: Post[]) =>
   }, [])
 `
 
-/** A receiver read from a call, with no local sign it is an array: upstream PR #51's opt-in guard silences it. */
 export const groupsJoinedFromObjectValues = `export const flattenGroups = (groups: Record<string, string[]>) =>
   Object.values(groups).reduce<string[]>((all, group) => all.concat(group), [])
 `
 
-/** A receiver whose type is inferred from a call: PR #51's guard silences it too. */
 export const cellsJoinedFromAnInferredReceiver = `declare function loadRows(): string[][]
 
 export const allCells = () => {
@@ -65,32 +55,27 @@ export const allCells = () => {
 }
 `
 
-/** A reducer whose accumulator is a number, which nothing copies. */
 export const totalOfPrices = `type Item = { price: number }
 
 export const cartTotal = (items: Item[]) => items.reduce((total, item) => total + item.price, 0)
 `
 
-/** An object accumulator copied by Object.assign on every step. */
 export const usersIndexedByObjectAssign = `type User = { id: string }
 
 export const usersById = (users: User[]) =>
   users.reduce<Record<string, User>>((index, user) => Object.assign({}, index, { [user.id]: user }), {})
 `
 
-/** Its fix: Object.fromEntries builds the index in one pass. */
 export const usersIndexedByObjectFromEntries = `type User = { id: string }
 
 export const usersById = (users: User[]) => Object.fromEntries(users.map((user) => [user.id, user]))
 `
 
-/** A spread copy, which oxc/no-accumulating-spread reports. */
 export const tagsCollectedBySpread = `type Post = { tags: string[] }
 
 export const allTags = (posts: Post[]) => posts.reduce<string[]>((tags, post) => [...tags, ...post.tags], [])
 `
 
-/** concat in a loop, which unicorn/no-array-concat-in-loop reports. */
 export const tagsCollectedByConcatInALoop = `export const allTags = (posts: { tags: string[] }[]) => {
   let tags: string[] = []
   for (const post of posts) tags = tags.concat(post.tags)
@@ -98,7 +83,6 @@ export const tagsCollectedByConcatInALoop = `export const allTags = (posts: { ta
 }
 `
 
-/** Upstream's own report cases at c44ef22, by what each shows: every copy is on line 1. */
 export const UPSTREAM_REPORTED: Readonly<Record<string, string>> = {
   'reports Object.assign copying the accumulator into a new object': 'items.reduce((acc, item) => Object.assign({}, acc, { [item.id]: item }), {});',
   'reports a copy in a reduceRight callback': 'items.reduceRight((acc, item) => Object.assign({}, acc, item), {});',
@@ -122,7 +106,6 @@ export const UPSTREAM_REPORTED: Readonly<Record<string, string>> = {
   'reports with copying the accumulator': 'items.reduce((acc, item) => acc.with(0, item), []);',
 }
 
-/** Upstream's own silent cases at c44ef22, by what each shows. */
 export const UPSTREAM_SILENT: Readonly<Record<string, string>> = {
   'stays silent on a reducer that pushes onto its accumulator and returns it': 'items.reduce((acc, item) => { acc.push(item); return acc; }, []);',
   'stays silent on Object.assign into the accumulator itself': 'items.reduce((acc, item) => Object.assign(acc, item), {});',
@@ -145,7 +128,6 @@ export const UPSTREAM_SILENT: Readonly<Record<string, string>> = {
   'stays silent on an object spread copy, which oxc/no-accumulating-spread reports': 'items.reduce((acc, item) => ({ ...acc, [item.id]: item }), {});',
 }
 
-/** Calls that look like a reducer's copy but are none, or whose initial value the file does not show is an array. */
 export const LOOKALIKES_SILENT: Readonly<Record<string, string>> = {
   'stays silent on a reduce given a third argument, which is no Array#reduce': 'items.reduce((acc, item) => acc.concat(item), [], extra);',
   'stays silent on a private method named like an array copy method':
@@ -167,9 +149,10 @@ export const LOOKALIKES_SILENT: Readonly<Record<string, string>> = {
   'stays silent on an Object method other than assign': 'items.reduce((acc, item) => (Object.is({}, acc) ? item : acc), {});',
   'stays silent on an Array method other than from': 'items.reduce((acc, item) => (Array.isArray(acc) ? acc : [acc]), []);',
   'stays silent on Array.from of the item pushed onto the accumulator': 'items.reduce((acc, item) => { acc.push(...Array.from(item)); return acc; }, []);',
+  'stays silent, and does not throw, on a reducer whose accumulator is destructured':
+    'items.reduce(({ total }, item) => Object.assign({}, { total: total + item.size }), { total: 0 });',
 }
 
-/** Copies on an initial value the file shows is an array, and on an accumulator under a TypeScript wrapper; each on line 1. */
 export const KNOWN_ARRAYS_REPORTED: Readonly<Record<string, string>> = {
   'reports concat on an initial value annotated as an array and set from a call':
     'const initial: string[] = loadTags(); items.reduce((acc, item) => acc.concat(item), initial);',
@@ -185,6 +168,7 @@ export const KNOWN_ARRAYS_REPORTED: Readonly<Record<string, string>> = {
     'const tags: string[] = []; items.reduce((acc, item) => acc.concat(item), tags?.slice());',
   'reports concat on an initial value checked with satisfies': 'items.reduce((acc, item) => acc.concat(item), [] satisfies string[]);',
   'reports concat on the accumulator under a non-null assertion': 'items.reduce((acc, item) => acc!.concat(item), []);',
+  'reports concat in a reduce called under a non-null assertion, items.reduce!': 'items.reduce!((acc, item) => acc.concat([item]), []);',
   'reports concat on an initial value from a var redeclared with the same type, annotated second':
     "var seed = ['a']; var seed: string[] = []; items.reduce((acc, item) => acc.concat(item), seed);",
 }

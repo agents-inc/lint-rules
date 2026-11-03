@@ -1,13 +1,12 @@
 import { AST_NODE_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
 import { callReceiving } from '../shared/call-arguments.ts'
-import { dottedPropertyNameOf } from '../shared/callee-name.ts'
+import { dottedPropertyNameOf, staticPropertyNameOf } from '../shared/callee-name.ts'
+import { isFunctionExpression } from '../shared/function-name.ts'
 
 // A port of anti-slop-effect/no-manual-effect-error-tag (github.com/dmmulroy/anti-slop, commit c44ef22).
 
 type MessageId = 'reason' | 'tag'
-
-type FunctionExpressionNode = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression
 
 const EFFECT_NAMESPACE = 'Effect'
 // Effect 3's catchAll, Effect 4's catch, and catchIf in both: each hands its callback failures of every tag.
@@ -20,18 +19,10 @@ function isStringLiteral(node: Readonly<TSESTree.Node>): node is TSESTree.String
   return node.type === AST_NODE_TYPES.Literal && typeof node.value === 'string'
 }
 
-/** The key `object.key` or `object['key']` reads; null for any other node. */
-function memberKeyOf(node: Readonly<TSESTree.Node>): string | null {
-  if (node.type !== AST_NODE_TYPES.MemberExpression) return null
-  if (!node.computed) return dottedPropertyNameOf(node)
-  return isStringLiteral(node.property) ? node.property.value : null
-}
-
 function isTagMember(node: Readonly<TSESTree.Node>): node is TSESTree.MemberExpression {
-  return memberKeyOf(node) === TAG_KEY
+  return staticPropertyNameOf(node) === TAG_KEY
 }
 
-/** The `_tag` member compared with a string by `==`, `===`, `!=` or `!==`, on either side; null for any other comparison. */
 function tagMemberComparedWithAString(comparison: Readonly<TSESTree.BinaryExpression>): TSESTree.MemberExpression | null {
   if (!EQUALITY_OPERATORS.has(comparison.operator)) return null
   const { left, right } = comparison
@@ -40,15 +31,10 @@ function tagMemberComparedWithAString(comparison: Readonly<TSESTree.BinaryExpres
   return null
 }
 
-function isFunctionExpression(node: Readonly<TSESTree.Node>): node is FunctionExpressionNode {
-  return node.type === AST_NODE_TYPES.ArrowFunctionExpression || node.type === AST_NODE_TYPES.FunctionExpression
-}
-
 function isTheEffectNamespace(node: Readonly<TSESTree.Node>): boolean {
   return node.type === AST_NODE_TYPES.Identifier && node.name === EFFECT_NAMESPACE
 }
 
-/** `Effect.catch(…)`, `Effect.catchAll(…)` or `Effect.catchIf(…)`, called on the identifier `Effect` itself. */
 function isBroadEffectCatch(call: Readonly<TSESTree.CallExpression>): boolean {
   const { callee } = call
   if (callee.type !== AST_NODE_TYPES.MemberExpression || !isTheEffectNamespace(callee.object)) return false
@@ -66,7 +52,7 @@ function isInABroadEffectHandler(ancestors: readonly TSESTree.Node[]): boolean {
 }
 
 function messageIdFor(tagMember: Readonly<TSESTree.MemberExpression>): MessageId {
-  return memberKeyOf(tagMember.object) === REASON_KEY ? 'reason' : 'tag'
+  return staticPropertyNameOf(tagMember.object) === REASON_KEY ? 'reason' : 'tag'
 }
 
 // Not fixable: a catchTag call takes the matching branch alone, and what becomes of the others depends on the handler.

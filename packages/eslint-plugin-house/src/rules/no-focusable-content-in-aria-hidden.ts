@@ -12,6 +12,8 @@ import { unqualifiedTagOf } from '../shared/jsx-elements.ts'
 
 type RenderedJsx = TSESTree.JSXElement | TSESTree.JSXFragment
 
+type NegatedLiteral = TSESTree.UnaryExpression & { operator: '-'; argument: TSESTree.Literal }
+
 type Finding = { messageId: 'self'; data: { tag: string } } | { messageId: 'focusable'; data: { descendant: string } }
 
 // A tabIndex this rule cannot read is `unknown`, not absent: `tabIndex={active ? 0 : -1}` is deliberate.
@@ -52,15 +54,13 @@ function finiteOr(value: number): TabIndex {
 }
 
 // `tabIndex={-1}` parses as a UnaryExpression, not a negative Literal.
+function isNegatedLiteral(expression: Readonly<BracedExpression>): expression is NegatedLiteral {
+  return expression.type === AST_NODE_TYPES.UnaryExpression && expression.operator === '-' && expression.argument.type === AST_NODE_TYPES.Literal
+}
+
 function tabIndexInBraces(expression: Readonly<BracedExpression>): TabIndex {
   if (expression.type === AST_NODE_TYPES.Literal) return finiteOr(Number(expression.value))
-  if (
-    expression.type === AST_NODE_TYPES.UnaryExpression &&
-    expression.operator === '-' &&
-    expression.argument.type === AST_NODE_TYPES.Literal
-  ) {
-    return finiteOr(-Number(expression.argument.value))
-  }
+  if (isNegatedLiteral(expression)) return finiteOr(-Number(expression.argument.value))
   return 'unknown'
 }
 
@@ -77,6 +77,14 @@ function displayedTagOf(element: Readonly<TSESTree.JSXOpeningElement>): string {
   return unqualifiedTagOf(element) ?? UNNAMED_TAG
 }
 
+function isFocusableByDefault(element: Readonly<TSESTree.JSXOpeningElement>): boolean {
+  const tag = unqualifiedTagOf(element)
+  if (tag === null) return false
+  if (FOCUSABLE_TAGS.has(tag)) return true
+  if (FOCUSABLE_WITH_HREF_TAGS.has(tag)) return findJsxAttribute(element, 'href') !== null
+  return tag === 'input' && !hasHiddenType(element)
+}
+
 function isFocusableElement(element: Readonly<TSESTree.JSXOpeningElement>): boolean {
   // Any form of these takes the element out of the tab order, `disabled={busy}` included.
   if (findJsxAttribute(element, 'disabled', 'hidden') !== null) return false
@@ -84,11 +92,7 @@ function isFocusableElement(element: Readonly<TSESTree.JSXOpeningElement>): bool
   const tabIndex = tabIndexOf(element)
   if (tabIndex === 'unknown') return false
   if (tabIndex !== 'absent') return tabIndex >= 0
-  const tag = unqualifiedTagOf(element)
-  if (tag === null) return false
-  if (FOCUSABLE_TAGS.has(tag)) return true
-  if (FOCUSABLE_WITH_HREF_TAGS.has(tag)) return findJsxAttribute(element, 'href') !== null
-  return tag === 'input' && !hasHiddenType(element)
+  return isFocusableByDefault(element)
 }
 
 // The JSX an expression renders as children, without descending into it. A JSX attribute's value

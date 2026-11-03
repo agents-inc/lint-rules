@@ -1,7 +1,7 @@
 import { AST_TOKEN_TYPES, ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
 import { lineStartOf, restOfLine } from '../shared/line-bounds.ts'
-import type { Replacement } from '../shared/replacement.ts'
+import { fixReplacing, type Replacement } from '../shared/replacement.ts'
 import { defaultedOption, stringListOptionSchema } from '../shared/rule-options.ts'
 
 // The schema does not require the key: ESLint fills it from meta.defaultOptions when a config omits it.
@@ -79,13 +79,7 @@ export const preferLineComments = ESLintUtils.RuleCreator.withoutDocs<Options, '
         for (const comment of sourceCode.getAllComments()) {
           if (!isConvertible(comment, sourceCode.text, allowed)) continue
           const replacement = lineCommentsReplacing(sourceCode.text, comment)
-          context.report({
-            node: comment,
-            messageId: 'block',
-            fix(fixer) {
-              return fixer.replaceTextRange(replacement.range, replacement.text)
-            },
-          })
+          context.report({ node: comment, messageId: 'block', fix: fixReplacing(replacement) })
         }
       },
     }

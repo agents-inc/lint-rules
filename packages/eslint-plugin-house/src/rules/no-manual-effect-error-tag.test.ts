@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest'
 import {
   anotherFieldComparedInCatchAll,
   EQUALITY_OPERATORS,
+  keyReadThroughAVariableNamedTag,
   reasonTagComparedInCatchAllFunction,
   reasonTagComparedInCatchTag,
   reasonTagReadByAComputedKey,
   tagAndReasonComparedInCatchAllAsJavaScript,
+  tagComparedInAFunctionDeclaredInTheHandler,
   tagComparedInAFunctionNestedInTheHandler,
   tagComparedInAStreamCatchAll,
   tagComparedInCatch,
@@ -28,9 +30,6 @@ import { lintWithHouseRule } from '../__tests__/house-linter.ts'
 import { houseRuleTester } from '../__tests__/house-rule-tester.ts'
 import { housePlugin } from '../index.ts'
 
-// A port of anti-slop-effect/no-manual-effect-error-tag: it reports a `_tag` compared with a string, or switched on, in
-// the callback a broad Effect catch is handed (Effect 3's catchAll, Effect 4's catch, and catchIf), and nowhere else.
-
 houseRuleTester.run('no-manual-effect-error-tag', housePlugin.rules['no-manual-effect-error-tag'], {
   valid: [
     buildValidCase("stays silent on Effect.catchTag, which handles the one tag and lets every other failure through", tagHandledByCatchTag),
@@ -43,6 +42,7 @@ houseRuleTester.run('no-manual-effect-error-tag', housePlugin.rules['no-manual-e
     ),
     buildValidCase("stays silent on a _tag comparison in Stream.catchAll's callback, which is no Effect handler", tagComparedInAStreamCatchAll),
     buildValidCase('stays silent on a _tag compared with a variable, whose tag it cannot read', tagComparedWithAVariable),
+    buildValidCase('stays silent on a key read through a variable, error[_tag], which names no field by itself', keyReadThroughAVariableNamedTag),
     buildValidCase("stays silent on a field other than _tag compared in Effect.catchAll's callback", anotherFieldComparedInCatchAll),
     buildValidCase('stays silent on a _tag joined to a string by +, which compares nothing', tagJoinedToAStringInCatchAll),
     buildValidCase('stays silent on a _tag compared with null, which names no tag', tagComparedWithNullInCatchAll),
@@ -73,6 +73,11 @@ houseRuleTester.run('no-manual-effect-error-tag', housePlugin.rules['no-manual-e
       "reports a reason's _tag compared in a function expression handed to Effect.catchAll, pointing to catchReason",
       reasonTagComparedInCatchAllFunction,
       { errors: [{ messageId: 'reason', line: 5 }] },
+    ),
+    buildInvalidCase(
+      "reports a _tag compared in a function declared in Effect.catchAll's callback, which still tests the failure the handler caught",
+      tagComparedInAFunctionDeclaredInTheHandler,
+      { errors: [{ messageId: 'tag', line: 6 }] },
     ),
     buildInvalidCase("reports a reason read by a computed key, error['reason']._tag, pointing to catchReason", reasonTagReadByAComputedKey, {
       errors: [{ messageId: 'reason', line: 4 }],

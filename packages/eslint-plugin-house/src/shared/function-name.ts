@@ -2,6 +2,8 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils'
 
 export type FunctionNode = TSESTree.ArrowFunctionExpression | TSESTree.FunctionDeclaration | TSESTree.FunctionExpression
 
+export type FunctionExpressionNode = TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression
+
 const FUNCTION_NODE_TYPES: ReadonlySet<AST_NODE_TYPES> = new Set([
   AST_NODE_TYPES.ArrowFunctionExpression,
   AST_NODE_TYPES.FunctionDeclaration,
@@ -10,6 +12,10 @@ const FUNCTION_NODE_TYPES: ReadonlySet<AST_NODE_TYPES> = new Set([
 
 export function isFunctionNode(node: TSESTree.Node): node is FunctionNode {
   return FUNCTION_NODE_TYPES.has(node.type)
+}
+
+export function isFunctionExpression(node: Readonly<TSESTree.Node>): node is FunctionExpressionNode {
+  return node.type === AST_NODE_TYPES.ArrowFunctionExpression || node.type === AST_NODE_TYPES.FunctionExpression
 }
 
 /** Its own name, or the variable or property it is assigned to, as in `const Panel = memo(() => …)`. */

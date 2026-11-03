@@ -1,7 +1,7 @@
 import { ESLintUtils, type TSESTree } from '@typescript-eslint/utils'
 
 import { lineStartOf, restOfLine } from '../shared/line-bounds.ts'
-import type { Replacement } from '../shared/replacement.ts'
+import { fixReplacing, type Replacement } from '../shared/replacement.ts'
 
 const BANNER = /^\s*[-=*_#~]{4,}\s*$/u
 // A title between two runs of one banner character each: `--- Setup ---`, `=== Section ===`.
@@ -173,13 +173,7 @@ export const noSectionBanner = ESLintUtils.RuleCreator.withoutDocs<[], 'banner' 
           const messageId = findingOf(comment)
           if (messageId === null) continue
           const replacement = replacementOf(sourceCode.text, comment)
-          context.report({
-            node: comment,
-            messageId,
-            fix(fixer) {
-              return fixer.replaceTextRange(replacement.range, replacement.text)
-            },
-          })
+          context.report({ node: comment, messageId, fix: fixReplacing(replacement) })
         }
       },
     }

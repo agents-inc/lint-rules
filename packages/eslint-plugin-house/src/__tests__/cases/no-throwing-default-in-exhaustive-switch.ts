@@ -4115,7 +4115,6 @@ export class Runner {
 }
 `
 
-// `return` does not compile in a namespace body either, as at a file's top level.
 export const throwingDefaultInANamespaceBody = `type Engine = 'eslint' | 'oxlint'
 
 declare function readEngine(): Engine
@@ -4182,7 +4181,6 @@ export namespace Bins {
 }
 `
 
-// The body of the last namespace a dotted name declares.
 export const throwingDefaultInADottedNamespaceBody = `type Engine = 'eslint' | 'oxlint'
 
 declare function readEngine(): Engine
@@ -4205,7 +4203,6 @@ export namespace Tools.Bins {
 }
 `
 
-// A function in a namespace returns as any function does.
 export const throwingDefaultInAFunctionInANamespaceBody = `type Engine = 'eslint' | 'oxlint'
 
 export namespace Bins {

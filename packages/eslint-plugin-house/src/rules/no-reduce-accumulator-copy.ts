@@ -1,5 +1,6 @@
 import { ASTUtils, AST_NODE_TYPES, ESLintUtils, TSESLint, type TSESTree } from '@typescript-eslint/utils'
 
+import { staticPropertyNameOf } from '../shared/callee-name.ts'
 import { type FunctionNode, isFunctionNode } from '../shared/function-name.ts'
 import { isSameNode } from '../shared/same-node.ts'
 
@@ -53,14 +54,11 @@ function outermostWrapperOf(node: Readonly<FunctionNode | TransparentWrapper>): 
   return isTransparentWrapper(node.parent) ? outermostWrapperOf(node.parent) : node
 }
 
-/** `object.name(…)` or `object['name'](…)`: the method a call names and what it is called on; null for any other callee. */
 function methodCallOf(callee: Readonly<TSESTree.Node>): MethodCall | null {
   const member = unwrapped(callee)
   if (member.type !== AST_NODE_TYPES.MemberExpression) return null
-  const { computed, property, object } = member
-  if (!computed && property.type === AST_NODE_TYPES.Identifier) return { name: property.name, object }
-  if (computed && property.type === AST_NODE_TYPES.Literal && typeof property.value === 'string') return { name: property.value, object }
-  return null
+  const name = staticPropertyNameOf(member)
+  return name === null ? null : { name, object: member.object }
 }
 
 function isReduceCall(call: Readonly<TSESTree.CallExpression>): boolean {
@@ -68,7 +66,6 @@ function isReduceCall(call: Readonly<TSESTree.CallExpression>): boolean {
   return method !== null && REDUCE_METHODS.has(method.name) && call.arguments.length <= REDUCE_MAX_ARGUMENTS
 }
 
-/** The `reduce` or `reduceRight` call `callback` is the first argument of, with at most an initial value after it. */
 function reduceCallTaking(callback: Readonly<FunctionNode>): TSESTree.CallExpression | null {
   const argument = outermostWrapperOf(callback)
   const call = argument.parent
@@ -87,10 +84,14 @@ function variableOf(sourceCode: SourceCode, node: Readonly<TSESTree.Node>): Vari
 }
 
 // By `range`: upstream reads oxlint's `.start`, undefined on every typescript-eslint node, so it took a named reducer's own name.
+function isDeclaredBy(variable: Readonly<Variable>, parameter: Readonly<TSESTree.Identifier>): boolean {
+  return variable.identifiers.some((identifier) => identifier.range[0] === parameter.range[0])
+}
+
 function accumulatorOf(sourceCode: SourceCode, callback: Readonly<FunctionNode>): Variable | undefined {
   const parameter = accumulatorParameterOf(callback)
   if (parameter === null) return undefined
-  return sourceCode.getDeclaredVariables(callback).find((variable) => variable.identifiers.some((identifier) => identifier.range[0] === parameter.range[0]))
+  return sourceCode.getDeclaredVariables(callback).find((variable) => isDeclaredBy(variable, parameter))
 }
 
 // Only the nearest enclosing function counts, and only as the first argument of `reduce` or `reduceRight`: a closure
@@ -116,7 +117,6 @@ function isConstNameDefinition(definition: Readonly<TSESLint.Scope.Definition>):
   )
 }
 
-/** What a `const name = …` declaration sets the variable to; null for any other declaration. */
 function constInitializerOf(variable: Readonly<Variable>): TSESTree.Expression | null {
   const definition = variable.defs.find(isConstNameDefinition)
   return definition === undefined ? null : definition.node.init
@@ -143,7 +143,6 @@ function isGlobal(sourceCode: SourceCode, node: Readonly<TSESTree.Node>, name: s
   return variable === null || variable.defs.length === 0
 }
 
-// The accumulator itself, or a `const` that holds it, however many aliases deep.
 function refersTo(sourceCode: SourceCode, accumulator: Readonly<Variable>, node: Readonly<TSESTree.Node>, visited: readonly Variable[] = []): boolean {
   const variable = variableOf(sourceCode, node)
   if (variable === null || visited.includes(variable)) return false
@@ -152,17 +151,22 @@ function refersTo(sourceCode: SourceCode, accumulator: Readonly<Variable>, node:
   return initializer !== null && refersTo(sourceCode, accumulator, initializer, [...visited, variable])
 }
 
-// An array literal, an array method's result on a known array, or a binding annotated as an array or set to one.
 // A receiver the file cannot show is an array, such as a string or a custom collection, is not known.
 function isKnownArray(sourceCode: SourceCode, node: Readonly<TSESTree.Node>, visited: readonly Variable[] = []): boolean {
   const expression = unwrapped(node)
   if (expression.type === AST_NODE_TYPES.ArrayExpression) return true
-  if (expression.type === AST_NODE_TYPES.CallExpression) {
-    const method = methodCallOf(expression.callee)
-    return method !== null && ARRAY_RETURNING_METHODS.has(method.name) && isKnownArray(sourceCode, method.object, visited)
-  }
+  if (expression.type === AST_NODE_TYPES.CallExpression) return returnsAKnownArray(sourceCode, expression, visited)
   const variable = variableOf(sourceCode, expression)
-  if (variable === null || visited.includes(variable) || isReassigned(variable)) return false
+  return variable !== null && holdsAKnownArray(sourceCode, variable, visited)
+}
+
+function returnsAKnownArray(sourceCode: SourceCode, call: Readonly<TSESTree.CallExpression>, visited: readonly Variable[]): boolean {
+  const method = methodCallOf(call.callee)
+  return method !== null && ARRAY_RETURNING_METHODS.has(method.name) && isKnownArray(sourceCode, method.object, visited)
+}
+
+function holdsAKnownArray(sourceCode: SourceCode, variable: Readonly<Variable>, visited: readonly Variable[]): boolean {
+  if (visited.includes(variable) || isReassigned(variable)) return false
   const annotation = firstAnnotationOf(variable)
   if (annotation !== null) return isArrayAnnotation(annotation)
   const initializer = constInitializerOf(variable)
@@ -174,15 +178,23 @@ function assignsIntoANewObject(sourceCode: SourceCode, [target, ...sources]: rea
   return target !== undefined && unwrapped(target).type === AST_NODE_TYPES.ObjectExpression && sources.some((source) => refersTo(sourceCode, accumulator, source))
 }
 
-function copiesTheAccumulator(sourceCode: SourceCode, call: Readonly<TSESTree.CallExpression>, method: Readonly<MethodCall>, reducer: Readonly<Reducer>): boolean {
-  const { accumulator, initialValue } = reducer
-  if (method.name === OBJECT_ASSIGN && isGlobal(sourceCode, method.object, OBJECT_GLOBAL)) return assignsIntoANewObject(sourceCode, call.arguments, accumulator)
-  if (method.name === ARRAY_FROM && isGlobal(sourceCode, method.object, ARRAY_GLOBAL)) {
-    const [source] = call.arguments
-    return source !== undefined && refersTo(sourceCode, accumulator, source)
-  }
+function copiesIntoANewArray(sourceCode: SourceCode, [source]: readonly TSESTree.CallExpressionArgument[], accumulator: Readonly<Variable>): boolean {
+  return source !== undefined && refersTo(sourceCode, accumulator, source)
+}
+
+function copiesAnArrayAccumulator(sourceCode: SourceCode, method: Readonly<MethodCall>, { accumulator, initialValue }: Readonly<Reducer>): boolean {
   if (!ARRAY_COPY_METHODS.has(method.name)) return false
   return initialValue !== undefined && isKnownArray(sourceCode, initialValue) && refersTo(sourceCode, accumulator, method.object)
+}
+
+function isMethodOfTheGlobal(sourceCode: SourceCode, method: Readonly<MethodCall>, globalName: string, methodName: string): boolean {
+  return method.name === methodName && isGlobal(sourceCode, method.object, globalName)
+}
+
+function copiesTheAccumulator(sourceCode: SourceCode, call: Readonly<TSESTree.CallExpression>, method: Readonly<MethodCall>, reducer: Readonly<Reducer>): boolean {
+  if (isMethodOfTheGlobal(sourceCode, method, OBJECT_GLOBAL, OBJECT_ASSIGN)) return assignsIntoANewObject(sourceCode, call.arguments, reducer.accumulator)
+  if (isMethodOfTheGlobal(sourceCode, method, ARRAY_GLOBAL, ARRAY_FROM)) return copiesIntoANewArray(sourceCode, call.arguments, reducer.accumulator)
+  return copiesAnArrayAccumulator(sourceCode, method, reducer)
 }
 
 export const noReduceAccumulatorCopy = ESLintUtils.RuleCreator.withoutDocs<[], MessageId>({
