@@ -1,7 +1,6 @@
-import { foundOr } from '@workspace/rule-data/collections'
 import type { ESLint, Rule } from 'eslint'
 import { isRecord } from './is-record.ts'
-import { derivedFrom } from './typed-rule-contexts.ts'
+import { contextReporting, pluginWithRulesReplaced, ruleGivenContext } from './typed-rule-contexts.ts'
 
 const SONARJS = 'sonarjs'
 const PREFER_IMMEDIATE_RETURN = 'prefer-immediate-return'
@@ -13,27 +12,15 @@ const USING_KINDS: ReadonlySet<unknown> = new Set(['using', 'await using'])
 /** sonarjs' plugin, its prefer-immediate-return silent on a returned or thrown variable that a `using` declaration holds; any other plugin as it is. */
 export function withReturnedUsingResourcesLeftAlone(prefix: string, plugin: Readonly<ESLint.Plugin>): ESLint.Plugin {
   if (prefix !== SONARJS) return plugin
-  const rules = foundOr(plugin.rules, `the plugin under ${prefix} has no rules`)
-  const rule = foundOr(rules[PREFER_IMMEDIATE_RETURN], `${PREFER_IMMEDIATE_RETURN_ID} is not in its plugin`)
-  return { ...plugin, rules: { ...rules, [PREFER_IMMEDIATE_RETURN]: leavingReturnedUsingResourcesAlone(rule) } }
+  return pluginWithRulesReplaced(prefix, plugin, [PREFER_IMMEDIATE_RETURN], leavingReturnedUsingResourcesAlone)
 }
 
 function leavingReturnedUsingResourcesAlone(rule: Readonly<Rule.RuleModule>): Rule.RuleModule {
-  return {
-    ...rule,
-    create(context) {
-      return rule.create(contextLeavingReturnedUsingResourcesAlone(context))
-    },
-  }
+  return ruleGivenContext(rule, (context) => contextReporting(context, unlessHeldByUsing))
 }
 
-function contextLeavingReturnedUsingResourcesAlone(context: Readonly<Rule.RuleContext>): Rule.RuleContext {
-  return derivedFrom(context, {
-    // eslint-disable-next-line functional/no-return-void -- RuleContext types report as returning void and ESLint reads nothing it returns: this hands the report on, or drops it, with nothing to give back
-    report(descriptor) {
-      if (!isHeldByUsing(valueReported(descriptor))) context.report(descriptor)
-    },
-  })
+function unlessHeldByUsing(descriptor: Readonly<Rule.ReportDescriptor>): Rule.ReportDescriptor | null {
+  return isHeldByUsing(valueReported(descriptor)) ? null : descriptor
 }
 
 function valueReported(descriptor: Readonly<Rule.ReportDescriptor>): unknown {

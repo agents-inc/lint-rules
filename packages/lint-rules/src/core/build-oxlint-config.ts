@@ -4,6 +4,7 @@ import type { DummyRule, DummyRuleMap, OxlintConfig, OxlintEnv, OxlintGlobals, O
 import { TS_FILES } from './eslint-file-types.ts'
 import { bothOf, EVERY_FILE, type FilesCondition, filesInScopeOf } from './file-conditions.ts'
 import { type FrameworkEnv, OTHER_FRAMEWORK_ENVS, SVELTE_COMPONENT_GLOBALS, SVELTE_RUNES, TEST_RUNNER_GLOBALS } from './framework-globals.ts'
+import { isEmpty } from './is-empty.ts'
 import type { LintRulesInput } from './lint-rules-input.ts'
 import { overrideFilesOf } from './oxlint-override-files.ts'
 import { REACT_VERSION } from './react-version.ts'
@@ -179,8 +180,8 @@ function onExcludingItsIgnores(files: readonly string[], { route, setting }: Ign
 }
 
 function overrideIfNotEmpty(files: readonly string[], env: Readonly<OxlintEnv>, rules: Readonly<DummyRuleMap>): OxlintOverride[] {
-  const hasEnv = Object.keys(env).length > 0
-  const hasRules = Object.keys(rules).length > 0
+  const hasEnv = !isEmpty(env)
+  const hasRules = !isEmpty(rules)
   if (!hasEnv && !hasRules) return []
   return [{ files: [...files], ...(hasEnv && { env }), ...(hasRules && { rules }) }]
 }

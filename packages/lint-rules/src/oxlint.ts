@@ -21,9 +21,10 @@ const NO_OXLINT_PART = configProblemIn(
  * Your oxlint config with the editor set's oxlint part merged in as overrides before yours. A rule
  * your ESLint or oxlint config sets anywhere is left to your setting. `extends` must hold objects, not paths.
  */
-export function mergeOxlintConfig(theirs: OxlintConfig, oxlint: OxlintPart | undefined, teamEslintConfig: TeamEslintConfigPath): OxlintConfig {
+export function mergeOxlintConfig(theirs: Readonly<OxlintConfig>, oxlint: OxlintPart | undefined, teamEslintConfig: TeamEslintConfigPath): OxlintConfig {
   const part = foundOr(oxlint, NO_OXLINT_PART)
   refuseUnsupportedInstalledOxlint(part.tsconfigRootDir, catalog)
+  // Read first, so a call that leaves this argument out stops here, also while ESLint reads this config.
   const eslintConfigPath = teamEslintConfig.eslintConfig
   refuseAPathInExtends(theirs, consumerConfigFiles.oxlintConfig)
   refuseANullOxlintRefuses(theirs, consumerConfigFiles.oxlintConfig)

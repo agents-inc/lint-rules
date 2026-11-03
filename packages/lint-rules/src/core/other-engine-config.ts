@@ -224,7 +224,7 @@ function handedOverByTheFile(file: string, handedOverNow: readonly HandedOver[])
 }
 
 function defaultExportOf(loaded: unknown): unknown {
-  return isRecord(loaded) && isModuleNamespaceObject(loaded) ? loaded['default'] : loaded
+  return isRecord(loaded) && isModuleNamespaceObject(loaded) ? loaded.default : loaded
 }
 
 /** Judged by its keys and its nulls before each config it extends by path is read in. */

@@ -40,7 +40,7 @@ export function refuseAnotherCopy(config: FoundConfig): FoundConfig {
 export async function eslintPartExportedBy({ path }: FoundConfig): Promise<EslintPart> {
   // Parse boundary: a module's namespace object, which is always a record.
   const exported: unknown = await import(pathToFileURL(path).href)
-  const part = isRecord(exported) ? exported['eslint'] : undefined
+  const part = isRecord(exported) ? exported.eslint : undefined
   if (!isEslintPart(part)) throw configErrorIn(CONFIG_FILE, NO_ESLINT_PART_EXPORTED)
   return part
 }

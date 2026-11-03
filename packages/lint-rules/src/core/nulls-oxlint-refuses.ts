@@ -51,7 +51,6 @@ const KEYS_OF_A_JS_PLUGIN: ReadonlyArray<KeyRefusingNull<Exclude<ExternalPluginE
   { key: 'specifier', advice: 'give it the package name or path oxlint loads the plugin from' },
 ]
 
-// The settings key of each plugin of oxlint's that reads settings.
 const PLUGINS_SETTINGS_KEYS: ReadonlySet<string> = new Set(['jest', 'jsdoc', 'jsx-a11y', 'next', 'react', 'vitest'])
 
 /** What a merge refusing the config says after the file it names: the first null oxlint refuses in it or in a config it extends as an object, at any depth. */

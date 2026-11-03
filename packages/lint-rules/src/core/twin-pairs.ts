@@ -3,6 +3,7 @@ import { foundOr } from '@workspace/rule-data/collections'
 import { optionKeysOxlintRefuses } from '@workspace/rule-data/oxlint-refused-options'
 import { currentExtensionsOf, twinsOf } from './catalog-lookups.ts'
 import { TS_FILES } from './eslint-file-types.ts'
+import { isEmpty } from './is-empty.ts'
 import { isRecord } from './is-record.ts'
 import type { LintRulesInput } from './lint-rules-input.ts'
 import {
@@ -169,7 +170,7 @@ function ruleWhoseSettingDecides({ core, extension }: TwinPair, by: PairDecided[
 
 function rulesWithEachPairDecided(rules: RuleSettings, decided: readonly PairDecided[], taking: SettingsTaking): DecidedRules {
   const taken = decided.reduce<RulesTaken>((takenSoFar, decision) => rulesTaking(takenSoFar, decision, taking), { rules, tsFileRules: {} })
-  return Object.keys(taken.tsFileRules).length === 0 ? { rules: taken.rules } : taken
+  return isEmpty(taken.tsFileRules) ? { rules: taken.rules } : taken
 }
 
 function rulesTaking(taken: RulesTaken, decision: PairDecided, taking: SettingsTaking): RulesTaken {

@@ -24,6 +24,8 @@ type OxlintFixed = { readonly file: CheckedFile; readonly original: string; read
 
 type ChangedByOxlint = OxlintFixed & { readonly fixed: string }
 
+type OxlintFixesByTheGuard = { readonly kept: ReadonlySet<string>; readonly failingTheGuard: readonly ChangedByOxlint[] }
+
 type FilesAfterOxlint = { readonly files: readonly CheckedFile[]; readonly notChecked: readonly NotChecked[] }
 
 type EslintFixes = Pick<FixStepResult, 'eslintMessages' | 'notChecked'>
@@ -71,11 +73,10 @@ export async function applyFixes(files: readonly CheckedFile[], beforeFixes: Sna
 async function oxlintFixes(files: readonly CheckedFile[], before: Snapshots, { oxlint, changedLinesNow }: FixStepEngines, { signal, rewritten }: FixStepRun): Promise<FilesAfterOxlint> {
   const run = await fixInPlace(files.map(({ path }) => path), oxlint, signal)
   const changedByOxlint = files.map((file) => asOxlintLeftIt(file, before)).filter(isChangedByOxlint)
-  const failingTheGuard = changedByOxlint.filter((changed) => !passesTheGuard(changed))
+  const { kept, failingTheGuard } = splitByTheGuard(changedByOxlint)
   // No test reaches this guard: the read and write-back are one synchronous pass, so only another process can interleave.
   // eslint-disable-next-line functional/no-expression-statements -- it says whether it wrote the original back; either way the file holds no fix that fails the guard, and another writer's text stays as that writer left it
   for (const { file, original, fixed } of failingTheGuard) writesIfStillUnchanged(file.path, fixed, original)
-  const kept = new Set(changedByOxlint.filter(passesTheGuard).map(({ file }) => file.path))
   for (const path of kept) rewritten.record(path)
   if (run.outcome === 'stopped' && signal.aborted) throw run.reason
   return {
@@ -93,6 +94,13 @@ export function oxlintFixer({ config, fixRunConfig }: OxlintFixRun): InPlaceFixe
   return async (paths, signal) => {
     // eslint-disable-next-line functional/no-expression-statements -- its report lists what oxlint left before ESLint's fixes, which the lint run reports again after them: the fix run is read for the refusal it throws alone
     await runOxlint(config, fixRunConfig, paths, { fix: true, signal })
+  }
+}
+
+function splitByTheGuard(changedByOxlint: readonly ChangedByOxlint[]): OxlintFixesByTheGuard {
+  return {
+    kept: new Set(changedByOxlint.filter(passesTheGuard).map(({ file }) => file.path)),
+    failingTheGuard: changedByOxlint.filter((changed) => !passesTheGuard(changed)),
   }
 }
 

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { catalog } from '@workspace/rule-data'
 import { messageOf } from '../../core/caught-errors.ts'
-import { listsPackage, ourPackageJsonFile, PACKAGE_JSON, type PackageJsonFile, readPackageJsonFile, THIS_PACKAGE, versionOf } from '../../core/package-json-files.ts'
+import { dependsOn, ourPackageJsonFile, PACKAGE_JSON, type PackageJsonFile, readPackageJsonFile, THIS_PACKAGE, versionOf } from '../../core/package-json-files.ts'
 import { type WhereInitRuns, whereInitRuns } from '../check/git-changes.ts'
 import { EXIT_CLEAN, EXIT_FINDINGS } from '../exit-codes.ts'
 import { foldersUpTo } from '../folders.ts'
@@ -115,8 +115,4 @@ function listsTypesNode(folder: string): boolean {
   const path = join(folder, PACKAGE_JSON)
   if (!existsSync(path)) return false
   return dependsOn(readPackageJsonFile(path), TYPES_NODE)
-}
-
-function dependsOn({ dependencies, devDependencies }: PackageJsonFile, packageName: string): boolean {
-  return listsPackage(dependencies, packageName) || listsPackage(devDependencies, packageName)
 }

@@ -1,6 +1,6 @@
 import { relative, resolve, sep } from 'node:path'
 import { type Catalog, isOxlintRoute, routeOf } from '@workspace/rule-data'
-import { foundOr } from '@workspace/rule-data/collections'
+import { foundOr, mapValues } from '@workspace/rule-data/collections'
 import type { ESLint, Linter } from 'eslint'
 import { defineConfig } from 'eslint/config'
 import {
@@ -31,6 +31,7 @@ import { bothOf, eitherOf, type FilesAndIgnores, type FilesCondition, type Files
 import { withWithheldFixesLeftOut } from './fixes-withheld-in-editors.ts'
 import { keepingNegation, literalGlobOf, withoutLeadingDotSlash } from './globs.ts'
 import { globsReadFromTheRoot } from './globs-read-from-above.ts'
+import { isEmpty } from './is-empty.ts'
 import { isRecord } from './is-record.ts'
 import { liesOutside } from './lies-outside.ts'
 import { type ProjectFacts, projectFactsOf } from './project-facts.ts'
@@ -42,6 +43,8 @@ import { type OurEslintPart, ourEslintPartOf, whereOurEslintPartRuns } from './w
 
 /** Whatever ESLint's `defineConfig` takes. */
 export type TeamEslintConfig = Parameters<typeof defineConfig>[number]
+
+type TeamEslintConfigList = Extract<Readonly<TeamEslintConfig>, readonly unknown[]>
 
 type PluginMeta = NonNullable<ESLint.Plugin['meta']>
 
@@ -60,16 +63,17 @@ type SettingsWhere = Where & { readonly settings: NonNullable<Linter.Config['set
 
 type SettingsBesideTheTeam = { readonly base: Linter.Config; readonly keptToTheirFiles: readonly Linter.Config[] }
 
-/** The team's blocks, and the one plugin object it registers under each prefix. */
 type TeamRegistrations = { readonly blocks: readonly Linter.Config[]; readonly plugins: ReadonlyMap<string, ESLint.Plugin> }
 
-/** The rule names the team's config turns on, by prefix, and each prefix a plugin of ours or the team's stands under. */
 type TurnedOnByTheTeam = { readonly namesByPrefix: ReadonlyMap<string, readonly string[]>; readonly prefixesBackedByAPlugin: ReadonlySet<string> }
 
 type StubsUnder = readonly [prefix: string, ruleNames: readonly string[]]
 
 /** Our part with the team's rules left out, the one plugin object under each prefix, and what the project's tsconfigs take in. */
 type OurPartBeside = { readonly part: EslintPart; readonly plugins: ReadonlyMap<string, ESLint.Plugin>; readonly projectFacts: ProjectFacts }
+
+/** Our plugins, the version their cache keys carry, and the rules the team's oxlint config sets. */
+type MergedBeside = { readonly registry: EslintPluginRegistry; readonly ourVersion: string; readonly ruleIdsInTheTeamsOxlintConfig: readonly string[] }
 
 const TYPE_INFORMATION_OPTIONS = ['project', 'projectService'] as const
 const OFF_SEVERITIES: ReadonlySet<unknown> = new Set(['off', 0])
@@ -87,15 +91,12 @@ const KEYS_OF_GLOBAL_IGNORES: ReadonlySet<string> = new Set(['name', 'basePath',
 
 /** Ours first, then the team's blocks. A rule the team's ESLint or oxlint config sets anywhere, under either twin name, is the team's in every file. Our ignores keep only our rules out of their files. */
 export function mergeEslintPart(
-  // eslint-disable-next-line functional/prefer-immutable-types -- TS2345 as Readonly: ESLint's defineConfig, which it hands the team's config to, takes a mutable InfiniteArray<ConfigWithExtends>
-  theirs: TeamEslintConfig,
+  theirs: Readonly<TeamEslintConfig>,
   partGiven: EslintPart,
   catalog: Readonly<Catalog>,
-  registry: EslintPluginRegistry,
-  ourVersion: string,
-  ruleIdsInTheTeamsOxlintConfig: readonly string[],
+  { registry, ourVersion, ruleIdsInTheTeamsOxlintConfig }: MergedBeside,
 ): Linter.Config[] {
-  const teamBlocks = defineConfig(theirs)
+  const teamBlocks = teamBlocksOf(theirs)
   const ruleIdsTheTeamSets = rulesTheTeamSets([...ruleIdsTheTeamsEslintConfigSets(teamBlocks, registry, catalog), ...ruleIdsInTheTeamsOxlintConfig], catalog)
   const part = ourPartLeavingOut(ruleIdsTheTeamSets, partGiven)
   const projectFacts = projectFactsOf(part.tsconfigRootDir)
@@ -106,6 +107,15 @@ export function mergeEslintPart(
     ...teamBlocks.map((block) => teamBlockBeside(block, plugins)),
     ...extensionsOffWhereOxlintRunsTheirCore(part.oxlintLayers, part.layers, catalog),
   ]
+}
+
+/** ESLint's defineConfig takes a mutable list, so a list the team gives is copied into one. */
+export function teamBlocksOf(theirs: Readonly<TeamEslintConfig>): Linter.Config[] {
+  return defineConfig(isAListOfConfigs(theirs) ? [...theirs] : theirs)
+}
+
+function isAListOfConfigs(theirs: Readonly<TeamEslintConfig>): theirs is TeamEslintConfigList {
+  return Array.isArray(theirs)
 }
 
 /** Each block of ours confined to the files it may run in beside the team's, then our settings a team block yields to, kept to the other files. */
@@ -165,7 +175,7 @@ function confinedBeside(block: Readonly<Linter.Config>, whereOurBlocksMayRun: Fi
 }
 
 function rulesKeptTo(where: FilesCondition, rules: Readonly<Linter.RulesRecord>): RulesWhere[] {
-  return Object.keys(rules).length === 0 ? [] : [{ where, rules }]
+  return isEmpty(rules) ? [] : [{ where, rules }]
 }
 
 function keptWhereItGivesAnything(block: Readonly<Linter.Config>): Linter.Config[] {
@@ -223,7 +233,7 @@ function whereTheTeamGivesAnyOf(paths: readonly SettingPath[], teamBlocks: reado
 
 function givesAnything(block: Readonly<Linter.Config>): boolean {
   const { rules = {} } = block
-  return Object.keys(rules).length > 0 || Object.keys(block).some((key) => !KEYS_OF_A_RULES_BLOCK.has(key))
+  return !isEmpty(rules) || Object.keys(block).some((key) => !KEYS_OF_A_RULES_BLOCK.has(key))
 }
 
 function nameOf({ name }: Readonly<Linter.Config>): string {
@@ -466,10 +476,8 @@ function withSharedPlugins(
   teamPlugins: Readonly<Record<string, ESLint.Plugin>>,
   plugins: ReadonlyMap<string, ESLint.Plugin>,
 ): Record<string, ESLint.Plugin> {
-  return Object.fromEntries(
-    Object.entries(teamPlugins).map(([prefix, teamPlugin]): [string, ESLint.Plugin] => {
-      const shared = plugins.get(prefix)
-      return [prefix, shared === undefined ? teamPlugin : shared]
-    }),
-  )
+  return mapValues(teamPlugins, (teamPlugin, prefix) => {
+    const shared = plugins.get(prefix)
+    return shared === undefined ? teamPlugin : shared
+  })
 }

@@ -1,4 +1,5 @@
 import { catalog, pluginPrefixOf, type RuleRoute, type RulesetDefinition, type RulesetList } from '@workspace/rule-data'
+import { groupBy } from '@workspace/rule-data/collections'
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import { THIS_PACKAGE } from '../../core/package-json-files.ts'
 import { textOfLines } from '../printed-lines.ts'
@@ -113,12 +114,11 @@ function flatListLines(list: FlatList, definitions: readonly RulesetDefinition[]
 function libsLines(definitions: readonly RulesetDefinition[]): string[] {
   const libs = definitions.filter((definition) => definition.list === 'libs')
   if (libs.length === 0) return [`${indentOf(LIST_DEPTH)}libs: {},`]
-  const domains = [...new Set(libs.map(domainOf))]
-  return [`${indentOf(LIST_DEPTH)}libs: {`, ...domains.flatMap((domain) => domainLines(domain, libs)), `${indentOf(LIST_DEPTH)}},`]
+  return [`${indentOf(LIST_DEPTH)}libs: {`, ...[...groupBy(libs, domainOf)].flatMap(domainLines), `${indentOf(LIST_DEPTH)}},`]
 }
 
-function domainLines(domain: string, libs: readonly RulesetDefinition[]): string[] {
-  const rulesets = listedRulesets(libs.filter((definition) => domainOf(definition) === domain))
+function domainLines([domain, definitions]: readonly [string, readonly RulesetDefinition[]]): string[] {
+  const rulesets = listedRulesets(definitions)
   return [...optInCommentLines(rulesets, DOMAIN_DEPTH), `${indentOf(DOMAIN_DEPTH)}${keyOf(domain)}: [${quotedList(rulesets.listed)}],`]
 }
 

@@ -20,7 +20,7 @@ export type PackageJsonFile = {
   readonly devDependencies: unknown
 }
 
-export function nearestPackageJsonPath(dir: string): string | undefined {
+function nearestPackageJsonPath(dir: string): string | undefined {
   return directoriesUpFrom(resolve(dir))
     .map((directory) => join(directory, PACKAGE_JSON))
     .find((path) => existsSync(path))
@@ -38,14 +38,24 @@ export function readPackageJsonFile(path: string): PackageJsonFile {
   if (!isRecord(parsed)) throw new Error(`${path}: not a JSON object`)
   return {
     path,
-    version: parsed['version'],
-    dependencies: parsed['dependencies'],
-    devDependencies: parsed['devDependencies'],
+    version: parsed.version,
+    dependencies: parsed.dependencies,
+    devDependencies: parsed.devDependencies,
   }
 }
 
-export function listsPackage(field: unknown, packageName: string): boolean {
+function listsPackage(field: unknown, packageName: string): boolean {
   return isRecord(field) && Object.hasOwn(field, packageName)
+}
+
+/** Under `dependencies` or `devDependencies`: manifests alone are read, never node_modules. */
+export function doesNearestPackageJsonList(dir: string, packageName: string): boolean {
+  const nearest = nearestPackageJsonPath(dir)
+  return nearest !== undefined && dependsOn(readPackageJsonFile(nearest), packageName)
+}
+
+export function dependsOn({ dependencies, devDependencies }: PackageJsonFile, packageName: string): boolean {
+  return listsPackage(dependencies, packageName) || listsPackage(devDependencies, packageName)
 }
 
 /** Throws, naming the file, when it gives none. */

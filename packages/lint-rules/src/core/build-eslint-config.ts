@@ -22,6 +22,7 @@ import { buildEslintSettings } from './eslint-settings.ts'
 import { bothOf, EVERY_FILE, eitherOf, type FilesCondition, type FilesEntry, filesAndIgnoresOf, filesInScopeOf, globsOf, NO_FILE } from './file-conditions.ts'
 import { SVELTE_RUNES, TEST_RUNNER_GLOBALS } from './framework-globals.ts'
 import { normalizeGlob } from './globs.ts'
+import { isEmpty } from './is-empty.ts'
 import type { LintRulesInput } from './lint-rules-input.ts'
 import { nextJsAppFileTest } from './next-js-apps.ts'
 import type { ProjectFacts } from './project-facts.ts'
@@ -607,11 +608,11 @@ function blocksOnTsFilesAlone(namePrefix: string, layerFiles: readonly Globs[], 
 function entryBlockIfNotEmpty(
   { name, files }: BlockScope,
   globalsChange: Readonly<Linter.Globals>,
-  guard: InlineConfigGuard,
+  guard: Readonly<InlineConfigGuard>,
   rules: Readonly<Linter.RulesRecord>,
 ): Linter.Config[] {
-  const changesGlobals = Object.keys(globalsChange).length > 0
-  if (!changesGlobals && guard.linterOptions === undefined && Object.keys(rules).length === 0) return []
+  const changesGlobals = !isEmpty(globalsChange)
+  if (!changesGlobals && guard.linterOptions === undefined && isEmpty(rules)) return []
   return [
     {
       name,
@@ -897,7 +898,7 @@ function entryGlobalsChange(layer: FileOverrideLayer, index: number, topLevelEnv
 }
 
 function changesAGlobal({ globals: changed }: GlobalsChange): boolean {
-  return Object.keys(changed).length > 0
+  return !isEmpty(changed)
 }
 
 export function layersWithoutRuntimeGlobals(layers: RuleLayers): RuleLayers {

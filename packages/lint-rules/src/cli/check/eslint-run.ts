@@ -65,33 +65,18 @@ async function lintedBy(eslint: Readonly<ESLint>, path: string, text: string): P
 
 /** ESLint warns of a legacy `.eslintignore` in its cwd as it builds an engine, so an engine no file needs is never built. */
 export function eslintEngineBuiltOnFirstUse(build: () => EslintEngine): EslintEngine {
-  function engine(): EslintEngine {
-    return readOnce(enginesBuilt, build, (builder) => builder())
-  }
-  return {
-    isIgnored(path) {
-      return engine().isIgnored(path)
-    },
-    allowsSuppressionsIn(path) {
-      return engine().allowsSuppressionsIn(path)
-    },
-    fixed(path, text, changed) {
-      return engine().fixed(path, text, changed)
-    },
-    linted(path, text) {
-      return engine().linted(path, text)
-    },
-  }
+  return eslintEngineForwardingTo(() => readOnce(enginesBuilt, build, (builder) => builder()))
 }
 
 /**
- * A file in the config's folder goes to the engine run from there: rules reading paths from ESLint's cwd
- * (check-file's folder names, import-x's dependency globs) read it as before check linted other packages.
+ * A file in the config's folder goes to the engine run from there, for the rules that read paths from
+ * ESLint's cwd (check-file's folder names, import-x's dependency globs).
  */
 export function eslintEngineByFolder(configFolder: string, { inTheConfigFolder, elsewhere }: EslintEnginesByFolder): EslintEngine {
-  function engineFor(path: string): EslintEngine {
-    return liesOutside(relative(configFolder, path)) ? elsewhere : inTheConfigFolder
-  }
+  return eslintEngineForwardingTo((path) => (liesOutside(relative(configFolder, path)) ? elsewhere : inTheConfigFolder))
+}
+
+function eslintEngineForwardingTo(engineFor: (path: string) => EslintEngine): EslintEngine {
   return {
     isIgnored(path) {
       return engineFor(path).isIgnored(path)
@@ -119,8 +104,8 @@ async function eslintCall<Result>(call: () => Promise<Result>): Promise<Result> 
 
 /** Parse boundary: the config ESLint computes for a file it lints, whose `linterOptions` it always fills in. */
 export function readsInlineConfigUnder(config: unknown, path: string): boolean {
-  const linterOptions = isRecord(config) ? config['linterOptions'] : undefined
-  const noInlineConfig = isRecord(linterOptions) ? linterOptions['noInlineConfig'] : undefined
+  const linterOptions = isRecord(config) ? config.linterOptions : undefined
+  const noInlineConfig = isRecord(linterOptions) ? linterOptions.noInlineConfig : undefined
   if (typeof noInlineConfig !== 'boolean') throw new TypeError(eslintFailed(`its config for ${path} says nothing of inline config`))
   return !noInlineConfig
 }

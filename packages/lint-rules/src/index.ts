@@ -57,7 +57,7 @@ type Rulesets<Domain extends string> = {
 /** Neither engine reads a glob led by `/` as any file, so the types turn it into what to write instead. */
 type FileGlob<Glob extends string> = Glob extends `/${infer FromTheRoot}` ? `files can't start with /: write ./${FromTheRoot}` : Glob
 
-type AtLeastOneFileGlob<Glob extends string> = readonly [FileGlob<Glob>, ...FileGlob<Glob>[]]
+type AtLeastOneFileGlob<Glob extends string> = readonly [FileGlob<Glob>, ...Array<FileGlob<Glob>>]
 
 type FileOverride<Glob extends string, AgentDomain extends string, EditorDomain extends string, Id extends string> = {
   /**

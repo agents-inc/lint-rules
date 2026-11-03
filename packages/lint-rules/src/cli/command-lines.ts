@@ -1,6 +1,8 @@
 // Imported before the Node floor check, so it imports nothing.
 
-export type Command = 'check' | 'init'
+export const COMMANDS = ['check', 'init'] as const
+
+export type Command = (typeof COMMANDS)[number]
 
 export function couldNotRunLine(command: Command, reason: string): string {
   return `${command}: could not run: ${reason}`

@@ -43,11 +43,11 @@ export type OxlintPart = {
 export type EditorParts = { readonly eslint: EslintPart; readonly oxlint: OxlintPart | undefined }
 
 export function isEslintPart(given: unknown): given is EslintPart {
-  return isRecord(given) && given['engine'] === 'eslint'
+  return isRecord(given) && given.engine === 'eslint'
 }
 
 export function isOxlintPart(given: unknown): given is OxlintPart {
-  return isRecord(given) && given['engine'] === 'oxlint'
+  return isRecord(given) && given.engine === 'oxlint'
 }
 
 export function editorPartsOf(lintRules: TwoSetLintRulesInput, catalog: Readonly<Catalog>, usesOxlint: boolean): EditorParts {
@@ -65,7 +65,7 @@ function catalogWithEditorRulesets(catalog: Readonly<Catalog>): Catalog {
 }
 
 /** At its setting while suppressions are allowed, as they always are in the editor parts. One that setting turns off stays as it is: off in every editor. */
-function routeInEditors(route: RuleRoute): RuleRoute {
+function routeInEditors(route: Readonly<RuleRoute>): RuleRoute {
   if (!isSuppressionRoute(route)) return route
   const { whenSuppressions: { allowed }, editorRuleset, ...shipped } = route.shipped
   if (editorRuleset === undefined || allowed === 'off') return route

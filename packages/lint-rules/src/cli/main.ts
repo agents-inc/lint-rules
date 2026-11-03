@@ -21,7 +21,7 @@ const SIGNAL_NAMES: ReadonlySet<unknown> = new Set(SIGNALS)
 const EXIT_CODE_OF_SIGNAL = { SIGINT: EXIT_INTERRUPTED, SIGTERM: EXIT_TERMINATED } as const satisfies Record<HandledSignal, number>
 
 const EXPERIMENTAL_WARNING = 'ExperimentalWarning'
-const TYPE_STRIPPING = /^Type Stripping /u
+const TYPE_STRIPPING = 'Type Stripping '
 
 /**
  * Any error exits 2, never 0. A first SIGINT or SIGTERM lets the command stop and exit 130 or 143;
@@ -107,7 +107,7 @@ function printWarningsButTypeStripping(): void {
 }
 
 function isTypeStrippingWarning({ name, message }: Readonly<Error>): boolean {
-  return name === EXPERIMENTAL_WARNING && TYPE_STRIPPING.test(message)
+  return name === EXPERIMENTAL_WARNING && message.startsWith(TYPE_STRIPPING)
 }
 
 function nodeWarningText({ name, message }: Readonly<Error>): string {

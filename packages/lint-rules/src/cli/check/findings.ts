@@ -89,7 +89,7 @@ function unusedSuppressionFinding(file: string, line: number, ruleName: string):
  * Parse boundary: for a TS file the project service finds in no tsconfig, ESLint's parse error has no
  * line, though its type gives one (measured, ESLint 10.12). It is then about the whole file.
  */
-function lineOfEslintsParseError({ line }: Pick<Partial<Linter.LintMessage>, 'line'>): number {
+function lineOfEslintsParseError({ line }: Readonly<Pick<Partial<Linter.LintMessage>, 'line'>>): number {
   return line === undefined ? WHOLE_FILE_LINE : line
 }
 

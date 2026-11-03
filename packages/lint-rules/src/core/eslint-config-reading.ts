@@ -1,4 +1,5 @@
 import type { Catalog } from '@workspace/rule-data'
+import { filterEntries } from '@workspace/rule-data/collections'
 import { consumerConfigFiles } from '@workspace/rule-data/consumer-config-files'
 import { pluginPrefixOf, ruleNameOf } from '@workspace/rule-data/rule-id-parts'
 import type { ESLint, Linter } from 'eslint'
@@ -11,13 +12,13 @@ import { configErrorIn } from './config-error.ts'
 
 type PluginRegistration = readonly [prefix: string, plugin: ESLint.Plugin]
 
-type KeyAndEntry = [key: string, entry: Linter.RuleEntry | undefined]
+type KeyAndEntry = readonly [key: string, entry: Linter.RuleEntry | undefined]
 
 type PrefixOfOurPlugin = { readonly teams: string; readonly ours: string }
 
 const PREFIX_SEPARATOR = '/'
 
-// A plugin we replaced with a fork is ours under the original's name too (owner, q-gap-lint-a11y-original-prefix).
+// A plugin we replaced with a fork is ours under the original's name too.
 const OUR_FORK_BY_ORIGINAL_NAME: ReadonlyMap<string, string> = new Map([['eslint-plugin-jsx-a11y', 'eslint-plugin-jsx-a11y-x']])
 
 /** Every rule of ours the team's blocks set at any severity, sorted. A key under a prefix the team registers one of our plugins under also names our rule (antfu's `react` holds both our @eslint-react and eslint-plugin-react). */
@@ -33,10 +34,10 @@ function ruleKeysOf(teamBlocks: readonly Linter.Config[]): string[] {
 
 /** An entry left undefined states none. */
 export function rulesStatedIn({ rules = {} }: Readonly<Linter.Config>): Linter.RulesRecord {
-  return Object.fromEntries(Object.entries(rules).filter(isStated))
+  return filterEntries(rules, isStated)
 }
 
-function isStated(keyAndEntry: KeyAndEntry): keyAndEntry is [string, Linter.RuleEntry] {
+function isStated(keyAndEntry: KeyAndEntry): keyAndEntry is readonly [string, Linter.RuleEntry] {
   return keyAndEntry[1] !== undefined
 }
 

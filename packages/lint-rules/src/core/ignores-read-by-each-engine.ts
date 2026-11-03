@@ -200,17 +200,39 @@ function canOxlintTakeBackFrom(line: IgnoreLine, leftOut: FolderReading, negated
 
 /** A negated folder below it takes files back, the folder itself only after it, any other none. */
 function canTakeBackFromTheFolder(path: string, takingBack: FolderReading, isLater: boolean): boolean {
-  if (takingBack.kind !== 'one folder') return true
-  if (takingBack.path === path) return isLater
-  return isUnder(takingBack.path, path)
+  switch (takingBack.kind) {
+    case 'one folder':
+      if (takingBack.path === path) return isLater
+      return isUnder(takingBack.path, path)
+    case 'a folder and every folder in it':
+    case 'every folder named':
+    case 'every folder named, and every folder in one':
+    case 'unread':
+      return true
+    default: {
+      const unhandled: never = takingBack
+      return unhandled
+    }
+  }
 }
 
 /** A negated folder inside one of that name takes files back, one of that name itself only after it, any other none. */
 function canTakeBackFromFoldersNamed(name: string, takingBack: FolderReading, isLater: boolean): boolean {
-  if (takingBack.kind === 'every folder named') return takingBack.name !== name || isLater
-  if (takingBack.kind !== 'one folder') return true
-  if (isInAFolderNamed(takingBack.path, name)) return true
-  return lastSegmentOf(takingBack.path) === name && isLater
+  switch (takingBack.kind) {
+    case 'one folder':
+      if (isInAFolderNamed(takingBack.path, name)) return true
+      return lastSegmentOf(takingBack.path) === name && isLater
+    case 'every folder named':
+      return takingBack.name !== name || isLater
+    case 'a folder and every folder in it':
+    case 'every folder named, and every folder in one':
+    case 'unread':
+      return true
+    default: {
+      const unhandled: never = takingBack
+      return unhandled
+    }
+  }
 }
 
 /** Never for one ending `/**`: every file under it is itself a match. */

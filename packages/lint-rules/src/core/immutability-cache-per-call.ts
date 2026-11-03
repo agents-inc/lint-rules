@@ -1,9 +1,8 @@
-import { foundOr } from '@workspace/rule-data/collections'
 import type { ESLint, Rule, SourceCode } from 'eslint'
 import type ts from 'typescript'
 import { isRecord } from './is-record.ts'
 import { readOnce } from './read-once.ts'
-import { derivedFrom, isProgram } from './typed-rule-contexts.ts'
+import { derivedFrom, pluginWithRulesReplaced, programWithChecker, ruleGivenContext, typedParserServicesOf } from './typed-rule-contexts.ts'
 
 const FUNCTIONAL = 'functional'
 // is-immutable-type (5.0.4, its issue #625) keeps each answer for the whole process under checker.getRecursionIdentity(type),
@@ -16,9 +15,7 @@ type CheckerIdentifyingRecursion = ts.TypeChecker & { readonly getRecursionIdent
 /** functional's plugin, its prefer-immutable-types given a checker of its own each time it asks about a type; any other plugin as it is. */
 export function withImmutabilityCachedPerCall(prefix: string, plugin: Readonly<ESLint.Plugin>): ESLint.Plugin {
   if (prefix !== FUNCTIONAL) return plugin
-  const rules = foundOr(plugin.rules, `the plugin under ${prefix} has no rules`)
-  const rule: Rule.RuleModule = foundOr(rules[RULE_ASKING_IS_IMMUTABLE_TYPE], `${FUNCTIONAL}/${RULE_ASKING_IS_IMMUTABLE_TYPE} is not in its plugin`)
-  return { ...plugin, rules: { ...rules, [RULE_ASKING_IS_IMMUTABLE_TYPE]: cachingPerCall(rule) } }
+  return pluginWithRulesReplaced(prefix, plugin, [RULE_ASKING_IS_IMMUTABLE_TYPE], cachingPerCall)
 }
 
 /** Maps each recursion identity the checker gives to a token of its own, so nothing cached under one outlives this checker. */
@@ -33,21 +30,14 @@ export function checkerWithRecursionIdentitiesOfItsOwn(checker: ts.TypeChecker):
 }
 
 function cachingPerCall(rule: Readonly<Rule.RuleModule>): Rule.RuleModule {
-  return {
-    ...rule,
-    create(context) {
-      return rule.create(contextCachingPerCall(context))
-    },
-  }
+  return ruleGivenContext(rule, contextCachingPerCall)
 }
 
 /** A file with no type information keeps its context: the rule reports that itself. */
 function contextCachingPerCall(context: Readonly<Rule.RuleContext>): Rule.RuleContext {
-  const { sourceCode } = context
-  const services: unknown = sourceCode.parserServices
-  const program = isRecord(services) ? services['program'] : null
-  if (!isRecord(services) || !isProgram(program)) return context
-  return derivedFrom(context, { sourceCode: sourceCodeWithACheckerPerRead(sourceCode, services, program) })
+  const typed = typedParserServicesOf(context)
+  if (typed === null) return context
+  return derivedFrom(context, { sourceCode: sourceCodeWithACheckerPerRead(context.sourceCode, typed.services, typed.program) })
 }
 
 /** The rule reads the parser services anew each time it asks is-immutable-type about a type, so each read gives a program with a checker of its own. */
@@ -60,12 +50,7 @@ function sourceCodeWithACheckerPerRead(sourceCode: Readonly<SourceCode>, service
 }
 
 function programWithCheckerOfItsOwn(program: ts.Program): ts.Program {
-  const checker = checkerWithRecursionIdentitiesOfItsOwn(program.getTypeChecker())
-  return derivedFrom(program, {
-    getTypeChecker() {
-      return checker
-    },
-  })
+  return programWithChecker(program, checkerWithRecursionIdentitiesOfItsOwn(program.getTypeChecker()))
 }
 
 function identifyingRecursion(checker: ts.TypeChecker): CheckerIdentifyingRecursion {
@@ -75,7 +60,7 @@ function identifyingRecursion(checker: ts.TypeChecker): CheckerIdentifyingRecurs
 
 /** Parse boundary: TypeScript's checker carries getRecursionIdentity, which its d.ts leaves out. */
 function isIdentifyingRecursion(checker: ts.TypeChecker): checker is CheckerIdentifyingRecursion {
-  return isRecord(checker) && typeof checker['getRecursionIdentity'] === 'function'
+  return isRecord(checker) && typeof checker.getRecursionIdentity === 'function'
 }
 
 function aTokenOfItsOwn(): object {

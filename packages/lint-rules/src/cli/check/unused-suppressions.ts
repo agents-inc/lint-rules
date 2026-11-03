@@ -68,7 +68,7 @@ export function namesSuppressingNothing(
   diagnostics: readonly OxlintDiagnostic[],
   { file, text }: { readonly file: string; readonly text: string },
 ): UnusedSuppression[] {
-  const unusedByEslint = new Set(unusedInEslint(messages).map(keyOf))
+  const unusedByEslint = new Set(messages.flatMap(unusedInEslintMessage).map(keyOf))
   return unusedInOxlint(diagnostics, file, text)
     .filter((unused) => isUnusedInEveryEngineReadingIt(unused, unusedByEslint))
     .map(asUnusedSuppression)
@@ -87,11 +87,10 @@ function asUnusedSuppression({ line, ruleName }: UnusedInOxlint): UnusedSuppress
   return { line, ruleName }
 }
 
-function unusedInEslint(messages: readonly Linter.LintMessage[]): UnusedSuppression[] {
-  return messages.flatMap(({ ruleId, message, line }) => {
-    if (ruleId !== null) return []
-    return namesEslintCallsUnusedIn(message).map((ruleName) => ({ line, ruleName }))
-  })
+/** ESLint reports an unused suppression under no rule ID. */
+function unusedInEslintMessage({ ruleId, message, line }: Readonly<Linter.LintMessage>): UnusedSuppression[] {
+  if (ruleId !== null) return []
+  return namesEslintCallsUnusedIn(message).map((ruleName) => ({ line, ruleName }))
 }
 
 /** The file is parsed only where oxlint reports one. */
@@ -180,8 +179,8 @@ function parsedOrNull(file: string, text: string): Parsed | null {
 
 /** Parse boundary: typescript-eslint's AST, which its parser's type leaves unknown. */
 function parsedCommentsIn(ast: unknown): readonly ParsedComment[] {
-  if (!isRecord(ast) || !Array.isArray(ast['comments'])) throw new Error("typescript-eslint's parser gave no list of comments")
-  return ast['comments'] as readonly ParsedComment[]
+  if (!isRecord(ast) || !Array.isArray(ast.comments)) throw new Error("typescript-eslint's parser gave no list of comments")
+  return ast.comments as readonly ParsedComment[]
 }
 
 /**

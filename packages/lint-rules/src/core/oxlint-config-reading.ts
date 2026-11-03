@@ -192,17 +192,13 @@ export function teamResolutionOf(theirs: Readonly<OxlintConfig>, bySpelling: Oxl
     rootPlugins: rootPluginsOf(theirs),
     categories: { ...DEFAULT_CATEGORIES, ...resolvedCategoriesOf(theirs) },
     listings: overridesIn(configs).flatMap(listingOf),
-    rulesStatedAtARoot: configs.flatMap((config) => rulesStatedAtTheRootOf(config, bySpelling)),
+    rulesStatedAtARoot: configs.flatMap((config) => rulesKeyedIn(rulesOf(config), bySpelling)),
   }
 }
 
 /** oxlint's defaults where no config lists any. */
 function rootPluginsOf(theirs: Readonly<OxlintConfig>): ReadonlySet<OxlintPlugin> {
   return new Set(listedOrDefault(resolvedPluginsOf(theirs)).filter((plugin) => plugin !== ALWAYS_RUN))
-}
-
-function rulesStatedAtTheRootOf(config: Readonly<OxlintConfig>, bySpelling: OxlintRulesBySpelling): OxlintRule[] {
-  return rulesKeyedIn(rulesOf(config), bySpelling)
 }
 
 /** Merged with each config it extends, last first (Oxlintrc::merge). Undefined where none lists any. */

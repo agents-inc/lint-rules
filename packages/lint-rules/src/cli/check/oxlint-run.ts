@@ -6,6 +6,7 @@ import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { text } from 'node:stream/consumers'
 import { type Catalog, isOxlintRoute, routeOf } from '@workspace/rule-data'
+import { mapValues } from '@workspace/rule-data/collections'
 import type { DummyRule, DummyRuleMap, OxlintConfig, OxlintOverride } from 'oxlint'
 import { hasErrorCode } from '../../core/caught-errors.ts'
 import { namedGroupOf } from '../../core/named-groups.ts'
@@ -76,7 +77,7 @@ function overrideWithWarnedRulesOff(override: Readonly<OxlintOverride>): OxlintO
 }
 
 function warnedRulesOff(rules: Readonly<DummyRuleMap>): DummyRuleMap {
-  return Object.fromEntries(Object.entries(rules).map(([name, rule]): [string, RuleEntry] => [name, isSetToWarn(rule) ? OFF : rule]))
+  return mapValues(rules, (rule): RuleEntry => (isSetToWarn(rule) ? OFF : rule))
 }
 
 /** The build writes a severity alone, or first before the options. */

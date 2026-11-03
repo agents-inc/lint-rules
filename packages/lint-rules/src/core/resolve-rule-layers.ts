@@ -9,7 +9,7 @@ import {
   type ShippedRule,
   type SuppressionMode,
 } from '@workspace/rule-data'
-import { foundOr, groupBy } from '@workspace/rule-data/collections'
+import { filterEntries, foundOr, groupBy, mapValues } from '@workspace/rule-data/collections'
 import { envOfRulesets, isSuppressionRoute, readsRuntimeGlobals, rulesetNamed, type SuppressionRoute } from './catalog-lookups.ts'
 import { formsOfAnIgnoresValue, normalizeGlob, normalizeGlobs } from './globs.ts'
 import { isRecord } from './is-record.ts'
@@ -346,10 +346,13 @@ function rulesOnUnder(rulesets: RulesetsInput, rules: RuleSettingsInput, covers:
  * they are. An entry's own `rules` turning that rule on or off do not move it (a known limit, as for a cover).
  */
 function withAllowancesWhereTheirRulesRun(settings: RuleSettings, hasOptionsSettled: HasOptionsSettled, layerRulesOn: RuleSettings, catalog: Readonly<Catalog>): RuleSettings {
-  const trimmed = Object.entries(settings)
-    .filter(([id]) => !hasOptionsSettled(id))
-    .map(([id, setting]): SettingEntry => [id, settingWithAllowancesWhereTheirRulesRun(setting, allowancesLeftToBy(routeOf(id, catalog)), layerRulesOn)])
-  return { ...settings, ...Object.fromEntries(trimmed) }
+  return {
+    ...settings,
+    ...mapValues(
+      filterEntries(settings, ([id]) => !hasOptionsSettled(id)),
+      (setting, id) => settingWithAllowancesWhereTheirRulesRun(setting, allowancesLeftToBy(routeOf(id, catalog)), layerRulesOn),
+    ),
+  }
 }
 
 function isWrittenWithOptions(written: RuleSettingsInput, id: string): boolean {
@@ -541,9 +544,7 @@ function entryRulesOf(rules: RuleSettingsInput, entryRulesOn: RuleSettings, cata
 }
 
 function settingsGivenBy(rules: RuleSettingsInput, inForce: RuleSettings, catalog: Readonly<Catalog>): RuleSettings {
-  return Object.fromEntries(
-    Object.entries(rules).map(([id, entry]): SettingEntry => [id, scopedSettingOf(id, entry, inForce, catalog)]),
-  )
+  return mapValues(rules, (entry, id) => scopedSettingOf(id, entry, inForce, catalog))
 }
 
 function severityAndOptions(
@@ -619,7 +620,7 @@ function tsFileRulesChanged({ tsFileRules }: Pick<RuleLayers, 'tsFileRules'>, ch
 }
 
 function settingsKeeping(settings: RuleSettings, isKept: IsRuleKept): RuleSettings {
-  return Object.fromEntries(Object.entries(settings).filter(([id, setting]) => isKept({ id, setting })))
+  return filterEntries(settings, ([id, setting]) => isKept({ id, setting }))
 }
 
 export function settingsOn(settings: RuleSettings): RuleSettings {

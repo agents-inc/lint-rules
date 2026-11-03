@@ -1,6 +1,7 @@
 import { type Dirent, readdirSync } from 'node:fs'
 import { basename, dirname, join, relative, resolve, sep } from 'node:path'
 import ts from 'typescript'
+import { hasErrorCode } from './caught-errors.ts'
 import type { FileTest } from './eslint-file-types.ts'
 import { liesOutside } from './lies-outside.ts'
 import { namedGroupOf } from './named-groups.ts'
@@ -173,5 +174,5 @@ function entriesOf(directory: string): Dirent[] {
 }
 
 function isUnreadableDirectory(error: unknown): boolean {
-  return error instanceof Error && 'code' in error && typeof error.code === 'string' && UNREADABLE_DIRECTORY_CODES.has(error.code)
+  return UNREADABLE_DIRECTORY_CODES.values().some((code) => hasErrorCode(error, code))
 }

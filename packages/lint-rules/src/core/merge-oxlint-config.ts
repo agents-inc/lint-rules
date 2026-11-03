@@ -1,5 +1,5 @@
 import type { Catalog, OxlintRule } from '@workspace/rule-data'
-import { foundOr, groupBy } from '@workspace/rule-data/collections'
+import { filterEntries, foundOr, groupBy } from '@workspace/rule-data/collections'
 import type { DummyRuleMap, OxlintConfig, OxlintEnv, OxlintGlobals, OxlintOverride } from 'oxlint'
 import { type OxlintPlugin, sortedUnique } from './build-oxlint-config.ts'
 import { runtimeEnvsOf } from './catalog-lookups.ts'
@@ -7,6 +7,7 @@ import { configErrorIn } from './config-error.ts'
 import type { OxlintPart } from './editor-parts.ts'
 import { bothOf, eitherOf, type FilesCondition, keyOfCondition } from './file-conditions.ts'
 import { EVERY_FILE_AT_ANY_DEPTH } from './globs.ts'
+import { isEmpty } from './is-empty.ts'
 import { isRecord } from './is-record.ts'
 import { nullOxlintRefusesIn } from './nulls-oxlint-refuses.ts'
 import {
@@ -133,7 +134,7 @@ function everyPluginListed(team: TeamResolution, ours: readonly OxlintOverride[]
 }
 
 function pluginsOfTheRulesIn(overrides: readonly OxlintOverride[], bySpelling: OxlintRulesBySpelling): OxlintPlugin[] {
-  return overrides.flatMap(({ rules = {} }) => Object.keys(rules).map((spelling) => pluginOfRuleSpelled(spelling, bySpelling)))
+  return overrides.flatMap(({ rules = {} }) => Object.keys(rules).map((spelling) => pluginOf(oxlintRuleSpelled(spelling, bySpelling))))
 }
 
 function envAndGlobalsGivenBy({ env, globals }: Readonly<EnvAndGlobals>): EnvAndGlobals {
@@ -171,8 +172,8 @@ function onStatementsOf(override: Readonly<OxlintOverride>, laterOfOurs: readonl
 }
 
 function runtimeEnvApart({ env = {}, ...globals }: Readonly<EnvAndGlobals>, runtimeEnvs: ReadonlySet<string>): RuntimeEnvApart {
-  const runtimeEnv = Object.fromEntries(Object.entries(env).filter(([key]) => runtimeEnvs.has(key)))
-  const otherEnv = Object.fromEntries(Object.entries(env).filter(([key]) => !runtimeEnvs.has(key)))
+  const runtimeEnv = filterEntries(env, ([key]) => runtimeEnvs.has(key))
+  const otherEnv = filterEntries(env, ([key]) => !runtimeEnvs.has(key))
   return { runtimeEnv, others: { ...(!isEmpty(otherEnv) && { env: otherEnv }), ...globals } }
 }
 
@@ -186,7 +187,7 @@ function statementsByWhere(statements: readonly OnStatement[]): OnStatementsWher
 }
 
 function withEnvAndGlobalsWhereTheyHold(byWhere: readonly OnStatementsWhere[], envAndGlobalsWhere: FilesCondition, envAndGlobals: Readonly<EnvAndGlobals>): OxlintOverride[] {
-  if (Object.keys(envAndGlobals).length === 0) return byWhere.flatMap((group) => overridesTurningOn(group, {}))
+  if (isEmpty(envAndGlobals)) return byWhere.flatMap((group) => overridesTurningOn(group, {}))
   function holdsWhereTheyDo({ where }: OnStatementsWhere): boolean {
     return keyOfCondition(where) === keyOfCondition(envAndGlobalsWhere)
   }
@@ -214,11 +215,7 @@ function envAndGlobalsLessTheTeams({ env = {}, globals = {} }: Readonly<EnvAndGl
 }
 
 function withoutKeysSetIn<Value>(ours: Readonly<Record<string, Value>>, teams: Readonly<Record<string, unknown>> = {}): Record<string, Value> {
-  return Object.fromEntries(Object.entries(ours).filter(([key]) => teams[key] === undefined))
-}
-
-function isEmpty(record: Readonly<Record<string, unknown>>): boolean {
-  return Object.keys(record).length === 0
+  return filterEntries(ours, ([key]) => teams[key] === undefined)
 }
 
 /** A config imported from .oxlintrc.json is untyped: settings that are no object where oxlint takes one stay as written, for oxlint to read as it would alone. */
@@ -275,7 +272,7 @@ function categoryRulesSwitchedOnFor(listed: ReadonlySet<OxlintPlugin>, { rootPlu
 function switchesBesideOtherListings({ plugins, listings }: ListingsOfOneSet, team: TeamResolution, catalog: Readonly<Catalog>): OxlintOverride[] {
   const listingsOfOtherSets = team.listings.filter((listing) => !isTheSameSet(listing.plugins, plugins))
   const rules = categoryRulesSwitchedOnFor(plugins, team, catalog)
-  if (listingsOfOtherSets.length === 0 || Object.keys(rules).length === 0) return []
+  if (listingsOfOtherSets.length === 0 || isEmpty(rules)) return []
   const offs = offEntriesFor(Object.keys(rules))
   return [...listings.flatMap(({ where }) => switchesWhere(where, rules)), ...offOutside(listingsOfOtherSets, offs)]
 }
@@ -305,7 +302,7 @@ function listingsByExcludeFiles(listings: readonly Listing[]): ListingsExcluding
 }
 
 function switchesWhere(where: Readonly<OverrideFiles>, rules: Readonly<DummyRuleMap>): OxlintOverride[] {
-  return Object.keys(rules).length === 0 ? [] : [{ ...whereItApplies(where), rules }]
+  return isEmpty(rules) ? [] : [{ ...whereItApplies(where), rules }]
 }
 
 function categoryRulesOf(plugins: ReadonlySet<OxlintPlugin>, categories: CategorySeverities, catalog: Readonly<Catalog>): DummyRuleMap {
@@ -365,8 +362,8 @@ function overrideWithIgnoredStatementsDropped(override: Readonly<OxlintOverride>
   const { rules } = override
   if (rules === undefined) return override
   const appliedHere = pluginsAppliedIn(override, team)
-  const applied = Object.entries(rules).filter(([key]) => isAppliedWhere(appliedHere, key, bySpelling))
-  return applied.length === Object.keys(rules).length ? override : { ...override, rules: Object.fromEntries(applied) }
+  const applied = filterEntries(rules, ([key]) => isAppliedWhere(appliedHere, key, bySpelling))
+  return Object.keys(applied).length === Object.keys(rules).length ? override : { ...override, rules: applied }
 }
 
 /** A JS plugin's rule always applies, as no plugin listing touches it. */
@@ -389,10 +386,6 @@ function filesOf(listings: readonly Listing[]): string[] {
 
 function excludeFilesOf({ excludeFiles = [] }: Readonly<OverrideFiles>): readonly string[] {
   return excludeFiles
-}
-
-function pluginOfRuleSpelled(spelling: string, bySpelling: OxlintRulesBySpelling): OxlintPlugin {
-  return pluginOf(oxlintRuleSpelled(spelling, bySpelling))
 }
 
 function offEntriesFor(spellings: readonly string[]): DummyRuleMap {

@@ -99,7 +99,7 @@ function gitPathIn(topLevel: string, name: string): string {
 
 /** The repo's own objects, then any alternates git is already given. */
 function alternateObjectFolders(repoObjects: string): string {
-  return [repoObjects, process.env['GIT_ALTERNATE_OBJECT_DIRECTORIES']].filter((path) => path !== undefined).join(delimiter)
+  return [repoObjects, process.env.GIT_ALTERNATE_OBJECT_DIRECTORIES].filter((path) => path !== undefined).join(delimiter)
 }
 
 /**

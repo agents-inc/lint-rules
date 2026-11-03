@@ -1,3 +1,4 @@
+import { compareCodeUnits } from '@workspace/rule-data/collections'
 import { EXIT_CLEAN, EXIT_COULD_NOT_RUN, EXIT_FINDINGS } from '../exit-codes.ts'
 import { printedLengthOf, textOfLines } from '../printed-lines.ts'
 import { autofixedLine, cutLine, type ListPrinted, MESSAGE_SEPARATOR, notCheckedLine, summaryLine, WARNING_MARK } from './texts.ts'
@@ -119,11 +120,5 @@ function filesOf(findings: readonly CheckFinding[]): ReadonlySet<string> {
 }
 
 function byPathThenLine(first: CheckFinding, second: CheckFinding): number {
-  return comparedText(first.file, second.file) || first.line - second.line || comparedText(first.label, second.label)
-}
-
-/** Code unit order, the same in every locale. */
-function comparedText(first: string, second: string): number {
-  if (first === second) return 0
-  return first < second ? -1 : 1
+  return compareCodeUnits(first.file, second.file) || first.line - second.line || compareCodeUnits(first.label, second.label)
 }
