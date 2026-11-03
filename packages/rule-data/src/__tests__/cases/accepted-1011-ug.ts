@@ -2,9 +2,8 @@ import type { HeldCase } from '../accepted-rules-out-of-place.ts'
 import type { CaseFile } from '../rule-case-runs.ts'
 import type { RuleCase } from './changed-settings.ts'
 
-// The unicorn guard rules the owner accepted on the old candidates page on 2026-10-11: each reports the page's code and
-// stays silent on its corrected form, and on a shape the rule leaves alone. A `.js` copy of the code that uses `using`,
-// `Temporal` or an iterator helper proves the shipped parser reads it outside TypeScript too.
+// A `.js` copy of the code that uses `using`, `Temporal` or an iterator helper proves the shipped parser reads it
+// outside TypeScript too.
 
 const FIELD_WITH_BOTH_ACCESSORS = `class Field {
   #value = ''
@@ -13,7 +12,6 @@ const FIELD_WITH_BOTH_ACCESSORS = `class Field {
 }
 `
 
-/** A subclass overriding only the setter, in a source file: accessor-pairs reports it too. */
 const SETTER_ONLY_OVERRIDE: CaseFile = {
   path: 'src/trimmed-field.ts',
   source: `${FIELD_WITH_BOTH_ACCESSORS}
@@ -23,10 +21,12 @@ export class TrimmedField extends Field {
 `,
 }
 
-/** The same override in a test file, where accessor-pairs is off. */
 const SETTER_ONLY_OVERRIDE_IN_A_TEST_FILE: CaseFile = { path: 'src/trimmed-field.test.ts', source: SETTER_ONLY_OVERRIDE.source }
 
-/** A subclass overriding both accessors. */
+// Each digest a string of its own, as an integrity attribute holds it: no-secrets leaves such a string alone.
+const APP_SCRIPT_DIGEST = 'sha256-LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ='
+const APP_STYLES_DIGEST = 'sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC'
+
 const BOTH_ACCESSORS_OVERRIDDEN: CaseFile = {
   path: 'src/trimmed-field-both.ts',
   source: `${FIELD_WITH_BOTH_ACCESSORS}
@@ -37,7 +37,6 @@ export class TrimmedField extends Field {
 `,
 }
 
-/** How the candidates page proposed shipping each unicorn guard rule the owner accepted on 2026-10-11. */
 type ProposedEntry = {
   readonly ruleset: string
   readonly engine: 'eslint'
@@ -45,7 +44,6 @@ type ProposedEntry = {
   readonly typed: boolean
 }
 
-/** Each accepted unicorn guard rule as the page proposed it: ESLint, untyped, since each reports its case without types. */
 export const ACCEPTED_1011_UG_ENTRIES: Readonly<Record<string, ProposedEntry>> = {
   'unicorn/no-async-iterator-callback': { ruleset: 'correctness', engine: 'eslint', options: [], typed: false },
   'unicorn/no-conflicting-constraints': { ruleset: 'correctness', engine: 'eslint', options: [], typed: false },
@@ -68,7 +66,6 @@ export const ACCEPTED_1011_UG_ENTRIES: Readonly<Record<string, ProposedEntry>> =
   'unicorn/require-text-decoder-streaming': { ruleset: 'correctness', engine: 'eslint', options: [], typed: false },
 }
 
-/** Each shipped accepted unicorn guard rule's report case beside its silent twin. */
 export const ACCEPTED_1011_UG_CASES: readonly RuleCase[] = [
   {
     rule: 'unicorn/no-conflicting-constraints',
@@ -358,7 +355,7 @@ export const Policy = () => <meta httpEquiv="Content-Security-Policy" content="d
       {
         path: 'src/app-script-hashed.tsx',
         source: `export const AppScript = () => (
-  <script src="/app.js" integrity="sha256-LPJNul+wow4m6DsqxbninhsWHlwfp0JecwQzYpOLmCQ=" />
+  <script src="/app.js" integrity="${APP_SCRIPT_DIGEST}" />
 )
 `,
       },
@@ -368,7 +365,7 @@ export const Policy = () => <meta httpEquiv="Content-Security-Policy" content="d
   <link
     rel="stylesheet"
     href="/app.css"
-    integrity="sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC"
+    integrity="${APP_STYLES_DIGEST}"
     crossOrigin="anonymous"
   />
 )
@@ -519,16 +516,8 @@ window.addEventListener(
   },
 ]
 
-/**
- * The cases of accepted unicorn guard rules whose measurement tripped the spec's stop, unrun until the owner answers the
- * card each waits on: once the rule ships, its case moves to ACCEPTED_1011_UG_CASES.
- */
 export const ACCEPTED_1011_UG_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = []
 
-/**
- * accessor-pairs, as it ships, on the setter-only override no-incomplete-accessor-override reports: it reports the
- * override in a source file too, and leaves it in a test file and where both accessors are overridden.
- */
 export const ACCESSOR_PAIRS_BESIDE_THE_OVERRIDE_RULE: RuleCase = {
   rule: 'accessor-pairs',
   subject: 'a setter-only override no-incomplete-accessor-override reports',

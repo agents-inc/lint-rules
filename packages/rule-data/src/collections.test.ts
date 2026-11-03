@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { lookUpsWrittenOutIn } from './__tests__/look-ups-written-out.ts'
-import { compareCodeUnits, foundOr, groupBy, sharedKeys } from './collections.ts'
+import { compareCodeUnits, filterEntries, foundOr, groupBy, mapValues, sharedKeys } from './collections.ts'
 
 const SOURCE_DIR = fileURLToPath(new URL('.', import.meta.url))
 const LENGTHS_BY_WORD: ReadonlyMap<string, number> = new Map([['three', 3]])
@@ -10,9 +10,16 @@ const MISS_MESSAGE = 'no length is recorded for "four"'
 // Keyed by first letter: b first appears before a, and each of b and a recurs after the other has appeared.
 const FRUITS: readonly string[] = ['banana', 'apple', 'cherry', 'blueberry', 'avocado', 'apricot']
 const FRUITS_EACH_UNDER_A_LETTER_OF_ITS_OWN: readonly string[] = ['banana', 'apple', 'cherry']
+// Keys out of code-unit order, so a result in the record's order is not one sorted by key.
+const COUNTS_BY_FRUIT: Readonly<Record<string, number>> = { cherry: 3, apple: 1, banana: 2 }
+const NOTES_BY_FRUIT: Readonly<Record<string, string | undefined>> = { cherry: 'stoned', apple: undefined, banana: 'peeled' }
 
 function firstLetterOf(word: string): string {
   return word.slice(0, 1)
+}
+
+function isNoted(entry: readonly [fruit: string, note: string | undefined]): entry is readonly [string, string] {
+  return entry[1] !== undefined
 }
 
 describe('foundOr', () => {
@@ -77,6 +84,50 @@ describe('sharedKeys', () => {
 
   it('gives none where each item has a key of its own', () => {
     expect(sharedKeys(FRUITS_EACH_UNDER_A_LETTER_OF_ITS_OWN, firstLetterOf)).toStrictEqual([])
+  })
+})
+
+describe('mapValues', () => {
+  it('gives each value mapped, under its own key, in the order the record gives', () => {
+    expect(Object.entries(mapValues(COUNTS_BY_FRUIT, (count) => count * 10))).toStrictEqual([
+      ['cherry', 30],
+      ['apple', 10],
+      ['banana', 20],
+    ])
+  })
+
+  it('hands the mapping each key beside its value', () => {
+    expect(Object.entries(mapValues(COUNTS_BY_FRUIT, (count, fruit) => `${fruit}:${String(count)}`))).toStrictEqual([
+      ['cherry', 'cherry:3'],
+      ['apple', 'apple:1'],
+      ['banana', 'banana:2'],
+    ])
+  })
+})
+
+describe('filterEntries', () => {
+  it('keeps the entries whose value the test passes, in the order the record gives, and drops the rest', () => {
+    expect(Object.entries(filterEntries(COUNTS_BY_FRUIT, ([, count]) => count > 1))).toStrictEqual([
+      ['cherry', 3],
+      ['banana', 2],
+    ])
+  })
+
+  it('keeps the entries whose key the test passes', () => {
+    expect(Object.entries(filterEntries(COUNTS_BY_FRUIT, ([fruit]) => fruit !== 'cherry'))).toStrictEqual([
+      ['apple', 1],
+      ['banana', 2],
+    ])
+  })
+
+  it('gives the values a type guard keeps, typed as it narrows them', () => {
+    const noted = filterEntries(NOTES_BY_FRUIT, isNoted)
+
+    expectTypeOf(noted).toEqualTypeOf<Record<string, string>>()
+    expect(Object.entries(noted)).toStrictEqual([
+      ['cherry', 'stoned'],
+      ['banana', 'peeled'],
+    ])
   })
 })
 

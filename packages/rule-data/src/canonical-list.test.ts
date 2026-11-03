@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import canonicalRules from '../data/rules.json' with { type: 'json' }
 import rulesetDefinitions from '../data/ruleset-definitions.json' with { type: 'json' }
-import { ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON, RULES_WAITING_ON_AN_OWNER_ANSWER } from './__tests__/cases/routed-to-eslint-for-a-reason.ts'
+import { KEPT_IN_ESLINT_BY_AN_OWNER_ANSWER, ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON } from './__tests__/cases/routed-to-eslint-for-a-reason.ts'
 import { DROPPED_ON_2026_10_16 } from './__tests__/cases/dropped-rules.ts'
 import { PLAYWRIGHT_RULES_OFF_BY_DEFAULT } from './__tests__/cases/accepted-pw.ts'
 import { NEWEST_LANGUAGE_RULES_SHIPPED_OFF, ROUND_2_DROPS, RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD } from './__tests__/cases/round-2-drops.ts'
@@ -11,6 +11,7 @@ import { isOptInRuleset, isSortingRuleset, RULES_THAT_SORT, SORTING_RULESETS } f
 import { NAMES_TEST_FILES, RULES_SKIPPING_TEST_FILES, SETUP_FILE_GLOBS, STORY_FILE_GLOB, STORY_FILE_NAME_PART, TEST_AND_SETUP_FILE_GLOBS, TEST_FILE_GLOBS } from './__tests__/cases/test-file-globs.ts'
 import { allowancesLeftToOffenders, coveredByOffenders, coveredInOxlintByOffenders, filesLeftUncovered, splitByTypesOffenders } from './__tests__/relation-offenders.ts'
 import { catalog } from './catalog.ts'
+import { foundOr } from './collections.ts'
 import { canonicalRules as parsedCanonicalRules } from './generate/canonical-rules.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
 import { canonicalIdOf } from './rule-id-parts.ts'
@@ -44,7 +45,7 @@ const LIBS_RULESETS_BY_DOMAIN = {
   routing: ['tanstack-router'],
   validation: ['zod'],
   auth: ['jsonwebtoken'],
-  // The owner's answer on card q-lint-effect-ruleset-name: a domain named after the library, listed by init.
+  // A domain named after the library, listed by init.
   effect: ['effect'],
 }
 
@@ -55,7 +56,6 @@ const RUNTIME_RULESETS = [
   { name: 'browser-targets', env: null },
 ]
 
-/** In ID order, as data/rules.json lists them. */
 const RULES_SHIPPED_OFF_BY_DEFAULT = [...PLAYWRIGHT_RULES_OFF_BY_DEFAULT, ...NEWEST_LANGUAGE_RULES_SHIPPED_OFF, ...RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD].toSorted()
 
 // Created empty, so a team can list each before its first rule arrives.
@@ -65,14 +65,16 @@ const definedRulesetNames = new Set(rulesetDefinitions.map((definition) => defin
 const inventoryById = new Map(inventory.rules.map((rule) => [rule.id, rule]))
 
 function canonicalEntryFor(id: string) {
-  const entry = canonicalRules.find((rule) => rule.id === id)
-  if (entry === undefined) throw new Error(`${id} is not in data/rules.json`)
-  return entry
+  return foundOr(canonicalRules.find((rule) => rule.id === id), `${id} is not in data/rules.json`)
 }
 
 /** The reason ESLint runs a rule oxlint has, where rules.json gives one. */
 function eslintBecauseOf(rule: Readonly<(typeof canonicalRules)[number]>): unknown {
   return 'eslintBecause' in rule ? rule.eslintBecause : undefined
+}
+
+function namesTheAnswer(reason: unknown, card: string): boolean {
+  return typeof reason === 'string' && reason.includes(`(${card}; measured, oxlint `)
 }
 
 /**
@@ -84,7 +86,7 @@ function hasAnAssignmentRecord({ assignment }: { readonly assignment?: { readonl
   return assignment !== undefined && typeof assignment.by === 'string' && typeof assignment.confidence === 'string'
 }
 
-/** Whether the entry ships the rule off, on only where a team names it. Read with `in`: no entry of today's data need carry the key. */
+/** Read with `in`: no entry of today's data need carry the key. */
 function isOffByDefault(rule: Readonly<(typeof canonicalRules)[number]>): boolean {
   return 'offByDefault' in rule && rule.offByDefault
 }
@@ -235,7 +237,7 @@ describe('the canonical list, data/rules.json', () => {
     it('has no ignores list naming test files without every setup-file glob', () => {
       const offenders = canonicalRules.flatMap(({ id, ignores }) => {
         const globs = ignores ?? []
-        if (!TEST_FILE_GLOBS.some((glob) => globs.includes(glob))) return []
+        if (TEST_FILE_GLOBS.every((glob) => !globs.includes(glob))) return []
         return SETUP_FILE_GLOBS.filter((glob) => !globs.includes(glob)).map((glob) => `${id} ignores: lacks ${glob}`)
       })
 
@@ -332,7 +334,7 @@ describe('the canonical list, data/rules.json', () => {
     })
 
     // oxlint runs a rule faster: ESLint keeps one oxlint could run untyped only for a measured reason.
-    it('leave no rule to ESLint that oxlint could run untyped, without a reason, but those waiting on an owner answer', () => {
+    it('leave no rule to ESLint that oxlint could run untyped without a reason', () => {
       const withoutAReason = canonicalRules
         .filter((rule) => {
           if (rule.engine !== 'eslint' || eslintBecauseOf(rule) !== undefined) return false
@@ -342,7 +344,13 @@ describe('the canonical list, data/rules.json', () => {
         .map((rule) => rule.id)
         .toSorted()
 
-      expect(withoutAReason).toStrictEqual(RULES_WAITING_ON_AN_OWNER_ANSWER.map(({ rule }) => rule).toSorted())
+      expect(withoutAReason).toStrictEqual([])
+    })
+
+    it.each(KEPT_IN_ESLINT_BY_AN_OWNER_ANSWER)("kept for $keptFor each give a measured reason naming the owner answer that keeps them, as no other rule's reason does", ({ card, rules }) => {
+      const naming = canonicalRules.filter((rule) => namesTheAnswer(eslintBecauseOf(rule), card)).map((rule) => rule.id)
+
+      expect(naming).toStrictEqual(rules)
     })
   })
 
@@ -619,8 +627,6 @@ describe('the canonical list, data/rules.json', () => {
       })
     })
 
-    // A comment switching a check off, in either engine's spelling, or setting a rule for the file needs a reason after
-    // `--`, even one that only changes an option; enable, env, exported and global comments need none.
     it("runs @eslint-community/eslint-comments/require-description in ESLint, only where suppressions are allowed, reading oxlint's switch-off comments and ESLint's whole-file one written as a line comment too, and asking no reason of enable, env, exported or global comments", () => {
       const { engine, oxlintName, ruleset, options, whenSuppressions } = canonicalEntryFor('@eslint-community/eslint-comments/require-description')
 
@@ -772,7 +778,7 @@ describe('the ruleset definitions, data/ruleset-definitions.json', () => {
     ])
   })
 
-  // Owner: a rule kept off by default still ships, so a team can turn it on by naming it in agents-inc.lint.mts.
+  // A rule kept off by default still ships, so a team can turn it on by naming it in agents-inc.lint.mts.
   it('ships off by default exactly the accepted rules the owner kept off whose rewrite check never applies, each run by ESLint in no ruleset', () => {
     expect(canonicalRules.filter(isOffByDefault).map(({ id, engine, ruleset }) => ({ id, engine, ruleset }))).toStrictEqual(
       RULES_SHIPPED_OFF_BY_DEFAULT.map((id) => ({ id, engine: 'eslint', ruleset: undefined })),

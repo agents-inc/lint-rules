@@ -1,9 +1,7 @@
 import type { RuleCase } from './changed-settings.ts'
 
-// Each rule on the gate's fixture and its corrected form, and, where the shipped options decide an outcome, on a file
-// they leave alone that other options report. perfectionist/sort-objects is left to its case in accepted-tsq.ts.
+// perfectionist/sort-objects is left to its case in accepted-tsq.ts.
 
-/** Each shipped regexp rule ESLint runs, run as the catalog ships it. */
 export const PROOF_REGEXP_CASES: readonly RuleCase[] = [
   {
     rule: 'regexp/confusing-quantifier',
@@ -1015,7 +1013,6 @@ export const v = m ? m[1] : ''
   },
 ]
 
-/** Each shipped perfectionist rule ESLint runs, run as the catalog ships it. */
 export const PROOF_PERFECTIONIST_CASES: readonly RuleCase[] = [
   {
     rule: 'perfectionist/sort-array-includes',

@@ -92,8 +92,7 @@ export const ROUND_2_DROPS: readonly Drop[] = [
 
 /**
  * The rules whose automatic fix writes an API Node 22 lacks, or one jsdom or a test's stand-in location lacks
- * (prefer-dom-node-html-methods, prefer-location-assign): shipped off by default, check withholding that fix where a team
- * names one. In ID order.
+ * (prefer-dom-node-html-methods, prefer-location-assign).
  */
 export const RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD: readonly string[] = [
   'e18e/prefer-get-or-insert',

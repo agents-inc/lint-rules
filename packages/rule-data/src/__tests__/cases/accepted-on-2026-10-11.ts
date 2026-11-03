@@ -1,11 +1,7 @@
 import type { AcceptedRule } from '../accepted-rules-out-of-place.ts'
 
-// Every rule the owner accepted on the old candidates page on 2026-10-11 (docs/work/decisions.md, "Owner
-// 2026-10-11 (old candidates page"): the decision that accepted it, and the state it waits in until it ships.
-
 const OWNER_2026_10_11 = 'owner-2026-10-11'
 
-/** Each accepted rule's ID, and where it waits until it ships. */
 export const ACCEPTED_ON_2026_10_11: Readonly<Record<string, AcceptedRule>> = {
   '@typescript-eslint/consistent-type-exports': { card: OWNER_2026_10_11, waitsAs: 'recommended' },
   '@typescript-eslint/consistent-type-imports': { card: OWNER_2026_10_11, waitsAs: 'recommended' },

@@ -385,10 +385,8 @@ function skippingTestFiles(rule: string, source: string): RuleCase {
   return { rule, subject: 'test and type-test files', silentIn: inEachTestFile(source, 'ts'), reportedIn: [{ path: 'src/a.ts', source }] }
 }
 
-/** A file that only re-exports. */
 const A_BARREL = "export * from './greeting.js'\n"
 
-/** Every JS and TS extension a consumer's files are linted under. */
 const SOURCE_FILE_EXTENSIONS: readonly string[] = ['js', 'mjs', 'cjs', 'jsx', 'ts', 'mts', 'cts', 'tsx']
 
 const LONG_FUNCTION = `export function total(): number {

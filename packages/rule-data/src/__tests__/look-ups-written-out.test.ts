@@ -1,6 +1,6 @@
-import { mkdir, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
+import { writeFileCreatingItsDir } from '../write-file-creating-its-dir.ts'
 import {
   A_LOOK_UP_THROUGH_FOUND_OR,
   A_LOOK_UP_WRITTEN_OUT,
@@ -34,12 +34,7 @@ describe('lookUpsWrittenOutIn', () => {
   }
 
   beforeAll(async () => {
-    await Promise.all(
-      Object.entries(files).map(async ([file, source]) => {
-        await mkdir(dirname(join(tempDir(), file)), { recursive: true })
-        await writeFile(join(tempDir(), file), source)
-      }),
-    )
+    await Promise.all(Object.entries(files).map(async ([file, source]) => writeFileCreatingItsDir(join(tempDir(), file), source)))
   })
 
   it('names each in the TypeScript source as file:line, and none in a test, a type test, a __tests__ folder or another kind of file', () => {

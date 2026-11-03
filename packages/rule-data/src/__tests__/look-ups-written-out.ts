@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const TYPESCRIPT_SOURCE = /\.ts$/u
+const TYPESCRIPT_EXTENSION = '.ts'
 const TEST_SOURCE = /(?:\.test\.ts|\.test-d\.ts)$|(?:^|\/)__tests__\//u
 // A check for undefined that throws, on its own line or in its block: what foundOr says in one call. Before the
 // throw the block may hold template placeholders but no other brace, so a throw after a nested block is missed.
@@ -28,7 +28,7 @@ function lookUpsWrittenOutInFile(sourceDir: string, file: string): string[] {
 
 function nonTestSourceFilesIn(sourceDir: string): string[] {
   return readdirSync(sourceDir, { recursive: true, encoding: 'utf8' })
-    .filter((file) => TYPESCRIPT_SOURCE.test(file) && !TEST_SOURCE.test(file))
+    .filter((file) => file.endsWith(TYPESCRIPT_EXTENSION) && !TEST_SOURCE.test(file))
     .toSorted()
 }
 

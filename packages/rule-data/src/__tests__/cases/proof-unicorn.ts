@@ -1,8 +1,7 @@
 import type { CaseFile } from '../rule-case-runs.ts'
 import type { RuleCase } from './changed-settings.ts'
 
-// The shipped unicorn rules ESLint runs, each reporting its fixture and silent on the fixture corrected, with
-// the settings the catalog ships. A rule another case list or the ESLint fallback proves is left to it.
+// A rule another case list or the ESLint fallback proves is left to it.
 
 type SourceFileType = 'js' | 'ts' | 'tsx'
 

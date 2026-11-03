@@ -2,12 +2,8 @@ import type { HeldCase } from '../accepted-rules-out-of-place.ts'
 import type { CaseFile } from '../rule-case-runs.ts'
 import type { RuleCase } from './changed-settings.ts'
 
-// The TanStack Query and TanStack Router rules the owner accepted on 2026-10-24: each reports the card's code and
-// stays silent on its corrected form, and on a shape its code or docs say it leaves alone. The plugins find TanStack
-// by a file's import source, so no case installs it. The two property-order rules are left out, so they have no case,
-// and sort-objects sorts the options of the calls they would order as any other's (below).
+// The plugins find TanStack by a file's import source, so no case installs it.
 
-/** The answer that left both property-order rules out, which the entry of each names. */
 export const PROPERTY_ORDER_LEFT_OUT_BY = 'q-lint-rc-tanstack-property-order-which-skip'
 
 /** Each accepted @tanstack/query rule's report case beside its silent twin, in the order of their IDs. */
@@ -299,16 +295,10 @@ export const route = createRoute({ getParentRoute: () => rootRoute, path: '/user
   },
 ]
 
-/**
- * The accepted TanStack rules whose build waits on a card, each case held unrun until its rule ships: once it does, its
- * case moves to ACCEPTED_TANSTACK_QUERY_CASES or ACCEPTED_TANSTACK_ROUTER_CASES.
- */
 export const ACCEPTED_TSQ_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = []
 
-/** The two rules that put a call's options in TanStack's order, which is not alphabetical. */
 export const TANSTACK_PROPERTY_ORDER_RULES: readonly string[] = ['@tanstack/query/infinite-query-property-order', '@tanstack/router/create-route-property-order']
 
-/** The options of each call the two property-order rules would order, in TanStack's order. */
 const OPTIONS_IN_TANSTACK_ORDER: readonly CaseFile[] = [
   {
     path: 'src/infinite-query-in-tanstack-order.ts',
@@ -404,7 +394,6 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   },
 ]
 
-/** Options out of alphabetical order passed to another call, to a TanStack call neither rule would order, and nested in the options of one they would order. */
 const OPTIONS_SORT_OBJECTS_SORTS: readonly CaseFile[] = [
   {
     path: 'src/infinite-query-order-passed-to-another-call.ts',
@@ -452,7 +441,6 @@ export function usePages() {
   },
 ]
 
-/** Options out of alphabetical order passed to another library's call named as one the property-order rules order. */
 const OPTIONS_OF_ANOTHER_LIBRARYS_CALL_OF_THOSE_NAMES: readonly CaseFile[] = [
   {
     path: 'src/hono-create-route.ts',
@@ -483,11 +471,6 @@ export function usePages() {
   },
 ]
 
-/**
- * The opt-in ordering ruleset's perfectionist/sort-objects with the two property-order rules left out: it reports the
- * options of each call they would order, and of another library's call of one of those names, as it reports any other
- * call's, and stays silent on options in alphabetical order.
- */
 export const SORT_OBJECTS_ON_THE_PROPERTY_ORDER_CALLS: RuleCase = {
   rule: 'perfectionist/sort-objects',
   subject: 'the options of the calls the TanStack property-order rules would order',

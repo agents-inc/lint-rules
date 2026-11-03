@@ -2,11 +2,8 @@ import type { HeldCase } from '../accepted-rules-out-of-place.ts'
 import type { CaseFile } from '../rule-case-runs.ts'
 import type { RuleCase } from './changed-settings.ts'
 
-// The unicorn rules beyond the guard rules that the owner accepted on the old candidates page on 2026-10-11: each
-// reports the page's code and stays silent on its corrected form, and on a shape its docs say it leaves alone. A .js
-// copy of each report case shows the rule reports outside TypeScript too.
+// A .js copy of each report case shows the rule reports outside TypeScript too.
 
-/** A discarded `.map()` of a mutable array in TypeScript: sonarjs/no-ignored-return reports it too. */
 const MAP_OF_AN_ARRAY_DISCARDED: CaseFile = {
   path: 'src/save-all.ts',
   source: `type Draft = { save: () => void }
@@ -17,7 +14,6 @@ export function saveAll(drafts: Draft[]) {
 `,
 }
 
-/** The same drafts saved in a loop. */
 const SAVED_IN_A_LOOP: CaseFile = {
   path: 'src/save-all-looped.ts',
   source: `type Draft = { save: () => void }
@@ -30,7 +26,6 @@ export function saveAll(drafts: Draft[]) {
 `,
 }
 
-/** The rules the owner answered "Ship ESLint's version instead", and the card each answer is on. */
 export const ROUTED_TO_ESLINT_BY_CARD: Readonly<Record<string, string>> = {
   // oxlint's version reports the last item of a NodeList, which has no `.at()`, and its fix there throws.
   'unicorn/prefer-at': 'q-lint-uni-prefer-at-node-lists',
@@ -38,7 +33,6 @@ export const ROUTED_TO_ESLINT_BY_CARD: Readonly<Record<string, string>> = {
   'unicorn/prefer-single-call': 'q-lint-uni-single-call-custom-push',
 }
 
-/** How each unicorn rule the owner accepted on 2026-10-11 ships. */
 type ProposedEntry = {
   readonly ruleset: string
   readonly engine: 'eslint'
@@ -46,7 +40,6 @@ type ProposedEntry = {
   readonly typed: boolean
 }
 
-/** Each accepted unicorn rule as the page proposed it, untyped, in ESLint: prefer-at and prefer-single-call as the owner answered. */
 export const ACCEPTED_1011_UNI_ENTRIES: Readonly<Record<string, ProposedEntry>> = {
   'unicorn/no-unused-builtin-method-return': { ruleset: 'correctness', engine: 'eslint', options: [], typed: false },
   'unicorn/no-useless-set-construction': { ruleset: 'redundancy', engine: 'eslint', options: [], typed: false },
@@ -61,7 +54,6 @@ export const ACCEPTED_1011_UNI_DROPS: Readonly<Record<string, string>> = {
   'unicorn/no-hex-escape': 'r2-d68',
 }
 
-/** Each shipped accepted unicorn rule's report case beside its silent twin. */
 export const ACCEPTED_1011_UNI_CASES: readonly RuleCase[] = [
   {
     rule: 'unicorn/no-unused-builtin-method-return',
@@ -282,16 +274,8 @@ export function filled() {
   },
 ]
 
-/**
- * The cases of accepted unicorn rules whose measurement tripped the spec's stop, unrun until the owner answers the card
- * each waits on: once the rule ships, its case moves to ACCEPTED_1011_UNI_CASES.
- */
 export const ACCEPTED_1011_UNI_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = []
 
-/**
- * sonarjs/no-ignored-return, as it ships, on the discarded `.map()` no-unused-builtin-method-return reports: it reports a
- * mutable array's in TypeScript too, and leaves the loop.
- */
 export const IGNORED_RETURN_BESIDE_THE_UNUSED_RETURN_RULE: RuleCase = {
   rule: 'sonarjs/no-ignored-return',
   subject: 'a discarded .map() no-unused-builtin-method-return reports',

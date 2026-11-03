@@ -1,9 +1,7 @@
 import type { CaseFile } from '../rule-case-runs.ts'
 import type { RuleCase } from './changed-settings.ts'
 
-// The shipped n, import-x, check-file and no-secrets rules ESLint runs, each reporting the gate's fixture and silent
-// on the fixture corrected, with the settings the catalog ships. A rule another case list or the ESLint fallback
-// proves is left to it, as promise's one rule routed to ESLint is.
+// A rule another case list or the ESLint fallback proves is left to it, as promise's one rule routed to ESLint is.
 
 type SourceFileType = 'ts' | 'cjs'
 
@@ -25,7 +23,6 @@ function reportedAndCorrected(rule: string, { reported, corrected, fileType = 't
   }
 }
 
-/** A Node global imported from its module, and the same code reading the global. */
 function importedGlobal(rule: string, { imported, used }: { readonly imported: string; readonly used: string }): RuleCase {
   return reportedAndCorrected(rule, { reported: `${imported}\n${used}\n`, corrected: `${used}\n` })
 }

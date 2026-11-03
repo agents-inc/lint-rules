@@ -1,12 +1,7 @@
 import type { RuleCase } from './changed-settings.ts'
 
-// The reduce-accumulator rule the owner accepted on the old candidates page on 2026-10-11, ported as a house rule: it
-// reports a reducer that copies its accumulator on every step, in TypeScript and in JavaScript, and stays silent on the
-// page's flatMap fix and on a reducer whose accumulator is a number.
-
 export const HOUSE_REDUCE_RULE = 'house/no-reduce-accumulator-copy'
 
-/** The house port's report cases beside its silent twins. */
 export const ACCEPTED_1011_HRA_CASES: readonly RuleCase[] = [
   {
     rule: HOUSE_REDUCE_RULE,

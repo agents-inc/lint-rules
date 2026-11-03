@@ -1,4 +1,4 @@
-import { type Breach, breachesOf } from './breaches.ts'
+import { type Breach, breachesOf, heldForNoCard } from './breaches.ts'
 
 // A rule the owner accepted ships, or waits in data/rule-candidates.json in the state it was accepted into,
 // its entry naming the card that accepted it and the card its build waits on. A rule whose build waits on a
@@ -82,9 +82,6 @@ export type HeldCase<Case extends { readonly rule: string } = { readonly rule: s
   readonly ruleCase: Case
 }
 
-/** A card a build waits on: a question the owner answers, `q-` and lower-case words joined by hyphens. */
-const QUESTION_CARD = /^q-[\da-z]+(?:-[\da-z]+)*$/u
-
 /**
  * `rule: what is wrong` for each held case whose rule the owner did not accept, that is held for no card, whose rule
  * ships or a later card dropped, or that is held for another card than the one its rule's build waits on.
@@ -99,7 +96,7 @@ export function heldCasesOutOfPlace(heldCases: readonly HeldCase[], accepted: Re
 function wrongsOfAHeldCase(heldCase: HeldCase, acceptedRule: AcceptedRule | undefined, shippedIds: ReadonlySet<string>): string[] {
   const breaches: ReadonlyArray<Breach<HeldCase>> = [
     ['is held, but is no rule the owner accepted', () => acceptedRule === undefined],
-    [`is held for "${heldCase.heldBy}", which is no card`, ({ heldBy }) => !QUESTION_CARD.test(heldBy)],
+    heldForNoCard(heldCase.heldBy),
     [`ships, so its case runs rather than waiting on card ${heldCase.heldBy}`, ({ ruleCase }) => shippedIds.has(ruleCase.rule)],
   ]
   return [...breachesOf(heldCase, breaches), ...wrongsOfItsCard(heldCase, acceptedRule)]

@@ -5,6 +5,8 @@ import { dirname, join } from 'node:path'
 import { beforeAll } from 'vitest'
 
 import { type Catalog, type Engine, type RuleRoute, routeOf, ruleIdsOxlintRunsTypeAware } from '../catalog.ts'
+import { foundOr } from '../collections.ts'
+import { writeFileCreatingItsDir } from '../write-file-creating-its-dir.ts'
 import { PROJECT_MANIFEST, type RuleCase, type StubPackage, STUB_PACKAGES, TYPED_PROJECT_TSCONFIG } from './cases/changed-settings.ts'
 import type { StandInCase } from './cases/stand-ins.ts'
 import {
@@ -81,27 +83,21 @@ export function setUpRuleCaseOutcomes(catalogParts: CatalogParts): RuleCaseOutco
 
 async function writeTheProject(projectDir: string): Promise<void> {
   await mkdir(join(projectDir, 'node_modules', '@types'), { recursive: true })
-  await symlink(dirname(requireFromHere.resolve(`${TYPES_OF_NODE}/package.json`)), join(projectDir, 'node_modules', TYPES_OF_NODE))
-  await symlink(dirname(requireFromHere.resolve(`${VITEST}/package.json`)), join(projectDir, 'node_modules', VITEST))
-  await writeStubPackages(projectDir, STUB_PACKAGES)
-  await writeFile(join(projectDir, 'tsconfig.json'), JSON.stringify(TYPED_PROJECT_TSCONFIG))
-  await writeFile(join(projectDir, 'package.json'), JSON.stringify(PROJECT_MANIFEST))
+  await Promise.all([
+    linkInstalledPackage(projectDir, TYPES_OF_NODE),
+    linkInstalledPackage(projectDir, VITEST),
+    writeStubPackages(projectDir, STUB_PACKAGES),
+    writeFile(join(projectDir, 'tsconfig.json'), JSON.stringify(TYPED_PROJECT_TSCONFIG)),
+    writeFile(join(projectDir, 'package.json'), JSON.stringify(PROJECT_MANIFEST)),
+  ])
 }
 
-async function caseOutcomesIn(
-  projectDir: string,
-  folder: string,
-  { rule, engines, silentIn, reportedIn, packages = [], compilerOptions }: RuleCase,
-  catalogParts: CatalogParts,
-): Promise<CaseOutcomes> {
+async function caseOutcomesIn(projectDir: string, folder: string, ruleCase: RuleCase, catalogParts: CatalogParts): Promise<CaseOutcomes> {
+  const { rule, engines, silentIn, reportedIn } = ruleCase
   const route = routeOf(rule, catalogParts)
   const settings = shippedSettingsOf(route)
-  const silent = inFolder(folder, silentIn)
-  const reported = inFolder(folder, reportedIn)
-  const files = [...silent, ...reported]
-  await writeStubPackages(join(projectDir, folder), packages)
-  if (compilerOptions !== undefined) await writeFolderTsconfig(join(projectDir, folder), compilerOptions)
-  await writeCaseFiles(projectDir, files)
+  const { silent, reported, files } = caseFilesIn(folder, silentIn, reportedIn)
+  await writeCaseFolder(projectDir, folder, files, ruleCase)
   const runOn = engines ?? enginesThatMayRun(route)
   const actual = await outcomesByEngine(runOn, { route, settings, catalogParts }, { projectDir, files, configFile: `${folder}.oxlintrc.json` })
   return { actual, expected: owedOutcomesByEngine(runOn, silent, reported) }
@@ -111,11 +107,8 @@ async function caseOutcomesIn(
 // oxlint's rule does.
 async function standInCaseOutcomesIn(projectDir: string, folder: string, { oxlintRule, silentIn, reportedIn }: StandInCase, catalogParts: CatalogParts): Promise<CaseOutcomes> {
   const route = routeOf(oxlintRule, catalogParts)
-  const standIn = catalogParts.eslintStandIns.get(oxlintRule)
-  if (standIn === undefined) throw new Error(`no ESLint stand-in is recorded for ${oxlintRule}`)
-  const silent = inFolder(folder, silentIn)
-  const reported = inFolder(folder, reportedIn)
-  const files = [...silent, ...reported]
+  const standIn = foundOr(catalogParts.eslintStandIns.get(oxlintRule), `no ESLint stand-in is recorded for ${oxlintRule}`)
+  const { silent, reported, files } = caseFilesIn(folder, silentIn, reportedIn)
   await writeCaseFiles(projectDir, files)
   const oxlint = Object.fromEntries(oxlintOutcomesOf({ projectDir, files, configFile: `${folder}.oxlintrc.json` }, oxlintNamesOf(route), shippedSettingsOf(route)))
   const eslint = Object.fromEntries(await eslintOutcomesOf(projectDir, [{ ruleId: standIn, settings: UNSHIPPED_RULE_SETTINGS }], files, { typed: false }))
@@ -138,8 +131,8 @@ async function outcomesOn(engineRun: EngineRun, { route, settings, catalogParts 
   if (engineRun.engine === 'oxlint') return Object.fromEntries(oxlintOutcomesOf({ projectDir, files: read, configFile }, engineRun.version, settings))
   const blocks = eslintBlocksOf(route, settings, catalogParts)
   // A moved core rule's typed extension, run on TS files in its place, needs type information there.
-  const typed = blocks.some(({ ruleId }) => routeOf(ruleId, catalogParts).typed)
-  return Object.fromEntries(await eslintOutcomesOf(projectDir, blocks, read, { typed }))
+  const hasATypedRule = blocks.some(({ ruleId }) => routeOf(ruleId, catalogParts).typed)
+  return Object.fromEntries(await eslintOutcomesOf(projectDir, blocks, read, { typed: hasATypedRule }))
 }
 
 /** The engines that may run the rule: the one it is routed to, and ESLint, which runs an oxlint rule without oxlint. */
@@ -147,13 +140,10 @@ function enginesThatMayRun({ engine }: Readonly<RuleRoute>): readonly Engine[] {
   return engine === 'oxlint' ? ['oxlint', 'eslint'] : ['eslint']
 }
 
-/** oxlint's version of the case's rule: the route's own, or, for a rule ESLint runs, the one oxlint runs without type information. */
 function oxlintVersionOf(route: Readonly<RuleRoute>, { oxlintRules }: Pick<CatalogParts, 'oxlintRules'>): OxlintNames {
   if (route.engine === 'oxlint') return oxlintNamesOf(route)
-  const version = oxlintRules.find(({ id }) => id === route.id)
-  if (version === undefined) throw new Error(`${route.id} has no oxlint version`)
+  const { oxlintName, oxlintPlugin } = foundOr(oxlintRules.find(({ id }) => id === route.id), `${route.id} has no oxlint version`)
   if (ruleIdsOxlintRunsTypeAware.has(route.id)) throw new Error(`${route.id}: oxlint runs its version only with type information`)
-  const { oxlintName, oxlintPlugin } = version
   return { oxlintName, oxlintPlugin }
 }
 
@@ -163,28 +153,46 @@ function oxlintNamesOf(route: Readonly<RuleRoute>): OxlintNames {
   return { oxlintName, oxlintPlugin }
 }
 
+/** A case's files under its folder: those it owes silence in, those it owes a finding in, and all of them. */
+function caseFilesIn(folder: string, silentIn: readonly CaseFile[], reportedIn: readonly CaseFile[]): { silent: CaseFile[]; reported: CaseFile[]; files: CaseFile[] } {
+  const silent = inFolder(folder, silentIn)
+  const reported = inFolder(folder, reportedIn)
+  return { silent, reported, files: [...silent, ...reported] }
+}
+
 function inFolder(folder: string, files: readonly CaseFile[]): CaseFile[] {
   return files.map((file) => ({ ...file, path: `${folder}/${file.path}` }))
 }
 
+async function linkInstalledPackage(projectDir: string, name: string): Promise<void> {
+  await symlink(dirname(requireFromHere.resolve(`${name}/package.json`)), join(projectDir, 'node_modules', name))
+}
+
+/** Writes the case's files, the packages they resolve first, and its tsconfig where it sets compiler options. */
+async function writeCaseFolder(projectDir: string, folder: string, files: readonly CaseFile[], { packages = [], compilerOptions }: Pick<RuleCase, 'packages' | 'compilerOptions'>): Promise<void> {
+  await Promise.all([
+    writeCaseFiles(projectDir, files),
+    writeStubPackages(join(projectDir, folder), packages),
+    ...(compilerOptions === undefined ? [] : [writeFolderTsconfig(join(projectDir, folder), compilerOptions)]),
+  ])
+}
+
 /** TypeScript gives each file the nearest tsconfig, so the folder's files are typed by this one, not the project's. */
 async function writeFolderTsconfig(folder: string, compilerOptions: Readonly<Record<string, unknown>>): Promise<void> {
-  await mkdir(folder, { recursive: true })
   const tsconfig = { ...TYPED_PROJECT_TSCONFIG, compilerOptions: { ...TYPED_PROJECT_TSCONFIG.compilerOptions, ...compilerOptions } }
-  await writeFile(join(folder, 'tsconfig.json'), JSON.stringify(tsconfig))
+  await writeFileCreatingItsDir(join(folder, 'tsconfig.json'), JSON.stringify(tsconfig))
 }
 
 /** Writes each package under the folder's `node_modules`, as a package manager installs it. */
 async function writeStubPackages(folder: string, packages: readonly StubPackage[]): Promise<void> {
-  await Promise.all(
-    packages.map(async ({ name, declarations, module }) => {
-      const packageDir = join(folder, 'node_modules', name)
-      await mkdir(packageDir, { recursive: true })
-      await writeFile(join(packageDir, 'package.json'), JSON.stringify({ name, version: '0.0.0', types: 'index.d.ts' }))
-      await writeFile(join(packageDir, 'index.d.ts'), declarations)
-      if (module !== undefined) await writeFile(join(packageDir, 'index.js'), module)
-    }),
-  )
+  await Promise.all(packages.map(async (stubPackage) => writeStubPackage(join(folder, 'node_modules', stubPackage.name), stubPackage)))
+}
+
+async function writeStubPackage(packageDir: string, { name, declarations, module }: StubPackage): Promise<void> {
+  await mkdir(packageDir, { recursive: true })
+  await writeFile(join(packageDir, 'package.json'), JSON.stringify({ name, version: '0.0.0', types: 'index.d.ts' }))
+  await writeFile(join(packageDir, 'index.d.ts'), declarations)
+  if (module !== undefined) await writeFile(join(packageDir, 'index.js'), module)
 }
 
 function readBy(engine: Engine, files: readonly CaseFile[]): CaseFile[] {

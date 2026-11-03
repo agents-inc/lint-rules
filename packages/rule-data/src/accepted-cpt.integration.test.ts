@@ -14,18 +14,16 @@ import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './__tests__/rule-case-ou
 import { type CaseFile, type FileOutcome, eslintBlocksOf, eslintOutcomesOf, shippedSettingsOf, writeCaseFiles } from './__tests__/rule-case-runs.ts'
 import { setUpTempDir } from './__tests__/temp-dirs.ts'
 import { catalog, routeOf } from './catalog.ts'
+import { foundOr } from './collections.ts'
 
-// The compat rule the owner accepted runs as it ships, through the real ESLint: it reports a browser API one of the
-// major browsers lacks and stays silent beside it. It ships in browser-targets, the opt-in ruleset the owner named, set to
-// check the major browsers as Vite targets them (card q-lint-compat-default-target), and untyped: every case reports
-// without type information. eslint-plugin-compat reads a project's own browserslist from the linted file's folder up,
-// so the cases in projects naming browsers write a package.json beside their files, which the case runner has no field
-// for. The option names Vite 8's browsers as a literal, since nothing reads Vite at runtime; the guard below fails when
-// the Vite the repo pins builds for other browsers.
+// eslint-plugin-compat reads a project's own browserslist from the linted file's folder up, so the cases in projects
+// naming browsers write a package.json beside their files, which the case runner has no field for. The option names
+// Vite 8's browsers as a literal, since nothing reads Vite at runtime; the guard below fails when the Vite the repo
+// pins builds for other browsers.
 
 const ENGINES_TIMEOUT_MS = 120_000
 
-const COMPAT_RULE = /^compat\//u
+const COMPAT_PREFIX = 'compat/'
 
 const PROJECT_MANIFEST_PATH = 'package.json'
 
@@ -48,8 +46,7 @@ describe('the compat rule accepted on 2026-10-24', () => {
 
   it('ships, and no other compat rule does, in browser-targets, in ESLint, checking the major browsers as Vite targets them, untyped, on every file, assigned by the owner on its card', () => {
     const expectedEntries = [...new Set(ACCEPTED_COMPAT_CASES.map(({ rule }) => rule))].map((rule) => {
-      const accepted = ACCEPTED_ON_2026_10_24[rule]
-      if (accepted === undefined) throw new Error(`${rule} is no rule the owner accepted on 2026-10-24`)
+      const accepted = foundOr(ACCEPTED_ON_2026_10_24[rule], `${rule} is no rule the owner accepted on 2026-10-24`)
       return {
         id: rule,
         ruleset: 'browser-targets',
@@ -60,7 +57,7 @@ describe('the compat rule accepted on 2026-10-24', () => {
       }
     })
 
-    expect(canonicalRules.filter(({ id }) => COMPAT_RULE.test(id))).toStrictEqual(expectedEntries)
+    expect(canonicalRules.filter(({ id }) => id.startsWith(COMPAT_PREFIX))).toStrictEqual(expectedEntries)
   })
 })
 

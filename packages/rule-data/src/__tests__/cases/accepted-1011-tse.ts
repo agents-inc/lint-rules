@@ -1,16 +1,13 @@
 import type { HeldCase } from '../accepted-rules-out-of-place.ts'
 import type { RuleCase } from './changed-settings.ts'
 
-// The typescript-eslint rules the owner accepted on the old candidates page on 2026-10-11: each reports the page's code
-// and stays silent on its corrected form, and on a shape its docs say it leaves alone. The two oxlint runs report
-// TypeScript-only syntax, which no .js file holds, so they have no .js copy. Each global namespace a script or
-// declaration file declares has a name no other file declares, as the files share one program.
+// The two oxlint runs report TypeScript-only syntax, which no .js file holds, so they have no .js copy. Each global
+// namespace a script or declaration file declares has a name no other file declares, as the files share one program.
 
 // consistent-type-imports ships typed in ESLint, not in oxlint: under experimentalDecorators and emitDecoratorMetadata,
 // oxlint's fix turns the import of a decorated class's constructor parameter type into `import type`, so the emitted
 // design:paramtypes names Function, not the class; typescript-eslint's version, typed, leaves such a file alone.
 
-/** How the candidates page proposed shipping each typescript-eslint rule the owner accepted on 2026-10-11. */
 type ProposedEntry = {
   readonly ruleset: string
   readonly engine: 'eslint' | 'oxlint'
@@ -19,10 +16,6 @@ type ProposedEntry = {
   readonly typed: boolean
 }
 
-/**
- * Each accepted typescript-eslint rule as the page proposed it: oxlint where its version there is untyped, else ESLint
- * with type information (each ESLint one reports its case only with it); consistent-type-imports as the owner answered.
- */
 export const ACCEPTED_1011_TSE_ENTRIES: Readonly<Record<string, ProposedEntry>> = {
   '@typescript-eslint/consistent-type-exports': { ruleset: 'conventions', engine: 'eslint', options: [], typed: true },
   '@typescript-eslint/consistent-type-imports': { ruleset: 'conventions', engine: 'eslint', options: [{ disallowTypeAnnotations: false }], typed: true },
@@ -54,7 +47,7 @@ const API_MODULE = `export class Api {
 
 const INJECTABLE_MODULE = 'export const Injectable = (): ClassDecorator => () => {}\n'
 
-// A container injecting by the emitted design:paramtypes reads the class Api names, so its import is a value import.
+// A container injecting by the emitted design:paramtypes reads the class `Api` names, so its import is a value import.
 const DECORATED_SERVICE = `import { Api } from './api'
 import { Injectable } from './injectable'
 
@@ -81,7 +74,6 @@ export class PlainService {
 
 const DECORATORS = { experimentalDecorators: true }
 
-/** Each shipped accepted typescript-eslint rule's report case beside its silent twin. */
 export const ACCEPTED_1011_TSE_CASES: readonly RuleCase[] = [
   {
     rule: '@typescript-eslint/consistent-type-exports',
@@ -327,10 +319,6 @@ export class UserService {
   },
 ]
 
-/**
- * consistent-type-imports, typed, beside decorators: it leaves the import a decorated class's emitted design:paramtypes
- * reads, and reports the same import where no metadata is emitted.
- */
 export const TYPE_IMPORTS_BESIDE_DECORATORS_CASES: readonly RuleCase[] = [
   {
     rule: '@typescript-eslint/consistent-type-imports',
@@ -355,8 +343,4 @@ export const TYPE_IMPORTS_BESIDE_DECORATORS_CASES: readonly RuleCase[] = [
   },
 ]
 
-/**
- * The cases of accepted typescript-eslint rules whose measurement tripped the spec's stop, unrun until the owner answers
- * the card each waits on: once the rule ships, its case moves to ACCEPTED_1011_TSE_CASES.
- */
 export const ACCEPTED_1011_TSE_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = []

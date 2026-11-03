@@ -268,8 +268,7 @@ test('opens', async ({ page }) => {
     ],
   },
   // Only a locator is never undefined: the page's title can be empty. A Testing Library query is a getBy* call too,
-  // so a unit test's check of one is reported as well (owner: "Ship everywhere",
-  // q-lint-rc-unnecessary-assertions-measured).
+  // so a unit test's check of one is reported as well.
   {
     rule: 'playwright/no-unnecessary-assertions',
     silentIn: [
@@ -556,9 +555,8 @@ test('closes', { tag: ['@smoke', '@fast'] }, async ({ page }) => {
 export const ACCEPTED_PW_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = []
 
 /**
- * The accepted Playwright rules shipped off by default, on only where a team names them: the four that report the same
- * line as a shipped vitest rule in Vitest and Jest test files, and prefer-web-first-assertions, whose reports in those
- * files are wrong and whose fix check withholds.
+ * The four that report the same line as a shipped vitest rule in Vitest and Jest test files, and
+ * prefer-web-first-assertions, whose reports in those files are wrong and whose fix check withholds.
  */
 export const PLAYWRIGHT_RULES_OFF_BY_DEFAULT: readonly string[] = [
   'playwright/no-focused-test',

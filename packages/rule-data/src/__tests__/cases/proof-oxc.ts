@@ -1,7 +1,6 @@
 import type { RuleCase } from './changed-settings.ts'
 
-// The shipped oxc rules no ESLint stand-in proves: each reports the gate's fixture in oxlint and stays
-// silent on its corrected form. ESLint has no version of them, so they run in oxlint alone.
+// ESLint has no version of them, so they run in oxlint alone.
 
 export const PROOF_OXC_CASES: readonly RuleCase[] = [
   {

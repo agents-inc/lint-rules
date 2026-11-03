@@ -19,7 +19,6 @@ function movedOnCard(ruleset: string, card: string): RulesetMove {
   return { ruleset, assignment: { confidence: 'high', note: card, by: OWNER_2026_10_30 } }
 }
 
-/** Each moved rule, sorted by ID. */
 export const RULESET_MOVES: Readonly<Record<string, RulesetMove>> = {
   '@eslint-react/x-no-leaked-conditional-rendering': {
     ruleset: 'correctness',

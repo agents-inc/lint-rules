@@ -31,6 +31,9 @@ const TIMES_ONE_FILE: CaseFile = { path: 'src/times-one.js', source: 'export con
 const UNHANDLED_ERR_FILE: CaseFile = { path: 'src/unhandled-err.js', source: 'export function done(err, data) {\n  return data\n}\n' }
 const UNHANDLED_ERROR_FILE: CaseFile = { path: 'src/unhandled-error.js', source: 'export function done(error, data) {\n  return data\n}\n' }
 const STUBBED_PACKAGE = { name: 'stubbed', declarations: 'export declare const value: number\n', module: 'export const value = 1\n' }
+const TYPES_ONLY_PACKAGE = { name: 'types-only', declarations: 'export declare function declared(): number\n' }
+const CALLS_WHAT_THE_PACKAGE_DECLARES: CaseFile = { path: 'src/calls-declared.ts', source: "import { declared } from 'types-only'\nexport const value: number = declared()\n" }
+const CALLS_WHAT_THE_PACKAGE_LEAVES_UNDECLARED: CaseFile = { path: 'src/calls-undeclared.ts', source: "import { undeclared } from 'types-only'\nexport const value: unknown = undeclared()\n" }
 
 function shippedOxlintRule(id: string, oxlintPlugin: string): RuleRoute {
   return buildOxlintRoute(id, { oxlintName: id, oxlintPlugin, eslintAliases: [], oxlintSpellings: [id], shipped: buildShippedRule('correctness') })
@@ -221,6 +224,23 @@ describe("a rule's cases, run on the installed engines with its shipped settings
         { actual: { eslint: ownHeld }, expected: { eslint: ownHeld } },
         { actual: { eslint: otherHeld }, expected: { eslint: otherHeld } },
       ])
+    },
+    ENGINES_TIMEOUT_MS,
+  )
+
+  // no-unsafe-call reports a call whose type does not resolve, so the declared call is silent only where the declarations are read.
+  it(
+    "types a case's own packages by their declarations",
+    async () => {
+      const outcomes = await outcomesOfCase('declared-package', {
+        rule: '@typescript-eslint/no-unsafe-call',
+        silentIn: [CALLS_WHAT_THE_PACKAGE_DECLARES],
+        reportedIn: [CALLS_WHAT_THE_PACKAGE_LEAVES_UNDECLARED],
+        packages: [TYPES_ONLY_PACKAGE],
+      })
+
+      const held = { 'declared-package/src/calls-declared.ts': 'silent', 'declared-package/src/calls-undeclared.ts': 'reports' }
+      expect(outcomes).toStrictEqual({ actual: { eslint: held }, expected: { eslint: held } })
     },
     ENGINES_TIMEOUT_MS,
   )

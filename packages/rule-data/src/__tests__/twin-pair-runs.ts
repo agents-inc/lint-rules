@@ -1,15 +1,16 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { ESLint } from 'eslint'
+import { ESLint, type Linter } from 'eslint'
 import { builtinRules } from 'eslint/use-at-your-own-risk'
 import typescriptEslint from 'typescript-eslint'
 
-import type { Catalog } from '../catalog.ts'
+import type { Catalog, RuleRoute } from '../catalog.ts'
+import { foundOr } from '../collections.ts'
 import { ruleNameOf } from '../rule-id-parts.ts'
 import type { ReportKind } from './cases/extension-only-option-fixtures.ts'
 import { buildOxlintConfigRunningTheRuleWith } from './factories/oxlint-config-factories.ts'
-import { type OxlintJsonDiagnostic, type OxlintJsonReport, oxlintJsonRun } from './oxlint-cli.ts'
+import { type OxlintJsonDiagnostic, oxlintJsonRun } from './oxlint-cli.ts'
 import { typescriptEslintRules } from './typescript-eslint-extensions.ts'
 
 // Each twin pair oxlint runs the core rule of, and each engine's report on a file under the options
@@ -35,14 +36,7 @@ const TS_FILES = '**/*.ts'
 
 /** Each core rule routed to oxlint, paired with each extension of it the catalog records as no alias of it. */
 export function twinPairsRoutedToOxlint({ rules, coreRuleExtensions }: Readonly<Catalog>): TwinPairRoutedToOxlint[] {
-  return rules
-    .values()
-    .flatMap(({ id, engine, oxlintName, oxlintPlugin, eslintAliases }) => {
-      const extensions = coreRuleExtensions.get(id)
-      if (engine !== 'oxlint' || extensions === undefined) return []
-      return extensions.filter((extension) => !eslintAliases.includes(extension)).map((extension) => ({ coreRule: id, extension, oxlintName, oxlintPlugin }))
-    })
-    .toArray()
+  return rules.values().flatMap((route) => twinPairsOf(route, coreRuleExtensions)).toArray()
 }
 
 /** The schema of typescript-eslint's rule, as its installed plugin declares it: none for a rule that declares no options. */
@@ -55,8 +49,7 @@ export function schemaOfTheExtension(extension: string): unknown {
 /** The schema of ESLint's core rule, as the installed ESLint declares it: none for a rule that declares no options. */
 export function schemaOfTheCoreRule(coreRule: string): unknown {
   // eslint-disable-next-line @typescript-eslint/no-deprecated -- ESLint 10.12 lists its core rules nowhere else: `Linter` has no `getRules`, its `./rules` export is types only, and no other export holds them
-  const rule = builtinRules.get(coreRule)
-  if (rule === undefined) throw new Error(`the installed ESLint has no core rule ${coreRule}`)
+  const rule = foundOr(builtinRules.get(coreRule), `the installed ESLint has no core rule ${coreRule}`)
   return schemaDeclaredBy(rule.meta)
 }
 
@@ -70,23 +63,8 @@ function schemaDeclaredBy(meta: { readonly schema?: unknown } | undefined): unkn
  * ESLint and the project's tsconfig: the lines it reports, or the file's text after its safe fixes.
  */
 export async function typescriptEslintReportOn(projectDir: string, extension: string, options: readonly unknown[], { file, kind }: Pick<FixtureFile, 'file' | 'kind'>): Promise<readonly string[]> {
-  const eslint = new ESLint({
-    cwd: projectDir,
-    overrideConfigFile: true,
-    fix: kind === 'fixed text',
-    overrideConfig: [
-      {
-        files: [TS_FILES],
-        languageOptions: { parser: typescriptEslint.parser, parserOptions: { projectService: true, tsconfigRootDir: projectDir } },
-        plugins: { [TYPESCRIPT_ESLINT_PREFIX]: typescriptEslint.plugin },
-        rules: { [extension]: ['error', ...options] },
-      },
-    ],
-  })
-  const [result] = await eslint.lintFiles([file])
-  if (result === undefined) throw new Error(`ESLint linted no ${file}`)
-  const fatal = result.messages.filter(({ fatal: isFatal }) => isFatal === true)
-  if (fatal.length > 0) throw new Error(`ESLint could not lint ${file}: ${fatal.map(({ message }) => message).join('; ')}`)
+  const eslint = new ESLint({ cwd: projectDir, overrideConfigFile: true, fix: kind === 'fixed text', overrideConfig: typescriptEslintConfigOf(projectDir, extension, options) })
+  const result = parsedResultOf(await eslint.lintFiles([file]), file)
   if (kind === 'fixed text') return [result.output === undefined ? readFileSync(join(projectDir, file), 'utf8') : result.output]
   return linesOf(result.messages.filter(({ ruleId }) => ruleId === extension).map(({ line }) => line))
 }
@@ -104,11 +82,33 @@ export function oxlintReportOn(projectDir: string, pair: TwinPairRoutedToOxlint,
   const run = oxlintJsonRun(projectDir, OXLINT_CONFIG_FILE, [...fixing, file])
   if (run.outcome === 'refused') return { outcome: 'refused' }
   if (kind === 'fixed text') return { outcome: 'reported', report: [readFileSync(join(projectDir, file), 'utf8')] }
-  return { outcome: 'reported', report: linesOf(diagnosticLinesIn(run.report)) }
+  return { outcome: 'reported', report: linesOf(run.report.diagnostics.flatMap(lineOfTheFirstLabel)) }
 }
 
-function diagnosticLinesIn({ diagnostics }: OxlintJsonReport): number[] {
-  return diagnostics.flatMap(lineOfTheFirstLabel)
+/** The route's core rule beside each extension of it that is no alias of it: none where ESLint runs the rule or nothing extends it. */
+function twinPairsOf({ id, engine, oxlintName, oxlintPlugin, eslintAliases }: Readonly<RuleRoute>, coreRuleExtensions: Catalog['coreRuleExtensions']): TwinPairRoutedToOxlint[] {
+  const extensions = coreRuleExtensions.get(id)
+  if (engine !== 'oxlint' || extensions === undefined) return []
+  return extensions.filter((extension) => !eslintAliases.includes(extension)).map((extension) => ({ coreRule: id, extension, oxlintName, oxlintPlugin }))
+}
+
+function typescriptEslintConfigOf(projectDir: string, extension: string, options: readonly unknown[]): Linter.Config[] {
+  return [
+    {
+      files: [TS_FILES],
+      languageOptions: { parser: typescriptEslint.parser, parserOptions: { projectService: true, tsconfigRootDir: projectDir } },
+      plugins: { [TYPESCRIPT_ESLINT_PREFIX]: typescriptEslint.plugin },
+      rules: { [extension]: ['error', ...options] },
+    },
+  ]
+}
+
+/** The run's one result, where ESLint could parse the file. */
+function parsedResultOf([result]: readonly ESLint.LintResult[], file: string): ESLint.LintResult {
+  const linted = foundOr(result, `ESLint linted no ${file}`)
+  const fatal = linted.messages.filter(({ fatal: isFatal }) => isFatal === true)
+  if (fatal.length > 0) throw new Error(`ESLint could not lint ${file}: ${fatal.map(({ message }) => message).join('; ')}`)
+  return linted
 }
 
 /** The line a diagnostic's first label points at: none where it has no label. */

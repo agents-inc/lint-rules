@@ -12,6 +12,7 @@ import {
 } from './__tests__/factories/eslint-plugin-factories.ts'
 import ruleDataManifest from '../package.json' with { type: 'json' }
 import { type HeldPlugin, heldPluginsOutOfPlace } from './__tests__/held-plugins.ts'
+import { foundOr } from './collections.ts'
 import { eslintPlugins } from './eslint-plugins.ts'
 import { eslintPluginPackageNames } from './generate/eslint-plugin-package-names.ts'
 import inventory from './generated/inventory.json' with { type: 'json' }
@@ -75,8 +76,7 @@ const ruleDataDependencies: Readonly<Record<string, string>> = ruleDataManifest.
 
 /** The version the package's installed manifest gives: undefined where it gives none. */
 function installedVersionOf(packageName: string): unknown {
-  const packageJsonPath = findPackageJSON(packageName, import.meta.url)
-  if (packageJsonPath === undefined) throw new Error(`${packageName} is not installed`)
+  const packageJsonPath = foundOr(findPackageJSON(packageName, import.meta.url), `${packageName} is not installed`)
   const manifest: unknown = JSON.parse(readFileSync(packageJsonPath, 'utf8'))
   return isObject(manifest) && 'version' in manifest ? manifest.version : undefined
 }
@@ -124,7 +124,7 @@ describe('the load-time check on a plugin whose types do not fit ESLint.Plugin',
 
     const { eslintPlugins: registry } = await registryLoadedWithHouseExporting(plugin)
 
-    expect(registry['house']).toBe(plugin)
+    expect(registry.house).toBe(plugin)
   })
 
   it.each([

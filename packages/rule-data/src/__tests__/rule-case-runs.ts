@@ -1,13 +1,14 @@
 import { writeFileSync } from 'node:fs'
-import { mkdir, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 
 import { fixupPluginRules } from '@eslint/compat'
 import { ESLint, type Linter } from 'eslint'
 import typescriptEslint from 'typescript-eslint'
 
 import { type Catalog, type Engine, type RuleRoute, shippedRuleOf } from '../catalog.ts'
-import { eslintPlugins } from '../eslint-plugins.ts'
+import { foundOr } from '../collections.ts'
+import { eslintPlugins, PREFIXES_NEEDING_COMPAT } from '../eslint-plugins.ts'
+import { writeFileCreatingItsDir } from '../write-file-creating-its-dir.ts'
 import { buildOxlintConfigRunningTheRuleWith } from './factories/oxlint-config-factories.ts'
 import { type OxlintJsonDiagnostic, oxlintJsonRun } from './oxlint-cli.ts'
 
@@ -41,8 +42,6 @@ const TS_FILES = '**/*.{ts,tsx,mts,cts}'
 // eslint-plugin-react warns on every run without a React version, and reads its version-gated
 // checks (react/no-unsafe's) from it.
 const REACT_VERSION = '19.0'
-// Their rules call context methods ESLint 10 removed, so the shipped config wraps them too (lint-rules' core/eslint-compat.ts).
-const PREFIXES_NEEDING_COMPAT: ReadonlySet<string> = new Set(['css-modules', 'react', 'react-hook-form'])
 
 /**
  * The settings a shipped rule runs with: its own, or, for a rule `allowSuppressions` decides, the
@@ -59,12 +58,7 @@ export function shippedSettingsOf(route: Readonly<RuleRoute>): RuleSettings {
 
 /** Writes each case file under the project's root: oxlint lints them from disk, and ESLint types them from there. */
 export async function writeCaseFiles(projectDir: string, files: readonly CaseFile[]): Promise<void> {
-  await Promise.all(
-    files.map(async ({ path, source }) => {
-      await mkdir(dirname(join(projectDir, path)), { recursive: true })
-      await writeFile(join(projectDir, path), source)
-    }),
-  )
+  await Promise.all(files.map(async ({ path, source }) => writeFileCreatingItsDir(join(projectDir, path), source)))
 }
 
 /** A rule we do not ship, as a team or a stand-in turns it on: no options, every file. */
@@ -100,28 +94,10 @@ export async function eslintOutcomesOf(
   files: readonly CaseFile[],
   { typed }: { readonly typed: boolean },
 ): Promise<ReadonlyMap<string, FileOutcome>> {
-  const eslint = new ESLint({
-    cwd: projectDir,
-    overrideConfigFile: true,
-    overrideConfig: [
-      {
-        files: [ALL_SOURCE_FILES],
-        languageOptions: { parser: typescriptEslint.parser, parserOptions: { ecmaFeatures: { jsx: true } } },
-        linterOptions: { reportUnusedDisableDirectives: 'off' },
-        plugins: pluginsAsShipped(),
-        settings: { react: { version: REACT_VERSION } },
-      },
-      ...(typed ? [{ files: [TS_FILES], languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: projectDir } } }] : []),
-      ...blocks.map(configBlockOf),
-    ],
-  })
+  const eslint = new ESLint({ cwd: projectDir, overrideConfigFile: true, overrideConfig: eslintConfigOf(projectDir, blocks, { typed }) })
   const ruleIds = blocks.map(({ ruleId }) => ruleId)
   const outcomes = await Promise.all(
-    files.map(async ({ path, source }): Promise<[string, FileOutcome]> => {
-      const [result] = await eslint.lintText(source, { filePath: join(projectDir, path) })
-      if (result === undefined) throw new Error(`ESLint returned no result for ${path}`)
-      return [path, eslintOutcomeOf(result.messages, ruleIds)]
-    }),
+    files.map(async (file): Promise<[string, FileOutcome]> => [file.path, eslintOutcomeOf(await eslintMessagesOn(eslint, projectDir, file), ruleIds)]),
   )
   return new Map(outcomes)
 }
@@ -137,16 +113,38 @@ export function oxlintOutcomesOf(
   { options, files, ignores }: RuleSettings,
 ): ReadonlyMap<string, FileOutcome> {
   if (files !== null) throw new Error(`${oxlintName} ships files of its own, which the oxlint build refuses`)
-  const config = {
-    ...buildOxlintConfigRunningTheRuleWith(oxlintName, options, { plugins: [oxlintPlugin] }),
-    overrides: ignores === null ? [] : [{ files: ignores, rules: { [oxlintName]: 'off' } }],
-  }
-  writeFileSync(join(projectDir, configFile), JSON.stringify(config))
+  writeFileSync(join(projectDir, configFile), JSON.stringify(oxlintConfigOf(oxlintName, oxlintPlugin, { options, ignores })))
   const paths = caseFiles.map(({ path }) => path)
   const run = oxlintJsonRun(projectDir, configFile, paths)
   if (run.outcome === 'refused') return new Map(paths.map((path) => [path, 'not linted']))
   const { diagnostics } = run.report
   return new Map(paths.map((path) => [path, oxlintOutcomeOf(diagnostics.filter(({ filename }) => filename === path))]))
+}
+
+function eslintConfigOf(projectDir: string, blocks: readonly EslintRuleBlock[], { typed }: { readonly typed: boolean }): Linter.Config[] {
+  return [
+    {
+      files: [ALL_SOURCE_FILES],
+      languageOptions: { parser: typescriptEslint.parser, parserOptions: { ecmaFeatures: { jsx: true } } },
+      linterOptions: { reportUnusedDisableDirectives: 'off' },
+      plugins: pluginsAsShipped(),
+      settings: { react: { version: REACT_VERSION } },
+    },
+    ...(typed ? [{ files: [TS_FILES], languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: projectDir } } }] : []),
+    ...blocks.map(configBlockOf),
+  ]
+}
+
+async function eslintMessagesOn(eslint: ESLint, projectDir: string, { path, source }: CaseFile): Promise<Linter.LintMessage[]> {
+  const [result] = await eslint.lintText(source, { filePath: join(projectDir, path) })
+  return foundOr(result, `ESLint returned no result for ${path}`).messages
+}
+
+function oxlintConfigOf(oxlintName: string, oxlintPlugin: string, { options, ignores }: Pick<RuleSettings, 'options' | 'ignores'>) {
+  return {
+    ...buildOxlintConfigRunningTheRuleWith(oxlintName, options, { plugins: [oxlintPlugin] }),
+    overrides: ignores === null ? [] : [{ files: ignores, rules: { [oxlintName]: 'off' } }],
+  }
 }
 
 function pluginsAsShipped(): Readonly<Record<string, ESLint.Plugin>> {

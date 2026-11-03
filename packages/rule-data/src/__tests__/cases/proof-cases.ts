@@ -29,7 +29,6 @@ import { NAMESPACE_KEYWORD_IN_DECLARATION_FILES } from './ruleset-moves.ts'
 
 // A list left out here proves none of its rules to every-rule-proven.integration.test.ts.
 
-/** Every RuleCase a test runs on the engines, from each list and lone case that holds one. */
 export const PROOF_CASES: readonly RuleCase[] = [
   ...ACCEPTED_1011_CORE_CASES,
   ...ACCEPTED_1011_HRA_CASES,

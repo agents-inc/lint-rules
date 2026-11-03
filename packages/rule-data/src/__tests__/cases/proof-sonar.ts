@@ -1,10 +1,8 @@
 import type { RuleCase } from './changed-settings.ts'
 
-// The sonarjs rules ESLint runs, each on the gate's fixture (or a shape the current plugin reports where the gate's no
-// longer fires) and on its corrected form. sonarjs/no-default-utility-imports has no case: it reports only where the
-// nearest package.json lists the library, and a case writes no package.json.
+// sonarjs/no-default-utility-imports has no case: it reports only where the nearest package.json lists the library,
+// and a case writes no package.json.
 
-/** Each shipped sonarjs rule routed to ESLint that no other case list proves, run as the catalog ships it. */
 export const PROOF_SONAR_CASES: readonly RuleCase[] = [
   {
     rule: 'sonarjs/anchor-precedence',

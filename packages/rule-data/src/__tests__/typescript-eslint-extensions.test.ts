@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
+import { foundOr } from '../collections.ts'
 import { extensionIdsTurnedOnBy, typescriptEslintExtensions } from './typescript-eslint-extensions.ts'
 
 function extensionNamed(id: string) {
-  const extension = typescriptEslintExtensions().find((candidate) => candidate.id === id)
-  if (extension === undefined) throw new Error(`typescript-eslint has no extension rule ${id}`)
-  return extension
+  return foundOr(typescriptEslintExtensions().find((candidate) => candidate.id === id), `typescript-eslint has no extension rule ${id}`)
 }
 
 describe('typescriptEslintExtensions', () => {

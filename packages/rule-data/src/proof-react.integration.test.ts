@@ -7,7 +7,7 @@ import { pluginPrefixOf } from './rule-id-parts.ts'
 
 const ENGINES_TIMEOUT_MS = 120_000
 
-const REACT_PLUGINS = ['@eslint-react', 'react', 'react-hooks', 'react-you-might-not-need-an-effect', 'react-hook-form', 'css-modules']
+const REACT_PLUGINS: ReadonlySet<string> = new Set(['@eslint-react', 'react', 'react-hooks', 'react-you-might-not-need-an-effect', 'react-hook-form', 'css-modules'])
 
 describe('the shipped React rules ESLint runs, as the catalog ships them', () => {
   const { outcomesOfCase } = setUpRuleCaseOutcomes(catalog)
@@ -28,11 +28,11 @@ describe('the shipped React rules ESLint runs, as the catalog ships them', () =>
     expect({
       notShippedToEslint: casedRules.filter((rule) => {
         const route = catalog.rules.get(rule)
-        return route === undefined || route.engine !== 'eslint' || route.shipped === null
+        return route?.engine !== 'eslint' || route.shipped === null
       }),
       outsideTheReactPlugins: casedRules.filter((rule) => {
         const plugin = pluginPrefixOf(rule)
-        return plugin === null || !REACT_PLUGINS.includes(plugin)
+        return plugin === null || !REACT_PLUGINS.has(plugin)
       }),
       casedTwice: casedRules.filter((rule, index) => casedRules.indexOf(rule) !== index),
       withNoReportedFile: PROOF_REACT_CASES.filter(({ reportedIn }) => reportedIn.length === 0).map(({ rule }) => rule),

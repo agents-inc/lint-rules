@@ -7,17 +7,14 @@ import { ACCEPTED_PLAYWRIGHT_CASES, ACCEPTED_PW_HELD_CASES, PLAYWRIGHT_RULES_IN_
 import { TEST_FILE_GLOBS } from './__tests__/cases/test-file-globs.ts'
 import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './__tests__/rule-case-outcomes.ts'
 import { catalog } from './catalog.ts'
+import { foundOr } from './collections.ts'
 
-// Each Playwright rule the owner accepted runs as it ships, through the real ESLint: it reports the card's test and
-// stays silent beside it. Each ships at the plugin's defaults, untyped (the plugin reads no type information) and on
-// every file, since a page object outside the tests drives the page too, but for the two that take Puppeteer's page for
-// Playwright's, which run in test files only (PLAYWRIGHT_RULES_IN_TEST_FILES_ONLY). Each is in the playwright ruleset the
-// owner named, but for the five shipped off by default, in no ruleset, which run only where a team names them
-// (PLAYWRIGHT_RULES_OFF_BY_DEFAULT). A rule whose build waits on a card has its case held unrun (ACCEPTED_PW_HELD_CASES).
+// Each ships on every file, since a page object outside the tests drives the page too, but for the two that take
+// Puppeteer's page for Playwright's, which run in test files only.
 
 const ENGINES_TIMEOUT_MS = 120_000
 
-const PLAYWRIGHT_RULE = /^playwright\//u
+const PLAYWRIGHT_PREFIX = 'playwright/'
 
 describe('the Playwright rules accepted on 2026-10-24', () => {
   const { outcomesOfCase } = setUpRuleCaseOutcomes(catalog)
@@ -34,14 +31,13 @@ describe('the Playwright rules accepted on 2026-10-24', () => {
 
   it('ship, and no other Playwright rule does, each in playwright or off by default, in ESLint, at its defaults, untyped, on every file but those kept to test files, assigned by the owner on its card', () => {
     const expectedEntries = ACCEPTED_PLAYWRIGHT_CASES.map(({ rule }) => {
-      const accepted = ACCEPTED_ON_2026_10_24[rule]
-      if (accepted === undefined) throw new Error(`${rule} is no rule the owner accepted on 2026-10-24`)
+      const accepted = foundOr(ACCEPTED_ON_2026_10_24[rule], `${rule} is no rule the owner accepted on 2026-10-24`)
       const turnedOnBy = PLAYWRIGHT_RULES_OFF_BY_DEFAULT.includes(rule) ? { offByDefault: true } : { ruleset: 'playwright' }
       const files = PLAYWRIGHT_RULES_IN_TEST_FILES_ONLY.includes(rule) ? { files: TEST_FILE_GLOBS } : {}
       return { id: rule, ...turnedOnBy, engine: 'eslint', options: [], typed: false, ...files, assignment: { confidence: 'high', note: accepted.card, by: 'owner-2026-10-24' } }
     })
 
-    expect(canonicalRules.filter(({ id }) => PLAYWRIGHT_RULE.test(id))).toStrictEqual(expectedEntries)
+    expect(canonicalRules.filter(({ id }) => id.startsWith(PLAYWRIGHT_PREFIX))).toStrictEqual(expectedEntries)
   })
 
   it('whose build waits on a card have a case held unrun only while the rule is accepted and does not ship, the case naming the card its build waits on', () => {

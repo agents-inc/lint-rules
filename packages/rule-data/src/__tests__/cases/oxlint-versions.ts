@@ -2,10 +2,8 @@ import type { Engine } from '../../catalog.ts'
 import type { CaseFile } from '../rule-case-runs.ts'
 import type { RuleCase } from './changed-settings.ts'
 
-// The shipped rules ESLint ran that oxlint has a version of without type information, run on both engines
-// with the settings the catalog ships.
-
 const BOTH_ENGINES = ['oxlint', 'eslint'] as const
+const REGEXP_ESCAPE_SOURCE = String.raw`export const escaped = (text) => text.replace(/[$()*+.?[\\\]^{|}]/gu, '\\$&')`
 
 function inJsAndTs(name: string, source: string): CaseFile[] {
   return [
@@ -25,12 +23,10 @@ function inJsxAndTsx(name: string, source: string): CaseFile[] {
   ]
 }
 
-/** A module of `count` lines, each a statement of its own. */
 function linesLong(count: number): string {
   return Array.from({ length: count }, (_, index) => `export const line${String(index)} = ${String(index)}\n`).join('')
 }
 
-/** The component files ESLint lints none of, each with a script of `count` lines, read by oxlint alone. */
 function inComponentFilesOxlintAloneReads(name: string, count: number): CaseFile[] {
   return [
     { path: `src/${name}.vue`, source: `<script>\n${linesLong(count)}</script>\n`, onlyIn: 'oxlint' },
@@ -39,7 +35,6 @@ function inComponentFilesOxlintAloneReads(name: string, count: number): CaseFile
   ]
 }
 
-/** A shape the two versions differ on, pinned as a pair: what oxlint's version does with it, and what ESLint's does. */
 function pinnedGap(rule: string, shape: string, files: readonly CaseFile[], reportedBy: Engine): RuleCase[] {
   return BOTH_ENGINES.map((engine) => ({
     rule,
@@ -50,7 +45,6 @@ function pinnedGap(rule: string, shape: string, files: readonly CaseFile[], repo
   }))
 }
 
-/** Each case runs on oxlint, by oxlint's name for the rule, and on ESLint. */
 export const OXLINT_VERSION_CASES: readonly RuleCase[] = [
   // array-simple: a simple element type is written T[], any other Array<T>.
   {
@@ -516,7 +510,7 @@ export const OXLINT_VERSION_GAPS: readonly RuleCase[] = [
   ...pinnedGap(
     'unicorn/prefer-string-replace-all',
     'the replace call escaping a string for a RegExp',
-    inJsAndTs('regexp-escape', `${String.raw`export const escaped = (text) => text.replace(/[$()*+.?[\\\]^{|}]/gu, '\\$&')`}\n`),
+    inJsAndTs('regexp-escape', `${REGEXP_ESCAPE_SOURCE}\n`),
     'oxlint',
   ),
   ...pinnedGap(
@@ -528,8 +522,8 @@ export const OXLINT_VERSION_GAPS: readonly RuleCase[] = [
 ]
 
 /**
- * The rules whose versions report and stay silent alike, and whose oxlint version's fix neither leaves code ESLint's
- * would fix nor changes what the code does.
+ * The rules whose versions report and stay silent alike, and whose oxlint version's fix, where check does not withhold
+ * the rule's fix, neither leaves code ESLint's would fix nor changes what the code does.
  */
 export const MOVED_TO_OXLINT: readonly string[] = [
   '@typescript-eslint/array-type',
@@ -563,6 +557,7 @@ export const MOVED_TO_OXLINT: readonly string[] = [
   'unicorn/prefer-blob-reading-methods',
   'unicorn/prefer-code-point',
   'unicorn/prefer-math-trunc',
+  'unicorn/prefer-modern-dom-apis',
   'unicorn/prefer-optional-catch-binding',
   'unicorn/prefer-query-selector',
   'unicorn/prefer-string-trim-start-end',

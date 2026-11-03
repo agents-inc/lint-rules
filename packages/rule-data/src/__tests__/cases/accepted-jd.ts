@@ -1,12 +1,7 @@
 import type { HeldCase } from '../accepted-rules-out-of-place.ts'
 import type { RuleCase } from './changed-settings.ts'
 
-// The jest-dom rules the owner accepted on 2026-10-24: each reports a test that asserts through a generic matcher what
-// a jest-dom matcher states, and stays silent on that jest-dom matcher and on a shape its code leaves alone. Each file
-// is a test that passes under Vitest 5.0.5 with jsdom, Testing Library and jest-dom 6.9.1 (measured). The one that
-// never loads jest-dom reports too, since no rule looks for jest-dom, and its fix calls a matcher it does not have,
-// which is why the owner made the ruleset opt-in (card q-lint-jest-dom-without-jest-dom). Each rule's fix also turns a
-// passing test that loads jest-dom into a failing one, so each ships with check withholding its fix.
+// Each file is a test that passes under Vitest 5.0.5 with jsdom, Testing Library and jest-dom 6.9.1 (measured).
 
 const TEST_WITH_JEST_DOM = `import { render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
@@ -14,20 +9,7 @@ import '@testing-library/jest-dom/vitest'
 
 `
 
-/**
- * The shipped accepted jest-dom rules' report cases beside their silent twins, in rule ID order. check reports each and
- * withholds its fix (cards q-lint-rc-jest-dom-fixes-measured and, for prefer-pressed,
- * q-lint-rc-pressed-fix-current-jest-dom), since each fix changes what a test asserts: on jest-dom 6.9.1 the last
- * reported file of each, and the last two of prefer-in-document, pass as written and fail as fixed. prefer-checked,
- * prefer-pressed and prefer-required: a test that an aria-checked, aria-pressed or aria-required attribute is present
- * becomes one that the element is checked, pressed or required. prefer-to-have-class: a test that `className` contains
- * a name becomes one that the element has a class of exactly that name (a CSS module's class names are hashed).
- * prefer-in-document: a test that some elements exist becomes one that exactly one does, and a test of an element
- * rendered into a container off the page becomes one that it is in the page. prefer-empty: a test that a fragment has
- * no first child becomes toBeEmptyDOMElement on the fragment, which takes only an element. prefer-to-have-attribute:
- * getAttribute on an element DOMParser made becomes toHaveAttribute, which takes only an element whose document has a
- * window. Measured with Vitest 5.0.5.
- */
+/** On jest-dom 6.9.1 the last reported file of each, and the last two of prefer-in-document, pass as written and fail as fixed. */
 export const ACCEPTED_JEST_DOM_CASES: readonly RuleCase[] = [
   {
     rule: 'jest-dom/prefer-checked',
@@ -462,8 +444,4 @@ it('marks the open tab active', () => {
   },
 ]
 
-/**
- * The cases of accepted jest-dom rules whose build waits on a card, unrun until the owner answers it: once the rule
- * ships, its case moves to ACCEPTED_JEST_DOM_CASES.
- */
 export const ACCEPTED_JD_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = []

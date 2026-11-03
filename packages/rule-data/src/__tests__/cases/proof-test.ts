@@ -1,9 +1,7 @@
 import type { CaseFile } from '../rule-case-runs.ts'
 import type { RuleCase } from './changed-settings.ts'
 
-// The shipped testing-library and storybook rules ESLint runs, each on the gate's fixture and on its corrected form,
-// in a file the catalog ships it to. A rule another case list or the ESLint fallback proves is left to it, as vitest's
-// rules routed to ESLint are.
+// A rule another case list or the ESLint fallback proves is left to it, as vitest's rules routed to ESLint are.
 
 type Proof = {
   readonly reported: string
@@ -28,7 +26,6 @@ function inStories(rule: string, { reported, corrected }: Proof): RuleCase {
   }
 }
 
-/** Each shipped testing-library rule routed to ESLint that no other case list proves. */
 export const PROOF_TESTING_LIBRARY_CASES: readonly RuleCase[] = [
   inTestFiles('testing-library/await-async-queries', {
     reported: "import { screen } from '@testing-library/react'\ntest('a', () => { const el = screen.findByRole('button') })\n",
@@ -140,7 +137,6 @@ export const PROOF_TESTING_LIBRARY_CASES: readonly RuleCase[] = [
   }),
 ]
 
-/** Each shipped storybook rule, all routed to ESLint, that no other case list proves. */
 export const PROOF_STORYBOOK_CASES: readonly RuleCase[] = [
   inStories('storybook/await-interactions', {
     reported: 'export default { component: () => null }\nexport const A = { play: async () => { userEvent.click(document.body) } }\n',

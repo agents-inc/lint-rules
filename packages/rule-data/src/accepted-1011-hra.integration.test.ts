@@ -6,11 +6,6 @@ import { ACCEPTED_1011_HRA_CASES, HOUSE_REDUCE_RULE } from './__tests__/cases/ac
 import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './__tests__/rule-case-outcomes.ts'
 import { catalog } from './catalog.ts'
 
-// The reduce-accumulator rule the owner accepted on 2026-10-11 runs as it ships, through the real ESLint: the house
-// port reports the page's code and stays silent beside it. It ships in performance, beside oxc/no-accumulating-spread
-// and unicorn/no-array-concat-in-loop, at its defaults and untyped: every case reports without type information. The
-// upstream rule it ports never ships, and its waiting entry is gone.
-
 const ENGINES_TIMEOUT_MS = 120_000
 
 const UPSTREAM_RULE = 'anti-slop/no-reduce-accumulator-copy'

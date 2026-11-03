@@ -1,13 +1,9 @@
 import type { HeldCase } from '../accepted-rules-out-of-place.ts'
 import type { RuleCase } from './changed-settings.ts'
 
-// The sonarjs rules the owner accepted on the old candidates page on 2026-10-11: each reports the page's code and stays
-// silent on its corrected form, and on a shape the rule leaves alone.
-
 // no-duplicate-parameterized-test-case's fix is withheld: it deletes a row that repeats another row's text, so
 // `it.each([[nextId()], [nextId()]])` runs once.
 
-/** How the candidates page proposed shipping each sonarjs rule the owner accepted on 2026-10-11. */
 type ProposedEntry = {
   readonly ruleset: string
   readonly engine: 'eslint'
@@ -15,7 +11,6 @@ type ProposedEntry = {
   readonly typed: boolean
 }
 
-/** Each accepted sonarjs rule no later card dropped, as the page proposed it: ESLint, typed only where the rule needs types. */
 export const ACCEPTED_1011_SNR_ENTRIES: Readonly<Record<string, ProposedEntry>> = {
   'sonarjs/composite-assertions': { ruleset: 'tests', engine: 'eslint', options: [], typed: false },
   'sonarjs/no-debounce-throttle-in-render': { ruleset: 'react', engine: 'eslint', options: [], typed: false },
@@ -24,7 +19,6 @@ export const ACCEPTED_1011_SNR_ENTRIES: Readonly<Record<string, ProposedEntry>> 
   'sonarjs/synchronous-exception-assertions': { ruleset: 'tests', engine: 'eslint', options: [], typed: true },
 }
 
-/** Each shipped accepted sonarjs rule's report case beside its silent twin. */
 export const ACCEPTED_1011_SNR_CASES: readonly RuleCase[] = [
   {
     rule: 'sonarjs/composite-assertions',
@@ -255,8 +249,4 @@ it.each([
   },
 ]
 
-/**
- * The cases of accepted sonarjs rules whose measurement tripped the spec's stop, unrun until the owner answers the card
- * each waits on: once the rule ships, its case moves to ACCEPTED_1011_SNR_CASES.
- */
 export const ACCEPTED_1011_SNR_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = []

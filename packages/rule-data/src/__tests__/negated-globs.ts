@@ -9,13 +9,15 @@ const NEGATION_MARK = '!'
  * glob, so it is not one.
  */
 export function negatedShippedGlobsIn(routes: Iterable<RuleRoute>): string[] {
-  return [...routes].flatMap(({ id, shipped }) => {
-    if (shipped === null) return []
-    return [
-      ...negationsAmong(shipped.files).map((glob) => `${id} files: ${glob}`),
-      ...negationsAmong(shipped.ignores).map((glob) => `${id} ignores: ${glob}`),
-    ]
-  })
+  return [...routes].flatMap(negatedGlobsOf)
+}
+
+function negatedGlobsOf({ id, shipped }: Readonly<RuleRoute>): string[] {
+  if (shipped === null) return []
+  return [
+    ...negationsAmong(shipped.files).map((glob) => `${id} files: ${glob}`),
+    ...negationsAmong(shipped.ignores).map((glob) => `${id} ignores: ${glob}`),
+  ]
 }
 
 function negationsAmong(globs: readonly string[] | null): string[] {

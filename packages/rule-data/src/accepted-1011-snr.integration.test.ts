@@ -6,21 +6,14 @@ import { ACCEPTED_1011_SNR_CASES, ACCEPTED_1011_SNR_ENTRIES, ACCEPTED_1011_SNR_H
 import { ACCEPTED_ON_2026_10_11 } from './__tests__/cases/accepted-on-2026-10-11.ts'
 import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './__tests__/rule-case-outcomes.ts'
 import { catalog } from './catalog.ts'
-import { compareCodeUnits } from './collections.ts'
-
-// Each sonarjs rule the owner accepted on the old candidates page on 2026-10-11 runs as it ships, through ESLint (with
-// type information where the rule reports nothing without it): it reports the page's code and stays silent beside it.
-// Each ships in the ruleset the page proposed, with no options. A rule whose build waits on a card has its case held
-// unrun (ACCEPTED_1011_SNR_HELD_CASES).
+import { compareCodeUnits, foundOr } from './collections.ts'
 
 const ENGINES_TIMEOUT_MS = 120_000
 
 const ASSIGNED_BY_THE_SPEC = { note: 'owner-2026-10-11, candidates page', by: 'accepted-spec-2026-10-26' }
 
 function entryProposedFor(rule: string): (typeof ACCEPTED_1011_SNR_ENTRIES)[string] {
-  const entry = ACCEPTED_1011_SNR_ENTRIES[rule]
-  if (entry === undefined) throw new Error(`${rule} is no sonarjs rule the owner accepted on 2026-10-11`)
-  return entry
+  return foundOr(ACCEPTED_1011_SNR_ENTRIES[rule], `${rule} is no sonarjs rule the owner accepted on 2026-10-11`)
 }
 
 describe('the sonarjs rules accepted on 2026-10-11', () => {

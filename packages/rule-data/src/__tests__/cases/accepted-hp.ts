@@ -1,16 +1,10 @@
 import type { HeldCase } from '../accepted-rules-out-of-place.ts'
 import type { RuleCase } from './changed-settings.ts'
 
-// The hydration-proof rules the owner accepted on 2026-10-24: each reports code a React component or hook runs while it
-// renders that gives the server one result and the browser another, and stays silent on the card's fix and on the same
-// code moved into an effect or an event handler, which run in the browser alone. No rule looks for a server, so each
-// reports in an app that never renders on one, which is why the owner made react-ssr opt-in (card
-// q-lint-react-ssr-in-client-apps, "Make react-ssr opt-in"). Loading a stored value in an effect, the storage rule's own
-// advice, is what the shipped react-you-might-not-need-an-effect/no-initialize-state reports; a store read through
-// useSyncExternalStore with a server snapshot satisfies both (measured, 1.0.1). Four ship; the owner decided against the
-// other two for now (card q-lint-hp-left-off-record), so they have no case.
+// Loading a stored value in an effect, the storage rule's own advice, is what the shipped
+// react-you-might-not-need-an-effect/no-initialize-state reports; a store read through useSyncExternalStore with a
+// server snapshot satisfies both (measured, 1.0.1).
 
-/** The shipped accepted hydration-proof rules' report cases beside their silent twins, in rule ID order. */
 export const ACCEPTED_HYDRATION_PROOF_CASES: readonly RuleCase[] = [
   {
     rule: 'hydration-proof/no-storage-in-initial-render',
@@ -238,8 +232,4 @@ export function Clock() {
   },
 ]
 
-/**
- * The cases of accepted hydration-proof rules whose build waits on a card, unrun until the owner answers it: once the
- * rule ships, its case moves to ACCEPTED_HYDRATION_PROOF_CASES.
- */
 export const ACCEPTED_HP_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = []

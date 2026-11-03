@@ -26,7 +26,7 @@ export const ACCEPTED_ON_2026_10_24: Readonly<Record<string, AcceptedRule>> = {
   'drizzle-security/no-unscoped-mutation': { card: 'rc-drizzle-security-no-unscoped-mutation', droppedBy: DRIZZLE_ADVISORY },
   'e18e/prefer-get-or-insert': { card: 'rc-e18e-prefer-get-or-insert', waitsAs: 'parked' },
   'e18e/prefer-throw-if-no-entry': { card: 'rc-e18e-prefer-throw-if-no-entry', waitsAs: 'recommended' },
-  // Accepted as anti-slop-effect/no-manual-effect-error-tag, to be ported as a house rule; card q-lint-effect-ruleset-name named its ruleset.
+  // Accepted as anti-slop-effect/no-manual-effect-error-tag.
   'house/no-manual-effect-error-tag': { card: 'rc-anti-slop-effect-no-manual-effect-error-tag', waitsAs: 'recommended' },
   'hydration-proof/no-browser-global-in-render': { card: 'rc-hydration-proof-no-browser-global-in-render', droppedBy: HP_LEFT_OFF_RECORD },
   'hydration-proof/no-locale-without-explicit-locale': { card: 'rc-hydration-proof-no-locale-without-explicit-locale', droppedBy: HP_LEFT_OFF_RECORD },

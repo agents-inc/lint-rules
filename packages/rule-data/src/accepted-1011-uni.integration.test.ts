@@ -15,19 +15,13 @@ import { ACCEPTED_ON_2026_10_11 } from './__tests__/cases/accepted-on-2026-10-11
 import { placementMovedTo } from './__tests__/cases/ruleset-moves.ts'
 import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './__tests__/rule-case-outcomes.ts'
 import { catalog } from './catalog.ts'
-import { compareCodeUnits } from './collections.ts'
-
-// The unicorn rules beyond the guard rules that the owner accepted on 2026-10-11 ship as the candidates page proposed or the owner moved them,
-// each proven on the engines that may run it, prefer-at and prefer-single-call in ESLint as the owner answered; the rule
-// prefer-literal-ascii replaces stops shipping in the same step.
+import { compareCodeUnits, foundOr } from './collections.ts'
 
 const ENGINES_TIMEOUT_MS = 120_000
 const ASSIGNED_BY_THE_SPEC = { note: 'owner-2026-10-11, candidates page', by: 'accepted-spec-2026-10-26' }
 
 function entryProposedFor(rule: string): (typeof ACCEPTED_1011_UNI_ENTRIES)[string] {
-  const entry = ACCEPTED_1011_UNI_ENTRIES[rule]
-  if (entry === undefined) throw new Error(`${rule} is no unicorn rule the owner accepted on 2026-10-11`)
-  return entry
+  return foundOr(ACCEPTED_1011_UNI_ENTRIES[rule], `${rule} is no unicorn rule the owner accepted on 2026-10-11`)
 }
 
 function eslintBecauseNaming(card: string | undefined): { readonly eslintBecause?: unknown } {

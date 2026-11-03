@@ -5,6 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { consumerConfigSource } from './__tests__/cases/consumer-config-source.ts'
 import { setUpTempDir } from './__tests__/temp-dirs.ts'
 import { catalog, routeOf, shippedRuleOf } from './catalog.ts'
+import { foundOr } from './collections.ts'
 import { consumerConfigFiles } from './consumer-config-files.ts'
 import { eslintPlugins } from './eslint-plugins.ts'
 import { pluginPrefixOf } from './rule-id-parts.ts'
@@ -114,8 +115,8 @@ describe('the rules that report the files plan.md has a consumer write', () => {
 
   async function ruleIdsReportedOn(filePath: string): Promise<readonly string[]> {
     const [result] = await eslint.lintText(consumerConfigSource, { filePath })
-    if (result === undefined) throw new Error(`ESLint returned no result for ${filePath}`)
-    return [...new Set(result.messages.map(({ ruleId }) => String(ruleId)))].toSorted()
+    const { messages } = foundOr(result, `ESLint returned no result for ${filePath}`)
+    return [...new Set(messages.map(({ ruleId }) => String(ruleId)))].toSorted()
   }
 
   async function reportsByFile(filePaths: readonly string[]): Promise<Readonly<Record<string, readonly string[]>>> {

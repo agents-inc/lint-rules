@@ -18,7 +18,6 @@ function reportedAndCorrected(rule: string, { reported, corrected, reportedAsShi
   }
 }
 
-/** Each shipped @typescript-eslint, functional and core rule routed to ESLint that no other case list or the ESLint fallback proves, on the gate's fixture and its corrected form. */
 export const PROOF_TS_CASES: readonly RuleCase[] = [
   reportedAndCorrected('@typescript-eslint/await-thenable', {
     reported: 'export async function run() {\n  return await 1\n}\n',

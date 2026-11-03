@@ -25,7 +25,6 @@ function isRelationValue(value: unknown): boolean {
   return value === null || typeof value === 'string'
 }
 
-/** Each rule's engine, and how it is turned on where it ships. */
 function shippedRoutesOf(ids: readonly string[]): Record<string, unknown> {
   return Object.fromEntries(
     ids.map((id): [string, unknown] => {

@@ -1,8 +1,12 @@
 import type { ESLint } from 'eslint'
 import typescriptEslint from 'typescript-eslint'
 
+import { foundOr } from '../collections.ts'
 import { eslintPlugins } from '../eslint-plugins.ts'
+import { coreRuleExtendedBy } from '../generate/read-installed.ts'
 import { isObject } from '../is-object.ts'
+
+export { coreRuleExtendedBy } from '../generate/read-installed.ts'
 
 /** A typescript-eslint rule that extends an ESLint core rule, as its own meta says. */
 export type TypescriptEslintExtension = {
@@ -16,6 +20,8 @@ export type TypescriptEslintExtension = {
 
 /** A config typescript-eslint exports that a team extends, by its export name. */
 export type TypescriptEslintConfigName = 'recommended' | 'strict'
+
+type PluginRule = NonNullable<ESLint.Plugin['rules']>[string]
 
 const TYPESCRIPT_ESLINT_PREFIX = '@typescript-eslint'
 const OFF_SEVERITIES: ReadonlySet<unknown> = new Set(['off', 0])
@@ -32,9 +38,7 @@ export function typescriptEslintExtensions(): TypescriptEslintExtension[] {
 
 /** The installed typescript-eslint plugin's rules, by rule name, as registered under its prefix. */
 export function typescriptEslintRules(): NonNullable<ESLint.Plugin['rules']> {
-  const plugin = eslintPlugins[TYPESCRIPT_ESLINT_PREFIX]
-  if (plugin?.rules === undefined) throw new Error(`no plugin with rules is registered under ${TYPESCRIPT_ESLINT_PREFIX}`)
-  return plugin.rules
+  return foundOr(eslintPlugins[TYPESCRIPT_ESLINT_PREFIX]?.rules, `no plugin with rules is registered under ${TYPESCRIPT_ESLINT_PREFIX}`)
 }
 
 /**
@@ -50,19 +54,11 @@ export function extensionIdsTurnedOnBy(configName: TypescriptEslintConfigName): 
     .toSorted()
 }
 
-function extensionOf(name: string, rule: unknown): TypescriptEslintExtension[] {
-  const coreRule = coreRuleExtendedBy(name, rule)
+function extensionOf(name: string, rule: Readonly<PluginRule>): TypescriptEslintExtension[] {
+  const id = `${TYPESCRIPT_ESLINT_PREFIX}/${name}`
+  const coreRule = coreRuleExtendedBy(id, rule)
   if (coreRule === null) return []
-  return [{ id: `${TYPESCRIPT_ESLINT_PREFIX}/${name}`, coreRule, replacedByCoreRule: replacementsOf(rule).includes(coreRule) }]
-}
-
-/** `extendsBaseRule` is true where the core rule has the same name, and the core rule's name where it differs. */
-function coreRuleExtendedBy(name: string, rule: unknown): string | null {
-  const meta = metaOf(rule)
-  if (meta === null || !('docs' in meta) || !isObject(meta.docs) || !('extendsBaseRule' in meta.docs)) return null
-  const { extendsBaseRule } = meta.docs
-  if (extendsBaseRule === true) return name
-  return typeof extendsBaseRule === 'string' ? extendsBaseRule : null
+  return [{ id, coreRule, replacedByCoreRule: replacementsOf(rule).includes(coreRule) }]
 }
 
 /** The rule names a deprecated rule's `meta.deprecated.replacedBy` gives, in ESLint's DeprecatedInfo shape. */

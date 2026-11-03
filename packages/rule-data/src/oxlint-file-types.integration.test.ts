@@ -22,6 +22,7 @@ import {
   type TriggerOutcome,
 } from './__tests__/oxlint-trigger-runs.ts'
 import { setUpTempDir } from './__tests__/temp-dirs.ts'
+import { foundOr } from './collections.ts'
 import { fileTypesOxlintRunsTheRuleIn } from './oxlint-file-types.ts'
 import { oxlintPluginOf } from './rule-id-parts.ts'
 
@@ -40,9 +41,7 @@ const GUARDED_RULES: readonly string[] = oxlintFileTypes.guards.flatMap(({ rules
 type OutcomesByRule = ReadonlyMap<string, ReadonlyMap<FileType, TriggerOutcome>>
 
 function triggerOf(rule: string): RuleTrigger {
-  const trigger = RULE_TRIGGERS[rule]
-  if (trigger === undefined) throw new Error(`no code draws ${rule}`)
-  return trigger
+  return foundOr(RULE_TRIGGERS[rule], `no code draws ${rule}`)
 }
 
 function folderOf(type: FileType): string {
@@ -73,8 +72,7 @@ describe("the file types data/oxlint-file-types.json says oxlint runs each rule 
   let outcomesByRule: OutcomesByRule = new Map()
 
   function typesWhere(rule: string, outcome: TriggerOutcome): FileType[] {
-    const outcomes = outcomesByRule.get(rule)
-    if (outcomes === undefined) throw new Error(`oxlint was not run over ${rule}'s files`)
+    const outcomes = foundOr(outcomesByRule.get(rule), `oxlint was not run over ${rule}'s files`)
     return FILE_TYPES.filter((type) => outcomes.get(type) === outcome)
   }
 
@@ -177,7 +175,5 @@ describe('the extensions data/oxlint-file-types.json says oxlint lints by defaul
 })
 
 function outcomeOfFile(byFile: ReadonlyMap<string, TriggerOutcome>, file: string): TriggerOutcome {
-  const outcome = byFile.get(file)
-  if (outcome === undefined) throw new Error(`oxlint was not run over ${file}`)
-  return outcome
+  return foundOr(byFile.get(file), `oxlint was not run over ${file}`)
 }

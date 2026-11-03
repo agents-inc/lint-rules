@@ -1,13 +1,8 @@
 import type { RuleCase } from './changed-settings.ts'
 
-// The shadcn rule the owner accepted on 2026-10-24: it reports a colour from Tailwind's own palette in a class, and a
-// colour written out on an SVG element, a check its options cannot turn off. It stays silent on a theme token, on the
-// colours it leaves to an option (white and black) or never judges (transparent, current), on an SVG painted with
-// currentColor, and on a string that is no class, at its defaults. The case project has no Tailwind theme, so a token
-// is silent here for want of a theme to judge it by; on a Tailwind v4 project the rule also reports a token its theme
-// does not declare (measured in the lane's real run: the runner writes no stylesheet).
+// The case project has no Tailwind theme, so a token is silent here for want of a theme to judge it by; on a Tailwind
+// v4 project the rule also reports a token its theme does not declare.
 
-/** The shipped accepted shadcn rule's report cases beside their silent twins. */
 export const ACCEPTED_SHADCN_CASES: readonly RuleCase[] = [
   {
     rule: 'shadcn/no-raw-colors',

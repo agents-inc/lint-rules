@@ -16,10 +16,8 @@ export function fileTextHolding(type: FileType, { code, script }: RuleTrigger): 
 }
 
 /** The file types written that oxlint runs a rule of the file types given in: a declaration file by the extension oxlint reads it by. */
-export function fileTypesWrittenTheRuleRunsIn({ extensions, skipsDeclarationFiles }: OxlintRuleFileTypes): FileType[] {
-  return FILE_TYPES.filter((type) =>
-    isDeclarationFileType(type) ? !skipsDeclarationFiles && extensions.includes(DECLARATION_FILE_TYPES[type]) : extensions.includes(type),
-  )
+export function fileTypesWrittenTheRuleRunsIn(ruleFileTypes: OxlintRuleFileTypes): FileType[] {
+  return FILE_TYPES.filter((type) => doesTheRuleRunIn(type, ruleFileTypes))
 }
 
 /** What oxlint made of each file given, from its report over them: a file with any diagnostic that links nowhere could not be parsed. */
@@ -47,6 +45,11 @@ function scriptBlockOpening(type: 'vue' | 'svelte', script: ScriptBlock | undefi
   const lang = script === 'tsx' ? 'tsx' : 'ts'
   const setup = type === 'vue' && script === 'setup' ? ' setup' : ''
   return `<script${setup} lang="${lang}">`
+}
+
+function doesTheRuleRunIn(type: FileType, { extensions, skipsDeclarationFiles }: OxlintRuleFileTypes): boolean {
+  if (!isDeclarationFileType(type)) return extensions.includes(type)
+  return !skipsDeclarationFiles && extensions.includes(DECLARATION_FILE_TYPES[type])
 }
 
 function isDeclarationFileType(type: string): type is keyof typeof DECLARATION_FILE_TYPES {

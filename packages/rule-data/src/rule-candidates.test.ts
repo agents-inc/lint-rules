@@ -6,6 +6,7 @@ import { CANDIDATE_STATUSES, NOT_REVIEWED_WHY, UNSHIPPED_STATUSES } from './__te
 import { DROPPED_RULES } from './__tests__/cases/dropped-rules.ts'
 import { ROUND_2_DROPS } from './__tests__/cases/round-2-drops.ts'
 import { catalog } from './catalog.ts'
+import { foundOr } from './collections.ts'
 import { pluginPrefixOf } from './rule-id-parts.ts'
 
 // A rule is in one state at a time: shipped (data/rules.json), or here, as a rule we may ship, one we
@@ -20,9 +21,7 @@ const shippedIds: ReadonlySet<string> = new Set(canonicalRules.map((rule) => rul
 const installedPrefixes: ReadonlySet<string | null> = new Set(catalog.rules.keys().toArray().map(pluginPrefixOf))
 
 function candidateFor(id: string) {
-  const candidate = candidates.find((entry) => entry.id === id)
-  if (candidate === undefined) throw new Error(`${id} is not in data/rule-candidates.json`)
-  return candidate
+  return foundOr(candidates.find((entry) => entry.id === id), `${id} is not in data/rule-candidates.json`)
 }
 
 function isFilledIn(value: unknown): boolean {

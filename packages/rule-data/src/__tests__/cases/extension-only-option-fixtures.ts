@@ -122,7 +122,6 @@ export const side: number = shape.side
 `,
     reportOf: 'findings',
   },
-  // The option leaves alone a rejection with a value typed any.
   {
     coreRule: 'prefer-promise-reject-errors',
     option: '.allowThrowingAny',
@@ -134,7 +133,6 @@ export const rejected = Promise.reject(reason)
 `,
     reportOf: 'findings',
   },
-  // The option leaves alone a rejection with a value typed unknown.
   {
     coreRule: 'prefer-promise-reject-errors',
     option: '.allowThrowingUnknown',

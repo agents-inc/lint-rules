@@ -5,7 +5,6 @@ import type { RuleCase } from './changed-settings.ts'
 // each reports the card's comment and stays silent on its corrected form, and on a shape its docs say it
 // leaves alone.
 
-/** Each shipped accepted eslint-comments rule's report case beside its silent twin. */
 export const ACCEPTED_CMT_CASES: readonly RuleCase[] = [
   // A line comment holds for one line, so it needs no enable; a whole-file disable does, at the rule's defaults.
   {
@@ -44,10 +43,7 @@ export const ACCEPTED_CMT_CASES: readonly RuleCase[] = [
       },
     ],
   },
-  // A comment that switches a check off needs a reason after `--`, in oxlint's spelling as in ESLint's, and so does an
-  // inline rule-setting comment, whether it switches a check off or only changes an option; an enable, global or
-  // exported comment needs none, and prose naming a directive is no directive. An eslint-env comment is left out:
-  // ESLint 10 reports it with no rule ID.
+  // An eslint-env comment is left out: ESLint 10 reports it with no rule ID.
   {
     rule: '@eslint-community/eslint-comments/require-description',
     silentIn: [
@@ -106,8 +102,4 @@ export const ACCEPTED_CMT_CASES: readonly RuleCase[] = [
   },
 ]
 
-/**
- * The cases of accepted eslint-comments rules whose build waits on a card, unrun until the owner answers it: once the
- * rule ships, its case moves to ACCEPTED_CMT_CASES.
- */
 export const ACCEPTED_CMT_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = []

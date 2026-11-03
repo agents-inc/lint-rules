@@ -1,6 +1,3 @@
-// Shipped rules oxlint has a version of that ESLint runs instead, each for the measured reason its group names
-// (oxlint 1.87).
-
 /** By the file types oxlint skips: a finding ESLint's version reports in a .js file. */
 const SKIPPED_FILE_TYPES = ['@typescript-eslint/ban-ts-comment', '@typescript-eslint/no-this-alias', '@typescript-eslint/triple-slash-reference']
 
@@ -36,11 +33,7 @@ const SPLIT_BY_TYPES = ['no-constant-condition', 'no-implied-eval', 'no-throw-li
  */
 const FIXES_WHAT_TYPES_LEAVE_ALONE = ['@typescript-eslint/consistent-type-imports']
 
-/**
- * By a false alarm whose fix breaks the code, on a shape ESLint's version leaves alone: oxlint's prefer-at rewrites the
- * last item of a NodeList to `.at(-1)`, which a NodeList lacks; its prefer-single-call merges calls to a class's own push;
- * its jsx-curly-brace-presence unbraces a string holding an escape, which a JSX attribute then reads as written.
- */
+/** By a false alarm whose fix breaks the code, on a shape ESLint's version leaves alone. */
 const FIXES_WHAT_ESLINT_LEAVES_ALONE = ['react/jsx-curly-brace-presence', 'unicorn/prefer-at', 'unicorn/prefer-single-call']
 
 /** By a finding ESLint's version reports that oxlint's leaves alone, each pinned in the oxlint-versions cases. */
@@ -70,6 +63,15 @@ const FIXES_ONLY_ESLINT_MAKES = [
   'unicorn/prefer-string-slice',
 ]
 
+/** By a fix that changes what the code does, on code both report, where ESLint's version leaves the code alone. */
+const FIXES_THAT_CHANGE_WHAT_THE_CODE_DOES = [
+  '@typescript-eslint/prefer-function-type',
+  'no-var',
+  'unicorn/prefer-dom-node-append',
+  'unicorn/prefer-dom-node-text-content',
+  'unicorn/prefer-regexp-test',
+]
+
 /**
  * By a false alarm on code ESLint's version, with type information, leaves alone: a fallback for a parameter typed any,
  * unknown or nullable, which a default would not replace.
@@ -94,21 +96,13 @@ export const ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON: readonly string[] = [
   ...FIXES_WHAT_ESLINT_LEAVES_ALONE,
   ...MISSES_A_FINDING,
   ...FIXES_ONLY_ESLINT_MAKES,
+  ...FIXES_THAT_CHANGE_WHAT_THE_CODE_DOES,
   ...REPORTS_WHAT_TYPES_LEAVE_ALONE,
   ...REPORTS_WHAT_ESLINT_LEAVES_TO_ANOTHER_RULE,
   ...FILES_OF_ITS_OWN,
 ].toSorted()
 
-/**
- * Rules ESLint runs that oxlint has an untyped version of, with no reason yet, each until the owner answers its card:
- * one whose oxlint fix changes what the code does where ESLint's leaves the code alone, or one whose fix, withheld by
- * check, only ESLint's version makes.
- */
-export const RULES_WAITING_ON_AN_OWNER_ANSWER: ReadonlyArray<{ readonly rule: string; readonly card: string }> = [
-  { rule: '@typescript-eslint/prefer-function-type', card: 'q-lint-slice2-oxlint-fix-changes-meaning' },
-  { rule: 'no-var', card: 'q-lint-slice2-oxlint-fix-changes-meaning' },
-  { rule: 'unicorn/prefer-dom-node-append', card: 'q-lint-slice2-oxlint-fix-changes-meaning' },
-  { rule: 'unicorn/prefer-dom-node-text-content', card: 'q-lint-slice2-oxlint-fix-changes-meaning' },
-  { rule: 'unicorn/prefer-modern-dom-apis', card: 'q-lint-prefer-modern-dom-apis-engine' },
-  { rule: 'unicorn/prefer-regexp-test', card: 'q-lint-slice2-oxlint-fix-changes-meaning' },
+export const KEPT_IN_ESLINT_BY_AN_OWNER_ANSWER: ReadonlyArray<{ readonly card: string; readonly keptFor: string; readonly rules: readonly string[] }> = [
+  { card: 'q-lint-slice2-autofix', keptFor: 'a fix only ESLint makes', rules: FIXES_ONLY_ESLINT_MAKES },
+  { card: 'q-lint-slice2-oxlint-fix-changes-meaning', keptFor: 'an oxlint fix changing what code does', rules: FIXES_THAT_CHANGE_WHAT_THE_CODE_DOES },
 ]

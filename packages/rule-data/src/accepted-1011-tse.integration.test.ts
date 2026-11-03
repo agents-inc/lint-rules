@@ -13,23 +13,18 @@ import { ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON } from './__tests__/cases/routed
 import { placementMovedTo } from './__tests__/cases/ruleset-moves.ts'
 import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './__tests__/rule-case-outcomes.ts'
 import { catalog } from './catalog.ts'
-import { compareCodeUnits } from './collections.ts'
-
-// Each typescript-eslint rule the owner accepted on the old candidates page on 2026-10-11 runs as it ships, through the
-// real engines: it reports the page's code and stays silent beside it, on each engine that may run it (oxlint and ESLint
-// for the two oxlint runs, ESLint with type information for the rest). Each ships in the ruleset the page proposed or the owner moved it to,
-// with the options it proposed; consistent-type-imports runs typed in ESLint, as the owner answered, its reason recorded,
-// and leaves an import a decorated class's emitted metadata reads (TYPE_IMPORTS_BESIDE_DECORATORS_CASES).
-// A rule whose build waits on a card has its case held unrun (ACCEPTED_1011_TSE_HELD_CASES).
+import { compareCodeUnits, foundOr } from './collections.ts'
 
 const ENGINES_TIMEOUT_MS = 120_000
 
 const ASSIGNED_BY_THE_SPEC = { note: 'owner-2026-10-11, candidates page', by: 'accepted-spec-2026-10-26' }
 
 function entryProposedFor(rule: string): (typeof ACCEPTED_1011_TSE_ENTRIES)[string] {
-  const entry = ACCEPTED_1011_TSE_ENTRIES[rule]
-  if (entry === undefined) throw new Error(`${rule} is no typescript-eslint rule the owner accepted on 2026-10-11`)
-  return entry
+  return foundOr(ACCEPTED_1011_TSE_ENTRIES[rule], `${rule} is no typescript-eslint rule the owner accepted on 2026-10-11`)
+}
+
+function eslintBecauseWhereMeasured(rule: string): { readonly eslintBecause?: unknown } {
+  return ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON.includes(rule) ? { eslintBecause: expect.any(String) } : {}
 }
 
 describe('the typescript-eslint rules accepted on 2026-10-11', () => {
@@ -62,7 +57,7 @@ describe('the typescript-eslint rules accepted on 2026-10-11', () => {
     const expectedEntries = [...casedRules].toSorted(compareCodeUnits).map((rule) => ({
       id: rule,
       ...entryProposedFor(rule),
-      ...(ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON.includes(rule) ? { eslintBecause: expect.any(String) } : {}),
+      ...eslintBecauseWhereMeasured(rule),
       assignment: ASSIGNED_BY_THE_SPEC,
       ...placementMovedTo(rule),
     }))

@@ -4,16 +4,13 @@
 /** Test files, files under `__tests__`, and Vitest's type tests (`*.test-d.ts`), in the order rules.json lists them. */
 export const TEST_FILE_GLOBS: readonly string[] = ['**/*.{test,spec}.{js,mjs,cjs,jsx,ts,mts,cts,tsx}', '**/__tests__/**', '**/*.{test,spec}-d.{js,mjs,cjs,jsx,ts,mts,cts,tsx}']
 
-/** The usual names of a test runner's setup file, in the extensions test files take: it gets test files' relaxed rules. */
 export const SETUP_FILE_GLOBS: readonly string[] = ['**/vitest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}', '**/jest.setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}', '**/setupTests.{js,mjs,cjs,jsx,ts,mts,cts,tsx}', '**/test-setup.{js,mjs,cjs,jsx,ts,mts,cts,tsx}']
 
-/** What a rule skipping test files skips: test files, then setup files. */
 export const TEST_AND_SETUP_FILE_GLOBS: readonly string[] = [...TEST_FILE_GLOBS, ...SETUP_FILE_GLOBS]
 
 /** Story files, in the extensions test files take; Testing Library runs in their `play` functions. */
 export const STORY_FILE_GLOB = '**/*.stories.{js,mjs,cjs,jsx,ts,mts,cts,tsx}'
 
-/** What marks a glob as naming story files. */
 export const STORY_FILE_NAME_PART = '.stories.'
 
 /** Every rule that skips test, type-test and setup files: those that skipped them first, then those that judge test code by source-code standards. */

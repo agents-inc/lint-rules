@@ -14,15 +14,11 @@ import {
 } from './__tests__/cases/accepted-tsq.ts'
 import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './__tests__/rule-case-outcomes.ts'
 import { catalog } from './catalog.ts'
-
-// Each TanStack rule the owner accepted runs as it ships, through the real ESLint: it reports the card's code and stays
-// silent beside it. Each ships in the ruleset the owner named on its card, at the plugin's defaults, typed only where
-// its report needs type information. The two property-order rules are left out, so the opt-in ordering ruleset's
-// sort-objects sorts the options of the calls they would order as any other's.
+import { foundOr } from './collections.ts'
 
 const ENGINES_TIMEOUT_MS = 120_000
 
-const TANSTACK_RULE = /^@tanstack\//u
+const TANSTACK_PREFIX = '@tanstack/'
 
 // Measured: it reads the query function's return type from the type checker and reports nothing without one.
 const RULES_REPORTING_ONLY_WITH_TYPES: ReadonlySet<string> = new Set(['@tanstack/query/no-void-query-fn'])
@@ -55,8 +51,7 @@ describe('the TanStack rules accepted on 2026-10-24', () => {
     'ship in $ruleset, and no other rule of its plugin does, each in ESLint, at its defaults, on every file, assigned by the owner on its card',
     ({ ruleset, prefix, cases }) => {
       const expectedEntries = cases.map(({ rule }) => {
-        const accepted = ACCEPTED_ON_2026_10_24[rule]
-        if (accepted === undefined) throw new Error(`${rule} is no rule the owner accepted on 2026-10-24`)
+        const accepted = foundOr(ACCEPTED_ON_2026_10_24[rule], `${rule} is no rule the owner accepted on 2026-10-24`)
         return {
           id: rule,
           ruleset,
@@ -72,7 +67,7 @@ describe('the TanStack rules accepted on 2026-10-24', () => {
   )
 
   it('leave every TanStack rule the owner did not accept unshipped', () => {
-    const shippedTanstackRules = canonicalRules.filter(({ id }) => TANSTACK_RULE.test(id)).map(({ id }) => id)
+    const shippedTanstackRules = canonicalRules.filter(({ id }) => id.startsWith(TANSTACK_PREFIX)).map(({ id }) => id)
 
     expect(shippedTanstackRules.filter((id) => ACCEPTED_ON_2026_10_24[id] === undefined)).toStrictEqual([])
   })

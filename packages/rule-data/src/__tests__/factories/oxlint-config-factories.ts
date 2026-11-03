@@ -1,5 +1,6 @@
-// Every category oxlint enables rules by. Off, so a config runs exactly the rules it names.
-const OXLINT_CATEGORIES = ['correctness', 'suspicious', 'pedantic', 'style', 'nursery', 'restriction', 'perf']
+import { OXLINT_CATEGORIES } from '../../parse-names.ts'
+
+// Off, so a config runs exactly the rules it names.
 const ALL_CATEGORIES_OFF: Readonly<Record<string, string>> = Object.fromEntries(OXLINT_CATEGORIES.map((category) => [category, 'off']))
 const DENY = 'deny'
 const ERROR = 'error'

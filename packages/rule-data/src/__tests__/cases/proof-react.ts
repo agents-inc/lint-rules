@@ -1,9 +1,7 @@
 import type { RuleCase } from './changed-settings.ts'
 
-// The shipped React rules ESLint runs (@eslint-react, react, react-hooks, react-you-might-not-need-an-effect,
-// react-hook-form, css-modules), each on the gate's fixture and on its corrected form, as the catalog ships it. A rule
-// another case list or the ESLint fallback proves is left to it. css-modules/no-undef-class has no case: it reads the
-// stylesheet beside the file, and every file a case writes is linted, which ESLint does not do to a stylesheet.
+// A rule another case list or the ESLint fallback proves is left to it. css-modules/no-undef-class has no case: it reads
+// the stylesheet beside the file, and every file a case writes is linted, which ESLint does not do to a stylesheet.
 
 type SourceFileType = 'jsx' | 'tsx'
 
@@ -17,7 +15,6 @@ function reportedAndCorrected(rule: string, { reported, corrected, fileType = 't
   }
 }
 
-/** Each shipped rule of the React plugins routed to ESLint that no other case list proves. */
 export const PROOF_REACT_CASES: readonly RuleCase[] = [
   reportedAndCorrected('@eslint-react/dom-no-dangerously-set-innerhtml', {
     reported: 'export const Raw = ({ html }: { html: string }) => <div dangerouslySetInnerHTML={{ __html: html }} />\n',

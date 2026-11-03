@@ -49,7 +49,6 @@ export function isSortingRuleset(ruleset: string): boolean {
   return SORTING_RULESETS.includes(ruleset)
 }
 
-/** Whether `init` leaves the ruleset out of a new config: one that sorts code, or an opt-in one that sorts nothing. */
 export function isOptInRuleset(ruleset: string): boolean {
   return isSortingRuleset(ruleset) || OPT_IN_RULESETS_THAT_SORT_NOTHING.has(ruleset)
 }

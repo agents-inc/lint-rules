@@ -13,22 +13,14 @@ import { placementMovedTo } from './__tests__/cases/ruleset-moves.ts'
 import { TEST_AND_SETUP_FILE_GLOBS } from './__tests__/cases/test-file-globs.ts'
 import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './__tests__/rule-case-outcomes.ts'
 import { catalog } from './catalog.ts'
-import { compareCodeUnits } from './collections.ts'
-
-// Each core rule oxlint runs that the owner accepted on the old candidates page on 2026-10-11 runs as it ships, through
-// the real engines: it reports the page's code and stays silent beside it, in oxlint and in ESLint, which runs it without
-// oxlint. Each ships in oxlint under its own name, in the ruleset the page proposed or the owner moved it to, at its defaults, accessor-pairs
-// outside test files as the page proposed. A rule whose build waits on a card has its case held unrun
-// (ACCEPTED_1011_CORE_HELD_CASES).
+import { compareCodeUnits, foundOr } from './collections.ts'
 
 const ENGINES_TIMEOUT_MS = 120_000
 
 const ASSIGNED_BY_THE_SPEC = { note: 'owner-2026-10-11, candidates page', by: 'accepted-spec-2026-10-26' }
 
 function rulesetProposedFor(rule: string): string {
-  const ruleset = ACCEPTED_1011_CORE_RULESETS[rule]
-  if (ruleset === undefined) throw new Error(`${rule} is no core rule oxlint runs that the owner accepted on 2026-10-11`)
-  return ruleset
+  return foundOr(ACCEPTED_1011_CORE_RULESETS[rule], `${rule} is no core rule oxlint runs that the owner accepted on 2026-10-11`)
 }
 
 function ignoresProposedFor(rule: string): { readonly ignores?: readonly string[] } {

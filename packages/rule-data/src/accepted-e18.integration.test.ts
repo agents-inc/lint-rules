@@ -6,11 +6,7 @@ import { ACCEPTED_ON_2026_10_24 } from './__tests__/cases/accepted-on-2026-10-24
 import { RULES_SHIPPED_OFF_WITH_THEIR_FIX_WITHHELD } from './__tests__/cases/round-2-drops.ts'
 import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './__tests__/rule-case-outcomes.ts'
 import { catalog } from './catalog.ts'
-
-// The e18e rule the owner accepted runs as it ships, through the real ESLint: it reports the card's stat call and stays
-// silent beside it. It ships in node, since it is about a Node built-in, at the plugin's defaults and untyped: every case
-// reports without type information. The other e18e rule the owner accepted ships off: its fix writes an API Node 22
-// lacks.
+import { foundOr } from './collections.ts'
 
 const ENGINES_TIMEOUT_MS = 120_000
 
@@ -35,8 +31,7 @@ describe('the e18e rule accepted on 2026-10-24', () => {
 
   it('ships on, and no other e18e rule does, in node, in ESLint, at its defaults, untyped, on every file, assigned by the spec with correctness as the alternative', () => {
     const expectedEntries = ACCEPTED_E18E_CASES.map(({ rule }) => {
-      const accepted = ACCEPTED_ON_2026_10_24[rule]
-      if (accepted === undefined) throw new Error(`${rule} is no rule the owner accepted on 2026-10-24`)
+      const accepted = foundOr(ACCEPTED_ON_2026_10_24[rule], `${rule} is no rule the owner accepted on 2026-10-24`)
       return {
         id: rule,
         ruleset: 'node',

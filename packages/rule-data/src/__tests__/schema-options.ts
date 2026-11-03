@@ -1,3 +1,4 @@
+import { foundOr } from '../collections.ts'
 import { isObject } from '../is-object.ts'
 
 // What a rule's JSON schema lets its options be, for oxlint-refused-options.integration.test.ts.
@@ -152,11 +153,7 @@ function resolvedIn(root: unknown, node: unknown): unknown {
   return ref
     .slice(REF_PREFIX.length)
     .split(REF_SEPARATOR)
-    .reduce<unknown>((target, segment) => {
-      const next = fieldOf(target, segment)
-      if (next === undefined) throw new Error(`a schema reference to nothing: ${ref}`)
-      return next
-    }, root)
+    .reduce<unknown>((target, segment) => foundOr(fieldOf(target, segment), `a schema reference to nothing: ${ref}`), root)
 }
 
 function enumValuesOf(node: unknown): readonly unknown[] | null {

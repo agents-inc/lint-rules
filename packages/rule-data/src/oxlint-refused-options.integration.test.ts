@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { catalog } from './catalog.ts'
+import { foundOr } from './collections.ts'
 import { optionKeysOxlintRefuses } from './oxlint-refused-options.ts'
 import { EXTENSION_ONLY_OPTION_FIXTURES, type ExtensionOnlyOptionFixture, IMPORTED_FILE } from './__tests__/cases/extension-only-option-fixtures.ts'
 import { buildOxlintConfigRunningTheRuleWith } from './__tests__/factories/oxlint-config-factories.ts'
@@ -42,9 +43,7 @@ type FixtureOutcome = { readonly fixture: ExtensionOnlyOptionFixture; readonly t
 const TWIN_PAIRS = twinPairsRoutedToOxlint(catalog)
 
 function pairOf(coreRule: string): TwinPairRoutedToOxlint {
-  const pair = TWIN_PAIRS.find((candidate) => candidate.coreRule === coreRule)
-  if (pair === undefined) throw new Error(`${coreRule} is the core rule of no twin pair oxlint runs`)
-  return pair
+  return foundOr(TWIN_PAIRS.find((candidate) => candidate.coreRule === coreRule), `${coreRule} is the core rule of no twin pair oxlint runs`)
 }
 
 function isListed(pair: TwinPairRoutedToOxlint, key: string): boolean {

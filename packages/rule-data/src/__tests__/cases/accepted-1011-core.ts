@@ -1,15 +1,12 @@
 import type { HeldCase } from '../accepted-rules-out-of-place.ts'
 import type { RuleCase } from './changed-settings.ts'
 
-// The core rules oxlint runs that the owner accepted on the old candidates page on 2026-10-11: each reports the page's
-// code and stays silent on its corrected form, and on a shape its docs say it leaves alone. A .js copy of each report
-// case is there for ESLint's version, which runs the rule without oxlint (typescript-eslint's no-array-constructor on
-// TS files in its place).
+// A .js copy of each report case is there for ESLint's version, which runs the rule without oxlint
+// (typescript-eslint's no-array-constructor on TS files in its place).
 
 // no-useless-assignment ships though sonarjs/no-dead-store reports some of its lines too. no-new-wrappers' fix is
 // withheld: oxlint's deletes `new`, and `new Boolean(false)` stops being truthy.
 
-/** The ruleset the candidates page proposed for each core rule oxlint runs that the owner accepted on 2026-10-11. */
 export const ACCEPTED_1011_CORE_RULESETS: Readonly<Record<string, string>> = {
   'accessor-pairs': 'correctness',
   'no-array-constructor': 'correctness',
@@ -24,7 +21,7 @@ export const ACCEPTED_1011_CORE_RULESETS: Readonly<Record<string, string>> = {
   'symbol-description': 'conventions',
 }
 
-/** The rules the page proposed shipping outside test files, where test doubles stub write-only setters. */
+/** Test doubles stub write-only setters. */
 export const ACCEPTED_1011_CORE_RULES_SKIPPING_TEST_FILES: readonly string[] = ['accessor-pairs']
 
 const SETTER_ONLY = `export const preferences = {
@@ -41,7 +38,6 @@ const EMPTY_CATCH = `export function parseSettings(raw: string) {
 }
 `
 
-/** Each shipped accepted core rule's report case beside its silent twin. */
 export const ACCEPTED_1011_CORE_CASES: readonly RuleCase[] = [
   {
     rule: 'accessor-pairs',
@@ -334,8 +330,4 @@ export const ACCEPTED_1011_CORE_CASES: readonly RuleCase[] = [
   },
 ]
 
-/**
- * The cases of accepted core rules whose measurement tripped the spec's stop, unrun until the owner answers the card
- * each waits on: once the rule ships, its case moves to ACCEPTED_1011_CORE_CASES.
- */
 export const ACCEPTED_1011_CORE_HELD_CASES: ReadonlyArray<HeldCase<RuleCase>> = []

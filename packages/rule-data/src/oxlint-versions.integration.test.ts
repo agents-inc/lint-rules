@@ -3,13 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { MOVED_TO_OXLINT, OXLINT_VERSION_CASES, OXLINT_VERSION_GAPS } from './__tests__/cases/oxlint-versions.ts'
 import { ruleCaseTitleOf, setUpRuleCaseOutcomes } from './__tests__/rule-case-outcomes.ts'
 import { catalog, routeOf } from './catalog.ts'
+import { foundOr } from './collections.ts'
 
 const ENGINES_TIMEOUT_MS = 120_000
 
 function oxlintVersionNameOf(id: string): string {
-  const version = catalog.oxlintRules.find((rule) => rule.id === id)
-  if (version === undefined) throw new Error(`${id} has no oxlint version`)
-  return version.oxlintName
+  return foundOr(catalog.oxlintRules.find((rule) => rule.id === id), `${id} has no oxlint version`).oxlintName
 }
 
 describe('the shipped rules ESLint ran that oxlint has a version of without type information', () => {

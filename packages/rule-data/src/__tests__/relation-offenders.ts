@@ -53,8 +53,8 @@ function runsOnlyWhereTypesAreKnown(rule: Readonly<CanonicalRule>, named: Readon
 
 const KEPT_TO_SOME_FILES_BY_ESLINT_ALONE = 'the rule holding it is run by oxlint, and only our ESLint config keeps an entry to the files the rule it is left to runs on'
 
-// Not counted: files only oxlint lints, such as `.vue`, which a cover ESLint runs never reaches (my-covered-by-components),
-// and files a cover's own code skips by name, such as a story in sonarjs/no-debug-commands-in-ui-tests (my-debugging-utils-stories).
+// Not counted: files only oxlint lints, such as `.vue`, which a cover ESLint runs never reaches, and files a
+// cover's own code skips by name, such as a story in sonarjs/no-debug-commands-in-ui-tests.
 const FILES_THE_NAMED_RULE_CAN_LEAVE: readonly FilesLeft[] = [runsOnlyOnItsFiles, skipsWhatTheRuleRunsOn, runsOnlyWhereTypesAreKnown]
 
 /** Without oxlint, ESLint does not take over a rule the skip list names, so nothing runs it there. */
@@ -144,15 +144,7 @@ export function filesLeftUncovered(rules: readonly CanonicalRule[]): string[] {
 export function splitByTypesOffenders(rules: readonly CanonicalRule[]): string[] {
   const shippedById = new Map(rules.map((rule) => [rule.id, rule]))
   const relations = relationsOf(rules, ({ splitByTypesWith }) => splitByTypesWith)
-  const broken = relations.flatMap(({ rule, other }) => {
-    const label = `${rule.id} split by types with ${other}`
-    const typedRule = shippedById.get(other)
-    if (typedRule === undefined) return `${label}: the typed rule does not ship`
-    return [
-      ...breachesOf(rule, UNTYPED_RULE_BREACHES).map((wrong) => `${label}: the untyped rule ${wrong}`),
-      ...breachesOf(typedRule, TYPED_RULE_BREACHES).map((wrong) => `${label}: the typed rule ${wrong}`),
-    ]
-  })
+  const broken = relations.flatMap((relation) => wrongOfSplit(relation, shippedById))
   const shared = sharedKeys(relations, ({ other }) => other).map(
     ([typedRule, naming]) => `${typedRule}: the typed partner of ${naming.map(({ rule }) => rule.id).join(', ')}`,
   )
@@ -185,13 +177,19 @@ function wrongOfPair({ label, rule, cover }: CoverPair, { coveredRuleBreaches, c
   ]
 }
 
-function filesLeftBy({ label, rule, cover }: CoverPair): string[] {
-  if (cover === undefined) return []
-  return filesLeftByTheNamedRule(rule, cover).map((where) => `${label}: the cover ${where}`)
+function wrongOfSplit({ rule, other }: Relation, shippedById: ReadonlyMap<string, CanonicalRule>): string[] {
+  const label = `${rule.id} split by types with ${other}`
+  const typedRule = shippedById.get(other)
+  if (typedRule === undefined) return [`${label}: the typed rule does not ship`]
+  return [
+    ...breachesOf(rule, UNTYPED_RULE_BREACHES).map((wrong) => `${label}: the untyped rule ${wrong}`),
+    ...breachesOf(typedRule, TYPED_RULE_BREACHES).map((wrong) => `${label}: the typed rule ${wrong}`),
+  ]
 }
 
-function filesLeftByTheNamedRule(rule: Readonly<CanonicalRule>, named: Readonly<CanonicalRule>): string[] {
-  return FILES_THE_NAMED_RULE_CAN_LEAVE.flatMap((leaves) => leaves(rule, named))
+function filesLeftBy({ label, rule, cover }: CoverPair): string[] {
+  if (cover === undefined) return []
+  return FILES_THE_NAMED_RULE_CAN_LEAVE.flatMap((leaves) => leaves(rule, cover)).map((where) => `${label}: the cover ${where}`)
 }
 
 function wrongOfAllowance({ label, holder, allowance, leftTo }: AllowanceLeft, breachesOfTheRuleLeftTo: ReadonlyArray<Breach<CanonicalRule>>): string[] {
