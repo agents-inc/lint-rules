@@ -29,7 +29,7 @@ function ignoringConfig(pattern: string): OxlintConfig {
   return buildTeamOxlintConfig({ categories: EVERY_CATEGORY_OFF, ignorePatterns: [pattern], rules: { [NO_DEBUGGER]: 'error' } })
 }
 
-function overrideConfig(override: Omit<NonNullable<OxlintConfig['overrides']>[number], 'rules'>): OxlintConfig {
+function overrideConfig(override: Readonly<Omit<NonNullable<OxlintConfig['overrides']>[number], 'rules'>>): OxlintConfig {
   return buildTeamOxlintConfig({ categories: EVERY_CATEGORY_OFF, overrides: [{ ...override, rules: { [NO_DEBUGGER]: 'error' } }] })
 }
 
@@ -83,7 +83,7 @@ describe('oxlintConfigForFile, against the env the real oxlint CLI gives a file,
       config: noUndefConfig({ extends: [{ overrides: [{ files: ['src/**'], env: { browser: true } }] }] }),
     },
   ])('reads the browser env set $where as oxlint does: no-undef reports window where it is not set', ({ where, config }) => {
-    expect(FOLDER_LAYOUT_JS_FILES.filter((file) => oxlintConfigForFile(config, file).env['browser'] !== true).toSorted()).toStrictEqual(
+    expect(FOLDER_LAYOUT_JS_FILES.filter((file) => oxlintConfigForFile(config, file).env.browser !== true).toSorted()).toStrictEqual(
       filesOxlintReports(`env-${nameOf(where)}.config.mjs`, config, NO_UNDEF_CODE),
     )
   })

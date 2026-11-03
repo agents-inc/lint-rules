@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EXIT, runCheck } from './__tests__/cli-runs.ts'
-import { CONFIG_FILE, checkConfigTextHanding, PACKAGE_JSON_FILE } from './__tests__/factories/check-factories.ts'
+import { CONFIG_FILE, PACKAGE_JSON_FILE } from './__tests__/factories/check-factories.ts'
+import { agentsIncLintModuleTextHanding } from './__tests__/factories/consumer-project-factories.ts'
 import { buildConsumerSettings, GLOBS_GIVEN_FOR_SUPPRESSIONS } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { createGitProject } from './__tests__/git-projects.ts'
@@ -10,7 +11,7 @@ import type { TempProjects } from './__tests__/temp-projects.ts'
 /** Committed, so check has nothing changed to lint once the config loads. */
 function projectAllowingSuppressionsAs(tempProjects: TempProjects, allowSuppressions: unknown): string {
   const settings = { ...buildConsumerSettings({}), allowSuppressions }
-  const files = { [PACKAGE_JSON_FILE]: packageJsonText(buildPackageJson()), [CONFIG_FILE]: checkConfigTextHanding(settings) }
+  const files = { [PACKAGE_JSON_FILE]: packageJsonText(buildPackageJson()), [CONFIG_FILE]: agentsIncLintModuleTextHanding(settings) }
   return createGitProject(tempProjects, { repo: 'committed', files }).dir
 }
 

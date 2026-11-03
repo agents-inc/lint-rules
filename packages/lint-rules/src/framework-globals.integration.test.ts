@@ -27,6 +27,9 @@ allowEveryTestForParallelLoad()
 const RULES = [NO_UNDEF]
 const WRITE_RULES = [NO_GLOBAL_ASSIGN]
 const COMPONENT = /\.(?:vue|astro|svelte)$/u
+const SOURCES_THAT_ARE_NO_COMPONENT = Object.keys(frameworkSourceFiles)
+  .filter((file) => !COMPONENT.test(file))
+  .toSorted()
 
 describe('Vue, Astro and Svelte components, and JS files using their globals, our correctness ruleset on, in a project whose package.json lists oxlint', () => {
   const runs = setUpBothEnginesRuns({
@@ -54,6 +57,16 @@ describe('Vue, Astro and Svelte components, and JS files using their globals, ou
       agent: eslintLintedFiles.agent.filter((file) => COMPONENT.test(file)),
       mergedIntoEmptyTeamConfigs: eslintLintedFiles.mergedIntoEmptyTeamConfigs.filter((file) => COMPONENT.test(file)),
     }).toStrictEqual({ agent: [], mergedIntoEmptyTeamConfigs: [] })
+  })
+
+  // Else a framework global drawing no no-undef in a JS file would pass where ESLint lints none.
+  it('lint every source that is no component, in the agent build and merged into empty team configs', () => {
+    const { eslintLintedFiles } = runs()
+
+    expect({
+      agent: eslintLintedFiles.agent.filter((file) => Object.hasOwn(frameworkSourceFiles, file)),
+      mergedIntoEmptyTeamConfigs: eslintLintedFiles.mergedIntoEmptyTeamConfigs.filter((file) => Object.hasOwn(frameworkSourceFiles, file)),
+    }).toStrictEqual({ agent: SOURCES_THAT_ARE_NO_COMPONENT, mergedIntoEmptyTeamConfigs: SOURCES_THAT_ARE_NO_COMPONENT })
   })
 
   it("report no framework global in its framework's component by the agent build, and still the name nobody declares there and each framework global in a JS file", () => {
@@ -123,6 +136,10 @@ describe('Vue, Astro and Svelte components, and JS files using their globals, ou
 
   it('leave every .vue, .astro and .svelte file out of ESLint', () => {
     expect(eslintLintedFilesOf(run()).filter((file) => COMPONENT.test(file))).toStrictEqual([])
+  })
+
+  it('lint every source that is no component', () => {
+    expect(eslintLintedFilesOf(run()).filter((file) => Object.hasOwn(frameworkSourceFiles, file))).toStrictEqual(SOURCES_THAT_ARE_NO_COMPONENT)
   })
 
   it('report each framework global in a JS file, which does not have it', () => {

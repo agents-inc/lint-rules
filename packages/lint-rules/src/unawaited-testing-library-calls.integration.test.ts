@@ -106,7 +106,11 @@ function agentBuild(projectDir: string, { rulesets, rules, legacyEntry }: Listed
 function editorMerge(projectDir: string, { rulesets, rules, legacyEntry }: Listed, usesOxlint: boolean, teamEslintConfig: readonly Linter.Config[]): Linter.Config[] {
   const fileOverrides = legacyEntry === null ? [] : [buildTwoSetFileOverride([LEGACY_FILES], { editorRulesets: legacyEntry })]
   const { eslint } = editorPartsOf({ ...buildTwoSetLintRules({ editorRulesets: rulesets }, { rules, fileOverrides }), tsconfigRootDir: projectDir }, catalog, usesOxlint)
-  return mergeEslintPart([...teamEslintConfig], eslint, catalog, eslintPluginRegistry, lintRulesPackageVersion(), NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG)
+  return mergeEslintPart([...teamEslintConfig], eslint, catalog, {
+    registry: eslintPluginRegistry,
+    ourVersion: lintRulesPackageVersion(),
+    ruleIdsInTheTeamsOxlintConfig: NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG,
+  })
 }
 
 const BUILDS: readonly Build[] = [

@@ -3,6 +3,7 @@ import {
   ALT_TEXT,
   BLOCK_TURNING_NO_DEBUGGER_OFF,
   COMMENT_AS_JSX_TEXT_AND_DEBUGGER_SOURCE,
+  DEBUGGER_AND_UPDATE_ACROSS_AN_AWAIT_SOURCE,
   DEBUGGER_SOURCE,
   ESLINT_REACT_IMPORT,
   FLOATING_PROMISE_SOURCE,
@@ -11,7 +12,6 @@ import {
   INFERRABLE_TYPES_SOURCE,
   JSX_A11Y_FORK_IMPORT,
   JSX_NO_COMMENT_TEXTNODES,
-  MAX_LINES,
   NO_DEBUGGER,
   NO_DUPLICATE_ENUM_VALUES,
   NO_INFERRABLE_TYPES,
@@ -24,7 +24,7 @@ import {
   OURS_ALT_TEXT_AND_DEBUGGER,
   OURS_COMMENT_TEXTNODES_AND_DEBUGGER,
   OURS_DEBUGGER,
-  OURS_DEBUGGER_AND_MAX_LINES,
+  OURS_DEBUGGER_AND_ATOMIC_UPDATES,
   OURS_FLOATING_PROMISES,
   OURS_NO_INFERRABLE_TYPES_AND_NO_VAR,
   OURS_NO_THIS_ALIAS,
@@ -34,8 +34,9 @@ import {
   OURS_UNREACHABLE_LOOP,
   OURS_UNUSED_AND_DEBUGGER,
   OURS_WARNING_COMMENTS_AND_DEBUGGER,
+  REQUIRE_ATOMIC_UPDATES,
+  TEAMS_ESLINT_ATOMIC_UPDATES_IN_LEGACY,
   TEAMS_ESLINT_ESLINT_REACT_UNDER_REACT,
-  TEAMS_ESLINT_MAX_LINES_IN_LEGACY,
   TEAMS_ESLINT_ORIGINAL_JSX_A11Y_UNDER_A11Y,
   TEAMS_ESLINT_TWIN_OF_NO_UNUSED_VARS,
   TEAMS_ESLINT_WARNING_COMMENTS,
@@ -100,9 +101,7 @@ const ESLINT_REACT = installedPackage('@eslint-react/eslint-plugin')
 const JSX_A11Y_FORK = installedPackage('eslint-plugin-jsx-a11y-x')
 const SOURCE_FILE = 'src/a.ts'
 const LEGACY_FILE = 'legacy/a.ts'
-// max-lines ships for TSX files alone.
 const TSX_SOURCE_FILE = 'src/a.tsx'
-const LEGACY_TSX_FILE = 'legacy/a.tsx'
 const MERGED_AND_TEAM_ALONE = {
   merged: { oxlintConfigFile: CONSUMER_CONFIG_FILES.oxlint },
   teamAlone: { oxlintConfigFile: CONSUMER_CONFIG_FILES.teamAloneOxlint, eslintConfigFile: CONSUMER_CONFIG_FILES.teamAloneEslint },
@@ -326,22 +325,22 @@ describe("no-unused-vars, a core rule whose typescript-eslint twin counts as the
   })
 })
 
-describe('rules the team sets in legacy/** alone: no-debugger off in an oxlint override, max-lines in an ESLint block', () => {
+describe('rules the team sets in legacy/** alone: no-debugger off in an oxlint override, require-atomic-updates in an ESLint block', () => {
   const runs = setUpConsumerCliRuns(
     projectListingOxlint(
-      OURS_DEBUGGER_AND_MAX_LINES,
-      { eslintBlockSources: [TEAMS_ESLINT_MAX_LINES_IN_LEGACY], oxlint: TEAMS_OXLINT_DEBUGGER_OFF_IN_LEGACY },
-      { [TSX_SOURCE_FILE]: DEBUGGER_SOURCE, [LEGACY_TSX_FILE]: DEBUGGER_SOURCE },
+      OURS_DEBUGGER_AND_ATOMIC_UPDATES,
+      { eslintBlockSources: [TEAMS_ESLINT_ATOMIC_UPDATES_IN_LEGACY], oxlint: TEAMS_OXLINT_DEBUGGER_OFF_IN_LEGACY },
+      { [SOURCE_FILE]: DEBUGGER_AND_UPDATE_ACROSS_AN_AWAIT_SOURCE, [LEGACY_FILE]: DEBUGGER_AND_UPDATE_ACROSS_AN_AWAIT_SOURCE },
     ),
     CONSUMER_CONFIG_FILES.oxlint,
     [TYPESCRIPT_ESLINT],
   )
 
-  // Ours alone reports both rules in src/a.tsx: a merge keeping ours outside the team's files would too.
-  it("are the team's in every file: no-debugger reported by nobody, and max-lines by ESLint in legacy/** alone, as the team's block runs it", () => {
-    expect(findingsOf(runs(), [TSX_SOURCE_FILE, LEGACY_TSX_FILE], [NO_DEBUGGER, MAX_LINES])).toStrictEqual({
-      [TSX_SOURCE_FILE]: { 'no-debugger': [], 'max-lines': [] },
-      [LEGACY_TSX_FILE]: { 'no-debugger': [], 'max-lines': ['legacy/a.tsx:3 max-lines'] },
+  // Ours alone reports both rules in src/a.ts: a merge keeping ours outside the team's files would too.
+  it("are the team's in every file: no-debugger reported by nobody, and require-atomic-updates by ESLint in legacy/** alone, as the team's block runs it", () => {
+    expect(findingsOf(runs(), [SOURCE_FILE, LEGACY_FILE], [NO_DEBUGGER, REQUIRE_ATOMIC_UPDATES])).toStrictEqual({
+      [SOURCE_FILE]: { 'no-debugger': [], 'require-atomic-updates': [] },
+      [LEGACY_FILE]: { 'no-debugger': [], 'require-atomic-updates': ['legacy/a.ts:4 require-atomic-updates'] },
     })
   })
 })
@@ -631,7 +630,7 @@ describe("eslint-plugin-react's jsx-no-comment-textnodes, which oxlint runs for 
 })
 
 // The original eslint-plugin-jsx-a11y our fork replaced counts as ours under whatever prefix the team
-// registers it (q-gap-lint-a11y-original-prefix): its key names our rule, which is then the team's.
+// registers it: its key names our rule, which is then the team's.
 describe("jsx-a11y's alt-text, which oxlint runs for us, set by a team ESLint block under a11y, where the team registers the original eslint-plugin-jsx-a11y", () => {
   const runs = setUpMergedAndTeamAloneCliRuns(
     projectListingOxlint(

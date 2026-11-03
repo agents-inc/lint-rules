@@ -1,16 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { OPTIONS_OF_CALLS_THE_PROPERTY_ORDER_RULES_NAME, OPTIONS_PASSED_TO_ANOTHER_CALL, OPTIONS_SPREADING_A_CONDITION_OR_A_CALL } from './__tests__/cases/tanstack-zod-check-sources.ts'
 import { autofixedFilesIn, findingsIn, notCheckedIn } from './__tests__/check-output.ts'
-import { EXIT, runCheck } from './__tests__/cli-runs.ts'
+import { checkRunTwice, EXIT } from './__tests__/cli-runs.ts'
 import { checkedPackageFiles } from './__tests__/factories/check-factories.ts'
 import { createGitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
-import { textsOf } from './__tests__/temp-projects.ts'
-
-// The two TanStack property-order rules are left out, so check runs sort-objects alone on the options of the calls they
-// would order: it reports them as any other call's and withholds its fix, so a second run finds the same and changes
-// nothing.
 
 allowEveryTestForParallelLoad()
 
@@ -30,11 +25,7 @@ describe("check, run twice with the ordering ruleset beside TanStack Query and T
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(ORDERING_BESIDE_TANSTACK) })
     for (const { file, source } of FILES) project.write(file, source)
-    const first = runCheck(project.dir)
-    const afterFirst = textsOf(project.dir, PATHS)
-    const second = runCheck(project.dir)
-    const afterSecond = textsOf(project.dir, PATHS)
-    return { first, afterFirst, second, afterSecond }
+    return checkRunTwice(project.dir, PATHS)
   })
 
   it('checks every file, each route spreading a condition or a call included', () => {

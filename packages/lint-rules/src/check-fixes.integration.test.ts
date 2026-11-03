@@ -1,6 +1,7 @@
-import { catalog } from '@workspace/rule-data'
+import { catalog, routeOf } from '@workspace/rule-data'
+import { dirname } from 'node:path'
 import { foundOr } from '@workspace/rule-data/collections'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   A_SELECTOR_ESLINT_THROWS_ON,
   ATTEMPT,
@@ -108,12 +109,6 @@ function textsAfterEveryFix(): Record<string, string> {
   }
 }
 
-function ruleEngine(ruleId: string): string {
-  const route = catalog.rules.get(ruleId)
-  if (route === undefined) throw new Error(`${ruleId} is not in the catalog`)
-  return route.engine
-}
-
 describe('the rules the fixtures rely on', () => {
   it.each([
     { ruleId: 'prefer-const', engine: 'oxlint' },
@@ -123,7 +118,7 @@ describe('the rules the fixtures rely on', () => {
     { ruleId: 'perfectionist/sort-arrays', engine: 'eslint' },
     { ruleId: 'unicorn/prefer-optional-catch-binding', engine: 'oxlint' },
   ])('$ruleId runs in $engine', ({ ruleId, engine }) => {
-    expect(ruleEngine(ruleId)).toBe(engine)
+    expect(routeOf(ruleId, catalog).engine).toBe(engine)
   })
 })
 
@@ -398,7 +393,7 @@ describe('check interrupted while it fixes, after another writer rewrote a file 
       project.write(rewritten, ANOTHER_WRITERS_TEXT)
       project.write(NOTHING_TO_FIX, ANOTHER_WRITERS_TEXT_WHERE_NOTHING_WAS_FIXED)
     }
-    const interrupted = await checkSignalledAfterAnotherWriter(project.dir, project.pathOf(FIXED_BY_ESLINT_FIRST), anotherWriter, 'SIGINT')
+    const interrupted = await checkSignalledAfterAnotherWriter(project.dir, { path: project.pathOf(FIXED_BY_ESLINT_FIRST), anotherWriter }, 'SIGINT')
     return { interrupted, rewritten, after: textsOf(project.dir, EVERY_CHANGED_FILE) }
   }, RUNS_IN_THE_BACKGROUND)
 
@@ -428,7 +423,7 @@ describe('check interrupted once ESLint fixed what another writer wrote into a f
       project.write(written, ANOTHER_WRITERS_TEXT)
     }
     const fixed = { path: project.pathOf(written), text: ANOTHER_WRITERS_TEXT_FIXED }
-    const interrupted = await checkSignalledOnceItFixedAnotherWritersText(project.dir, project.pathOf(FIXED_BY_ESLINT_FIRST), anotherWriter, fixed, 'SIGINT')
+    const interrupted = await checkSignalledOnceItFixedAnotherWritersText(project.dir, { path: project.pathOf(FIXED_BY_ESLINT_FIRST), anotherWriter, fixed }, 'SIGINT')
     return { interrupted, written, after: textsOf(project.dir, EVERY_CHANGED_FILE) }
   }, RUNS_IN_THE_BACKGROUND)
 
@@ -503,7 +498,6 @@ describe('check where ESLint throws on each file once oxlint wrote its fixes', (
 const WITH_A_FINDING = 'src/a-debugger.ts'
 const DELETED = 'src/untouched.ts'
 
-/** A changed file with an oxlint finding, the files oxlint fixes, and the file another writer deletes. */
 function projectWithAFileToDelete(tempProjects: TempProjects): GitProject {
   const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(IMMUTABILITY_CORRECTNESS_AND_REDUNDANCY) })
   project.write(WITH_A_FINDING, moduleText(exportedConstant('withAFinding'), DEBUGGER_STATEMENT))
@@ -512,7 +506,6 @@ function projectWithAFileToDelete(tempProjects: TempProjects): GitProject {
   return project
 }
 
-/** What a run beside that writer shows: whether the writer deleted the file, and what check printed and exited with. */
 type SeenBesideTheDeletion = {
   readonly wrote: boolean
   readonly exitCode: number | null
@@ -538,7 +531,6 @@ function listedAsGoneBesideTheRest(): SeenBesideTheDeletion {
   }
 }
 
-/** Where in oxlint's fix run another writer deleted the file, and the run beside it. */
 type DeletedWhileOxlintFixes = { readonly when: string; readonly ran: () => RunBesideAnotherWriter }
 
 describe('check where another writer deletes a changed file while oxlint fixes', () => {
@@ -566,6 +558,47 @@ describe("check where another writer deletes a changed file before oxlint's lint
 
   it("lists that file as not checked, keeps and names oxlint's fixes, prints oxlint's findings in the other files, and exits 1", () => {
     expect(seenBesideTheDeletion(run())).toStrictEqual(listedAsGoneBesideTheRest())
+  })
+})
+
+// Imported ahead of the writer's module, it records whether each oxlint run found the file there as it started and as it exited.
+const OXLINT_RUNS_SEEING_A_FILE = new URL('./__tests__/oxlint-runs-seeing-a-file.mjs', import.meta.url).href
+// Read by oxlint-runs-seeing-a-file.mjs, under the same name there.
+const OXLINT_RUNS_SEE_A_FILE = 'AGENTS_INC_TEST_OXLINT_RUNS_SEE_A_FILE'
+const OXLINT_RUNS: ReadonlyArray<DeletionWhileOxlintRuns['run']> = ['fix', 'lint']
+
+type DeletionSeen = Omit<DeletionWhileOxlintRuns, 'path'> & { readonly kind: string; readonly seen: Readonly<Record<string, string>> }
+
+const DELETIONS_SEEN: readonly DeletionSeen[] = [
+  { kind: 'in the fix run, before oxlint opens it', run: 'fix', when: 'before oxlint opens it', seen: { fix: 'there, then gone', lint: 'gone, then gone' } },
+  { kind: 'in the fix run, as the run ends', run: 'fix', when: 'as the run ends', seen: { fix: 'there, then there', lint: 'gone, then gone' } },
+  { kind: 'in the lint run, before oxlint opens it', run: 'lint', when: 'before oxlint opens it', seen: { fix: 'there, then there', lint: 'there, then gone' } },
+]
+
+function nodeOptionsAlsoImporting(moduleUrl: string): string {
+  const { NODE_OPTIONS: running } = process.env
+  return running === undefined || running === '' ? `--import=${moduleUrl}` : `${running} --import=${moduleUrl}`
+}
+
+function seenByEachOxlintRun(tempProjects: TempProjects, deletion: Omit<DeletionWhileOxlintRuns, 'path'>): Readonly<Record<string, string>> {
+  const project = projectWithAFileToDelete(tempProjects)
+  const path = project.pathOf(DELETED)
+  const folder = dirname(project.dir)
+  vi.stubEnv('NODE_OPTIONS', nodeOptionsAlsoImporting(OXLINT_RUNS_SEEING_A_FILE))
+  vi.stubEnv(OXLINT_RUNS_SEE_A_FILE, JSON.stringify({ path, folder }))
+  try {
+    checkBesideAWriterDeletingWhileOxlintRuns(project.dir, { path, ...deletion })
+  } finally {
+    vi.unstubAllEnvs()
+  }
+  return textsOf(folder, OXLINT_RUNS)
+}
+
+describe("the deletions another writer makes for the specs above, as each of check's oxlint runs finds the file", () => {
+  const runs = setUpRunsBeforeTheSuite((tempProjects) => DELETIONS_SEEN.map(({ kind, run, when }) => ({ kind, seen: seenByEachOxlintRun(tempProjects, { run, when }) })))
+
+  it.each(DELETIONS_SEEN)('delete the file $kind', ({ kind, seen }) => {
+    expect(runMadeFor(runs(), kind).seen).toStrictEqual(seen)
   })
 })
 

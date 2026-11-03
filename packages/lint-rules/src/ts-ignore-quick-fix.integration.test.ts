@@ -19,7 +19,6 @@ const SETUP_FILE = 'src/vitest.setup.ts'
 const FILES = { [SOURCE_FILE]: tsIgnore, [TEST_FILE]: tsIgnore, [SETUP_FILE]: tsIgnore }
 const TYPE_SAFETY_FOR_EDITORS = { editorRulesets: { quality: ['type-safety'] } } as const
 
-/** ban-ts-comment's reports on the file, each with the suggestions an editor would list for it. */
 function suggestionsOn(run: EngineRun, file: string): Array<{ readonly line: number; readonly suggestions: readonly string[] }> {
   const projectDir = run.projectDir()
   return run

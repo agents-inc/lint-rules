@@ -10,12 +10,11 @@ import {
   TEAMS_FALSE_OR_NULL_SETTINGS_MODULE_TEXT,
 } from './__tests__/cases/team-settings-false-or-null.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, type MergedAndTeamAloneEslintCliRuns, setUpMergedAndTeamAloneEslintCliRuns } from './__tests__/consumer-cli-runs.ts'
-import { projectMergingOurEslintPartText, teamAloneEslintConfigText } from './__tests__/factories/consumer-project-factories.ts'
-import { buildConsumerSettings, MODULES_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
-import { buildPackageJson, buildPackageJsonListingOxlint, type PackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
+import { CONSUMER_CONFIG_FILES } from './__tests__/factories/consumer-project-factories.ts'
 import { type FindingsByFileAndRule, findingsByFileAndRule, type RuleByItsNames } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { installedPackage, type ProjectFiles } from './__tests__/temp-projects.ts'
+import { teamSettingsMonoreposOf } from './__tests__/team-settings-monorepos.ts'
+import { installedPackage } from './__tests__/temp-projects.ts'
 
 // A team block that sets a setting ours yields to has set it whatever the value, false and null
 // included, so ours stays out of its files: read in place of the team's, ours changed what the team's
@@ -23,23 +22,7 @@ import { installedPackage, type ProjectFiles } from './__tests__/temp-projects.t
 
 allowEveryTestForParallelLoad()
 
-const TEAM_ESLINT_MODULE = 'team.eslint.mjs'
-const TEAM_ALONE_CONFIG = 'eslint.team-alone.mjs'
 const PLUGINS_THE_TEAM_IMPORTS = [installedPackage('eslint-plugin-import-x'), installedPackage('eslint-plugin-n')]
-
-/** The monorepo with the packages, its package.json given, an eslint.config.mjs merging our ESLint part into the team's config, and one holding the team's alone. */
-function monorepoFiles(packageJson: PackageJson): ProjectFiles {
-  return {
-    'package.json': packageJsonText(packageJson),
-    ...projectMergingOurEslintPartText({
-      settings: buildConsumerSettings(MODULES_IN_BOTH_SETS),
-      team: { file: TEAM_ESLINT_MODULE, text: TEAMS_FALSE_OR_NULL_SETTINGS_MODULE_TEXT },
-      teamOxlint: 'setting no rule',
-    }),
-    [TEAM_ALONE_CONFIG]: teamAloneEslintConfigText(TEAM_ESLINT_MODULE),
-    ...falseOrNullSettingsPackageFiles,
-  }
-}
 
 /** The team's rules' findings in the importers given, every package's unless given, by file: of the rules given, both unless given. */
 function teamsRulesFindingsIn(
@@ -50,15 +33,11 @@ function teamsRulesFindingsIn(
   return findingsByFileAndRule(eslintEngineFindingsOf(run), importers, rules)
 }
 
-// The project's name in full in its title, which $-interpolation would cut short.
-const PROJECTS = [
-  { project: 'a project whose package.json lists oxlint', files: monorepoFiles(buildPackageJsonListingOxlint()) },
-  { project: 'a project whose package.json lists no oxlint', files: monorepoFiles(buildPackageJson()) },
-]
+const PROJECTS = teamSettingsMonoreposOf(TEAMS_FALSE_OR_NULL_SETTINGS_MODULE_TEXT, falseOrNullSettingsPackageFiles)
 
 for (const { project, files } of PROJECTS) {
   describe(`a TS module's import of a TS module by a name without its extension, a team config setting one of import-x's or eslint-plugin-n's settings to false or null in some packages alone and running its own import-x/no-unresolved and n/no-missing-import, in ${project}, linted by the ESLint CLI from the monorepo's root through the built package`, () => {
-    const runs = setUpMergedAndTeamAloneEslintCliRuns(files, TEAM_ALONE_CONFIG, PLUGINS_THE_TEAM_IMPORTS)
+    const runs = setUpMergedAndTeamAloneEslintCliRuns(files, CONSUMER_CONFIG_FILES.teamAloneEslint, PLUGINS_THE_TEAM_IMPORTS)
 
     it('is linted with no fatal message, merged and by the team config alone', () => {
       expect({ merged: eslintFatalMessagesOf(runs().merged), teamAlone: eslintFatalMessagesOf(runs().teamAlone) }).toStrictEqual({ merged: [], teamAlone: [] })

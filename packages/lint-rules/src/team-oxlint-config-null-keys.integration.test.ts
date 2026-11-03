@@ -71,10 +71,8 @@ const MERGED_AND_TEAM_ALONE = {
   teamAlone: { oxlintConfigFile: CONSUMER_CONFIG_FILES.teamAloneOxlint, eslintConfigFile: CONSUMER_CONFIG_FILES.teamAloneEslint },
 }
 
-/** An ESLint run over a project whose eslint.config.mjs names its .oxlintrc.json, of the kind the row's `what` names. */
 type EslintRunOfAnOxlintrc = { readonly kind: string; readonly projectDir: string; readonly eslint: EslintCliOutcome }
 
-/** Both engines' runs over a project whose oxlint.config.mts hands mergeOxlintConfig a config, of the kind the row's `what` names. */
 type RunsOfAnOxlintConfigModule = {
   readonly kind: string
   readonly projectDir: string
@@ -110,7 +108,6 @@ function stopsOnANullIn(output: string): string[] {
   return STOPS_ON_A_NULL_BELOW_A_KEY.filter((stop) => output.includes(stop))
 }
 
-/** A project listing oxlint, our settings turning on no-this-alias alone, the team's ESLint config setting no rule, and a source aliasing `this`. */
 function projectAliasingThisBeside(teamOxlint: unknown): ProjectFiles {
   return {
     'package.json': packageJsonText(buildPackageJsonListingOxlint()),
@@ -120,7 +117,6 @@ function projectAliasingThisBeside(teamOxlint: unknown): ProjectFiles {
   }
 }
 
-/** As projectAliasingThisBeside, eslint.config.mjs naming the team's JSON config, which no merge of ours writes into. */
 function projectAliasingThisBesideAnOxlintrc(text: string): ProjectFiles {
   return {
     ...projectAliasingThisBeside(null),
@@ -129,7 +125,6 @@ function projectAliasingThisBesideAnOxlintrc(text: string): ProjectFiles {
   }
 }
 
-/** Both CLIs' findings of no-this-alias: throws where either could not run. */
 function noThisAliasFindingsOf(runs: ConsumerCliRuns): FindingsByFileAndRule {
   return findingsByFileAndRule(bothEnginesFindingsOf(runs), [THIS_ALIAS_FILE], [NO_THIS_ALIAS])
 }

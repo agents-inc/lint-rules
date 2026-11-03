@@ -11,12 +11,12 @@ import {
   LINTED_DIR,
   LOCAL_PLUGIN_FILE,
   localPlugin,
-  MAX_LINES_LINTED_DIRS,
-  maxLinesSourceFiles,
   NEGATED_IGNORES_LINTED_PATHS,
   negatedIgnoresSourceFiles,
   REACT_LINTED_DIRS,
   reactSourceFiles,
+  RULES_OF_HOOKS_LINTED_DIRS,
+  rulesOfHooksSourceFiles,
   sourceFiles,
   TRAILING_SLASH_LINTED_DIRS,
   trailingSlashSourceFiles,
@@ -35,8 +35,8 @@ import { mergeOxlintConfig } from './oxlint.ts'
 
 // Where the team's config sets a rule ours states, anywhere, by a statement oxlint counts or a category
 // it turns on, the team's setting decides it in every file; ours decide every other rule. Our part
-// turns on the four rules the sources draw: no-debugger, no-undef, eqeqeq, and
-// @typescript-eslint/array-type, which ESLint runs.
+// turns on the four rules the sources draw: no-debugger and no-undef, which oxlint runs, and eqeqeq and
+// @typescript-eslint/no-inferrable-types, which ESLint runs.
 
 allowEveryTestForParallelLoad()
 
@@ -84,7 +84,7 @@ const OUR_RULES = {
   'no-debugger': 'error',
   eqeqeq: 'error',
   'no-undef': 'error',
-  '@typescript-eslint/array-type': 'error',
+  '@typescript-eslint/no-inferrable-types': 'error',
 } as const satisfies OurRules
 
 // A rule of a plugin oxlint does not run by default: the merge lists react for it.
@@ -118,31 +118,31 @@ const NO_DEBUGGER = 'eslint(no-debugger)'
 const EQEQEQ = 'eslint(eqeqeq)'
 const NO_DEBUGGER_FINDING = `src/a.ts:1 ${NO_DEBUGGER}`
 const NO_WARNING_COMMENTS = 'eslint(no-warning-comments)'
-const ARRAY_TYPE = 'typescript(array-type)'
-const MAX_LINES = 'eslint(max-lines)'
-// The findings each rule draws in the cross-engine project: array-type on line 1 of every file, and
-// max-lines of 1 on its second line.
-const ARRAY_TYPE_IN = {
-  dist: 'dist/a.ts:1 typescript(array-type)',
-  generated: 'generated/a.ts:1 typescript(array-type)',
-  legacy: 'legacy/a.ts:1 typescript(array-type)',
-  src: 'src/a.ts:1 typescript(array-type)',
-  test: 'src/f.test.tsx:1 typescript(array-type)',
-  tsx: 'src/f.tsx:1 typescript(array-type)',
-  srcGenerated: 'src/generated/a.ts:1 typescript(array-type)',
+const NO_INFERRABLE_TYPES = 'typescript(no-inferrable-types)'
+const RULES_OF_HOOKS = 'react-hooks(rules-of-hooks)'
+// The findings each rule draws in the cross-engine project: no-inferrable-types on line 1 of every file,
+// and rules-of-hooks on its second line.
+const NO_INFERRABLE_TYPES_IN = {
+  dist: 'dist/a.ts:1 typescript(no-inferrable-types)',
+  generated: 'generated/a.ts:1 typescript(no-inferrable-types)',
+  legacy: 'legacy/a.ts:1 typescript(no-inferrable-types)',
+  src: 'src/a.ts:1 typescript(no-inferrable-types)',
+  test: 'src/f.test.tsx:1 typescript(no-inferrable-types)',
+  tsx: 'src/f.tsx:1 typescript(no-inferrable-types)',
+  srcGenerated: 'src/generated/a.ts:1 typescript(no-inferrable-types)',
 } as const
-const MAX_LINES_IN = {
-  dist: 'dist/a.ts:2 eslint(max-lines)',
-  generated: 'generated/a.ts:2 eslint(max-lines)',
-  legacy: 'legacy/a.ts:2 eslint(max-lines)',
-  src: 'src/a.ts:2 eslint(max-lines)',
-  test: 'src/f.test.tsx:2 eslint(max-lines)',
-  tsx: 'src/f.tsx:2 eslint(max-lines)',
-  srcGenerated: 'src/generated/a.ts:2 eslint(max-lines)',
+const RULES_OF_HOOKS_IN = {
+  dist: 'dist/a.ts:2 react-hooks(rules-of-hooks)',
+  generated: 'generated/a.ts:2 react-hooks(rules-of-hooks)',
+  legacy: 'legacy/a.ts:2 react-hooks(rules-of-hooks)',
+  src: 'src/a.ts:2 react-hooks(rules-of-hooks)',
+  test: 'src/f.test.tsx:2 react-hooks(rules-of-hooks)',
+  tsx: 'src/f.tsx:2 react-hooks(rules-of-hooks)',
+  srcGenerated: 'src/generated/a.ts:2 react-hooks(rules-of-hooks)',
 } as const
 // The team's findings in every file, sorted as oxlint's are.
-const ARRAY_TYPE_IN_EVERY_FILE = Object.values(ARRAY_TYPE_IN)
-const MAX_LINES_IN_EVERY_FILE = Object.values(MAX_LINES_IN)
+const NO_INFERRABLE_TYPES_IN_EVERY_FILE = Object.values(NO_INFERRABLE_TYPES_IN)
+const RULES_OF_HOOKS_IN_EVERY_FILE = Object.values(RULES_OF_HOOKS_IN)
 
 const tempProjects = setUpTempProjects()
 const PROJECT = tempProjects.create({
@@ -200,12 +200,12 @@ const THE_NEGATED_IGNORES_PROJECT: LintedProject = {
   }),
   paths: NEGATED_IGNORES_LINTED_PATHS,
 }
-const THE_MAX_LINES_PROJECT: LintedProject = {
+const THE_RULES_OF_HOOKS_PROJECT: LintedProject = {
   projectDir: tempProjects.create({
-    files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()), ...maxLinesSourceFiles },
+    files: { 'package.json': packageJsonText(buildPackageJsonListingOxlint()), ...rulesOfHooksSourceFiles },
     linkedPackages: [INSTALLED_OXLINT],
   }),
-  paths: MAX_LINES_LINTED_DIRS,
+  paths: RULES_OF_HOOKS_LINTED_DIRS,
 }
 
 /**
@@ -296,6 +296,21 @@ const SETTINGS_ELSEWHERE: readonly SettingElsewhere[] = [
   },
 ]
 
+const OUR_RULES_TAKEN_AS_OXLINT_RUN = ['no-debugger', 'no-undef', OUR_REACT_RULE_ID]
+const OUR_RULES_TAKEN_AS_ESLINT_RUN = ['eqeqeq', '@typescript-eslint/no-inferrable-types', 'react-hooks/rules-of-hooks']
+
+// A rule rerouted would leave a test below passing on a premise no longer true; this names it first.
+describe('the rules this file names', () => {
+  it('are each routed to the engine this file takes it to run on', () => {
+    const routed = [...OUR_RULES_TAKEN_AS_OXLINT_RUN, ...OUR_RULES_TAKEN_AS_ESLINT_RUN].map((id) => ({ id, engine: catalog.rules.get(id)?.engine }))
+
+    expect(routed).toStrictEqual([
+      ...OUR_RULES_TAKEN_AS_OXLINT_RUN.map((id) => ({ id, engine: 'oxlint' })),
+      ...OUR_RULES_TAKEN_AS_ESLINT_RUN.map((id) => ({ id, engine: 'eslint' })),
+    ])
+  })
+})
+
 describe('our rules, merged into a team oxlint config that sets them otherwise', () => {
   it.each(SETTINGS_ELSEWHERE)(
     "give the team's findings of the rules it sets $where, in every file, and ours of a rule it does not set",
@@ -318,7 +333,7 @@ describe('a team oxlint config, merged with our part', () => {
   it("loses no finding when it leaves out plugins and categories: oxlint's defaults stay on", () => {
     const { teamAlone, merged } = findingsWithTheTeamAloneAndMerged({
       file: 'defaults.oxlint.config.mts',
-      config: buildTeamOxlintConfig({ rules: { 'typescript/array-type': 'error' } }),
+      config: buildTeamOxlintConfig({ rules: { 'typescript/no-inferrable-types': 'error' } }),
     })
 
     expect(teamAlone.filter((finding) => !merged.includes(finding))).toStrictEqual([])
@@ -643,37 +658,43 @@ describe("our runtimes in an entry of ours alone, which turns the runtime's rule
   })
 })
 
+const TEAM_TURNING_NO_INFERRABLE_TYPES_ON = buildTeamOxlintConfig({ rules: { 'typescript/no-inferrable-types': 'error' } })
+const OURS_TURNING_NO_INFERRABLE_TYPES_ON = { '@typescript-eslint/no-inferrable-types': 'error' } as const satisfies OurRules
+// react is no default plugin of oxlint's, so the team lists it.
+const TEAM_TURNING_RULES_OF_HOOKS_ON = buildTeamOxlintConfig({ plugins: ['react'], rules: { 'react/rules-of-hooks': 'error' } })
+const OURS_TURNING_RULES_OF_HOOKS_ON = { 'react-hooks/rules-of-hooks': 'error' } as const satisfies OurRules
+
 // The team turns the rule on, so it is the team's in every file and nothing turns it off across engines
-// (max-lines ships for .tsx and .jsx files but tests).
+// (react-hooks/rules-of-hooks ships with ignores of its own, test files among them).
 describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint config that turns it on', () => {
   it.each([
     {
       how: 'beside our ignores of dist/** and an entry of ours turning it off in legacy/**',
       ours: {
-        rules: { '@typescript-eslint/array-type': 'error' },
+        rules: { '@typescript-eslint/no-inferrable-types': 'error' },
         ignores: ['dist/**'],
-        fileOverrides: [{ files: ['legacy/**'], rules: { '@typescript-eslint/array-type': 'off' } }],
+        fileOverrides: [{ files: ['legacy/**'], rules: { '@typescript-eslint/no-inferrable-types': 'off' } }],
       },
-      team: { file: 'array-type.oxlint.config.mts', config: buildTeamOxlintConfig({ rules: { 'typescript/array-type': 'error' } }) },
-      code: ARRAY_TYPE,
-      teamAlone: ARRAY_TYPE_IN_EVERY_FILE,
-      merged: ARRAY_TYPE_IN_EVERY_FILE,
+      team: { file: 'no-inferrable-types.oxlint.config.mts', config: TEAM_TURNING_NO_INFERRABLE_TYPES_ON },
+      code: NO_INFERRABLE_TYPES,
+      teamAlone: NO_INFERRABLE_TYPES_IN_EVERY_FILE,
+      merged: NO_INFERRABLE_TYPES_IN_EVERY_FILE,
     },
     {
       how: 'beside our ignores of a folder by its name alone, generated, which the agent build leaves out at any depth',
-      ours: { rules: { '@typescript-eslint/array-type': 'error' }, ignores: ['generated'] },
-      team: { file: 'array-type-folder.oxlint.config.mts', config: buildTeamOxlintConfig({ rules: { 'typescript/array-type': 'error' } }) },
-      code: ARRAY_TYPE,
-      teamAlone: ARRAY_TYPE_IN_EVERY_FILE,
-      merged: ARRAY_TYPE_IN_EVERY_FILE,
+      ours: { rules: OURS_TURNING_NO_INFERRABLE_TYPES_ON, ignores: ['generated'] },
+      team: { file: 'no-inferrable-types-folder.oxlint.config.mts', config: TEAM_TURNING_NO_INFERRABLE_TYPES_ON },
+      code: NO_INFERRABLE_TYPES,
+      teamAlone: NO_INFERRABLE_TYPES_IN_EVERY_FILE,
+      merged: NO_INFERRABLE_TYPES_IN_EVERY_FILE,
     },
     {
-      how: "beside the rule's own files and ignores",
-      ours: { rules: { 'max-lines': 'error' } },
-      team: { file: 'max-lines.oxlint.config.mts', config: buildTeamOxlintConfig({ rules: { 'max-lines': ['error', { max: 1 }] } }) },
-      code: MAX_LINES,
-      teamAlone: MAX_LINES_IN_EVERY_FILE,
-      merged: MAX_LINES_IN_EVERY_FILE,
+      how: "beside the rule's own ignores",
+      ours: { rules: OURS_TURNING_RULES_OF_HOOKS_ON },
+      team: { file: 'rules-of-hooks.oxlint.config.mts', config: TEAM_TURNING_RULES_OF_HOOKS_ON },
+      code: RULES_OF_HOOKS,
+      teamAlone: RULES_OF_HOOKS_IN_EVERY_FILE,
+      merged: RULES_OF_HOOKS_IN_EVERY_FILE,
     },
   ] satisfies ReadonlyArray<{ how: string; ours: OurFields; team: TeamConfigFile; code: string; teamAlone: readonly string[]; merged: readonly string[] }>)(
     "keeps the team's findings of it in every file, $how",
@@ -685,9 +706,6 @@ describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint
   )
 })
 
-const TEAM_TURNING_ARRAY_TYPE_ON = buildTeamOxlintConfig({ rules: { 'typescript/array-type': 'error' } })
-const OURS_TURNING_ARRAY_TYPE_ON = { '@typescript-eslint/array-type': 'error' } as const satisfies OurRules
-
 // Our ignores keep only our rules out of their files. A value ending in a slash names every folder of
 // that name in both engines. ESLint's lib/** leaves out the folder itself, so a negated line under it
 // takes no file back, where oxlint's .gitignore reading does (measured, ESLint 10.12, oxlint 1.87).
@@ -697,27 +715,30 @@ describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint
       how: 'a folder ending in a slash, legacy/, which names every legacy folder',
       ignores: ['legacy/'],
       project: THE_TRAILING_SLASH_PROJECT,
-      teamAlone: ['legacy/a.ts:1 typescript(array-type)', 'src/a.ts:1 typescript(array-type)', 'src/legacy/a.ts:1 typescript(array-type)'],
+      teamAlone: ['legacy/a.ts:1 typescript(no-inferrable-types)', 'src/a.ts:1 typescript(no-inferrable-types)', 'src/legacy/a.ts:1 typescript(no-inferrable-types)'],
     },
     {
       how: 'lib/** and a negated line taking lib/a.ts back, which ESLint leaves out with the folder',
       ignores: ['lib/**', '!lib/a.ts'],
       project: THE_NEGATED_IGNORES_PROJECT,
       teamAlone: [
-        'a.ts:1 typescript(array-type)',
-        'lib/a.ts:1 typescript(array-type)',
-        'lib/b.ts:1 typescript(array-type)',
-        'src/a.ts:1 typescript(array-type)',
+        'a.ts:1 typescript(no-inferrable-types)',
+        'lib/a.ts:1 typescript(no-inferrable-types)',
+        'lib/b.ts:1 typescript(no-inferrable-types)',
+        'src/a.ts:1 typescript(no-inferrable-types)',
       ],
     },
   ])("keeps the team's findings of it in every file, where our ignores are $how", ({ ignores, project, teamAlone }) => {
     const findings = findingsWithTheTeamAloneAndMergedWith(
-      { file: 'array-type-ignores.oxlint.config.mts', config: TEAM_TURNING_ARRAY_TYPE_ON },
-      { rules: OURS_TURNING_ARRAY_TYPE_ON, ignores },
+      { file: 'no-inferrable-types-ignores.oxlint.config.mts', config: TEAM_TURNING_NO_INFERRABLE_TYPES_ON },
+      { rules: OURS_TURNING_NO_INFERRABLE_TYPES_ON, ignores },
       project,
     )
 
-    expect({ teamAlone: findingsOf(findings.teamAlone, ARRAY_TYPE), merged: findingsOf(findings.merged, ARRAY_TYPE) }).toStrictEqual({ teamAlone, merged: teamAlone })
+    expect({ teamAlone: findingsOf(findings.teamAlone, NO_INFERRABLE_TYPES), merged: findingsOf(findings.merged, NO_INFERRABLE_TYPES) }).toStrictEqual({
+      teamAlone,
+      merged: teamAlone,
+    })
   })
 })
 
@@ -725,12 +746,12 @@ describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint
 describe('a rule our ESLint part runs that oxlint has, merged into a team oxlint config that turns it on, beside our ignores of lib/**/* and a negated line taking lib/a.ts back', () => {
   it("keeps the team's findings of it in every file", () => {
     const findings = findingsWithTheTeamAloneAndMergedWith(
-      { file: 'array-type-negated.oxlint.config.mts', config: TEAM_TURNING_ARRAY_TYPE_ON },
-      { rules: OURS_TURNING_ARRAY_TYPE_ON, ignores: ['lib/**/*', '!lib/a.ts'] },
+      { file: 'no-inferrable-types-negated.oxlint.config.mts', config: TEAM_TURNING_NO_INFERRABLE_TYPES_ON },
+      { rules: OURS_TURNING_NO_INFERRABLE_TYPES_ON, ignores: ['lib/**/*', '!lib/a.ts'] },
       THE_NEGATED_IGNORES_PROJECT,
     )
 
-    expect(findingsOf(findings.merged, ARRAY_TYPE)).toStrictEqual(findingsOf(findings.teamAlone, ARRAY_TYPE))
+    expect(findingsOf(findings.merged, NO_INFERRABLE_TYPES)).toStrictEqual(findingsOf(findings.teamAlone, NO_INFERRABLE_TYPES))
   })
 })
 
@@ -760,39 +781,39 @@ describe('our rules, merged into an empty team oxlint config, beside our ignores
   })
 })
 
-// The team turns max-lines on, so it is the team's in every file, whatever an entry of ours says of it.
-describe('max-lines, which our ESLint part runs and oxlint has, merged into a team oxlint config that turns it on, beside an entry of ours', () => {
+// The team turns rules-of-hooks on, so it is the team's in every file, whatever an entry of ours says of it.
+describe('react-hooks/rules-of-hooks, which our ESLint part runs and oxlint has, merged into a team oxlint config that turns it on, beside an entry of ours', () => {
   const inEveryFile = [
-    'lib/b.ts:2 eslint(max-lines)',
-    'lib/m.test.tsx:2 eslint(max-lines)',
-    'lib/m.tsx:2 eslint(max-lines)',
-    'src/a.ts:2 eslint(max-lines)',
-    'src/f.tsx:2 eslint(max-lines)',
+    'lib/b.ts:2 react-hooks(rules-of-hooks)',
+    'lib/m.test.tsx:2 react-hooks(rules-of-hooks)',
+    'lib/m.tsx:2 react-hooks(rules-of-hooks)',
+    'src/a.ts:2 react-hooks(rules-of-hooks)',
+    'src/f.tsx:2 react-hooks(rules-of-hooks)',
   ]
 
   it.each([
     {
-      how: 'for lib/** listing complexity, which ships it, and turning it off in its own rules',
-      entry: { files: ['lib/**'], editorRulesets: { quality: ['complexity'] }, rules: { 'max-lines': 'off' } },
+      how: 'for lib/** listing react, which ships it, and turning it off in its own rules',
+      entry: { files: ['lib/**'], editorRulesets: { libs: { ui: ['react'] } }, rules: { 'react-hooks/rules-of-hooks': 'off' } },
     },
     {
-      how: 'turning it on for lib/**, where it would run in the .tsx file but the test',
-      entry: { files: ['lib/**'], rules: { 'max-lines': 'error' } },
+      how: 'turning it on for lib/**, where it would run in every file but the test',
+      entry: { files: ['lib/**'], rules: OURS_TURNING_RULES_OF_HOOKS_ON },
     },
     {
-      how: 'turning it on for src/**/*.ts, where it would run in no file',
-      entry: { files: ['src/**/*.ts'], rules: { 'max-lines': 'error' } },
+      how: 'turning it on for test files, where it would run in no file',
+      entry: { files: ['**/*.test.tsx'], rules: OURS_TURNING_RULES_OF_HOOKS_ON },
     },
   ] satisfies ReadonlyArray<{ how: string; entry: NonNullable<OurFields['fileOverrides']>[number] }>)(
     "keeps the team's findings of it in every file, $how",
     ({ entry }) => {
       const findings = findingsWithTheTeamAloneAndMergedWith(
-        { file: 'max-lines-entry.oxlint.config.mts', config: buildTeamOxlintConfig({ rules: { 'max-lines': ['error', { max: 1 }] } }) },
+        { file: 'rules-of-hooks-entry.oxlint.config.mts', config: TEAM_TURNING_RULES_OF_HOOKS_ON },
         { fileOverrides: [entry] },
-        THE_MAX_LINES_PROJECT,
+        THE_RULES_OF_HOOKS_PROJECT,
       )
 
-      expect({ teamAlone: findingsOf(findings.teamAlone, MAX_LINES), merged: findingsOf(findings.merged, MAX_LINES) }).toStrictEqual({
+      expect({ teamAlone: findingsOf(findings.teamAlone, RULES_OF_HOOKS), merged: findingsOf(findings.merged, RULES_OF_HOOKS) }).toStrictEqual({
         teamAlone: inEveryFile,
         merged: inEveryFile,
       })

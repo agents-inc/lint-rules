@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { CLASS_LIST, LAST_CELL, LAST_ITEM, OWN_PUSH } from './__tests__/cases/routed-to-eslint-check-sources.ts'
 import { autofixedFilesIn, findingsIn } from './__tests__/check-output.ts'
-import { EXIT, runCheck } from './__tests__/cli-runs.ts'
+import { checkRunTwice, EXIT } from './__tests__/cli-runs.ts'
 import { checkedPackageFiles } from './__tests__/factories/check-factories.ts'
 import { createGitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
-import { textsOf } from './__tests__/temp-projects.ts'
 
 // check runs oxlint and ESLint together, so the rule's own engine decides which shapes it reports and rewrites.
 
@@ -20,11 +19,7 @@ describe("check, run twice, on the last item of an array and of a NodeList, two 
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(MODERN_JS_AND_REDUNDANCY) })
     for (const { file, source } of CHECKED_FILES) project.write(file, source)
-    const first = runCheck(project.dir)
-    const afterFirst = textsOf(project.dir, PATHS)
-    const second = runCheck(project.dir)
-    const afterSecond = textsOf(project.dir, PATHS)
-    return { first, afterFirst, second, afterSecond }
+    return checkRunTwice(project.dir, PATHS)
   })
 
   it('reports the classList calls by prefer-single-call alone, and exits on the finding', () => {

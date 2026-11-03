@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { catalog } from '@workspace/rule-data'
+import { catalog, routeOf } from '@workspace/rule-data'
 import { compareCodeUnits } from '@workspace/rule-data/collections'
 import { describe, expect, it } from 'vitest'
 import { fatalMessagesIn } from './__tests__/engine-clis.ts'
@@ -43,9 +43,7 @@ const TSCONFIGS = [
 ]
 
 function isTypedRule(ruleId: string): boolean {
-  const route = catalog.rules.get(ruleId)
-  if (route === undefined) throw new Error(`${ruleId} is not in the catalog`)
-  return route.typed
+  return routeOf(ruleId, catalog).typed
 }
 
 /** The order the default sort gives a list holding null: by text, null as the text "null". */

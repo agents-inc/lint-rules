@@ -13,7 +13,7 @@ import { defineLintRules } from './index.ts'
 const FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/suppression-ban', import.meta.url))
 const TS_COMMENT_BAN = '@typescript-eslint/ban-ts-comment'
 const THE_OTHER_COMMENT = '@ts-expect-error'
-const FIX_THE_TYPE_ERROR = /\bfix\b.*\btype error\b/iu
+const FIX_THE_TYPE_ERROR = /\bfix\b.+\btype error\b/iu
 const TS_IGNORE_FILE = 'src/ts-ignore.ts'
 const ESLINT_ERROR = 2
 const TYPE_SAFETY_FOR_EDITORS = { editorRulesets: { quality: ['type-safety'] } } as const

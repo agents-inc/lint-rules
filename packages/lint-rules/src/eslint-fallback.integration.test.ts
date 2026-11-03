@@ -141,7 +141,7 @@ describe('the ESLint-fallback fixtures', () => {
     ).toStrictEqual([])
   })
 
-  // A rule routed to ESLint for a measured reason keeps the fixture it had as a moved rule, its proof that ESLint's version fires.
+  // A rule routed to ESLint for a measured reason has a fixture too, its proof that ESLint's version fires.
   it('are kept for moved rules, and for the rules routed to ESLint for a measured reason, only', () => {
     const kept = new Set([...movedRules().map(({ id }) => id), ...ROUTED_TO_ESLINT_FOR_A_MEASURED_REASON])
 

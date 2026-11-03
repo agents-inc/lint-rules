@@ -235,7 +235,11 @@ describe('a pair split by types, merged into a team config that gives type infor
 
   function mergedOf(lintRules: TwoSetLintRulesInput): Linter.Config[] {
     const { eslint } = editorPartsOf({ ...lintRules, tsconfigRootDir: PROJECT_DIR }, catalog, false)
-    return mergeEslintPart(teamConfig, eslint, catalog, eslintPluginRegistry, lintRulesPackageVersion(), NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG)
+    return mergeEslintPart(teamConfig, eslint, catalog, {
+      registry: eslintPluginRegistry,
+      ourVersion: lintRulesPackageVersion(),
+      ruleIdsInTheTeamsOxlintConfig: NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG,
+    })
   }
 
   it("runs the typed rule alone where the team's types are, and the untyped rule where it takes them away and in JS files", async () => {

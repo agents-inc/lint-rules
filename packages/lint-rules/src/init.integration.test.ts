@@ -54,7 +54,6 @@ const PACKAGE_JSON_WITH_TYPES = npmPackageJsonText(A_PACKAGE_WITH_TYPES)
 const NO_UNPUBLISHED_IMPORT = 'n/no-unpublished-import'
 const USES_DEV_FILE = 'src/uses-dev.ts'
 
-/** init's exit code, then check's, the findings it printed, the files it autofixed, and the added files' texts once it ran. */
 type CheckAfterInit = {
   readonly init: number | null
   readonly exitCode: number | null

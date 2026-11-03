@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { eslintStderrOf, setUpConsumerEslintCliRun } from './__tests__/consumer-cli-runs.ts'
 import { type EngineRun, setUpEngineRun } from './__tests__/engine-run.ts'
-import { emptyTeamEslintModuleText, projectMergingOurEslintPartText } from './__tests__/factories/consumer-project-factories.ts'
+import { CONSUMER_CONFIG_FILES, emptyTeamEslintModuleText, projectMergingOurEslintPartText } from './__tests__/factories/consumer-project-factories.ts'
 import { buildEditorBuild } from './__tests__/factories/engine-build-factories.ts'
 import { buildConsumerLintRules, buildConsumerSettings, MODULES_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
 import { buildPackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
@@ -43,7 +43,6 @@ const BROKEN_TSCONFIG_IN_NODE_MODULES = { 'node_modules/broken/tsconfig.json': '
 const MULTIPLE_PROJECTS_WARNING =
   'Multiple projects found, consider using a single `tsconfig` with `references` to speed up, or use `noWarnOnMultipleProjects` to suppress this warning'
 const TSCONFIG_OF_EACH_PACKAGE = ['packages/a/tsconfig.json', 'packages/b/tsconfig.json']
-const EMPTY_TEAM_ESLINT_MODULE = 'team.eslint.mjs'
 const RESOLVER_GIVEN_PROJECTS = "import { createTypeScriptImportResolver } from 'eslint-import-resolver-typescript'\ncreateTypeScriptImportResolver({ project: JSON.parse(process.argv[1]) })\n"
 
 /** What the probes owe in the agent build: the import-x rules ESLint runs beside oxlint. */
@@ -132,7 +131,7 @@ describe('a project with a tsconfig in each of two packages, whose package.json 
     'package.json': packageJsonText(buildPackageJson()),
     ...projectMergingOurEslintPartText({
       settings: buildConsumerSettings(MODULES_IN_BOTH_SETS),
-      team: { file: EMPTY_TEAM_ESLINT_MODULE, text: emptyTeamEslintModuleText() },
+      team: { file: CONSUMER_CONFIG_FILES.teamEslintModule, text: emptyTeamEslintModuleText() },
       teamOxlint: 'none',
     }),
     ...Object.fromEntries(TSCONFIG_OF_EACH_PACKAGE.map((file) => [file, JSON.stringify(buildTsconfig({ include: ['src'] }))])),

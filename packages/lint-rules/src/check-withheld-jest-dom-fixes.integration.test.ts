@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { A_GLOBAL_FLAG_QUERY, TESTS_A_JEST_DOM_FIX_BREAKS } from './__tests__/cases/jest-dom-sources.ts'
 import { autofixedFilesIn, findingsIn } from './__tests__/check-output.ts'
-import { EXIT, runCheck } from './__tests__/cli-runs.ts'
+import { checkRunTwice, EXIT } from './__tests__/cli-runs.ts'
 import { checkedPackageFiles } from './__tests__/factories/check-factories.ts'
 import { createGitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
-import { textsOf } from './__tests__/temp-projects.ts'
 
 // Each of these tests passes as written and fails once its jest-dom rule's fix is applied, so check reports the
 // finding and leaves the test as written, while it still applies the fix of a rule listed beside jest-dom.
@@ -22,11 +21,7 @@ describe('check, run twice, on the tests a jest-dom fix breaks, beside a test a 
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(JEST_DOM_BESIDE_TESTING_LIBRARY) })
     for (const { file, source } of [...TESTS_A_JEST_DOM_FIX_BREAKS, A_GLOBAL_FLAG_QUERY]) project.write(file, source)
-    const first = runCheck(project.dir)
-    const afterFirst = textsOf(project.dir, [...REPORTED_FILES, A_GLOBAL_FLAG_QUERY.file])
-    const second = runCheck(project.dir)
-    const afterSecond = textsOf(project.dir, [...REPORTED_FILES, A_GLOBAL_FLAG_QUERY.file])
-    return { first, afterFirst, second, afterSecond }
+    return checkRunTwice(project.dir, [...REPORTED_FILES, A_GLOBAL_FLAG_QUERY.file])
   })
 
   it('reports each test on the line of its assertion, by its jest-dom rule, and exits on the findings', () => {

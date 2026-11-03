@@ -38,7 +38,6 @@ const NAMING_EACH = {
   fileOverrides: [{ files: PLAYWRIGHT_TESTS, rules: Object.fromEntries(PLAYWRIGHT_RULES_SHIPPED_OFF.map((id) => [id, 'error'] as const)) }],
 }
 
-/** check's exit code, the findings it printed, the files it autofixed, and the added files' texts once it ran. */
 type CheckRun = {
   readonly exitCode: number | null
   readonly findings: readonly string[]
@@ -46,7 +45,6 @@ type CheckRun = {
   readonly texts: Readonly<Record<string, string>>
 }
 
-/** check in a package listing no ruleset, its config naming the rules given, once an agent added the files. */
 function checkNaming(tempProjects: TempProjects, fields: Parameters<typeof checkedPackageFiles>[1]): CheckRun {
   const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles({}, fields) })
   for (const { file, source } of ADDED_FILES) project.write(file, source)

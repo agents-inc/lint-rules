@@ -57,7 +57,7 @@ async function standInsReportedWith(config: readonly Linter.Config[]): Promise<R
 
 function editorMergeOf(usesOxlint: boolean): Linter.Config[] {
   const { eslint } = editorPartsOf({ ...buildTwoSetLintRules({ editorRulesets: SHIPPING_THE_OXC_RULES }), tsconfigRootDir: PROJECT_DIR }, catalog, usesOxlint)
-  return mergeEslintPart([], eslint, catalog, eslintPluginRegistry, lintRulesPackageVersion(), NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG)
+  return mergeEslintPart([], eslint, catalog, { registry: eslintPluginRegistry, ourVersion: lintRulesPackageVersion(), ruleIdsInTheTeamsOxlintConfig: NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG })
 }
 
 const NONE_IN_ANY_FIXTURE = Object.fromEntries(FIXTURE_FILES.map((file) => [file, []]))

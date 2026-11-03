@@ -18,9 +18,6 @@ import { setUpCheckAfterTheAgent } from './__tests__/cli-runs.ts'
 import { checkedPackageFiles, moduleText, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED } from './__tests__/factories/check-factories.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 
-// Where suppressions are allowed, a comment that switches a rule off, in ESLint's spelling or oxlint's, or sets a rule
-// for its file needs a reason after `--`. Where they are banned, the ban reports the comment instead.
-
 allowEveryTestForParallelLoad()
 
 const CORRECTNESS_AND_REDUNDANCY = { quality: ['correctness', 'redundancy'] } as const

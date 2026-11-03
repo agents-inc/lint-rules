@@ -8,11 +8,11 @@ import {
 } from './__tests__/cases/team-try-extensions.ts'
 import { NO_UNPUBLISHED_IMPORT } from './__tests__/cases/workspace-package-imports.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, setUpConsumerEslintCliRun } from './__tests__/consumer-cli-runs.ts'
-import { projectMergingOurEslintPartText, teamEslintModuleOfBlocksText } from './__tests__/factories/consumer-project-factories.ts'
-import { buildConsumerSettings, MODULES_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
-import { buildPackageJson, buildPackageJsonListingOxlint, type PackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
+import { teamEslintModuleOfBlocksText } from './__tests__/factories/consumer-project-factories.ts'
+import { buildPackageJson, buildPackageJsonListingOxlint, type PackageJson } from './__tests__/factories/package-json-factories.ts'
 import { findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
+import { monorepoMergingOurEslintPartFiles } from './__tests__/team-settings-monorepos.ts'
 import type { ProjectFiles } from './__tests__/temp-projects.ts'
 
 // Our `settings.n.tryExtensions` is ours only where the team's config sets neither it nor the older
@@ -21,19 +21,8 @@ import type { ProjectFiles } from './__tests__/temp-projects.ts'
 
 allowEveryTestForParallelLoad()
 
-const TEAM_ESLINT_MODULE = 'team.eslint.mjs'
-
-/** The monorepo with the packages, its package.json given, and an eslint.config.mjs merging our ESLint part into the team's blocks. */
 function monorepoFiles(packageJson: PackageJson, teamBlocks: readonly Linter.Config[]): ProjectFiles {
-  return {
-    'package.json': packageJsonText(packageJson),
-    ...projectMergingOurEslintPartText({
-      settings: buildConsumerSettings(MODULES_IN_BOTH_SETS),
-      team: { file: TEAM_ESLINT_MODULE, text: teamEslintModuleOfBlocksText(teamBlocks) },
-      teamOxlint: 'setting no rule',
-    }),
-    ...tryExtensionsPackageFiles,
-  }
+  return monorepoMergingOurEslintPartFiles(packageJson, teamEslintModuleOfBlocksText(teamBlocks), tryExtensionsPackageFiles)
 }
 
 // The project's name and whose copy of the rule runs, in full in the title, which $-interpolation would cut short.

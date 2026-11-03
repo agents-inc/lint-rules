@@ -16,7 +16,7 @@ allowEveryTestForParallelLoad()
 
 const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url))
 const DIST_DIR = fileURLToPath(new URL('../dist', import.meta.url))
-const BUILT_MODULE = /\.mjs$/u
+const BUILT_MODULE_EXTENSION = '.mjs'
 const REPO_OWN_PREFIX = 'house-repo'
 const REPO_OWN_RULE_NAME = 'no-throwing-default-in-exhaustive-switch'
 const REPO_OWN_RULE = `${REPO_OWN_PREFIX}/${REPO_OWN_RULE_NAME}`
@@ -37,7 +37,7 @@ async function repoOwnFindingsIn(eslint: ESLint, text: string, filePath: string)
 
 function builtModulesHolding(text: string): string[] {
   return readdirSync(DIST_DIR)
-    .filter((file) => BUILT_MODULE.test(file))
+    .filter((file) => file.endsWith(BUILT_MODULE_EXTENSION))
     .filter((file) => readFileSync(join(DIST_DIR, file), 'utf8').includes(text))
 }
 

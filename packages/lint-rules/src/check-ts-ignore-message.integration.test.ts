@@ -13,7 +13,7 @@ import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 const NO_RULESET = { quality: [] } as const
 const TS_COMMENT_BAN = '@typescript-eslint/ban-ts-comment'
 const THE_OTHER_COMMENT = '@ts-expect-error'
-const FIX_THE_TYPE_ERROR = /\bfix\b.*\btype error\b/iu
+const FIX_THE_TYPE_ERROR = /\bfix\b.+\btype error\b/iu
 const TS_IGNORE_FILE = 'src/ts-ignore.ts'
 
 const SOURCES = {

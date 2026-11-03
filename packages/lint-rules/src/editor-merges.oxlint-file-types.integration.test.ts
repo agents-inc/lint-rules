@@ -1,18 +1,19 @@
+import { catalog } from '@workspace/rule-data'
 import { describe, expect, it } from 'vitest'
 import {
-  ARRAY_TYPE,
   BAN_TS_COMMENT,
   CORPUS_RULES,
   type CorpusCase,
   corpusRulesTheTeamSets,
   EQEQEQ,
   GETTER_RETURN,
+  NO_INFERRABLE_TYPES,
   NO_RULESETS,
   NO_UNUSED_VARS,
   NO_VAR,
   OUR_CORPUS_RULES,
-  OUR_CORPUS_RULES_BUT_ARRAY_TYPE,
   OUR_CORPUS_RULES_BUT_EQEQEQ,
+  OUR_CORPUS_RULES_BUT_NO_INFERRABLE_TYPES,
   type OurRulesets,
   PREFER_CONST,
 } from './__tests__/cases/both-engines-corpus.ts'
@@ -30,6 +31,20 @@ allowEveryTestForParallelLoad()
 const FILES_OF_EVERY_TYPE = ['a.ts', 'a.js', 'src/b.mjs', 'src/b.cjs', 'src/c.tsx', 'src/types.d.ts', 'src/c.vue', 'src/c.svelte', 'src/c.astro']
 // The agent build runs ban-ts-comment whatever is listed; editors, only where type-safety is.
 const TYPE_SAFETY_FOR_EDITORS: OurRulesets = { editorRulesets: { quality: ['type-safety'] } }
+const CORPUS_RULES_TAKEN_AS_OXLINT_RUN = [NO_UNUSED_VARS, PREFER_CONST, GETTER_RETURN].map(({ rule }) => rule)
+const CORPUS_RULES_TAKEN_AS_ESLINT_RUN = [EQEQEQ, NO_INFERRABLE_TYPES, NO_VAR].map(({ rule }) => rule)
+
+// A rule rerouted would leave a test below passing on a premise no longer true; this names it first.
+describe("the corpus's rules", () => {
+  it('are each routed to the engine the corpus takes it to run on', () => {
+    const routed = [...CORPUS_RULES_TAKEN_AS_OXLINT_RUN, ...CORPUS_RULES_TAKEN_AS_ESLINT_RUN].map((id) => ({ id, engine: catalog.rules.get(id)?.engine }))
+
+    expect(routed).toStrictEqual([
+      ...CORPUS_RULES_TAKEN_AS_OXLINT_RUN.map((id) => ({ id, engine: 'oxlint' })),
+      ...CORPUS_RULES_TAKEN_AS_ESLINT_RUN.map((id) => ({ id, engine: 'eslint' })),
+    ])
+  })
+})
 
 const FILE_TYPE_CASES: readonly CorpusCase[] = [
   {
@@ -51,21 +66,21 @@ const FILE_TYPE_CASES: readonly CorpusCase[] = [
     ourRulesets: NO_RULESETS,
     ours: { rules: OUR_CORPUS_RULES, ignores: ['src/*.vue', '!src/c.vue'] },
     files: ['src/c.vue', 'src/a.ts'],
-    rules: [ARRAY_TYPE, NO_VAR, PREFER_CONST],
+    rules: [NO_INFERRABLE_TYPES, NO_VAR, PREFER_CONST],
   },
   {
-    how: 'an entry of ours turns array-type on in TS and .vue files alone, written as one glob: **/*.{ts,vue}',
+    how: 'an entry of ours turns no-inferrable-types on in TS and .vue files alone, written as one glob: **/*.{ts,vue}',
     ourRulesets: NO_RULESETS,
-    ours: { rules: OUR_CORPUS_RULES_BUT_ARRAY_TYPE, fileOverrides: [{ files: ['**/*.{ts,vue}'], rules: { '@typescript-eslint/array-type': 'error' } }] },
+    ours: { rules: OUR_CORPUS_RULES_BUT_NO_INFERRABLE_TYPES, fileOverrides: [{ files: ['**/*.{ts,vue}'], rules: { '@typescript-eslint/no-inferrable-types': 'error' } }] },
     files: ['src/c.tsx', 'src/a.ts', 'src/c.vue'],
-    rules: [ARRAY_TYPE],
+    rules: [NO_INFERRABLE_TYPES],
   },
   {
-    how: 'an entry of ours turns array-type on in every file but src/**, written as a negated glob alone: !src/**',
+    how: 'an entry of ours turns no-inferrable-types on in every file but src/**, written as a negated glob alone: !src/**',
     ourRulesets: NO_RULESETS,
-    ours: { rules: OUR_CORPUS_RULES_BUT_ARRAY_TYPE, fileOverrides: [{ files: ['!src/**'], rules: { '@typescript-eslint/array-type': 'error' } }] },
+    ours: { rules: OUR_CORPUS_RULES_BUT_NO_INFERRABLE_TYPES, fileOverrides: [{ files: ['!src/**'], rules: { '@typescript-eslint/no-inferrable-types': 'error' } }] },
     files: ['src/c.vue', 'src/c.svelte', 'src/c.astro', 'src/a.ts', 'src/c.tsx', 'a.ts'],
-    rules: [ARRAY_TYPE],
+    rules: [NO_INFERRABLE_TYPES],
   },
   {
     how: 'our ignores name a folder bare, beside a declaration file: generated',

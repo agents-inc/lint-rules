@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { INSTALLED_TYPES_NODE, type ProcessResult, typeCheck } from './__tests__/config-file-loads.ts'
+import { type ProcessResult, typeCheckedConsumer } from './__tests__/config-file-loads.ts'
 import { CONFIG_FILE } from './__tests__/factories/check-factories.ts'
 import {
   buildFileOverridesModule,
@@ -7,12 +7,10 @@ import {
   fileOverridesModuleText,
   positionAtTopLevel,
   positionInEntry,
-  type SourcePosition,
 } from './__tests__/factories/file-overrides-module-factories.ts'
-import { buildTsconfigListingNodeTypes } from './__tests__/factories/tsconfig-factories.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
-import { CONSUMER_INSTALL, type TempProjects } from './__tests__/temp-projects.ts'
-import { tscErrorsIn } from './__tests__/tsc-errors.ts'
+import type { TempProjects } from './__tests__/temp-projects.ts'
+import { errorsSaying, inTheOrderTscPrints, TSC_REPORTED_ERRORS, TSC_RUN_TIMEOUT_MS, TYPE_NOT_ASSIGNABLE } from './__tests__/tsc-errors.ts'
 
 // What a team's tsc, and any editor running TypeScript, says of a rule ID, a libs domain or a tsconfigRootDir no
 // check of ours refuses at run time: the error is the refusal, read from the published types in dist (built first),
@@ -23,10 +21,6 @@ const SAYS_NO_SUCH_RULE = 'no shipped rule is called not-a/rule'
 const SAYS_ALLOW_SUPPRESSIONS_SETS_IT = 'house/no-suppressions is set by allowSuppressions'
 const SAYS_NO_SUCH_LIBS_DOMAIN = 'no libs domain is called database'
 const SAYS_TO_WRITE_AN_ABSOLUTE_PATH = 'tsconfigRootDir is an absolute path: write import.meta.dirname'
-const TYPE_NOT_ASSIGNABLE = 'TS2322'
-// tsc exits 2 where it reports errors and emits nothing.
-const TSC_REPORTED_ERRORS = 2
-const TSC_RUN_TIMEOUT_MS = 120_000
 
 const RULES_HELD_BESIDE_AN_UNKNOWN_ID = buildFileOverridesModule({
   declarations: ["const RULES = { 'no-debugger': 'off', 'not-a/rule': 'error' } as const"],
@@ -62,33 +56,24 @@ const ROOTS_THE_TYPES_TAKE: Readonly<Record<string, FileOverridesModule>> = {
     tsconfigRootDir: 'ROOT',
   }),
 }
+// The files of the run that reports nothing, each holding a refused root: an error in each shows tsc read them all.
+const RELATIVE_ROOT_IN_EACH_FILE: Readonly<Record<string, FileOverridesModule>> = Object.fromEntries(
+  [CONFIG_FILE, ...Object.keys(ROOTS_THE_TYPES_TAKE)].map((file) => [file, RELATIVE_ROOT]),
+)
 
-/** An error as a test reads it: where, its code, and whether its message, chained lines included, says what it should. */
-type ErrorRead = SourcePosition & { readonly file: string; readonly code: string; readonly says: boolean }
-
-/** tsc over a project whose tsconfig takes in the modules given alone, by their file names, our package and Node's types installed. */
-function typeCheckedConsumer(tempProjects: TempProjects, modules: Readonly<Record<string, FileOverridesModule>>): ProcessResult {
-  const files = Object.fromEntries(Object.entries(modules).map(([file, module]) => [file, fileOverridesModuleText(module)]))
-  return typeCheck(
-    tempProjects.create({
-      files: { 'tsconfig.json': `${JSON.stringify(buildTsconfigListingNodeTypes({ include: Object.keys(files) }))}\n`, ...files },
-      linkedPackages: [...CONSUMER_INSTALL, INSTALLED_TYPES_NODE],
-    }),
-  )
-}
-
-function errorsSaying({ exitCode, stdout }: ProcessResult, text: string): { readonly exitCode: number | null; readonly errors: readonly ErrorRead[] } {
-  return { exitCode, errors: tscErrorsIn(stdout).map(({ file, line, column, code, message }) => ({ file, line, column, code, says: message.includes(text) })) }
+function typeCheckedModules(tempProjects: TempProjects, modules: Readonly<Record<string, FileOverridesModule>>): ProcessResult {
+  return typeCheckedConsumer(tempProjects, Object.fromEntries(Object.entries(modules).map(([file, module]) => [file, fileOverridesModuleText(module)])))
 }
 
 describe('tsc over agents-inc.lint.mts, rule IDs, libs domains and tsconfigRootDir read through the published types', () => {
   const runs = setUpRunsBeforeTheSuite(
     (tempProjects) => ({
-      unknownId: typeCheckedConsumer(tempProjects, { [CONFIG_FILE]: RULES_HELD_BESIDE_AN_UNKNOWN_ID }),
-      suppressionRule: typeCheckedConsumer(tempProjects, { [CONFIG_FILE]: SUPPRESSION_RULE_HELD_FOR_AN_ENTRY }),
-      unknownDomain: typeCheckedConsumer(tempProjects, { [CONFIG_FILE]: LIBS_HELD_BESIDE_AN_UNKNOWN_DOMAIN }),
-      relativeRoot: typeCheckedConsumer(tempProjects, { [CONFIG_FILE]: RELATIVE_ROOT }),
-      taken: typeCheckedConsumer(tempProjects, { [CONFIG_FILE]: NAMES_THE_TYPES_TAKE_HELD_IN_CONSTS, ...ROOTS_THE_TYPES_TAKE }),
+      unknownId: typeCheckedModules(tempProjects, { [CONFIG_FILE]: RULES_HELD_BESIDE_AN_UNKNOWN_ID }),
+      suppressionRule: typeCheckedModules(tempProjects, { [CONFIG_FILE]: SUPPRESSION_RULE_HELD_FOR_AN_ENTRY }),
+      unknownDomain: typeCheckedModules(tempProjects, { [CONFIG_FILE]: LIBS_HELD_BESIDE_AN_UNKNOWN_DOMAIN }),
+      relativeRoot: typeCheckedModules(tempProjects, { [CONFIG_FILE]: RELATIVE_ROOT }),
+      taken: typeCheckedModules(tempProjects, { [CONFIG_FILE]: NAMES_THE_TYPES_TAKE_HELD_IN_CONSTS, ...ROOTS_THE_TYPES_TAKE }),
+      refusedInEachFile: typeCheckedModules(tempProjects, RELATIVE_ROOT_IN_EACH_FILE),
     }),
     { timeoutMs: TSC_RUN_TIMEOUT_MS, whatFailed: 'tsc could not be run on the consumer projects before the suite' },
   )
@@ -123,5 +108,17 @@ describe('tsc over agents-inc.lint.mts, rule IDs, libs domains and tsconfigRootD
 
   it('reports nothing for known names held in consts, a root written out on POSIX or Windows, and a relative root held in a string', () => {
     expect(runs().taken).toStrictEqual({ exitCode: 0, stdout: '', stderr: '' })
+  })
+
+  it('reports a relative tsconfigRootDir in every file of a run of several, naming each file', () => {
+    expect(errorsSaying(runs().refusedInEachFile, SAYS_TO_WRITE_AN_ABSOLUTE_PATH)).toStrictEqual({
+      exitCode: TSC_REPORTED_ERRORS,
+      errors: inTheOrderTscPrints(Object.keys(RELATIVE_ROOT_IN_EACH_FILE)).map((file) => ({
+        file,
+        ...positionAtTopLevel(RELATIVE_ROOT, 'tsconfigRootDir', 'tsconfigRootDir'),
+        code: TYPE_NOT_ASSIGNABLE,
+        says: true,
+      })),
+    })
   })
 })

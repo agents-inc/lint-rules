@@ -2,12 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { CODE_A_WITHHELD_FIX_WOULD_BREAK } from './__tests__/cases/accepted-1011-check-sources.ts'
 import { WRAP, WRAP_FIXED } from './__tests__/cases/check-sources.ts'
 import { autofixedFilesIn, findingsIn } from './__tests__/check-output.ts'
-import { EXIT, runCheck } from './__tests__/cli-runs.ts'
+import { checkRunTwice, EXIT } from './__tests__/cli-runs.ts'
 import { checkedPackageFiles, moduleText } from './__tests__/factories/check-factories.ts'
 import { createGitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
-import { textsOf } from './__tests__/temp-projects.ts'
 
 // no-new-wrappers runs in oxlint and sonarjs/no-duplicate-parameterized-test-case in ESLint: one withheld fix per engine.
 
@@ -24,11 +23,7 @@ describe('check, run twice, on the files a withheld no-new-wrappers or duplicate
     const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(CORRECTNESS_AND_TESTS_BESIDE_MODERN_JS) })
     for (const { file, source } of CODE_A_WITHHELD_FIX_WOULD_BREAK) project.write(file, source)
     project.write(FIXED_BESIDE, moduleText(...WRAP))
-    const first = runCheck(project.dir)
-    const afterFirst = textsOf(project.dir, [...REPORTED_FILES, FIXED_BESIDE])
-    const second = runCheck(project.dir)
-    const afterSecond = textsOf(project.dir, [...REPORTED_FILES, FIXED_BESIDE])
-    return { first, afterFirst, second, afterSecond }
+    return checkRunTwice(project.dir, [...REPORTED_FILES, FIXED_BESIDE])
   })
 
   it('reports each file on the line its rule names, by that rule, and exits on the findings', () => {

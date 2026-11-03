@@ -72,7 +72,7 @@ const TWIN_CASES: readonly TwinCase[] = [
     ours: {
       rules: {
         eqeqeq: 'error',
-        '@typescript-eslint/array-type': 'error',
+        '@typescript-eslint/no-inferrable-types': 'error',
         'no-var': 'error',
         'prefer-const': 'error',
         'getter-return': 'error',

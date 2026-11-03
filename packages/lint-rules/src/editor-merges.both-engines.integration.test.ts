@@ -1,8 +1,7 @@
+import { catalog } from '@workspace/rule-data'
 import { describe, expect, it } from 'vitest'
 import { type BothEnginesRuns, setUpBothEnginesRuns } from './__tests__/both-engines-runs.ts'
 import {
-  ARRAY_TYPE,
-  arrayTypeSourceFiles,
   COMPONENT_FILES,
   DEBUGGER_RULES,
   debuggerSourceFiles,
@@ -13,18 +12,20 @@ import {
   GRID_RULES,
   GRID_RULES_THE_TEAM_SETS,
   gridSourceFiles,
+  inferrableTypeSourceFiles,
   MAX_PARAMS,
   nestedGitSourceFiles,
   NO_DEBUGGER,
+  NO_INFERRABLE_TYPES,
   NO_UNUSED_VARS,
   nodeModulesSourceFiles,
   OUR_GRID_RULES,
   OURS_SETTING_THE_MAX_PARAMS_EXTENSION,
-  OURS_TURNING_ARRAY_TYPE_ON,
+  OURS_TURNING_NO_INFERRABLE_TYPES_ON,
   TEAM_GLOBAL_IGNORES_TAKING_NODE_MODULES_BACK,
   TEAM_GRID_ESLINT_RULES,
   TEAM_GRID_OXLINT_CONFIG,
-  TEAM_OXLINT_CONFIG_TURNING_ARRAY_TYPE_ON,
+  TEAM_OXLINT_CONFIG_TURNING_NO_INFERRABLE_TYPES_ON,
   TEAM_TAKE_BACK_CASES,
   teamAloneFindingsOnTheGrid,
 } from './__tests__/cases/both-engines-grid.ts'
@@ -40,8 +41,18 @@ allowEveryTestForParallelLoad()
 
 const FIVE_PARAMETERS_UNDER_A_MAX_OF_2 = "Function 'five' has too many parameters (5). Maximum allowed is 2."
 const DEBUGGER_FILES = Object.keys(debuggerSourceFiles)
-const ARRAY_TYPE_FILES = Object.keys(arrayTypeSourceFiles)
+const INFERRABLE_TYPE_FILES = Object.keys(inferrableTypeSourceFiles)
 const FIVE_PARAMETER_FILES = Object.keys(fiveParameterSourceFiles)
+const THE_OTHER_ENGINE = { eslint: 'oxlint', oxlint: 'eslint' } as const
+
+// A rule rerouted would leave a test below passing on a premise no longer true; this names it first.
+describe("the grid's rules", () => {
+  it('are each routed to the engine other than the one the team turns it on in', () => {
+    expect(GRID_RULES.map(({ rule }) => ({ rule, engine: catalog.rules.get(rule)?.engine }))).toStrictEqual(
+      GRID_RULES.map(({ rule, teamsEngine }) => ({ rule, engine: THE_OTHER_ENGINE[teamsEngine] })),
+    )
+  })
+})
 
 describe("the team's configs alone, on the grid's files", () => {
   const runs = setUpBothEnginesRuns({
@@ -128,18 +139,18 @@ describe('rules our oxlint part runs, merged into a team ESLint config that runs
 // Our ESLint part lints JS and TS files only.
 describe('a rule our ESLint part runs, merged into a team oxlint config that turns it on, beside .vue, .svelte and .astro files', () => {
   const runs = setUpBothEnginesRuns({
-    sources: arrayTypeSourceFiles,
-    ours: { rules: OURS_TURNING_ARRAY_TYPE_ON },
+    sources: inferrableTypeSourceFiles,
+    ours: { rules: OURS_TURNING_NO_INFERRABLE_TYPES_ON },
     teamEslintRules: {},
-    teamOxlintConfig: TEAM_OXLINT_CONFIG_TURNING_ARRAY_TYPE_ON,
+    teamOxlintConfig: TEAM_OXLINT_CONFIG_TURNING_NO_INFERRABLE_TYPES_ON,
   })
 
   it("reports it once in each file, from the team's oxlint config", () => {
-    expect(findingsByFileAndRule(runs().mergedIntoTheTeamsConfigs, ARRAY_TYPE_FILES, [ARRAY_TYPE])).toStrictEqual({
-      'src/a.ts': { '@typescript-eslint/array-type': ['src/a.ts:1 typescript(array-type)'] },
-      'src/c.vue': { '@typescript-eslint/array-type': ['src/c.vue:2 typescript(array-type)'] },
-      'src/c.svelte': { '@typescript-eslint/array-type': ['src/c.svelte:2 typescript(array-type)'] },
-      'src/c.astro': { '@typescript-eslint/array-type': ['src/c.astro:2 typescript(array-type)'] },
+    expect(findingsByFileAndRule(runs().mergedIntoTheTeamsConfigs, INFERRABLE_TYPE_FILES, [NO_INFERRABLE_TYPES])).toStrictEqual({
+      'src/a.ts': { '@typescript-eslint/no-inferrable-types': ['src/a.ts:1 typescript(no-inferrable-types)'] },
+      'src/c.vue': { '@typescript-eslint/no-inferrable-types': ['src/c.vue:2 typescript(no-inferrable-types)'] },
+      'src/c.svelte': { '@typescript-eslint/no-inferrable-types': ['src/c.svelte:2 typescript(no-inferrable-types)'] },
+      'src/c.astro': { '@typescript-eslint/no-inferrable-types': ['src/c.astro:2 typescript(no-inferrable-types)'] },
     })
   })
 })

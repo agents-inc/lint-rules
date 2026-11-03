@@ -40,7 +40,6 @@ const ONE_COMPAT_FINDING: CliRun = {
   stderr: '',
 }
 
-/** The stderr of a child Node asking the browserslist the plugin given imports for the browsers named, under the clock moved forward that far. */
 function stderrOfBrowserslistAsImportedBy(pluginPackage: string, months: number): string {
   const asksForTheBrowsersNamed = `import { createRequire } from 'node:module'\nconst plugin = createRequire(import.meta.url).resolve('${pluginPackage}')\ncreateRequire(plugin)('browserslist')(process.argv[1])\n`
   const { stderr } = spawnSync(process.execPath, ['--input-type=module', '--eval', asksForTheBrowsersNamed, NAMED_BROWSERS.join(', ')], {
@@ -51,7 +50,6 @@ function stderrOfBrowserslistAsImportedBy(pluginPackage: string, months: number)
   return stderr
 }
 
-/** check's run in a committed project of the files given, once the file given changes, under the clock moved forward that far. */
 async function checkedWithTheClockAhead(tempProjects: TempProjects, files: ProjectFiles, changed: { readonly path: string; readonly text: string }, months: number): Promise<CliRun> {
   const project = createGitProject(tempProjects, { repo: 'committed', files })
   project.write(changed.path, changed.text)

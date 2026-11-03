@@ -50,10 +50,9 @@ const OTHER_TS_EXTENSION_ROWS = OTHER_TS_EXTENSIONS.map((extension) => ({ extens
 const HOOK_FILES_IN_OTHER_TS_EXTENSIONS = HOOK_FILE_NAMES.flatMap((name) => OTHER_TS_EXTENSIONS.map((extension) => ({ name, extension })))
 const OTHER_JS_EXTENSION_ROWS = OTHER_JS_EXTENSIONS.map((extension) => ({ extension }))
 const THE_OTHER_COMMENT = '@ts-expect-error'
-const FIX_THE_TYPE_ERROR = /\bfix\b.*\btype error\b/iu
+const FIX_THE_TYPE_ERROR = /\bfix\b.+\btype error\b/iu
 const LIST_IS_COMPLETE = /The list is complete/u
 
-/** `file:line rule` for each finding of the rules read, in the file given, in path and line order. */
 function findingsOf(findings: readonly string[], file: string): string[] {
   return findings.filter((finding) => finding.startsWith(`${file}:`) && RULES_READ.some((rule) => finding.endsWith(` ${rule}`))).toSorted()
 }

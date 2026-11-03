@@ -30,9 +30,6 @@ import type { ProjectFiles } from './__tests__/temp-projects.ts'
 import { mergeEslintConfig } from './eslint.ts'
 import { defineLintRules } from './index.ts'
 
-// The react-ssr rules skip a Server Component wherever the file's own nearest package.json lists next, in both
-// builds, and keep checking every other file.
-
 const SSR_LISTED = { quality: [], libs: { ui: ['react-ssr'] } } as const
 const PACKAGE_JSON = 'package.json'
 
@@ -53,12 +50,16 @@ type ProjectName =
   | 'a monorepo whose root package.json lists no next, one app listing next and one Remix app'
   | 'a Next.js app holding a Remix app with a package.json of its own'
   | 'a Next.js app whose lint config sits in a folder holding no package.json'
+  | 'a monorepo whose root package.json lists no next and whose Next.js app is a folder named app'
 
 /** `linted`: every file ESLint lints, from the config's folder, which is ESLint's cwd. */
 type ProjectCase = { readonly project: ProjectName; readonly configFolder: string; readonly linted: readonly string[]; readonly files: () => ProjectFiles }
 
 const NEXT_APP: ProjectName = 'a Next.js app'
 const CONFIG_FOLDER_WITHOUT_A_PACKAGE_JSON = 'web'
+// The plugin skips a file only under a folder named app, so only there does a file beside its app's package.json show the setting.
+const NEXT_APP_FOLDER_NAMED_APP = 'app'
+const BESIDE_THE_NEXT_APPS_PACKAGE_JSON = `${NEXT_APP_FOLDER_NAMED_APP}/invoice-date.tsx`
 
 const PROJECTS: readonly ProjectCase[] = [
   {
@@ -120,9 +121,20 @@ const PROJECTS: readonly ProjectCase[] = [
       return { [PACKAGE_JSON]: packageJsonText(buildPackageJsonListingNext()), [`${CONFIG_FOLDER_WITHOUT_A_PACKAGE_JSON}/${SERVER_PAGE}`]: SERVER_PAGE_SOURCE }
     },
   },
+  {
+    project: 'a monorepo whose root package.json lists no next and whose Next.js app is a folder named app',
+    configFolder: '',
+    linted: [BESIDE_THE_NEXT_APPS_PACKAGE_JSON],
+    files() {
+      return {
+        [PACKAGE_JSON]: packageJsonText(buildPackageJson()),
+        [`${NEXT_APP_FOLDER_NAMED_APP}/${PACKAGE_JSON}`]: packageJsonText(buildPackageJsonListingNext()),
+        [BESIDE_THE_NEXT_APPS_PACKAGE_JSON]: SERVER_PAGE_SOURCE,
+      }
+    },
+  },
 ]
 
-/** A file, from the config's folder, in a project of the list above, and what it is. */
 type FileCase = { readonly project: ProjectName; readonly file: string; readonly what: string }
 
 const SKIPPED: readonly FileCase[] = [
@@ -137,6 +149,7 @@ const SKIPPED: readonly FileCase[] = [
   },
   { project: 'a Next.js app holding a Remix app with a package.json of its own', file: SERVER_PAGE, what: "the Next.js app's own page" },
   { project: 'a Next.js app whose lint config sits in a folder holding no package.json', file: SERVER_PAGE, what: 'a page whose nearest package.json, above the config, lists next' },
+  { project: 'a monorepo whose root package.json lists no next and whose Next.js app is a folder named app', file: BESIDE_THE_NEXT_APPS_PACKAGE_JSON, what: "a file without 'use client' beside the app's own package.json, which lists next" },
 ]
 
 const CHECKED: readonly FileCase[] = [

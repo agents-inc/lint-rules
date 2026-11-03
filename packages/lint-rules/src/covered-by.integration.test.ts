@@ -123,7 +123,11 @@ function editorMerge(rulesets: Rulesets, usesOxlint: boolean, teamEslintConfig: 
   const rulesTheTeamsEslintConfigSets = ruleIdsTheTeamsEslintConfigSets(defineConfig(teamEslintConfig), eslintPluginRegistry, catalog)
   return {
     oxlint: oxlint === undefined ? null : mergeOxlintPart(EMPTY_TEAM_OXLINT_CONFIG, oxlint, catalog, rulesTheTeamsEslintConfigSets),
-    eslint: mergeEslintPart(teamEslintConfig, eslint, catalog, eslintPluginRegistry, lintRulesPackageVersion(), NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG),
+    eslint: mergeEslintPart(teamEslintConfig, eslint, catalog, {
+      registry: eslintPluginRegistry,
+      ourVersion: lintRulesPackageVersion(),
+      ruleIdsInTheTeamsOxlintConfig: NO_RULE_SET_BY_THE_TEAMS_OXLINT_CONFIG,
+    }),
   }
 }
 

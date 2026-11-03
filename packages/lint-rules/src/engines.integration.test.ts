@@ -1,7 +1,7 @@
 import { readdir } from 'node:fs/promises'
 import { relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { catalog } from '@workspace/rule-data'
+import { catalog, routeOf } from '@workspace/rule-data'
 import { eslintPlugins } from '@workspace/rule-data/eslint-plugins'
 import { describe, expect, it } from 'vitest'
 import { unshippedRuleRefusal } from './__tests__/cases/rules-we-do-not-ship.ts'
@@ -69,12 +69,6 @@ function canonicalIdsOfRulesOn(rules: Readonly<Record<string, unknown>>): string
     .sort()
 }
 
-function routeOf(ruleId: string) {
-  const rule = catalog.rules.get(ruleId)
-  if (rule === undefined) throw new Error(`${ruleId} is not in the catalog`)
-  return rule
-}
-
 describe('oxlint, given the full config', () => {
   it('loads it: exits 0 or 1 and prints a JSON report', () => {
     expect([0, 1]).toContain(fullConfig.oxlintLint().exitCode)
@@ -117,7 +111,7 @@ describe('each rule fires on its routed engine only, under its exact ID', () => 
   it.each(FIRES_IN_OXLINT)('$rule stays off in ESLint, under its ID and every alias', ({ rule, file }) => {
     const reported = fullConfig.eslintRuleIdsOn(file)
 
-    expect([rule, ...routeOf(rule).eslintAliases].filter((id) => reported.includes(id))).toStrictEqual([])
+    expect([rule, ...routeOf(rule, catalog).eslintAliases].filter((id) => reported.includes(id))).toStrictEqual([])
   })
 
   it.each(FIRES_IN_ESLINT)('$rule fires in ESLint', ({ rule, file }) => {
@@ -172,7 +166,7 @@ describe('the rule eslint-plugin-unicorn 78 adds that we ship, turned on through
   })
 })
 
-// We do not ship it, so a team turns it on in its own ESLint config (owner, q-lint-unshipped-rules-channel).
+// We do not ship it, so a team turns it on in its own ESLint config.
 describe('the rule eslint-plugin-unicorn 78 adds that we do not ship, named in our rules', () => {
   it('is refused', () => {
     const naming = buildConsumerLintRules(FIXTURES_DIR, {}, { rules: { 'unicorn/no-unnecessary-default-arguments': 'error' } })
@@ -300,7 +294,7 @@ describe('a config whose file overrides emit every override shape, run by the re
       eslintEntryBlockWithTypedRule: blocks.some(
         (block) =>
           block.name?.startsWith(FILE_OVERRIDE_BLOCK_PREFIX) === true &&
-          Object.keys(block.rules ?? {}).some((id) => routeOf(id).typed),
+          Object.keys(block.rules ?? {}).some((id) => routeOf(id, catalog).typed),
       ),
     }).toStrictEqual({
       oxlintOverrideWithExcludeFiles: true,

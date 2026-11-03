@@ -9,16 +9,15 @@ import {
 } from './__tests__/cases/jsdom-fix-check-sources.ts'
 import { unshippedRuleRefusal } from './__tests__/cases/rules-we-do-not-ship.ts'
 import { autofixedFilesIn, findingsIn, findingsInFile } from './__tests__/check-output.ts'
-import { EXIT, runCheck } from './__tests__/cli-runs.ts'
+import { checkRunTwice, EXIT } from './__tests__/cli-runs.ts'
 import { checkedPackageFiles } from './__tests__/factories/check-factories.ts'
 import { buildConsumerLintRules, emptyTsconfigRootDir } from './__tests__/factories/lint-rules-factories.ts'
 import { createGitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
-import { textsOf } from './__tests__/temp-projects.ts'
 import { defineLintRules } from './index.ts'
 
-// dom-node-dataset runs in oxlint and the others in ESLint, so each engine withholds a fix here.
+// These rules run in both engines, so each engine withholds a fix here.
 
 allowEveryTestForParallelLoad()
 
@@ -46,11 +45,7 @@ describe('check, run twice, on files a fix would break a passing jsdom test thro
   const run = setUpRunsBeforeTheSuite((tempProjects) => {
     const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(BROWSER_BESIDE_SECURITY_MODERN_JS_REDUNDANCY_CONVENTIONS_AND_TESTING_LIBRARY, ARROW_FUNCTIONS_ALLOWED) })
     for (const { file, source } of WRITTEN) project.write(file, source)
-    const first = runCheck(project.dir)
-    const afterFirst = textsOf(project.dir, PATHS)
-    const second = runCheck(project.dir)
-    const afterSecond = textsOf(project.dir, PATHS)
-    return { first, afterFirst, second, afterSecond }
+    return checkRunTwice(project.dir, PATHS)
   })
 
   it.each(CODE_A_WITHHELD_JSDOM_FIX_WOULD_BREAK)('reports $rule on line $line of $file and leaves the file byte for byte', ({ file, source, line, rule }) => {

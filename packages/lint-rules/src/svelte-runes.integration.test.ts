@@ -26,7 +26,11 @@ import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-
 allowEveryTestForParallelLoad()
 
 const RULES = [NO_UNDEF, NO_GLOBAL_ASSIGN]
-const SVELTE_COMPONENT = /\.svelte$/u
+const SVELTE_EXTENSION = '.svelte'
+const SOURCES_THAT_ARE_NO_COMPONENT = Object.keys(svelteSourceFiles)
+  .filter((file) => !file.endsWith(SVELTE_EXTENSION))
+  .toSorted()
+const TEST_SOURCES = Object.keys(svelteTestFiles).toSorted()
 
 describe('Svelte 5 components and rune modules, our correctness ruleset on, in a project whose package.json lists oxlint', () => {
   const runs = setUpBothEnginesRuns({
@@ -51,9 +55,19 @@ describe('Svelte 5 components and rune modules, our correctness ruleset on, in a
     const { eslintLintedFiles } = runs()
 
     expect({
-      agent: eslintLintedFiles.agent.filter((file) => SVELTE_COMPONENT.test(file)),
-      mergedIntoEmptyTeamConfigs: eslintLintedFiles.mergedIntoEmptyTeamConfigs.filter((file) => SVELTE_COMPONENT.test(file)),
+      agent: eslintLintedFiles.agent.filter((file) => file.endsWith(SVELTE_EXTENSION)),
+      mergedIntoEmptyTeamConfigs: eslintLintedFiles.mergedIntoEmptyTeamConfigs.filter((file) => file.endsWith(SVELTE_EXTENSION)),
     }).toStrictEqual({ agent: [], mergedIntoEmptyTeamConfigs: [] })
+  })
+
+  // Else a rune drawing no no-undef in a rune module would pass where ESLint lints none.
+  it('lint every rune module and JS or TS file that is no component, in the agent build and merged into empty team configs', () => {
+    const { eslintLintedFiles } = runs()
+
+    expect({
+      agent: eslintLintedFiles.agent.filter((file) => Object.hasOwn(svelteSourceFiles, file)),
+      mergedIntoEmptyTeamConfigs: eslintLintedFiles.mergedIntoEmptyTeamConfigs.filter((file) => Object.hasOwn(svelteSourceFiles, file)),
+    }).toStrictEqual({ agent: SOURCES_THAT_ARE_NO_COMPONENT, mergedIntoEmptyTeamConfigs: SOURCES_THAT_ARE_NO_COMPONENT })
   })
 
   it('report no rune in a Svelte file by the agent build, and still the name nobody declares there, the rune in the JS file that is no Svelte file, and the write to a rune', () => {
@@ -81,7 +95,11 @@ describe('Svelte 5 components and rune modules, our correctness ruleset on, in a
   })
 
   it('leave every .svelte file out of ESLint', () => {
-    expect(eslintLintedFilesOf(run()).filter((file) => SVELTE_COMPONENT.test(file))).toStrictEqual([])
+    expect(eslintLintedFilesOf(run()).filter((file) => file.endsWith(SVELTE_EXTENSION))).toStrictEqual([])
+  })
+
+  it('lint every rune module and JS or TS file that is no component', () => {
+    expect(eslintLintedFilesOf(run()).filter((file) => Object.hasOwn(svelteSourceFiles, file))).toStrictEqual(SOURCES_THAT_ARE_NO_COMPONENT)
   })
 
   it('report no rune in a rune module, and still the name nobody declares there, the rune in the JS file that is no Svelte file, and the write to a rune', () => {
@@ -103,6 +121,16 @@ describe("Svelte's tests of runes and files named like them, our correctness rul
 
   it('are linted by every ESLint run with no fatal message', () => {
     expect(runs().eslintFatalMessages).toStrictEqual([])
+  })
+
+  // Else a rune drawing no no-undef in a test would pass where ESLint lints no test at all.
+  it('lint every test and file named like one, in the agent build and merged into empty team configs', () => {
+    const { eslintLintedFiles } = runs()
+
+    expect({
+      agent: eslintLintedFiles.agent.filter((file) => Object.hasOwn(svelteTestFiles, file)),
+      mergedIntoEmptyTeamConfigs: eslintLintedFiles.mergedIntoEmptyTeamConfigs.filter((file) => Object.hasOwn(svelteTestFiles, file)),
+    }).toStrictEqual({ agent: TEST_SOURCES, mergedIntoEmptyTeamConfigs: TEST_SOURCES })
   })
 
   it('report no rune in a rune module by the agent build, and still the name nobody declares there, every rune where the name is no rune module, and the write to a rune', () => {
@@ -127,6 +155,10 @@ describe("Svelte's tests of runes and files named like them, our correctness rul
 
   it('are linted with no fatal message', () => {
     expect(eslintFatalMessagesOf(run())).toStrictEqual([])
+  })
+
+  it('lint every test and file named like one', () => {
+    expect(eslintLintedFilesOf(run()).filter((file) => Object.hasOwn(svelteTestFiles, file))).toStrictEqual(TEST_SOURCES)
   })
 
   it('report no rune in a rune module, and still the name nobody declares there, every rune where the name is no rune module, and the write to a rune', () => {

@@ -2,15 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { WRAP, WRAP_FIXED } from './__tests__/cases/check-sources.ts'
 import { FILES_A_WITHHELD_FIX_WOULD_REWRITE } from './__tests__/cases/tanstack-zod-check-sources.ts'
 import { autofixedFilesIn, findingsIn } from './__tests__/check-output.ts'
-import { EXIT, runCheck } from './__tests__/cli-runs.ts'
+import { checkRunTwice, EXIT } from './__tests__/cli-runs.ts'
 import { checkedPackageFiles, moduleText } from './__tests__/factories/check-factories.ts'
 import { createGitProject } from './__tests__/git-projects.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
-import { textsOf } from './__tests__/temp-projects.ts'
-
-// The zod trim rule and TanStack's stable-query-client report, and check leaves each file as written, while it still
-// applies the fix of a rule listed beside them (owner: "Report only, fix withheld").
 
 allowEveryTestForParallelLoad()
 
@@ -25,11 +21,7 @@ describe('check, run twice, on the files a withheld zod or TanStack Query fix wo
     const project = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(TANSTACK_AND_ZOD_BESIDE_MODERN_JS) })
     for (const { file, source } of FILES_A_WITHHELD_FIX_WOULD_REWRITE) project.write(file, source)
     project.write(FIXED_BESIDE, moduleText(...WRAP))
-    const first = runCheck(project.dir)
-    const afterFirst = textsOf(project.dir, [...REPORTED_FILES, FIXED_BESIDE])
-    const second = runCheck(project.dir)
-    const afterSecond = textsOf(project.dir, [...REPORTED_FILES, FIXED_BESIDE])
-    return { first, afterFirst, second, afterSecond }
+    return checkRunTwice(project.dir, [...REPORTED_FILES, FIXED_BESIDE])
   })
 
   it('reports each file on the line its rule names, by that rule, and exits on the findings', () => {

@@ -18,9 +18,9 @@ import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
 import { INSTALLED_OXLINT, installedPackage, type TempProjects, THIS_PACKAGE } from './__tests__/temp-projects.ts'
 import { EMPTY_TEAM_OXLINT_CONFIG } from './__tests__/team-configs-of-the-other-engine.ts'
 
-// Owner, q-lint-unshipped-rules-channel: our rules list accepts only rules we ship; naming any other rule there stops
-// with a message pointing to the team's own ESLint or oxlint config. Each place agents-inc.lint.mts loads stops on it:
-// check, and both engines' CLIs through the team's own configs, as an editor loads them.
+// Our rules list accepts only rules we ship; naming any other rule there stops with a message pointing to the team's
+// own ESLint or oxlint config. Each place agents-inc.lint.mts loads stops on it: check, and both engines' CLIs through
+// the team's own configs, as an editor loads them.
 
 const TYPESCRIPT_ESLINT = installedPackage('typescript-eslint')
 const SOURCE_FILE = 'src/a.ts'
@@ -46,7 +46,6 @@ function checkOfAProjectNaming(tempProjects: TempProjects, piece: LintRulesPiece
   return runCheck(createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS, piece) }).dir)
 }
 
-/** The team's eslint.config.mjs and oxlint.config.mts, each merging our part, beside a project listing oxlint. */
 function enginesOverAProjectNaming(tempProjects: TempProjects, piece: LintRulesPiece): EngineOutcomes {
   const projectDir = tempProjects.create({
     files: {

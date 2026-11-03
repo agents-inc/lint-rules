@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { catalog } from '@workspace/rule-data'
+import { catalog, routeOf } from '@workspace/rule-data'
 import { describe, expect, it } from 'vitest'
 import { eslintBlocksMatchingNoFile } from './__tests__/blocks-matching-no-file.ts'
 import { AGENT_BUILD, type EngineRun, setUpEngineRun } from './__tests__/engine-run.ts'
@@ -53,9 +53,7 @@ const STRAY_LAYOUTS: readonly StrayLayout[] = [
 ]
 
 function isTypedRule(ruleId: string): boolean {
-  const route = catalog.rules.get(ruleId)
-  if (route === undefined) throw new Error(`ESLint ran ${ruleId}, which is not in the catalog`)
-  return route.typed
+  return routeOf(ruleId, catalog).typed
 }
 
 function isSentinel(ruleId: string | null): ruleId is string {

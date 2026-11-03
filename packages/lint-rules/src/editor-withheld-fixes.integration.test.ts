@@ -42,7 +42,6 @@ allowEveryTestForParallelLoad()
 type ReportedFile = (typeof FILES_A_WITHHELD_FIX_WOULD_CHANGE)[number]
 type FixedFile = (typeof FILES_FIXED_BESIDE)[number]
 
-/** The rulesets an editor set lists, the rules the team names, the rules among them whose fix check withholds, a file each reports, and files fixed beside them. */
 type EditorProject = {
   readonly rulesets: string
   readonly rulesetSets: Parameters<typeof buildConsumerLintRules>[1]
@@ -57,7 +56,6 @@ type ReportOnALine = { readonly file: string; readonly line: number | null }
 /** A fix applies on save; a suggestion is listed in the editor's quick-fix menu and applies only when picked. */
 type Offered = { readonly offersAFix: boolean; readonly suggestsARewrite: boolean }
 
-/** The files each rule reports and the files fixed beside them, by path. */
 type ProjectTexts = { readonly withheld: Readonly<Record<string, string | undefined>>; readonly beside: Readonly<Record<string, string | undefined>> }
 
 const FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/editor-withheld-fixes', import.meta.url))
@@ -167,7 +165,6 @@ function casesOf(rule: string, { reported }: EditorProject): readonly ReportedFi
   return reported.filter((reportedFile) => reportedFile.rule === rule)
 }
 
-/** The rule under its ESLint ID, and under oxlint's code where oxlint has a version of it. */
 function namesOf(rule: string): ReadonlySet<string> {
   return new Set([rule, ...catalog.oxlintRules.filter(({ id }) => id === rule).map(oxlintCodeOfRule)])
 }
@@ -193,7 +190,6 @@ function eslintOffersOf(run: EngineRun, { file, rule }: ReportedFile): Array<Rep
   return eslintMessagesOf(run, file, rule).map((message) => ({ file, line: message.line, ...offeredIn(message) }))
 }
 
-/** The rule alone, as its plugin ships it, in no merge of ours. */
 function shippedPluginOffersOf({ file, source, rule }: ReportedFile): Array<ReportOnALine & Offered> {
   const prefix = pluginPrefixOf(rule)
   if (prefix === null) throw new Error(`${rule} is ESLint's own rule, in no plugin`)
@@ -217,7 +213,6 @@ function setUpMergesOfFilesRewritesAreSuggestedIn(packageJson: ProjectFiles): En
   )
 }
 
-/** Errors under either engine's name for the rule. */
 function reportsInEitherEngine(run: EngineRun, file: string, rule: string): ReportOnALine[] {
   const names = namesOf(rule)
   return run

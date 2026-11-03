@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { compareCodeUnits } from '@workspace/rule-data/collections'
 import { oxlintCliOutputIn } from '@workspace/rule-data/test-support/oxlint-cli'
 import { ESLint, type Linter } from 'eslint'
 import { describe, expect, it } from 'vitest'
@@ -50,12 +51,10 @@ allowEveryTestForParallelLoad()
 /** One report as an editor offers it: a fix applies on save, a suggestion is listed in the quick-fix menu. */
 type Offered = { readonly line: number; readonly message: string; readonly fix: string | null; readonly suggestions: readonly string[] }
 
-/** ESLint's messages over the files linted, by path, or the error it refused the config with. */
 type Linted = { readonly refused: false; readonly messages: Readonly<Record<string, readonly Linter.LintMessage[]>> } | { readonly refused: true; readonly why: string }
 
 type MergedAndAlone = { readonly merged: Linted; readonly teamAlone: Linted }
 
-/** A project our editor rulesets run prefer-single-call and prefer-in-document in, and how the team's config registers the plugins of the rules it sets. */
 type TeamSettingRules = { readonly project: string; readonly packageJson: string; readonly registration: string; readonly registersItsPluginsItself: boolean }
 
 const FIXTURES_DIR = fileURLToPath(new URL('../test-fixtures/editor-withheld-fixes', import.meta.url))
@@ -110,10 +109,9 @@ function offersOf(linted: Linted, { file, rule }: Pick<ReportedFile, 'file' | 'r
     }))
 }
 
-/** Each report of the rules given, as `file:line rule`, in path order, and each fatal message. */
 function reportsOf(linted: Linted, rules: Readonly<Linter.RulesRecord>): { readonly reports: string[]; readonly fatal: string[] } {
   if (linted.refused) throw new Error(`ESLint refused the config: ${linted.why}`)
-  const messagesByFile = Object.entries(linted.messages).toSorted(([first], [second]) => (first < second ? -1 : 1))
+  const messagesByFile = Object.entries(linted.messages).toSorted(([first], [second]) => compareCodeUnits(first, second))
   return {
     reports: messagesByFile.flatMap(([file, messages]) =>
       messages.filter(({ ruleId }) => ruleId !== null && Object.hasOwn(rules, ruleId)).map(({ line, ruleId }) => `${file}:${line} ${String(ruleId)}`),
@@ -126,9 +124,7 @@ function offersARewrite({ fix, suggestions }: Offered): boolean {
   return fix !== null || suggestions.length > 0
 }
 
-/** The editor set's ESLint part, merged into the team's config beside no oxlint config of the team's. */
-// eslint-disable-next-line functional/prefer-immutable-types -- TS2345 as Readonly: mergeEslintConfig takes the team's config as a mutable InfiniteArray<ConfigWithExtends>
-function mergedInto(teamConfig: Linter.Config[], projectDir: string): Linter.Config[] {
+function mergedInto(teamConfig: readonly Linter.Config[], projectDir: string): Linter.Config[] {
   return mergeEslintConfig(teamConfig, defineLintRules(buildConsumerLintRules(projectDir, EDITOR_RULESETS_RUNNING_WITHHELD_RULES)).editorRulesets.eslint, NO_TEAM_OXLINT_CONFIG)
 }
 

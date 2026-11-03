@@ -7,12 +7,11 @@ import {
   TEAMS_IMPORT_X_MODULE_TEXT,
 } from './__tests__/cases/team-import-x-resolvers.ts'
 import { eslintEngineFindingsOf, eslintFatalMessagesOf, type MergedAndTeamAloneEslintCliRuns, setUpMergedAndTeamAloneEslintCliRuns } from './__tests__/consumer-cli-runs.ts'
-import { projectMergingOurEslintPartText, teamAloneEslintConfigText } from './__tests__/factories/consumer-project-factories.ts'
-import { buildConsumerSettings, MODULES_IN_BOTH_SETS } from './__tests__/factories/lint-rules-factories.ts'
-import { buildPackageJson, buildPackageJsonListingOxlint, type PackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
-import { type FindingsByFileAndRule, findingsByFileAndRule } from './__tests__/findings-beside-the-team.ts'
+import { CONSUMER_CONFIG_FILES } from './__tests__/factories/consumer-project-factories.ts'
+import { type FindingsByFileAndRule, findingsByFileAndRule, type RuleByItsNames } from './__tests__/findings-beside-the-team.ts'
 import { allowEveryTestForParallelLoad } from './__tests__/parallel-load.ts'
-import { installedPackage, type ProjectFiles } from './__tests__/temp-projects.ts'
+import { teamSettingsMonoreposOf } from './__tests__/team-settings-monorepos.ts'
+import { installedPackage } from './__tests__/temp-projects.ts'
 
 // Our import-x/resolver-next stays out of every file where a team block sets import-x/resolver or
 // resolver-next: import-x reads resolver-next first, so ours would beat a team's legacy resolver. Run by
@@ -20,22 +19,15 @@ import { installedPackage, type ProjectFiles } from './__tests__/temp-projects.t
 
 allowEveryTestForParallelLoad()
 
-const TEAM_ESLINT_MODULE = 'team.eslint.mjs'
-const TEAM_ALONE_CONFIG = 'eslint.team-alone.mjs'
 const PLUGIN_THE_TEAM_IMPORTS = installedPackage('eslint-plugin-import-x')
+const { teamEslintModule } = CONSUMER_CONFIG_FILES
 
-/** The monorepo with the packages, its package.json given, an eslint.config.mjs merging our ESLint part into the team's config, and one holding the team's alone. */
-function monorepoFiles(packageJson: PackageJson): ProjectFiles {
-  return {
-    'package.json': packageJsonText(packageJson),
-    ...projectMergingOurEslintPartText({
-      settings: buildConsumerSettings(MODULES_IN_BOTH_SETS),
-      team: { file: TEAM_ESLINT_MODULE, text: TEAMS_IMPORT_X_MODULE_TEXT },
-      teamOxlint: 'setting no rule',
-    }),
-    [TEAM_ALONE_CONFIG]: teamAloneEslintConfigText(TEAM_ESLINT_MODULE),
-    ...importXResolverPackageFiles,
-  }
+// Of our modules ruleset; oxlint runs it where the project lists oxlint. It reports the team module's default import of importX.
+const NO_NAMED_AS_DEFAULT: RuleByItsNames = { rule: 'import-x/no-named-as-default', names: ['import-x/no-named-as-default'] }
+
+const NAMED_AS_DEFAULT_IN_THE_TEAM_MODULE: Readonly<Record<string, readonly string[]>> = {
+  'a project whose package.json lists oxlint': [],
+  'a project whose package.json lists no oxlint': [`${teamEslintModule}:1 ${NO_NAMED_AS_DEFAULT.rule}`],
 }
 
 /** The team's rule's findings in each package's importer, by file. */
@@ -43,18 +35,21 @@ function teamsRuleFindingsIn(run: MergedAndTeamAloneEslintCliRuns['merged']): Fi
   return findingsByFileAndRule(eslintEngineFindingsOf(run), Object.keys(OWED_BY_THE_TEAMS_RESOLVERS), [NO_UNRESOLVED])
 }
 
-// The project's name in full in its title, which $-interpolation would cut short.
-const PROJECTS = [
-  { project: 'a project whose package.json lists oxlint', files: monorepoFiles(buildPackageJsonListingOxlint()) },
-  { project: 'a project whose package.json lists no oxlint', files: monorepoFiles(buildPackageJson()) },
-]
+const PROJECTS = teamSettingsMonoreposOf(TEAMS_IMPORT_X_MODULE_TEXT, importXResolverPackageFiles)
 
 for (const { project, files } of PROJECTS) {
   describe(`a TS module's import of a TS module by a name without its extension, a team config setting import-x's resolvers in some packages alone and running its own import-x/no-unresolved, in ${project}, linted by the ESLint CLI from the monorepo's root through the built package`, () => {
-    const runs = setUpMergedAndTeamAloneEslintCliRuns(files, TEAM_ALONE_CONFIG, [PLUGIN_THE_TEAM_IMPORTS])
+    const runs = setUpMergedAndTeamAloneEslintCliRuns(files, CONSUMER_CONFIG_FILES.teamAloneEslint, [PLUGIN_THE_TEAM_IMPORTS])
 
     it('is linted with no fatal message, merged and by the team config alone', () => {
       expect({ merged: eslintFatalMessagesOf(runs().merged), teamAlone: eslintFatalMessagesOf(runs().teamAlone) }).toStrictEqual({ merged: [], teamAlone: [] })
+    })
+
+    // Else each project would pass in the other's place.
+    it('draws import-x/no-named-as-default in the team module, merged, where the project lists no oxlint alone', () => {
+      expect(findingsByFileAndRule(eslintEngineFindingsOf(runs().merged), [teamEslintModule], [NO_NAMED_AS_DEFAULT])).toStrictEqual({
+        [teamEslintModule]: { [NO_NAMED_AS_DEFAULT.rule]: NAMED_AS_DEFAULT_IN_THE_TEAM_MODULE[project] },
+      })
     })
 
     // Else each package would pass beside a team rule that reports nothing anywhere, or everywhere.

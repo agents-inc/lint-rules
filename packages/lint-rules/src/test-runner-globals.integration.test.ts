@@ -44,6 +44,9 @@ const TYPE_TEST_FILES = {
   endingLikeOne: 'src/sum-test.js',
 } as const
 
+// Its last line, 8, calls a name nobody declares.
+const TEST_FILE_USING_AN_UNDECLARED_NAME = 'src/undeclared.test.js'
+
 const sources = {
   [FILES.testFile]: TEST_SOURCE,
   [FILES.specFile]: TEST_SOURCE,
@@ -53,6 +56,7 @@ const sources = {
   [TYPE_TEST_FILES.typeTest]: TEST_SOURCE,
   [TYPE_TEST_FILES.specTypeTest]: TEST_SOURCE,
   [TYPE_TEST_FILES.endingLikeOne]: TEST_SOURCE,
+  [TEST_FILE_USING_AN_UNDECLARED_NAME]: `${TEST_SOURCE}undeclaredHelper()\n`,
 }
 
 /** The runner globals reported where a file is no test, by the engine's name for no-undef. */
@@ -84,6 +88,11 @@ function owedInTypeTestsBy(ruleName: string): FindingsByFileAndRule {
 const OWED_IN_TYPE_TESTS_BY_OXLINT = owedInTypeTestsBy('eslint(no-undef)')
 const OWED_IN_TYPE_TESTS_BY_ESLINT = owedInTypeTestsBy('no-undef')
 const TYPE_TEST_JS_FILES = Object.keys(OWED_IN_TYPE_TESTS_BY_OXLINT)
+const JS_SOURCES = [...JS_FILES, ...TYPE_TEST_JS_FILES, TEST_FILE_USING_AN_UNDECLARED_NAME].toSorted()
+
+function owedInTheTestFileUsingAnUndeclaredNameBy(ruleName: string): FindingsByFileAndRule {
+  return { [TEST_FILE_USING_AN_UNDECLARED_NAME]: { 'no-undef': [`${TEST_FILE_USING_AN_UNDECLARED_NAME}:8 ${ruleName}`] } }
+}
 
 describe("a JS test file using Vitest's and Jest's globals, beside a file that is no test using them, our correctness ruleset on, in a project whose package.json lists oxlint", () => {
   const runs = setUpBothEnginesRuns({ sources, ourRulesets: CORRECTNESS_IN_BOTH_SETS, ours: {}, teamEslintRules: {}, teamOxlintConfig: EMPTY_TEAM_OXLINT_CONFIG })
@@ -102,6 +111,26 @@ describe("a JS test file using Vitest's and Jest's globals, beside a file that i
 
   it("draw no no-undef in a type test, and every runner global in a file that only ends like one, merged into empty team configs", () => {
     expect(findingsByFileAndRule(runs().mergedIntoEmptyTeamConfigs, TYPE_TEST_JS_FILES, RULES)).toStrictEqual(OWED_IN_TYPE_TESTS_BY_OXLINT)
+  })
+
+  // Else a test file drawing no no-undef would pass where no-undef runs in no test file.
+  it('draw no-undef in a test file for the name nobody declares there and for no runner global, by the agent build and merged into empty team configs', () => {
+    const owed = owedInTheTestFileUsingAnUndeclaredNameBy('eslint(no-undef)')
+
+    expect({
+      agent: findingsByFileAndRule(runs().agent, [TEST_FILE_USING_AN_UNDECLARED_NAME], RULES),
+      mergedIntoEmptyTeamConfigs: findingsByFileAndRule(runs().mergedIntoEmptyTeamConfigs, [TEST_FILE_USING_AN_UNDECLARED_NAME], RULES),
+    }).toStrictEqual({ agent: owed, mergedIntoEmptyTeamConfigs: owed })
+  })
+
+  // Else a test file drawing no no-undef would pass where ESLint lints no test file at all.
+  it('lint every JS source, each test file and type test included, in the agent build and merged into empty team configs', () => {
+    const { eslintLintedFiles } = runs()
+
+    expect({
+      agent: eslintLintedFiles.agent.filter((file) => Object.hasOwn(sources, file)),
+      mergedIntoEmptyTeamConfigs: eslintLintedFiles.mergedIntoEmptyTeamConfigs.filter((file) => Object.hasOwn(sources, file)),
+    }).toStrictEqual({ agent: JS_SOURCES, mergedIntoEmptyTeamConfigs: JS_SOURCES })
   })
 
   it('leave the .test.json file out of ESLint, in the agent build and merged into empty team configs', () => {
@@ -135,6 +164,16 @@ describe("a JS test file using Vitest's and Jest's globals, beside a file that i
 
   it('draw no no-undef in a type test, and every runner global in a file that only ends like one', () => {
     expect(findingsByFileAndRule(eslintEngineFindingsOf(run()), TYPE_TEST_JS_FILES, RULES)).toStrictEqual(OWED_IN_TYPE_TESTS_BY_ESLINT)
+  })
+
+  it('draw no-undef in a test file for the name nobody declares there and for no runner global', () => {
+    expect(findingsByFileAndRule(eslintEngineFindingsOf(run()), [TEST_FILE_USING_AN_UNDECLARED_NAME], RULES)).toStrictEqual(
+      owedInTheTestFileUsingAnUndeclaredNameBy('no-undef'),
+    )
+  })
+
+  it('lint every JS source, each test file and type test included', () => {
+    expect(eslintLintedFilesOf(run()).filter((file) => Object.hasOwn(sources, file))).toStrictEqual(JS_SOURCES)
   })
 
   it('leave the .test.json file out of ESLint', () => {

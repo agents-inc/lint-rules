@@ -83,7 +83,7 @@ async function eslintWindowGlobalIn(projectDir: string, merged: readonly Linter.
   if (calculated === undefined) throw new Error(`ESLint does not lint ${file}`)
   const { languageOptions } = calculated
   if (languageOptions === undefined) throw new Error(`ESLint calculated no language options for ${file}`)
-  const globals: unknown = languageOptions['globals']
+  const globals: unknown = languageOptions.globals
   if (!isRecord(globals)) return undefined
   return globals[WINDOW]
 }

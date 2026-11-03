@@ -56,7 +56,7 @@ async function reactSettingFor(projectDir: string, config: readonly Linter.Confi
   if (calculated === undefined) throw new Error(`ESLint does not lint ${JSX_FILE}`)
   const { settings } = calculated
   if (settings === undefined) throw new Error(`no settings apply to ${JSX_FILE}`)
-  return settings['react']
+  return settings.react
 }
 
 describe("eslint-plugin-react's React version, as our settings give it", () => {

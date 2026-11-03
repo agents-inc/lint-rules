@@ -70,7 +70,6 @@ import {
   CHECK_INTERRUPTED,
   checkConfigText,
   checkConfigTextExportingACopy,
-  checkConfigTextHanding,
   checkedPackageFiles,
   CONFIG_FILE,
   DEBUGGER_STATEMENT,
@@ -90,6 +89,7 @@ import {
   unusedSuppressionMessageOf,
   USAGE,
 } from './__tests__/factories/check-factories.ts'
+import { agentsIncLintModuleTextHanding } from './__tests__/factories/consumer-project-factories.ts'
 import { buildPackageJson, packageJsonText } from './__tests__/factories/package-json-factories.ts'
 import { type FolderWatch, watchFolder } from './__tests__/folder-watch.ts'
 import { createGitProject, gitStatusOf } from './__tests__/git-projects.ts'
@@ -561,7 +561,7 @@ describe('check where it cannot run', () => {
     noConfig.writeAbove(CONFIG_FILE, checkConfigText(REPORTING_RULESETS))
     const configError = createGitProject(tempProjects, {
       repo: 'committed',
-      files: { [PACKAGE_JSON_FILE]: packageJsonText(buildPackageJson()), [CONFIG_FILE]: checkConfigTextHanding(REFUSED_SETTINGS) },
+      files: { [PACKAGE_JSON_FILE]: packageJsonText(buildPackageJson()), [CONFIG_FILE]: agentsIncLintModuleTextHanding(REFUSED_SETTINGS) },
     })
     const notInstalled = createGitProject(tempProjects, { repo: 'committed', files: checkedPackageFiles(REPORTING_RULESETS), linkedPackages: [INSTALLED_OXLINT] })
     const otherCopyDir = realpathSync(tempProjects.create({ files: ANOTHER_COPY_OF_THE_PACKAGE }))
@@ -603,7 +603,7 @@ describe('check where it cannot run', () => {
       exitCode: EXIT.couldNotRun,
       signal: null,
       stdout: '',
-      stderr: `check: could not run: there is no agents-inc.lint.mts in ${dir} or any folder above it up to ${dir}. Run "agents-inc-lint init" in the folder of the package to lint.\n`,
+      stderr: `check: could not run: there is no agents-inc.lint.mts in ${dir}. Run "agents-inc-lint init" in the folder of the package to lint.\n`,
     })
   })
 
@@ -1275,7 +1275,7 @@ describe('check on a block eslint-disable comment over several lines, where supp
 
 // no-duplicate-disable reports the second comment whichever engine runs the rule; for a rule ESLint runs,
 // ESLint also calls that comment unused, as the block above it suppressed the finding (measured, ESLint 10.12,
-// eslint-comments 4.8.1; the owner accepted both reports: "Ship it").
+// eslint-comments 4.8.1).
 describe('check on a rule disabled a second time over a finding', () => {
   const run = setUpCheckAfterTheAgent(checkedPackageFiles(REDUNDANCY_AND_CORRECTNESS, SUPPRESSIONS_ALLOWED_UNDER_SRC_ALLOWED), (project) => {
     project.write('src/allowed/eslint-run.ts', moduleText(...aRuleDisabledTwiceOver('eqeqeq', A_LOOSE_EQUALITY)))

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { INSTALLED_TYPES_NODE, type ProcessResult, typeCheck } from './__tests__/config-file-loads.ts'
+import { type ProcessResult, typeCheckedConsumer } from './__tests__/config-file-loads.ts'
 import { CONFIG_FILE } from './__tests__/factories/check-factories.ts'
 import {
   buildFileOverridesModule,
@@ -7,13 +7,11 @@ import {
   type FileOverridesModule,
   fileOverridesModuleText,
   positionInEntry,
-  type SourcePosition,
 } from './__tests__/factories/file-overrides-module-factories.ts'
-import { buildTsconfigListingNodeTypes } from './__tests__/factories/tsconfig-factories.ts'
 import { PARALLEL_LOAD_TIMEOUT_MS } from './__tests__/parallel-load.ts'
 import { setUpRunsBeforeTheSuite } from './__tests__/runs-before-the-suite.ts'
-import { CONSUMER_INSTALL, type TempProjects } from './__tests__/temp-projects.ts'
-import { tscErrorsIn } from './__tests__/tsc-errors.ts'
+import type { TempProjects } from './__tests__/temp-projects.ts'
+import { errorsSaying, TSC_REPORTED_ERRORS, TSC_RUN_TIMEOUT_MS, TYPE_NOT_ASSIGNABLE } from './__tests__/tsc-errors.ts'
 
 // What a team's tsc, and any editor running TypeScript, says of an entry's `files` that can name no file: the
 // error is the refusal, read from the published types in dist (built first), as a consumer installs them.
@@ -24,10 +22,6 @@ const SAYS_HOW_TO_WRITE_IT = "files can't start with /: write ./x.ts"
 const SAYS_IT_NEEDS_A_GLOB = 'Source has 0 element(s) but target requires 1.'
 const NO_GLOB = '[]'
 const FILES_KEY = 'files'
-const TYPE_NOT_ASSIGNABLE = 'TS2322'
-// tsc exits 2 where it reports errors and emits nothing.
-const TSC_REPORTED_ERRORS = 2
-const TSC_RUN_TIMEOUT_MS = 120_000
 
 const SLASH_LED_GLOB_BESIDE_OTHER_ENTRIES = buildFileOverridesModule({
   entries: [entryWithFiles("['**/*.test.ts']"), entryWithFiles(`[${SLASH_LED_GLOB}]`), entryWithFiles("['apps/api/**']")],
@@ -41,29 +35,16 @@ const GLOBS_THE_TYPES_TAKE = buildFileOverridesModule({
   topLevel: ["ignores: ['/a.js']"],
 })
 
-/** An error as a test reads it: where, its code, and whether its message says what it should. */
-type ErrorRead = SourcePosition & { readonly file: string; readonly code: string; readonly says: boolean }
-
-/** tsc over a project whose tsconfig takes in the config file alone, our package and Node's types installed. */
-function typeCheckedConsumer(tempProjects: TempProjects, module: FileOverridesModule): ProcessResult {
-  return typeCheck(
-    tempProjects.create({
-      files: { 'tsconfig.json': `${JSON.stringify(buildTsconfigListingNodeTypes({ include: [CONFIG_FILE] }))}\n`, [CONFIG_FILE]: fileOverridesModuleText(module) },
-      linkedPackages: [...CONSUMER_INSTALL, INSTALLED_TYPES_NODE],
-    }),
-  )
-}
-
-function errorsSaying({ exitCode, stdout }: ProcessResult, text: string): { readonly exitCode: number | null; readonly errors: readonly ErrorRead[] } {
-  return { exitCode, errors: tscErrorsIn(stdout).map(({ file, line, column, code, message }) => ({ file, line, column, code, says: message.includes(text) })) }
+function typeCheckedConfigFile(tempProjects: TempProjects, module: FileOverridesModule): ProcessResult {
+  return typeCheckedConsumer(tempProjects, { [CONFIG_FILE]: fileOverridesModuleText(module) })
 }
 
 describe("tsc over agents-inc.lint.mts, an entry's files read through the published types", () => {
   const runs = setUpRunsBeforeTheSuite(
     (tempProjects) => ({
-      slashLed: typeCheckedConsumer(tempProjects, SLASH_LED_GLOB_BESIDE_OTHER_ENTRIES),
-      noGlob: typeCheckedConsumer(tempProjects, NO_GLOB_AT_ALL),
-      taken: typeCheckedConsumer(tempProjects, GLOBS_THE_TYPES_TAKE),
+      slashLed: typeCheckedConfigFile(tempProjects, SLASH_LED_GLOB_BESIDE_OTHER_ENTRIES),
+      noGlob: typeCheckedConfigFile(tempProjects, NO_GLOB_AT_ALL),
+      taken: typeCheckedConfigFile(tempProjects, GLOBS_THE_TYPES_TAKE),
     }),
     { timeoutMs: TSC_RUN_TIMEOUT_MS, whatFailed: 'tsc could not be run on the consumer projects before the suite' },
   )
@@ -88,7 +69,7 @@ describe("tsc over agents-inc.lint.mts, an entry's files read through the publis
 })
 
 describe("tsc over agents-inc.lint.mts, a glob led by / after another glob of an entry's files", () => {
-  const runs = setUpRunsBeforeTheSuite((tempProjects) => errorsSaying(typeCheckedConsumer(tempProjects, SLASH_LED_GLOB_AFTER_ANOTHER), SAYS_HOW_TO_WRITE_IT), {
+  const runs = setUpRunsBeforeTheSuite((tempProjects) => errorsSaying(typeCheckedConfigFile(tempProjects, SLASH_LED_GLOB_AFTER_ANOTHER), SAYS_HOW_TO_WRITE_IT), {
     timeoutMs: TSC_RUN_TIMEOUT_MS,
     whatFailed: 'tsc could not be run on the consumer project, or its output read, before the suite',
   })
