@@ -138,17 +138,21 @@ Steps 7-8 are how the work is finished, not a tidy-up phase for later.
 - **A test's titles and rows come from data that cannot throw:** a literal list, held to what the
   code computes by a test of its own (`SHAPE_NAMES` in the merge differentials); each test derives
   the rest from its row as it runs. A list gone stale then fails that one test, by name.
+- **A name missing from a cut list proves nothing.** `check` ends a cut list with `+N more findings`,
+  and `runCheck` and `startCheck` throw on that line. Vitest cuts each `$value` in an `it.each` title
+  to 40 characters and `-t` matches the cut title, so a filter on words past the cut skips the case,
+  exit 0.
 - After implementing, run StrykerJS on the lines the change touched:
   `node scripts/mutate-changed-lines.mts`. Each break it reports as not caught (Survived or
   NoCoverage) gets a test, or a measured reason. Two kinds of "not caught" prove nothing: one in
   code that runs while modules load (a constant, a top-level table) is checked again with the second
   pass (`node scripts/mutate-changed-lines.mts stryker.static.config.mjs`); after a run given
-  `--testFiles`, which the script warns of, re-run it without `--testFiles`; one that ran 0 tests
-  means test files failed to load, so fix the cause and re-run with `--force`. Stryker only makes
-  small breaks (swap an operator, flip a condition): a break that changes a decision (drop a field,
-  reorder blocks, stop after one step) is still written by hand. Its totals can say 0 survived while
-  a changed line went untested: list each changed line with no Killed mutant (all CompileError, or
-  none made, as for `return f(x)`) and break each by hand.
+  `--testFiles`, which the script warns of, re-run it without `--testFiles` and with `--force`; one
+  that ran 0 tests means test files failed to load, so fix the cause and re-run with `--force`.
+  Stryker only makes small breaks (swap an operator, flip a condition): a break that changes a
+  decision (drop a field, reorder blocks, stop after one step) is still written by hand. Its totals
+  can say 0 survived while a changed line went untested: list each changed line with no Killed
+  mutant (all CompileError, or none made, as for `return f(x)`) and break each by hand.
 - **"This break changes nothing" needs a run of the real tool** on the exact config the break
   writes, not on a similar one.
 

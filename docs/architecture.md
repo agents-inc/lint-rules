@@ -17,6 +17,11 @@ The private packages export their `.ts` source with no build step.
 in the packages that nothing imports, test helpers included. What counts, and each exemption with its reason:
 `knip.jsonc`; its limit: [plan](plan.md#open).
 
+This repo lints itself through its own `agents-inc.lint.mts`, `eslint.config.mjs` and `oxlint.config.mts`, written as
+a team's are. The gate is one run over the whole repo, from the root after `bun run build`: `npx eslint .` and
+`npx oxlint --disable-nested-config`, each exiting 0. The flag holds oxlint to the root config's `ignorePatterns`: the
+only nested oxlint config is test data (`packages/lint-rules/test-fixtures/consumer-files`). No script or hook runs it.
+
 Mutation testing of the lint-rules, rule-data and house sources (StrykerJS), and how it reaches the integration tests,
 which load the built `dist/`: [mutation testing](work/mutation-testing.md).
 
@@ -433,7 +438,7 @@ Run the generator and the tests after every data change. `canonical-list.test.ts
 unsorted or duplicate IDs, a rule its engine lacks, an `oxlintName` that does not map back, an
 unknown ruleset, `files` or `typed` on an oxlint rule, other than exactly one of a ruleset, `alwaysOn` and `offByDefault`, a
 missing assignment, an `eslintBecause` on a rule oxlint runs or that oxlint has no untyped version of,
-a rule ESLint runs that oxlint has an untyped version of with no `eslintBecause`, but those waiting on an owner answer,
+a rule ESLint runs that oxlint has an untyped version of with no `eslintBecause`,
 a `coveredBy`, `coveredInOxlintBy`, `splitByTypesWith` or `allowancesLeftTo` that does not hold (`relation-offenders.ts`),
 a `files` or `ignores` naming test files without every test-file glob, an `ignores` naming them without every
 test-setup-file glob. lint-rules' `every-rule-proven.integration.test.ts` names each shipped rule with no
@@ -458,8 +463,8 @@ proof on an engine that runs it ([plan](plan.md#routing-the-canonical-list)).
 - **Add an ESLint plugin:** add it to the `dependencies` of `rule-data` and `lint-rules`, register it
   in `eslintPlugins` (through `checkedPlugin` when its types do not fit `ESLint.Plugin`), name its
   package in `src/generate/eslint-plugin-package-names.ts`, and add its prefix to
-  `PREFIXES_NEEDING_COMPAT` in `lint-rules/src/core/eslint-compat.ts` if it calls context methods ESLint 10
-  removed. `eslint-plugins.test.ts` checks the registry against the dependencies. Each of its rules
+  `PREFIXES_NEEDING_COMPAT` in `src/eslint-plugins.ts` if it calls context methods ESLint 10 removed.
+  `eslint-plugins.test.ts` checks the registry against the dependencies. Each of its rules
   we do not ship needs an entry in `rule-candidates.json` (`not-reviewed` until someone looks);
   `rule-candidates.test.ts` names any left out.
 - **Add a ruleset** (users type its name, so the owner names it): add it to
