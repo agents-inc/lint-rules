@@ -59,13 +59,9 @@ export function createRoundRepo(tempProjects: TempProjects, committed: ProjectFi
     files: { ...committed, [ROUND_SCRIPT_IN_THE_REPO]: readFileSync(ROUND_SCRIPT, 'utf8'), [GIT_IGNORE]: IGNORED_BY_GIT.join('\n') },
     linkedPackages: [],
   })
-  const helpersLink = project.pathOf(HELPERS_IN_THE_REPO)
-  mkdirSync(dirname(helpersLink), { recursive: true })
-  symlinkSync(HELPERS, helpersLink, 'dir')
+  linkTheHelpers(project)
   lanesEdits(project)
-  project.writeAbove(join(FAKE_BIN_DIR, BUN), bunRunningTheStandIn())
-  const binDir = join(project.dir, '..', FAKE_BIN_DIR)
-  chmodSync(join(binDir, BUN), EXECUTABLE)
+  const binDir = binDirHoldingBunRunningTheStandIn(project)
   return {
     runTheRound(argumentsGiven, fromFolder = THE_REPO_ROOT) {
       return runTheRoundScript(project, binDir, { argumentsGiven, fromFolder, report: mutationReport({}) })
@@ -75,6 +71,19 @@ export function createRoundRepo(tempProjects: TempProjects, committed: ProjectFi
     },
     pathOf: project.pathOf,
   }
+}
+
+function linkTheHelpers(project: GitProject): void {
+  const helpersLink = project.pathOf(HELPERS_IN_THE_REPO)
+  mkdirSync(dirname(helpersLink), { recursive: true })
+  symlinkSync(HELPERS, helpersLink, 'dir')
+}
+
+function binDirHoldingBunRunningTheStandIn(project: GitProject): string {
+  project.writeAbove(join(FAKE_BIN_DIR, BUN), bunRunningTheStandIn())
+  const binDir = join(project.dir, '..', FAKE_BIN_DIR)
+  chmodSync(join(binDir, BUN), EXECUTABLE)
+  return binDir
 }
 
 function bunRunningTheStandIn(): string {

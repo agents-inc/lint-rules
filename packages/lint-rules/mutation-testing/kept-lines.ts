@@ -34,9 +34,8 @@ export function linesTheRoundIsKeptTo(argumentsGiven: readonly string[]): KeptRo
 /** The file is read as git prints it (`a//b`, `a/../a/b` and `./a/b` as `a/b`), so a kept file and a changed one compare equal. */
 export function mutateEntryOf(text: string): MutateEntry {
   const groups = ENTRY.exec(text)?.groups
-  if (groups === undefined) throw notAnEntry(text)
+  if (groups?.file === undefined) throw notAnEntry(text)
   const { file: fileAsGiven, start, end } = groups
-  if (fileAsGiven === undefined) throw notAnEntry(text)
   const file = posix.normalize(fileAsGiven)
   if (start === undefined || end === undefined) return { file }
   const lines = { start: Number(start), end: Number(end) }
@@ -90,8 +89,8 @@ function noList(): Error {
   return new Error(`${ONLY} takes a comma-separated list of files, each alone or as <file>:<startLine>-<endLine>`)
 }
 
-// git's entry for a changed hunk (`<file>:<start>-<end>`) or an untracked file, never typed by a user.
-function changedEntryOf(text: string): MutateEntry {
+/** git's entry for a changed hunk (`<file>:<start>-<end>`) or an untracked file, or a `--mutate` entry made from one; never typed by a user. */
+export function changedEntryOf(text: string): MutateEntry {
   const groups = GIT_ENTRY.exec(text)?.groups
   if (groups?.file === undefined) throw notAnEntry(text)
   const { file, start, end } = groups

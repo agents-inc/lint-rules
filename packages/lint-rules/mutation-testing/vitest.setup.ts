@@ -194,7 +194,7 @@ function coverageBeyond(baseline: Coverage, coverage: Coverage): Coverage {
 }
 
 function isMutantCoverage(value: unknown): value is MutantCoverage {
-  return isRecord(value) && isCoverage(value['static']) && isRecord(value['perTest']) && Object.values(value['perTest']).every((coverage) => isCoverage(coverage))
+  return isRecord(value) && isCoverage(value.static) && isRecord(value.perTest) && Object.values(value.perTest).every((coverage) => isCoverage(coverage))
 }
 
 function isCoverage(value: unknown): value is Coverage {

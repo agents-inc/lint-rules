@@ -15,7 +15,6 @@ type GateTask = {
   readonly resolvedTaskDefinition: { readonly cache: boolean }
 }
 
-/** The tasks `bun run test` would run, as turbo plans them from the repo root. */
 type TestGatePlan = { readonly tasks: readonly GateTask[] }
 
 const REPO_ROOT = fileURLToPath(new URL('../../../..', import.meta.url))
@@ -33,7 +32,6 @@ const RUN_TIMEOUT_MS = 30_000
 // Switches every Node warning off, so a shell that sets it would hide the one the root script must switch off itself.
 const NODE_WARNINGS_SWITCH = 'NODE_NO_WARNINGS'
 
-/** Plans `bun run test` from the repo root, as turbo would run it. Throws where turbo could not plan it. */
 export function planOfTheTestGate(): TestGatePlan {
   const { status, stdout, stderr } = spawnSync(TURBO_BIN, TEST_GATE_DRY_RUN, { cwd: REPO_ROOT, encoding: 'utf8', timeout: RUN_TIMEOUT_MS })
   if (status !== 0) throw new Error(`turbo could not plan the test gate (exit ${String(status)}): ${stderr}`)
@@ -41,7 +39,6 @@ export function planOfTheTestGate(): TestGatePlan {
   return JSON.parse(stdout) as TestGatePlan
 }
 
-/** The packages whose test runs a command, by name in name order. */
 export function packagesWhoseTestRuns({ tasks }: TestGatePlan): readonly string[] {
   return tasks
     .filter((each) => each.task === TEST_TASK && each.command !== NO_SCRIPT)
@@ -49,31 +46,25 @@ export function packagesWhoseTestRuns({ tasks }: TestGatePlan): readonly string[
     .toSorted()
 }
 
-/** The tasks turbo finishes before the package's test starts. Throws where the gate runs no test in it. */
 export function tasksBeforeTheTestOf({ tasks }: TestGatePlan, packageName: string): readonly string[] {
   const test = tasks.find((each) => each.task === TEST_TASK && each.package === packageName)
   if (test === undefined) throw new Error(`the test gate runs no test in ${packageName}`)
   return test.dependencies
 }
 
-/** Whether turbo may replay an earlier run of the report from its cache rather than run it. Throws where the gate never runs it. */
 export function isTheReportCached({ tasks }: TestGatePlan): boolean {
   const report = tasks.find((each) => each.taskId === REPORT_TASK)
   if (report === undefined) throw new Error(`the test gate never runs ${REPORT_TASK}`)
   return report.resolvedTaskDefinition.cache
 }
 
-/** Puts the report where the root script finds it in the repo given, linked to this repo's own. */
 export function linkTheReportInto(root: string): void {
   const link = join(root, REPORT_FILE)
   mkdirSync(dirname(link), { recursive: true })
   symlinkSync(join(REPO_ROOT, REPORT_FILE), link)
 }
 
-/**
-* Runs the root package.json's report script from the repo root given through the shell, as the package manager
-* turbo starts runs it. Throws where the root package.json has no such script.
-*/
+/** Through the shell, as the package manager that turbo starts runs it. */
 export function runTheRootReportScriptFrom(root: string): ReportRun {
   const { status, stdout, stderr } = spawnSync(rootReportScript(), {
     cwd: root,

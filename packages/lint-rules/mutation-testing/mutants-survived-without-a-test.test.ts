@@ -10,6 +10,7 @@ import {
   reportOfAMutantAtAColumnGivenAsText,
   reportOfAMutantOnALineGivenAsText,
   reportOfAMutantThatIsNull,
+  reportOfAMutantWhoseLocationHasNoEnd,
   reportOfAMutantWhoseLocationHasNoStart,
   reportOfAMutantWhoseMutatorIsANumber,
   reportOfAMutantWhoseStaticFlagIsText,
@@ -108,6 +109,10 @@ describe('parseMutationReport', () => {
 
   it('refuses a report holding a mutant whose location has no start', () => {
     expect(() => parseMutationReport(JSON.stringify(reportOfAMutantWhoseLocationHasNoStart(FILE)))).toThrow(new Error(REPORT_REFUSED))
+  })
+
+  it('refuses a report holding a mutant whose location has no end', () => {
+    expect(() => parseMutationReport(JSON.stringify(reportOfAMutantWhoseLocationHasNoEnd(FILE, LINE)))).toThrow(new Error(REPORT_REFUSED))
   })
 
   it('refuses a report holding a mutant whose mutator is named by a number', () => {

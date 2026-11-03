@@ -23,7 +23,7 @@ const OPTIONS_LOADERS: Readonly<Record<string, (configPath: string) => Promise<S
   },
   async '.mjs'(configPath) {
     const configModule: unknown = await import(pathToFileURL(configPath).href)
-    return isRecord(configModule) ? strykerOptionsIn(configModule['default']) : undefined
+    return isRecord(configModule) ? strykerOptionsIn(configModule.default) : undefined
   },
 }
 

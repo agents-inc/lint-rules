@@ -30,7 +30,6 @@ const WARNING =
 
 const SILENT: ReportRun = { exitCode: SUCCEEDED, stdout: '', stderr: '' }
 
-/** Reported, the gate still goes on. */
 function reportNaming(copies: readonly string[]): ReportRun {
   return { exitCode: SUCCEEDED, stdout: '', stderr: [WARNING, ...copies.map((copy) => `  ${copy}`), ''].join('\n') }
 }

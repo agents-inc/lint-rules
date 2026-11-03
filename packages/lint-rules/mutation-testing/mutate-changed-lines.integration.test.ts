@@ -4,12 +4,17 @@ import { describe, expect, it } from 'vitest'
 import { PARALLEL_LOAD_TIMEOUT_MS } from '../src/__tests__/parallel-load.ts'
 import { runMadeFor, setUpRunsBeforeTheSuite } from '../src/__tests__/runs-before-the-suite.ts'
 import {
+  killedMutant,
   MUTANT_COLUMN,
   MUTATOR_NAME,
   mutationReport,
+  noCoverageMutant,
   staticKilledMutant,
   staticSurvivedMutant,
+  survivedMutant,
   survivedMutantNotStatic,
+  survivedMutantSpanning,
+  timeoutMutant,
 } from './__tests__/factories/mutation-report-factories.ts'
 import { gitIgnoreOf, moduleOfLines, moduleWithLinesRewritten, strykerJsonConfig, strykerModuleConfig } from './__tests__/factories/round-repo-factories.ts'
 import { TEST_FILES_SPELLINGS } from './__tests__/factories/test-files-spellings.ts'
@@ -18,6 +23,7 @@ import { createRoundRepo } from './__tests__/round-script-runs.ts'
 const LINT_RULES_CONFIG = 'stryker.config.json'
 const RULE_DATA_CONFIG = 'stryker.rule-data.config.mjs'
 const HOUSE_CONFIG = 'stryker.eslint-plugin-house.config.mjs'
+const CONFIG_LISTING_NO_PATTERNS = 'stryker.listing-no-patterns.config.mjs'
 
 const LINT_RULES_PATTERNS = ['packages/lint-rules/src/**/*.ts', '!packages/lint-rules/src/**/*.test.ts']
 const RULE_DATA_PATTERNS = ['packages/rule-data/src/**/*.ts', '!packages/rule-data/src/**/*.test.ts']
@@ -27,6 +33,7 @@ const LANE_FILE = 'packages/eslint-plugin-house/src/rules/this-lanes-rule.ts'
 const LANE_TEST_FILE = 'packages/eslint-plugin-house/src/rules/this-lanes-rule.test.ts'
 const LANE_LINT_RULES_FILE = 'packages/lint-rules/src/core/this-lanes-module.ts'
 const OTHER_LANE_FILE = 'packages/eslint-plugin-house/src/rules/other-lanes-rule.ts'
+const FILE_WHOSE_PATH_ENDS_IN_THE_LANE_FILE = `nested/${LANE_FILE}`
 const UNTRACKED_FILE = 'packages/eslint-plugin-house/src/rules/new-rule.ts'
 const MISSING_FILE = 'packages/eslint-plugin-house/src/rules/no-such-rule.ts'
 const RULES_FOLDER = 'packages/eslint-plugin-house/src/rules'
@@ -77,9 +84,30 @@ const OTHER_STATIC_SURVIVED_LINE = 30
 const SURVIVED_NOT_STATIC_LINE = 11
 const STATIC_KILLED_LINE = 12
 
+const LINE_BEFORE_A_HUNK = 9
+const FIRST_LINE_OF_A_HUNK = 10
+const INSIDE_A_HUNK = 11
+const LAST_LINE_OF_A_HUNK = 12
+const LINE_AFTER_A_HUNK = 13
+const BETWEEN_THE_HUNKS = 20
+const LINE_BEFORE_THE_ONE_LINE_HUNK = 29
+const ONE_LINE_HUNK = 30
+const LINE_AFTER_THE_ONE_LINE_HUNK = 31
+const OTHER_LANE_FILE_LINE = 5
+const OTHER_LANE_FILE_NEXT_LINE = 6
+const UNTRACKED_FILE_LINE = 3
+
+const SURVIVED = 'Survived'
+const NO_COVERAGE = 'NoCoverage'
+
+const NOT_CAUGHT_IN_THIS_RUN = 'Not caught in the lines this run mutated (Survived or NoCoverage):'
 const LOAD_TIME_WARNING =
   'WARNING: a run given --testFiles turns a load-time (static) mutant on only after the test files have loaded, ' +
-  'so these Survived results prove nothing. Re-run each without --testFiles:'
+  'so these Survived results prove nothing. Re-run each without --testFiles and with --force:'
+const SURVIVED_WITHOUT_A_TEST_FAILURE =
+  'FAILED: these mutants were reported Survived after running no test, so they are no result. A test file ' +
+  'failed to load, or a mutant broke something the tests share. Fix that, then re-run with --force: ' +
+  'incremental mode would reuse these results.'
 
 function testFilesRefusal(entries: readonly string[]): string {
   return `Error: --testFiles finds no file for ${entries.join(', ')}: give each spec or glob from the repo root, as Stryker reads it\n`
@@ -90,8 +118,43 @@ function emptyTestFilesRefusal(lists: readonly string[]): string {
   return `Error: --testFiles holds no spec or glob in ${listsAsGiven}, so Stryker would run every test: give a comma-separated list of them from the repo root\n`
 }
 
+function noPatternsRefusal(configPath: string): string {
+  return `Error: ${configPath} lists no "mutate" patterns\n`
+}
+
+type PlaceOfAMutant = { readonly file: string; readonly line: number }
+
+type NotCaught = PlaceOfAMutant & { readonly status: typeof SURVIVED | typeof NO_COVERAGE }
+
+function mutantNamedAt({ file, line }: PlaceOfAMutant): string {
+  return `  ${file}:${line}:${MUTANT_COLUMN} ${MUTATOR_NAME}`
+}
+
+function listedUnder(heading: string, entries: readonly string[]): string {
+  return [heading, ...entries, ''].join('\n')
+}
+
+function loadTimeWarningNamingEach(places: readonly PlaceOfAMutant[]): string {
+  return listedUnder(LOAD_TIME_WARNING, places.map(mutantNamedAt))
+}
+
 function loadTimeWarningNaming(lines: readonly number[]): string {
-  return [LOAD_TIME_WARNING, ...lines.map((line) => `  ${LANE_FILE}:${line}:${MUTANT_COLUMN} ${MUTATOR_NAME}`), ''].join('\n')
+  return loadTimeWarningNamingEach(lines.map((line) => ({ file: LANE_FILE, line })))
+}
+
+function survivedWithoutATestFailureNaming(places: readonly PlaceOfAMutant[]): string {
+  return listedUnder(SURVIVED_WITHOUT_A_TEST_FAILURE, places.map(mutantNamedAt))
+}
+
+function notCaughtListNaming(mutants: readonly NotCaught[]): string {
+  return listedUnder(
+    NOT_CAUGHT_IN_THIS_RUN,
+    mutants.map((mutant) => `${mutantNamedAt(mutant)} ${mutant.status}`),
+  )
+}
+
+function survivedInTheLanesFile(lines: readonly number[]): NotCaught[] {
+  return lines.map((line) => ({ file: LANE_FILE, line, status: SURVIVED }))
 }
 
 describe('the round script, with Stryker replaced by a stand-in that records how each run was started', () => {
@@ -235,6 +298,8 @@ describe('the round script given --testFiles, with Stryker replaced by a stand-i
           [LINT_RULES_CONFIG]: strykerJsonConfig(LINT_RULES_PATTERNS),
           [RULE_DATA_CONFIG]: strykerModuleConfig(RULE_DATA_PATTERNS),
           [HOUSE_CONFIG]: strykerModuleConfig(HOUSE_PATTERNS),
+          // A module with no default export, so the round reads no options from it.
+          [CONFIG_LISTING_NO_PATTERNS]: moduleOfLines(MODULE_LINES),
           [LANE_FILE]: moduleOfLines(LANE_FILE_LINES),
           [LANE_TEST_FILE]: moduleOfLines(TEST_FILE_LINES),
           [DELETED_TEST_FILE]: moduleOfLines(TEST_FILE_LINES),
@@ -249,6 +314,7 @@ describe('the round script given --testFiles, with Stryker replaced by a stand-i
       )
       const laneTestFileByItsAbsolutePath = repo.pathOf(LANE_TEST_FILE)
       const missingTestFileByItsAbsolutePath = repo.pathOf(MISSING_TEST_FILE)
+      const configListingNoPatternsByItsAbsolutePath = repo.pathOf(CONFIG_LISTING_NO_PATTERNS)
       const staticSurvivedBesideOthers = mutationReport({
         [LANE_FILE]: [
           staticSurvivedMutant(STATIC_SURVIVED_LINE, TESTS_RUN),
@@ -284,6 +350,14 @@ describe('the round script given --testFiles, with Stryker replaced by a stand-i
         aListWithEmptyEntriesBesideASpec: repo.runTheRound([TEST_FILES, `${NO_ENTRY}${LANE_TEST_FILE}${NO_ENTRY}`]),
         twoListsWithNoEntry: repo.runTheRound([TEST_FILES, NO_ENTRY, TEST_FILES_SHORT, SEPARATORS_ONLY]),
         twoListsEachHoldingASpec: repo.runTheRound([TEST_FILES, LANE_TEST_FILE, TEST_FILES_SHORT, UNTRACKED_TEST_FILE]),
+        aListWithNoEntryBesideAConfigListingNoPatterns: {
+          config: configListingNoPatternsByItsAbsolutePath,
+          ...repo.runTheRound([CONFIG_LISTING_NO_PATTERNS, TEST_FILES, NO_ENTRY]),
+        },
+        aSpecBesideAConfigListingNoPatterns: {
+          config: configListingNoPatternsByItsAbsolutePath,
+          ...repo.runTheRound([CONFIG_LISTING_NO_PATTERNS, TEST_FILES, LANE_TEST_FILE]),
+        },
         staticSurvivedGivenAs: TEST_FILES_SPELLINGS.map(({ spelling, given }) => ({
           kind: spelling,
           ...repo.runTheRoundReporting(staticSurvivedBesideOthers, [HOUSE_CONFIG, ...given(LANE_TEST_FILE)]),
@@ -455,6 +529,17 @@ describe('the round script given --testFiles, with Stryker replaced by a stand-i
       expect(stderr).toContain(emptyTestFilesRefusal([NO_ENTRY, SEPARATORS_ONLY]))
     })
 
+    it('is refused before any config is read, as a config named first that lists no "mutate" patterns is refused once the list names a spec', () => {
+      const { config, exitCode, stdout, stderr, strykerRuns } = runs().aListWithNoEntryBesideAConfigListingNoPatterns
+      const listNamingASpec = runs().aSpecBesideAConfigListingNoPatterns
+
+      expect({ exitCode, stdout, strykerRuns }).toStrictEqual({ exitCode: REFUSED, stdout: '', strykerRuns: [] })
+      expect(stderr).toContain(emptyTestFilesRefusal([NO_ENTRY]))
+      expect(stderr).not.toContain(noPatternsRefusal(config))
+      expect([listNamingASpec.exitCode, listNamingASpec.strykerRuns]).toStrictEqual([REFUSED, []])
+      expect(listNamingASpec.stderr).toContain(noPatternsRefusal(listNamingASpec.config))
+    })
+
     it('is not either of two lists in one round that each hold a spec, which run as today, Stryker handed both as given', () => {
       const { exitCode, stdout, stderr, strykerRuns } = runs().twoListsEachHoldingASpec
 
@@ -480,13 +565,13 @@ describe('the round script given --testFiles, with Stryker replaced by a stand-i
 
   describe('a load-time (static) mutant reported Survived', () => {
     it.each(TEST_FILES_SPELLINGS)(
-      'is named in a warning, with each other such mutant and no other mutant, saying to re-run them without --testFiles, after a run given $spelling, which still succeeds',
+      'is named in a warning, with each other such mutant and no other mutant, saying to re-run them without --testFiles and with --force, after a run given $spelling, which still succeeds',
       ({ spelling, given }) => {
         const { exitCode, stdout, stderr, strykerRuns } = runMadeFor(runs().staticSurvivedGivenAs, spelling)
 
         expect({ exitCode, stdout, stderr, strykerRuns }).toStrictEqual({
           exitCode: SUCCEEDED,
-          stdout: '',
+          stdout: notCaughtListNaming(survivedInTheLanesFile([STATIC_SURVIVED_LINE, SURVIVED_NOT_STATIC_LINE, OTHER_STATIC_SURVIVED_LINE])),
           stderr: loadTimeWarningNaming([STATIC_SURVIVED_LINE, OTHER_STATIC_SURVIVED_LINE]),
           strykerRuns: [[...theLanesHunks, ...given(LANE_TEST_FILE)]],
         })
@@ -496,7 +581,12 @@ describe('the round script given --testFiles, with Stryker replaced by a stand-i
     it('draws no warning after a run given no --testFiles', () => {
       const { exitCode, stdout, stderr, strykerRuns } = runs().staticSurvivedWithoutTestFiles
 
-      expect({ exitCode, stdout, stderr, strykerRuns }).toStrictEqual({ exitCode: SUCCEEDED, stdout: '', stderr: '', strykerRuns: [theLanesHunks] })
+      expect({ exitCode, stdout, stderr, strykerRuns }).toStrictEqual({
+        exitCode: SUCCEEDED,
+        stdout: notCaughtListNaming(survivedInTheLanesFile([STATIC_SURVIVED_LINE, SURVIVED_NOT_STATIC_LINE, OTHER_STATIC_SURVIVED_LINE])),
+        stderr: '',
+        strykerRuns: [theLanesHunks],
+      })
     })
 
     it('is what draws the warning, as a run given --testFiles whose report holds only a static mutant Killed and a Survived one not static draws none', () => {
@@ -504,7 +594,7 @@ describe('the round script given --testFiles, with Stryker replaced by a stand-i
 
       expect({ exitCode, stdout, stderr, strykerRuns }).toStrictEqual({
         exitCode: SUCCEEDED,
-        stdout: '',
+        stdout: notCaughtListNaming(survivedInTheLanesFile([SURVIVED_NOT_STATIC_LINE])),
         stderr: '',
         strykerRuns: [[...theLanesHunks, TEST_FILES, LANE_TEST_FILE]],
       })
@@ -516,9 +606,182 @@ describe('the round script given --testFiles, with Stryker replaced by a stand-i
 
       expect([withoutTestFiles.exitCode, exitCode]).toStrictEqual([FAILED, FAILED])
       expect(withoutTestFiles.stderr).toContain(`  ${LANE_FILE}:${SURVIVED_NOT_STATIC_LINE}:${MUTANT_COLUMN} ${MUTATOR_NAME}\n`)
+      expect(withoutTestFiles.stderr).toBe(`${SURVIVED_WITHOUT_A_TEST_FAILURE}\n  ${LANE_FILE}:${SURVIVED_NOT_STATIC_LINE}:${MUTANT_COLUMN} ${MUTATOR_NAME}\n`)
       expect(withoutTestFiles.stderr).not.toContain(LOAD_TIME_WARNING)
       expect(stderr).toContain(withoutTestFiles.stderr)
       expect(stderr).toContain(loadTimeWarningNaming([STATIC_SURVIVED_LINE]))
+    })
+  })
+})
+
+describe('the round script, whose report also holds results outside the lines this run mutated, as an earlier run left them, with Stryker replaced by a stand-in that writes the report given', () => {
+  const runs = setUpRunsBeforeTheSuite(
+    (tempProjects) => {
+      const repo = createRoundRepo(
+        tempProjects,
+        {
+          [HOUSE_CONFIG]: strykerModuleConfig(HOUSE_PATTERNS),
+          [LANE_FILE]: moduleOfLines(LANE_FILE_LINES),
+          [LANE_TEST_FILE]: moduleOfLines(TEST_FILE_LINES),
+          [OTHER_LANE_FILE]: moduleOfLines(MODULE_LINES),
+        },
+        (project) => {
+          project.write(LANE_FILE, moduleWithLinesRewritten(LANE_FILE_LINES, [FIRST_LINE_OF_A_HUNK, INSIDE_A_HUNK, LAST_LINE_OF_A_HUNK, ONE_LINE_HUNK]))
+          project.write(UNTRACKED_FILE, moduleOfLines(NEW_RULE_LINES))
+        },
+      )
+      const earlierSurvivedThatRanNoTest = mutationReport({
+        [LANE_FILE]: [killedMutant(FIRST_LINE_OF_A_HUNK, TESTS_RUN), survivedMutant(BETWEEN_THE_HUNKS, NO_TEST_RUN)],
+        [OTHER_LANE_FILE]: [survivedMutant(OTHER_LANE_FILE_LINE, NO_TEST_RUN)],
+        [FILE_WHOSE_PATH_ENDS_IN_THE_LANE_FILE]: [survivedMutant(FIRST_LINE_OF_A_HUNK, NO_TEST_RUN)],
+      })
+      const earlierLoadTimeSurvived = mutationReport({
+        [LANE_FILE]: [staticKilledMutant(FIRST_LINE_OF_A_HUNK, TESTS_RUN), staticSurvivedMutant(BETWEEN_THE_HUNKS, TESTS_RUN)],
+        [OTHER_LANE_FILE]: [staticSurvivedMutant(OTHER_LANE_FILE_LINE, NO_TEST_RUN)],
+      })
+      const ranNoTestInAndAroundTheLines = mutationReport({
+        [LANE_FILE]: [
+          LINE_BEFORE_A_HUNK,
+          FIRST_LINE_OF_A_HUNK,
+          LAST_LINE_OF_A_HUNK,
+          LINE_AFTER_A_HUNK,
+          LINE_BEFORE_THE_ONE_LINE_HUNK,
+          ONE_LINE_HUNK,
+          LINE_AFTER_THE_ONE_LINE_HUNK,
+        ].map((line) => survivedMutant(line, NO_TEST_RUN)),
+        [UNTRACKED_FILE]: [survivedMutant(UNTRACKED_FILE_LINE, NO_TEST_RUN)],
+        [OTHER_LANE_FILE]: [survivedMutant(OTHER_LANE_FILE_LINE, NO_TEST_RUN)],
+      })
+      const loadTimeSurvivedInAndAroundTheLines = mutationReport({
+        [LANE_FILE]: [LINE_BEFORE_A_HUNK, FIRST_LINE_OF_A_HUNK, LAST_LINE_OF_A_HUNK, LINE_AFTER_A_HUNK, ONE_LINE_HUNK, LINE_AFTER_THE_ONE_LINE_HUNK].map((line) =>
+          staticSurvivedMutant(line, TESTS_RUN),
+        ),
+        [UNTRACKED_FILE]: [staticSurvivedMutant(UNTRACKED_FILE_LINE, TESTS_RUN)],
+        [OTHER_LANE_FILE]: [staticSurvivedMutant(OTHER_LANE_FILE_LINE, TESTS_RUN)],
+      })
+      const notCaughtInAndOutsideTheLines = mutationReport({
+        [LANE_FILE]: [
+          killedMutant(FIRST_LINE_OF_A_HUNK, TESTS_RUN),
+          survivedMutant(INSIDE_A_HUNK, TESTS_RUN),
+          noCoverageMutant(LAST_LINE_OF_A_HUNK),
+          survivedMutant(BETWEEN_THE_HUNKS, TESTS_RUN),
+          noCoverageMutant(LINE_BEFORE_THE_ONE_LINE_HUNK),
+          killedMutant(ONE_LINE_HUNK, TESTS_RUN),
+          timeoutMutant(ONE_LINE_HUNK, TESTS_RUN),
+        ],
+        [UNTRACKED_FILE]: [noCoverageMutant(UNTRACKED_FILE_LINE)],
+        [OTHER_LANE_FILE]: [survivedMutant(OTHER_LANE_FILE_LINE, TESTS_RUN), noCoverageMutant(OTHER_LANE_FILE_NEXT_LINE)],
+      })
+      const ranNoTestAcrossTheEdgesOfAHunk = mutationReport({
+        [LANE_FILE]: [
+          survivedMutantSpanning(FIRST_LINE_OF_A_HUNK, LAST_LINE_OF_A_HUNK, NO_TEST_RUN),
+          survivedMutantSpanning(INSIDE_A_HUNK, LINE_AFTER_A_HUNK, NO_TEST_RUN),
+          survivedMutantSpanning(LINE_BEFORE_A_HUNK, INSIDE_A_HUNK, NO_TEST_RUN),
+        ],
+      })
+      const ranNoTestOnAChangedLineOnlyLeavesOut = mutationReport({
+        [LANE_FILE]: [survivedMutant(FIRST_LINE_OF_A_HUNK, NO_TEST_RUN), survivedMutant(INSIDE_A_HUNK, NO_TEST_RUN)],
+        [UNTRACKED_FILE]: [noCoverageMutant(UNTRACKED_FILE_LINE)],
+      })
+      return {
+        earlierSurvivedThatRanNoTest: repo.runTheRoundReporting(earlierSurvivedThatRanNoTest, [HOUSE_CONFIG]),
+        earlierLoadTimeSurvivedWithTestFiles: repo.runTheRoundReporting(earlierLoadTimeSurvived, [HOUSE_CONFIG, TEST_FILES, LANE_TEST_FILE]),
+        ranNoTestInAndAroundTheLines: repo.runTheRoundReporting(ranNoTestInAndAroundTheLines, [HOUSE_CONFIG]),
+        loadTimeSurvivedInAndAroundTheLinesWithTestFiles: repo.runTheRoundReporting(loadTimeSurvivedInAndAroundTheLines, [HOUSE_CONFIG, TEST_FILES, LANE_TEST_FILE]),
+        notCaughtInAndOutsideTheLines: repo.runTheRoundReporting(notCaughtInAndOutsideTheLines, [HOUSE_CONFIG]),
+        ranNoTestAcrossTheEdgesOfAHunk: repo.runTheRoundReporting(ranNoTestAcrossTheEdgesOfAHunk, [HOUSE_CONFIG]),
+        keptByOnlyToPartOfAHunk: repo.runTheRoundReporting(ranNoTestOnAChangedLineOnlyLeavesOut, [HOUSE_CONFIG, ONLY, `${LANE_FILE}:${INSIDE_A_HUNK}-${LANE_FILE_LINES}`]),
+      }
+    },
+    { timeoutMs: PARALLEL_LOAD_TIMEOUT_MS, whatFailed: 'the round script could not be run in a scratch repo before the suite' },
+  )
+
+  const theRunsLines = [
+    ...RUN_MUTATION,
+    HOUSE_CONFIG,
+    '--mutate',
+    `${LANE_FILE}:${FIRST_LINE_OF_A_HUNK}-${LAST_LINE_OF_A_HUNK},${LANE_FILE}:${ONE_LINE_HUNK}-${ONE_LINE_HUNK},${UNTRACKED_FILE}`,
+  ]
+  const atTheEdgesOfTheLines: readonly PlaceOfAMutant[] = [
+    { file: LANE_FILE, line: FIRST_LINE_OF_A_HUNK },
+    { file: LANE_FILE, line: LAST_LINE_OF_A_HUNK },
+    { file: LANE_FILE, line: ONE_LINE_HUNK },
+    { file: UNTRACKED_FILE, line: UNTRACKED_FILE_LINE },
+  ]
+
+  it('does not fail the round on a Survived mutant that ran no test outside the lines it mutated, in a file it named or one it never named', () => {
+    const { exitCode, stdout, stderr, strykerRuns } = runs().earlierSurvivedThatRanNoTest
+
+    expect({ exitCode, stdout, stderr, strykerRuns }).toStrictEqual({ exitCode: SUCCEEDED, stdout: '', stderr: '', strykerRuns: [theRunsLines] })
+  })
+
+  it('neither fails nor warns, after a run given --testFiles, on a load-time mutant reported Survived outside the lines it mutated, one of them having run no test', () => {
+    const { exitCode, stdout, stderr, strykerRuns } = runs().earlierLoadTimeSurvivedWithTestFiles
+
+    expect({ exitCode, stdout, stderr, strykerRuns }).toStrictEqual({
+      exitCode: SUCCEEDED,
+      stdout: '',
+      stderr: '',
+      strykerRuns: [[...theRunsLines, TEST_FILES, LANE_TEST_FILE]],
+    })
+  })
+
+  it('fails the round on a Survived mutant that ran no test on the first or last line of a hunk, a one-line hunk, or a file given whole, naming only those', () => {
+    const { exitCode, stdout, stderr, strykerRuns } = runs().ranNoTestInAndAroundTheLines
+
+    expect({ exitCode, stdout, stderr, strykerRuns }).toStrictEqual({
+      exitCode: FAILED,
+      stdout: notCaughtListNaming(atTheEdgesOfTheLines.map((place) => ({ ...place, status: SURVIVED }))),
+      stderr: survivedWithoutATestFailureNaming(atTheEdgesOfTheLines),
+      strykerRuns: [theRunsLines],
+    })
+  })
+
+  it('warns, after a run given --testFiles, of a load-time mutant reported Survived on the first or last line of a hunk, a one-line hunk, or a file given whole, naming only those', () => {
+    const { exitCode, stdout, stderr, strykerRuns } = runs().loadTimeSurvivedInAndAroundTheLinesWithTestFiles
+
+    expect({ exitCode, stdout, stderr, strykerRuns }).toStrictEqual({
+      exitCode: SUCCEEDED,
+      stdout: notCaughtListNaming(atTheEdgesOfTheLines.map((place) => ({ ...place, status: SURVIVED }))),
+      stderr: loadTimeWarningNamingEach(atTheEdgesOfTheLines),
+      strykerRuns: [[...theRunsLines, TEST_FILES, LANE_TEST_FILE]],
+    })
+  })
+
+  it('ends the run listing each mutant no test caught inside the lines it mutated, Survived or NoCoverage, and none outside them', () => {
+    const { exitCode, stdout, stderr, strykerRuns } = runs().notCaughtInAndOutsideTheLines
+
+    expect({ exitCode, stdout, stderr, strykerRuns }).toStrictEqual({
+      exitCode: SUCCEEDED,
+      stdout: notCaughtListNaming([
+        { file: LANE_FILE, line: INSIDE_A_HUNK, status: SURVIVED },
+        { file: LANE_FILE, line: LAST_LINE_OF_A_HUNK, status: NO_COVERAGE },
+        { file: UNTRACKED_FILE, line: UNTRACKED_FILE_LINE, status: NO_COVERAGE },
+      ]),
+      stderr: '',
+      strykerRuns: [theRunsLines],
+    })
+  })
+
+  it('takes a mutant for one it mutated only when the mutant lies wholly inside its lines, as Stryker mutates it: one spanning a hunk is failed on and listed, one starting before a hunk or ending after it neither', () => {
+    const { exitCode, stdout, stderr, strykerRuns } = runs().ranNoTestAcrossTheEdgesOfAHunk
+
+    expect({ exitCode, stdout, stderr, strykerRuns }).toStrictEqual({
+      exitCode: FAILED,
+      stdout: notCaughtListNaming(survivedInTheLanesFile([FIRST_LINE_OF_A_HUNK])),
+      stderr: survivedWithoutATestFailureNaming([{ file: LANE_FILE, line: FIRST_LINE_OF_A_HUNK }]),
+      strykerRuns: [theRunsLines],
+    })
+  })
+
+  it('takes the lines it mutated to be those --only kept, so a mutant on a changed line --only left out is neither failed on nor listed', () => {
+    const { exitCode, stdout, stderr, strykerRuns } = runs().keptByOnlyToPartOfAHunk
+
+    expect({ exitCode, stdout, stderr, strykerRuns }).toStrictEqual({
+      exitCode: FAILED,
+      stdout: notCaughtListNaming(survivedInTheLanesFile([INSIDE_A_HUNK])),
+      stderr: survivedWithoutATestFailureNaming([{ file: LANE_FILE, line: INSIDE_A_HUNK }]),
+      strykerRuns: [[...RUN_MUTATION, HOUSE_CONFIG, '--mutate', `${LANE_FILE}:${INSIDE_A_HUNK}-${LAST_LINE_OF_A_HUNK},${LANE_FILE}:${ONE_LINE_HUNK}-${ONE_LINE_HUNK}`]],
     })
   })
 })

@@ -1,8 +1,10 @@
 import type { MutationReport, ReportedMutant } from '../../mutants-survived-without-a-test.ts'
 
 export const MUTANT_COLUMN = 7
+const MUTANT_END_COLUMN = 19
 export const MUTATOR_NAME = 'ConditionalExpression'
 const NO_TESTS = 0
+const A_LINE = 1
 const A_NUMBER_WHERE_STRYKER_WRITES_TEXT = 1
 
 /** A report of mutants typed as given, which may be shapes Stryker never writes. */
@@ -11,16 +13,38 @@ type ReportOf<Mutant> = { readonly files: Readonly<Record<string, { readonly mut
 /** A reported mutant whose field `Field` holds a value of another type than Stryker writes there. */
 type MutantWith<Field extends keyof ReportedMutant, Value> = Omit<ReportedMutant, Field> & { readonly [Key in Field]: Value }
 
+type Location = ReportedMutant['location']
+
+/** A mutant's location whose start holds a value of another type than Stryker writes there. */
+type LocationStartingAt<Start> = Omit<Location, 'start'> & { readonly start: Start }
+
+function mutantSpanning(startLine: number, endLine: number, status: string): ReportedMutant {
+  return {
+    mutatorName: MUTATOR_NAME,
+    status,
+    location: { start: { line: startLine, column: MUTANT_COLUMN }, end: { line: endLine, column: MUTANT_END_COLUMN } },
+  }
+}
+
 function mutantAt(line: number, status: string): ReportedMutant {
-  return { mutatorName: MUTATOR_NAME, status, location: { start: { line, column: MUTANT_COLUMN } } }
+  return mutantSpanning(line, line, status)
 }
 
 export function survivedMutant(line: number, testsCompleted: number): ReportedMutant {
   return { ...mutantAt(line, 'Survived'), testsCompleted }
 }
 
+/** Starting on one line and ending on a later one, as Stryker reports a mutant of a block. */
+export function survivedMutantSpanning(startLine: number, endLine: number, testsCompleted: number): ReportedMutant {
+  return { ...mutantSpanning(startLine, endLine, 'Survived'), testsCompleted }
+}
+
 export function killedMutant(line: number, testsCompleted: number): ReportedMutant {
   return { ...mutantAt(line, 'Killed'), testsCompleted }
+}
+
+export function timeoutMutant(line: number, testsCompleted: number): ReportedMutant {
+  return { ...mutantAt(line, 'Timeout'), testsCompleted }
 }
 
 /** Stryker writes no test count for a mutant no test covers. */
@@ -82,9 +106,16 @@ export function reportOfAMutantWithoutAPlace(file: string): { readonly files: Re
   return { files: { [file]: { mutants: [{ mutatorName: MUTATOR_NAME, status: 'Survived', testsCompleted: 0 }] } } }
 }
 
-/** Stryker's location of each mutant starts at a place in its file; this report's one mutant has a location with no start. */
-export function reportOfAMutantWhoseLocationHasNoStart(file: string): ReportOf<MutantWith<'location', Readonly<Record<string, never>>>> {
-  return reportOfOne(file, { mutatorName: MUTATOR_NAME, status: 'Survived', testsCompleted: NO_TESTS, location: {} })
+/** Stryker's location of each mutant starts at a place in its file; this report's one mutant has a location with an end and no start. */
+export function reportOfAMutantWhoseLocationHasNoStart(file: string): ReportOf<MutantWith<'location', Omit<Location, 'start'>>> {
+  const { end } = survivedMutant(A_LINE, NO_TESTS).location
+  return reportOfOne(file, { mutatorName: MUTATOR_NAME, status: 'Survived', testsCompleted: NO_TESTS, location: { end } })
+}
+
+/** Stryker's location of each mutant ends at a place in its file; this report's one mutant has a location with a start and no end. */
+export function reportOfAMutantWhoseLocationHasNoEnd(file: string, line: number): ReportOf<MutantWith<'location', Omit<Location, 'end'>>> {
+  const mutant = survivedMutant(line, NO_TESTS)
+  return reportOfOne(file, { ...mutant, location: { start: mutant.location.start } })
 }
 
 /** Stryker names each mutant's mutator in text; this report's one mutant names it by a number. */
@@ -101,16 +132,18 @@ export function reportOfAMutantWhoseStatusIsANumber(file: string, line: number):
 export function reportOfAMutantOnALineGivenAsText(
   file: string,
   line: number,
-): ReportOf<MutantWith<'location', { readonly start: { readonly line: string; readonly column: number } }>> {
-  return reportOfOne(file, { ...survivedMutant(line, NO_TESTS), location: { start: { line: String(line), column: MUTANT_COLUMN } } })
+): ReportOf<MutantWith<'location', LocationStartingAt<{ readonly line: string; readonly column: number }>>> {
+  const mutant = survivedMutant(line, NO_TESTS)
+  return reportOfOne(file, { ...mutant, location: { ...mutant.location, start: { line: String(line), column: MUTANT_COLUMN } } })
 }
 
 /** Stryker numbers the column it places each mutant at; this report's one mutant is at a column given as text. */
 export function reportOfAMutantAtAColumnGivenAsText(
   file: string,
   line: number,
-): ReportOf<MutantWith<'location', { readonly start: { readonly line: number; readonly column: string } }>> {
-  return reportOfOne(file, { ...survivedMutant(line, NO_TESTS), location: { start: { line, column: String(MUTANT_COLUMN) } } })
+): ReportOf<MutantWith<'location', LocationStartingAt<{ readonly line: number; readonly column: string }>>> {
+  const mutant = survivedMutant(line, NO_TESTS)
+  return reportOfOne(file, { ...mutant, location: { ...mutant.location, start: { line, column: String(MUTANT_COLUMN) } } })
 }
 
 /** Stryker counts the tests a mutant ran in a number; this report's one Survived mutant, which ran none, counts them in text. */

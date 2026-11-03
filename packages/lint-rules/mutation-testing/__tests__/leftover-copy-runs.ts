@@ -1,35 +1,29 @@
 import { type ChildProcess, type ChildProcessByStdio, spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
-import { mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import type { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
-import type { ProjectFiles, TempProjects } from '../../src/__tests__/temp-projects.ts'
+import { type ProjectFiles, type TempProjects, writeFileCreatingItsDir } from '../../src/__tests__/temp-projects.ts'
 import { hasErrorCode } from '../../src/core/caught-errors.ts'
 import { filesOfCopies, repoFiles, STRYKER_TEMP_FOLDER } from './factories/stryker-copy-factories.ts'
 
-/** How a run of the report ended and what it printed. */
 export type ReportRun = { readonly exitCode: number | null; readonly stdout: string; readonly stderr: string }
 
 /** Starts a process that prints a line once it is up, and stays up until the run that started it stops it. */
 export type StandIn = () => PrintingProcess
 
-/** A process whose output is read line by line, with nothing given to it and its errors ignored. */
 type PrintingProcess = ChildProcessByStdio<null, Readable, null>
 
 const REPORT_SCRIPT = fileURLToPath(new URL('../../../../scripts/report-leftover-stryker-copies.mts', import.meta.url))
-// Where `bun run mutation` finds Stryker's launcher, from the folder the run was started in.
 const STRYKER_BIN = 'node_modules/.bin/stryker'
 const STRYKER_ARGUMENTS = ['run', 'stryker.config.json']
 // As Stryker's launcher does before it makes a copy, so /proc lists the process as `stryker`, not by how it was started.
 const STRYKER_TITLE_SCRIPT = "process.title = 'stryker'\n"
-// Stays up an hour, far past any run of the report.
 const IDLE_SCRIPT = 'setInterval(() => {}, 3_600_000)\n'
 // The report waits for its line: a launcher's title is set only once Node has started, well after the process is spawned.
 const UP_SCRIPT = `console.log('up')\n${IDLE_SCRIPT}`
-// Starts a worker in the copy its last argument names, as Stryker starts each worker in its copy, prints the worker's id and
-// stays up.
 const RUN_WITH_A_WORKER_SCRIPT = `const { spawn } = require('node:child_process')
 const worker = spawn(process.execPath, ['-e', ${JSON.stringify(IDLE_SCRIPT)}], { cwd: process.argv.at(-1), stdio: 'ignore' })
 worker.on('spawn', () => console.log(worker.pid))
@@ -37,12 +31,9 @@ ${IDLE_SCRIPT}`
 const REPORT_TIMEOUT_MS = 30_000
 // Node's own warnings (type stripping) are not the report's output, so stderr holds only what it prints.
 const NODE_WARNINGS_OFF = { NODE_NO_WARNINGS: '1' }
-// Signals nothing: it only asks whether the process is there.
 const NO_SIGNAL = 0
-// What signalling a process that has ended gives.
 const NO_SUCH_PROCESS = 'ESRCH'
 
-/** A repo with no `.stryker-tmp`. */
 export function createRepoWithNoStrykerFolder(tempProjects: TempProjects): string {
   return tempProjects.create({ files: repoFiles() })
 }
@@ -52,7 +43,6 @@ export function createRepoHoldingCopies(tempProjects: TempProjects, copies: read
   return createRepoHoldingCopiesBeside(tempProjects, copies, {})
 }
 
-/** A repo whose `.stryker-tmp` holds the copies given, beside the other files given. */
 export function createRepoHoldingCopiesBeside(tempProjects: TempProjects, copies: readonly string[], otherFiles: ProjectFiles): string {
   const root = tempProjects.create({ files: { ...repoFiles(), ...filesOfCopies(copies), ...otherFiles } })
   mkdirSync(join(root, STRYKER_TEMP_FOLDER), { recursive: true })
@@ -78,7 +68,6 @@ export function strykerRunByHandFrom(folder: string): StandIn {
   }
 }
 
-/** Runs the report from the repo root given while each stand-in runs, then stops them. Throws where a stand-in did not start. */
 export async function runTheReportWhile(root: string, standIns: readonly StandIn[]): Promise<ReportRun> {
   const running = standIns.map((start) => start())
   try {
@@ -91,12 +80,10 @@ export async function runTheReportWhile(root: string, standIns: readonly StandIn
   }
 }
 
-/** Runs the report from the repo root while Stryker's main process, started from it, has a worker in the copy given. */
 export async function runTheReportWhileARunHasAWorkerIn(root: string, copy: string): Promise<ReportRun> {
   return runTheReportBesideARunWithAWorkerIn(root, copy, leaveTheRunGoing)
 }
 
-/** Runs the report from the repo root once a Stryker run started from it was killed, the worker it started in the copy given still there. */
 export async function runTheReportAfterKillingARunWithAWorkerIn(root: string, copy: string): Promise<ReportRun> {
   return runTheReportBesideARunWithAWorkerIn(root, copy, stop)
 }
@@ -131,8 +118,7 @@ function startStrykerWithAWorkerIn(root: string, copy: string): PrintingProcess 
 
 function strykerBinRunning(folder: string, script: string): string {
   const bin = join(folder, STRYKER_BIN)
-  mkdirSync(dirname(bin), { recursive: true })
-  writeFileSync(bin, `${STRYKER_TITLE_SCRIPT}${script}`)
+  writeFileCreatingItsDir(bin, `${STRYKER_TITLE_SCRIPT}${script}`)
   return bin
 }
 

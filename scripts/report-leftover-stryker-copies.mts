@@ -1,5 +1,5 @@
 // Warns of the copies of the repo a killed Stryker run left in .stryker-tmp, run from the repo root. It
-// removes nothing and always exits 0. It tells a live run by the processes /proc lists, so it reports
+// removes nothing. It tells a live run by the processes /proc lists, so it reports
 // only on Linux; elsewhere it prints nothing.
 import { existsSync, readdirSync, readFileSync, readlinkSync } from 'node:fs'
 import { join, relative } from 'node:path'
@@ -25,10 +25,12 @@ const WARNING =
 
 type RunningProcess = { readonly workingFolder: string; readonly commandLine: string }
 
+// eslint-disable-next-line functional/no-return-void -- it warns on stderr, where the person running the tests reads it: a value it returned would reach no one
 function reportLeftoverCopies(root: string): void {
   const copies = copiesIn(root)
   if (copies.length === 0 || !existsSync(PROCESS_TABLE)) return
   if (runningProcesses().some((each) => isStrykerRunFrom(root, each))) return
+  // eslint-disable-next-line functional/no-expression-statements -- write returns whether Node buffered the text, and the process waits for a buffered write before it ends either way
   process.stderr.write(warningNaming(copies.map((copy) => relative(root, copy))))
 }
 
