@@ -6,6 +6,11 @@ the rejected ones read `recommended` or have no entry. This spec records them an
 [`spec-accepted-rules.md`](spec-accepted-rules.md) (the 2026-10-24 `rc-*` cards) and reuses its shared procedures by
 reference. Written by pm, 2026-10-26, read-only: no repo file changed but this one. Every path is from the repository root.
 
+Corrections since written (old → new → why):
+
+- "Per lane, before its report": then without `--testFiles` → and with `--force` → without `--force`, incremental mode
+  reuses the stale results (q-lint-only-module-load's 2026-11-03 correction, `docs/work/decisions.md`).
+
 **`<lock>`** means `flock <the session's lint-build lock> bash -c '<command>'`, run from the repository root. Every build,
 typecheck, test, Stryker run and corpus measurement goes through it. **`<S>`** is the lane's scratch folder.
 
@@ -216,7 +221,7 @@ one lane at a time, in the queue below.** A change wanted in another lane's file
 | Not already reported | the lane's pairs below and every shipped rule reporting on `reportedIn`, each classed same/different, in the report |
 | False alarms | per `spec-accepted-rules.md` "Shared procedures" (corpus, `run-rules.mjs`, 20 hits read by `shuf -n 20 --random-source=<(yes)`). Stop: a kind of false alarm the page did not show, or a rate above the page's (r1 §1) |
 | Real run | as `spec-accepted-rules.md` "Shared procedures": packed install, `init`, cases, `check` twice; each `reportedIn` reported, `silentIn` silent, exit 1; the second run rewrites nothing; tracked in `<S>/real-runs.md` |
-| Source lines mutated (HRA only) | `<lock>` `node scripts/mutate-changed-lines.mts <config> --only <files> --testFiles <specs>`, then without `--testFiles`; each Survived or NoCoverage gets a test or a measured reason |
+| Source lines mutated (HRA only) | `<lock>` `node scripts/mutate-changed-lines.mts <config> --only <files> --testFiles <specs>`, then without `--testFiles` and with `--force`; each Survived or NoCoverage gets a test or a measured reason |
 | Own-repo findings listed | after `bun run build`: `<lock>` `npx eslint . -f json -o <S>/eslint-after.json`, `<lock>` `npx oxlint --disable-nested-config --format=json > <S>/oxlint-after.json`; the lane's rule IDs' findings listed, not fixed |
 
 ## Done (final, frozen tree)

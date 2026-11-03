@@ -412,7 +412,7 @@ for a team's config alone).
 | 3 | `core/merge-eslint-config.ts`, `sameRuleNamesOf`, `prefixesOfOurPluginsIn` | The ESLint key reading |
 | 4 | `core/resolve-rule-layers.ts`, `layersKeepingRules` | Dropping S from every layer |
 | 5 | `core/config-error.ts`, `configErrorIn`; `eslint.ts`, `eslintPartGiven` | Errors naming the file to fix |
-| 6 | `__tests__/consumer-cli-runs.ts`, `setUpConsumerCliRuns`; `__tests__/both-engines-runs.ts`, `EMPTY_TEAM_OXLINT_CONFIG` | Real-CLI scenarios; an oxlint config that sets nothing |
+| 6 | `__tests__/consumer-cli-runs.ts`, `setUpConsumerCliRuns`; `__tests__/team-configs-of-the-other-engine.ts`, `EMPTY_TEAM_OXLINT_CONFIG` | Real-CLI scenarios; an oxlint config that sets nothing |
 
 <implementation_notes>
 

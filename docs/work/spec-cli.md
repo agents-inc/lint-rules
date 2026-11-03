@@ -196,7 +196,7 @@ Unchanged from spec-next-batch part 3, with the answer: in files where suppressi
 - **Could not run** (stderr, exit 2), each starting `check: could not run: `:
   - `Node 22.18 or later is needed; this is Node <version>.`
   - `<cwd> is not inside a git repository, and check reads the changed files from git.`
-  - `there is no agents-inc.lint.mts in <cwd> or any folder above it up to <git top level>. Run "agents-inc-lint init" in the folder of the package to lint.`
+  - `there is no agents-inc.lint.mts in <cwd> or any folder above it up to <git top level>. Run "agents-inc-lint init" in the folder of the package to lint.` Where `<cwd>` is the git top level, it names the folder once: `there is no agents-inc.lint.mts in <cwd>. Run "agents-inc-lint init" in the folder of the package to lint.` (owner 2026-11-03, q-lint-check-no-config-folder-twice)
   - `<the config error, as thrown>`
   - `agents-inc.lint.mts imports @agents-inc/lint-rules from <path A>, and this check is <path B>. Run the check that project installed.`
   - `@agents-inc/lint-rules is not installed where agents-inc.lint.mts can import it. Run your package manager's install.`

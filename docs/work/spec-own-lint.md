@@ -13,6 +13,9 @@ Corrections since written (old → new → why):
   `functional/prefer-immutable-types` until lane LINT-RUN-SET: is-immutable-type's cache made the rule answer by the
   file it checked first, so a whole-repo run missed findings; the rule now gets a checker of its own per call
   (`core/immutability-cache-per-call.ts`) → owner 2026-10-28, q-lint-own-gate-per-file (`docs/work/decisions.md`).
+- "Per lane, before its report": a load-time Survived under `--testFiles` is re-run without it → and with `--force` →
+  without `--force`, incremental mode reuses the stale results (q-lint-only-module-load's 2026-11-03 correction,
+  `docs/work/decisions.md`).
 
 **`<lock>`** below means the session's shared build lock: `flock <lock file> bash -c 'cd <repository root> && <command>'`.
 Every build, lint, typecheck, test and Stryker run goes through it. **`<S>`** is the lane's session scratch folder.
@@ -268,7 +271,7 @@ finishes before phase 2 because its files are spread over C, L, S and T.
 | --- | --- |
 | Owned files lint-clean but Q1's sites | the lane's list commands print only Q1's sites (lane C) or nothing |
 | Assertions changed are listed | `diff -ru <S>/before <owned test paths> \| grep -E '^[-+].*(expect\|assert)'`, each with why it tests the same thing (`toThrowError` → `toThrow` is one such: the same matcher) |
-| Mutation on changed source lines (H, R, C, L) | `<lock>` `node scripts/mutate-changed-lines.mts [config] --only <files or ranges> --testFiles <specs>` (`docs/work/mutation-testing.md`, "One lane's changed lines"); each Survived or NoCoverage gets a test or a measured reason; a load-time Survived under `--testFiles` is re-run without it (q-lint-only-module-load); a line whose mutants are all CompileError, or that gets none, is broken by hand (learnings: "Stryker's totals for a range can say 0 survived…") |
+| Mutation on changed source lines (H, R, C, L) | `<lock>` `node scripts/mutate-changed-lines.mts [config] --only <files or ranges> --testFiles <specs>` (`docs/work/mutation-testing.md`, "One lane's changed lines"); each Survived or NoCoverage gets a test or a measured reason; a load-time Survived under `--testFiles` is re-run without it and with `--force` (q-lint-only-module-load); a line whose mutants are all CompileError, or that gets none, is broken by hand (learnings: "Stryker's totals for a range can say 0 survived…") |
 | Hand breaks where no config mutates (K, S, T, M) | each changed decision line broken by hand and a test seen failing |
 | Same output from the real tool | the lane's real-run cases (below), recorded before the change and after, byte-identical, tracked in `<S>/real-runs.md` |
 

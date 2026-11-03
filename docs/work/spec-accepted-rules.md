@@ -56,6 +56,12 @@ Corrections since written (old → new → why):
   owner 2026-10-29 (`docs/work/decisions.md`).
 - The bullet above → the two TanStack property-order rules are `dropped` (q-lint-rc-tanstack-property-order-which-skip,
   q-lint-rc-tanstack-router-order-spread-crash) → owner 2026-10-30 (`docs/work/decisions.md`).
+- "Current state": `PREFIXES_NEEDING_COMPAT` in `packages/lint-rules/src/core/eslint-compat.ts` → in
+  `packages/rule-data/src/eslint-plugins.ts`, which `core/eslint-compat.ts` imports → one list, read by the shipped
+  config and by rule-data's case runner.
+- "Per lane, before its report": after a run given `--testFiles`, re-run it without `--testFiles` → and with `--force` →
+  without `--force`, incremental mode reuses the stale results (q-lint-only-module-load's 2026-11-03 correction,
+  `docs/work/decisions.md`).
 
 Owner verdicts 2026-10-24 on the `rc-*` cards (the answers board,
 https://claude.ai/artifact/4GpMMzy64wzXqSPZaghWTJ). Every path below is from the repository root. Written by pm,
@@ -319,7 +325,7 @@ another lane owns is reported with the exact change, not made.
 | Green after | the same run after the data step: every case passes |
 | Gates | `<lock>` `bun run --cwd packages/rule-data generate`; `<lock>` `bun run build`; `<lock>` `bun run typecheck` (knip first); `<lock>` `bun run test`; unfiltered, output visible, exit code written down. A red test in another lane's file is reported, not fixed |
 | A data row is load-bearing | hand break: drop the lane's first shipped entry from `rules.json`, regenerate, its case fails; restore, regenerate, green (recorded) |
-| Source lines mutated (EFF; CPT under C1 option 2) | `<lock>` `node scripts/mutate-changed-lines.mts <config> --only <files> --testFiles <specs>` (`docs/work/mutation-testing.md`, "One lane's changed lines"), then, for CPT, the `stryker.static.config.mjs` pass; after a run given `--testFiles`, which the script warns of, re-run it without `--testFiles`; each Survived or NoCoverage gets a test or a measured reason |
+| Source lines mutated (EFF; CPT under C1 option 2) | `<lock>` `node scripts/mutate-changed-lines.mts <config> --only <files> --testFiles <specs>` (`docs/work/mutation-testing.md`, "One lane's changed lines"), then, for CPT, the `stryker.static.config.mjs` pass; after a run given `--testFiles`, which the script warns of, re-run it without `--testFiles` and with `--force`; each Survived or NoCoverage gets a test or a measured reason |
 | Not already reported | real run (below) of `reportedIn` on today's build: the shipped rules reporting on those lines, each classed same/different problem, in the report |
 | Real run | packed install, `init`, fixtures, `check` twice: each `reportedIn` line reported by the lane's rule, nothing of it on `silentIn`, exit 1; the second run rewrites no file and reports the same; tracked in `<S>/real-runs.md` |
 | Own-repo findings listed | after `bun run build`: `<lock>` `npx eslint . -f json -o <S>/eslint-after.json`, `<lock>` `npx oxlint --disable-nested-config --format=json > <S>/oxlint-after.json`; the lane's rule IDs' findings (`jq`) listed, not fixed |

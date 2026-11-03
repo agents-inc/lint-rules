@@ -17,25 +17,27 @@ To set it up in another repo, such as `~/dev/cli`: [playbook](mutation-testing-p
   of `git diff -U0 HEAD` (the work tree against the last commit, so staged and unstaged changes both
   count) and every untracked file whole: each package's config in turn, on the files it mutates. A
   config file given as the first argument runs alone instead. The other arguments go on to Stryker
-  (`--force`, `--dryRunOnly`). After each run it reads `mutation.json`; it exits 1 when a run failed
-  or reported a mutant Survived after running no test (see Swallowed errors below).
+  (`--force`, `--dryRunOnly`). After each run it reads the mutants of `mutation.json` inside the lines
+  it handed Stryker, lists those no test caught (Survived or NoCoverage), and exits 1 when a run failed
+  or one of them Survived after running no test (see Swallowed errors below).
 - **One lane's changed lines, with the specs that reach them:** add
   `--only <file>,<file>:<startLine>-<endLine>` (paths from the repo root) and Stryker's own
   `--testFiles <spec>,<spec>`. The round then mutates only the changed lines inside those files and
   ranges, and its first test run takes only those specs: name every spec that reaches the lines,
   those running the built CLI included, or their mutants read as not caught. The script refuses a
   file that is not on disk or that no config of the round mutates, and a `--testFiles` entry that
-  matches no file, or a list with none. After such a run it names each load-time mutant reported
-  Survived, which proves nothing there (Load-time code below).
+  matches no file, or a list with none. After such a run it names each load-time mutant in those
+  lines reported Survived, which proves nothing there (Load-time code below).
 - **Lines you name:** `bun run mutation --mutate "<file>:<startLine>-<endLine>,..."`; a file with no
   range is mutated whole. For rule-data or house, name its config first:
   `bun run mutation stryker.rule-data.config.mjs --mutate ...`.
 - **Everything a config mutates:** `bun run mutation`, with a config named first for rule-data or house.
 
 Each run prints the mutants that survived, with their diffs, and writes `reports/mutation/mutation.html`
-and `mutation.json`, replacing the last run's. Each config's incremental file
-(`reports/stryker-incremental*.json`) lets its next run reuse the result of every mutant whose code
-and covering tests did not change. Stryker works in a copy of the repo under
+and `mutation.json`, replacing the last run's. Stryker's printed list and `mutation.json` also carry the
+earlier results of code outside the run's `--mutate`, which it did not rerun. Each config's
+incremental file (`reports/stryker-incremental*.json`) lets its next run reuse the result of every
+mutant whose code and covering tests did not change. Stryker works in a copy of the repo under
 `.stryker-tmp/`, deleted after each run (delete it by hand after a run you killed). Both folders are
 gitignored.
 
@@ -46,8 +48,8 @@ What each result means:
   modules load, in lint-rules or under `--testFiles`, and one that ran fewer tests than it should, 0
   among them (Known limits).
 - **Killed:** a test failed. **CompileError:** the TypeScript checker refused the mutant, so it never ran.
-- **Timeout:** Stryker counts it as caught. It is not proof: re-run that mutant alone, with a
-  `--mutate` range around it (see Ranges below for its columns).
+- **Timeout:** Stryker counts it as caught. It is not proof: re-run that mutant alone, with `--force`
+  and a `--mutate` range around it (see Ranges below for its columns).
 - **Ignored:** only code that runs while a test file loads reaches it (`ignoreStatic`, on in
   lint-rules' config alone). The second pass under Load-time code runs it. Without `--testFiles`,
   the rule-data and house configs run such a mutant with every test of the package, on before any
@@ -101,7 +103,8 @@ From the trial on 2026-10-14 and the adoption runs:
   caught. The pass keeps its own incremental file, and its reports replace the first pass's. Or break
   the line by hand and serve it through a Vite `load` hook. Given `--testFiles`, every config, the
   second pass among them, turns such a mutant on only after the test files load, so its Survived
-  proves nothing there either: re-run it without `--testFiles`.
+  proves nothing there either: re-run it without `--testFiles` and with `--force`, or incremental
+  mode reuses that Survived.
 - **Ranges.** A mutant counts only if it lies wholly inside a range, so a changed line inside a longer
   expression or block gets the mutants of its own parts, not of the whole. A deleted line gives none.
   Ranges count columns from 0; the report counts them from 1.

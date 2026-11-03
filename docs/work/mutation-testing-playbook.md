@@ -98,8 +98,9 @@ restart wipes.
 
 - **A round** mutates the changed lines: `scripts/mutate-changed-lines.mts` passes each hunk of
   `git diff -U0 HEAD`, and every untracked file whole, to each package's config in turn, and fails
-  when a mutant Survived after 0 tests ([Run it](mutation-testing.md#run-it)). A port needs its own
-  hunk parser: it imports lint-rules' `addedSpanOf`. `--mutate` columns count from 0, the report's from 1.
+  when a mutant in those lines Survived after 0 tests ([Run it](mutation-testing.md#run-it)). A port
+  needs its own hunk parser: it imports lint-rules' `addedSpanOf`. `--mutate` columns count from 0,
+  the report's from 1.
 - One area at a time, one Stryker per copy: runs share `.stryker-tmp/` and `reports/`. Keep a notes
   file as you go: each command, its start time, how to resume it, its results. Never rebuild `dist`
   while a run's tests run: it produced false kills. `--logLevel debug` crashes the runner.
@@ -121,10 +122,11 @@ restart wipes.
   `mutation.json`): the mutant crashed a module at load, failing only the files importing it
   (rule-data: 212 of 316). A plain vitest run with the mutant served shows the failures; the round
   script does not catch this.
-- **Timeout** counts as caught but proves nothing. Re-run each alone (`--concurrency 2`, a `timeoutMS`
-  just above the covering tests' time). Stryker's hit counter stops an endless loop in the test
-  process, not in a child; a synchronous loop also ignores SIGTERM and outlives its worker, so run
-  an orphan killer beside the pass (`<backup>/stryker-pass/cli/kill-orphans.sh`).
+- **Timeout** counts as caught but proves nothing. Re-run each alone with `--force`
+  (`--concurrency 2`, a `timeoutMS` just above the covering tests' time). Stryker's hit counter
+  stops an endless loop in the test process, not in a child; a synchronous loop also ignores SIGTERM
+  and outlives its worker, so run an orphan killer beside the pass
+  (`<backup>/stryker-pass/cli/kill-orphans.sh`).
 - **A test title holding a random path** changes every run, so Stryker never selects that test: fix it.
 - **Every "equivalent" claim** gets a kill attempt by someone else; the verifier here broke one.
 - **After a refactor,** compare with HEAD: `git archive HEAD` into a scratch folder, link

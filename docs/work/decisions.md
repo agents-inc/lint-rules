@@ -486,6 +486,10 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   `--testFiles`, which turns a load-time (static) mutant on only after the test files load, so its Survived proves
   nothing: the script prints a warning naming each such Survived mutant, to re-run without `--testFiles`, and leaves
   the exit code as it was (`mutation-testing/load-time-mutants-survived.ts`).
+- Correction 2026-11-03 to the entry above: old, the warning says to re-run without `--testFiles`; new, without
+  `--testFiles` and with `--force`. Why: without `--force`, incremental mode reuses the stale results. Measured on a
+  changed line of `packages/rule-data/src/catalog.ts`: 8 of 8 reused, the same 6 Survived; with `--force`, 0 of 8 (6
+  Killed, 2 CompileError).
 - Owner 2026-10-24, "Widen it to helper modules" (board card q-lint-collect-time-reach), asked whether
   `test-collection.test.ts` also reads the top level of the modules a test file loads: it follows a test file's
   imports, and its helpers', into modules under `__tests__/` (not through `import type`) and reports each call at their
@@ -768,6 +772,8 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   this repo's docs (`questions.md` Open #8, the A/B note in `plan.md` Open); nothing is done in ai-benchmarking.
 - Correction 2026-10-29 to the "The gate reports it" entry above: it is wired. `bun run test` runs the root script
   `report-leftover-stryker-copies`, uncached, before every package's test (`turbo.json`).
+- Correction 2026-11-02 to the same entry: old, it exits 0; new, it exits 1 with Node's error where it cannot read
+  `.stryker-tmp`. Measured: EACCES on a `.stryker-tmp` made unreadable.
 - Owner 2026-10-27, chat ruling on board card q-lint-cmt-editor-reach, overriding its choice "Keep it (editors too)": "we
   have two separate configs for a reason so nothing should be in editor config without being listed in the editor config
   directly". The card asked whether rules that run wherever suppressions are allowed also run in every team's editor,
@@ -1418,6 +1424,55 @@ Maintained as I go. Overrides my defaults; `CLAUDE.md` and `docs/plan.md` still 
   `prefer-object-from-entries` and `prefer-string-slice` in ESLint (`jq -r '.[] | select((.eslintBecause // "") |
   test("q-lint-slice2-autofix")) | .id' packages/rule-data/data/rules.json`). Pinned by the routing guard in
   `canonical-list.test.ts` (`FIXES_ONLY_ESLINT_MAKES`, `__tests__/cases/routed-to-eslint-for-a-reason.ts`).
-  `unicorn/prefer-modern-dom-apis`, whose fix `check` and the editors withhold anyway, stays in ESLint until the owner
-  answers q-lint-prefer-modern-dom-apis-engine (`RULES_WAITING_ON_AN_OWNER_ANSWER`).
   Lanes S2-CASES and S2-DATA.
+- Owner 2026-10-31, "Keep init's ignore" (board card q-lint-namespace-keyword-init-dts): `init` keeps writing
+  `**/*.d.ts` into a team's ignores (`IGNORES`, `cli/init/config-text.ts`), so where a team keeps it,
+  `@typescript-eslint/prefer-namespace-keyword` never reports in a `.d.ts` file. No change. Lane LINT-DOCS-S2.
+- Owner 2026-10-31, "Keep them to test files" (board card q-lint-setup-files-test-only-checks), which the "The usual
+  names, and rename our bridge to one" entry sent back: the rules that run in test files alone (Testing Library's, and
+  Playwright's two) keep their `files`, so a setup file outside the test-file globs, `vitest.setup.ts` say, gets none of
+  them, and a `cleanup()` called by hand there goes unreported. No change. Lane LINT-DOCS-S2.
+- Owner 2026-11-02, "Keep them in ESLint" (board card q-lint-slice2-oxlint-fix-changes-meaning), asked whether a rule
+  whose oxlint fix, on code both versions report, changes what the code does where ESLint's version leaves it as
+  written moves to oxlint anyway: it stays in ESLint, with the measured break as its `eslintBecause`, naming the card.
+  That keeps `no-var`, `@typescript-eslint/prefer-function-type` and unicorn's `prefer-dom-node-append`,
+  `prefer-dom-node-text-content` and `prefer-regexp-test` in ESLint (`jq -r '.[] | select((.eslintBecause // "") |
+  test("q-lint-slice2-oxlint-fix-changes-meaning")) | .id' packages/rule-data/data/rules.json`). Pinned by the routing
+  guard in `canonical-list.test.ts` (`FIXES_THAT_CHANGE_WHAT_THE_CODE_DOES` and `KEPT_IN_ESLINT_BY_AN_OWNER_ANSWER`,
+  `__tests__/cases/routed-to-eslint-for-a-reason.ts`). Lane LINT-CARDS-1102.
+- Owner 2026-11-02, "Keep it in oxlint" (board card q-lint-prefer-modern-dom-apis-engine): `unicorn/prefer-modern-dom-apis`
+  runs in oxlint (`MOVED_TO_OXLINT`, `__tests__/cases/oxlint-versions.ts`). `check` reports it in oxlint's wording
+  and still rewrites nothing (`withheld-fixes.json`); the editors hand it to ESLint, which withholds its fix
+  (`editor-parts.ts`). Correction to the q-lint-slice2-autofix entry: old, it stays
+  in ESLint until this card is answered; new, oxlint runs it; why, this answer. Pinned in
+  `check-withheld-jsdom-fixes.integration.test.ts` and `editor-withheld-fixes.integration.test.ts`. Lane
+  LINT-CARDS-1102.
+- Board card q-lint-own-published-types ("Allow it, if nothing accepted before is refused", above) is built: `theirs`
+  is `Readonly<TeamEslintConfig>` in `mergeEslintConfig` (`eslint.ts`) and `Readonly<OxlintConfig>` in
+  `mergeOxlintConfig` (`oxlint.ts`), and `AtLeastOneFileGlob` (`index.ts`) spells its rest `...Array<FileGlob<Glob>>`,
+  the same type: one hunk each in `dist/eslint.d.mts`, `dist/oxlint.d.mts` and `dist/index.d.mts`. A list the team
+  holds read-only is now taken ("A list the team holds read-only is taken too", `define-lint-rules.test-d.ts`); the
+  type tests' other calls, accepted and `@ts-expect-error`, are unchanged and pass. `teamBlocksOf`
+  (`core/merge-eslint-config.ts`) copies such a list for ESLint's `defineConfig`, which takes a mutable one. Lane
+  OWN-LINT-Z.
+- Owner 2026-11-02, "Keep it as shipped" (board card q-lint-conditional-expect-placeholders), asked whether
+  `vitest/no-conditional-expect` (`tests`) keeps reporting a placeholder such as `expect.any(String)` or
+  `expect.anything()` inside a `? :` or `&&` in a test: it does. The rule cannot tell a placeholder from a check that
+  runs only sometimes, and its one option, `expectAssertions`, does not cover it (measured, ESLint 10.12,
+  @vitest/eslint-plugin 1.6.27). A team moves the condition out of the test, as rule-data's
+  `accepted-1011-tse.integration.test.ts` does with `eslintBecauseWhereMeasured`, the assertion unchanged. No change.
+  Lane LINT-5B.
+- Owner 2026-11-03, "Say it once when they match" (board card q-lint-check-no-config-folder-twice), asked whether
+  `check`, run at a git top level holding no `agents-inc.lint.mts`, keeps naming that folder twice ("in /x/p-app or
+  any folder above it up to /x/p-app"): there it says `there is no agents-inc.lint.mts in /x/p-app.` and the rest of
+  the line as before; run below the top level, the line is unchanged (`noConfig`, `cli/check/texts.ts`; spec-cli.md).
+  Pinned in `config-lookup.test.ts` and `check.integration.test.ts`. Lane CLI-1019-K.
+- Owner 2026-11-03, "Keep both copies" (board card q-lint-walker-shared), asked whether the helper listing a TypeScript
+  node's children, written in eslint-plugin-house (`childrenOf`, `rules/no-throwing-default-in-exhaustive-switch.ts`)
+  and in lint-rules' test support (`childNodesOf`, `src/__tests__/repo-programs.ts`), is shared through a new entry
+  point of eslint-plugin-house: both copies stay. No change. Lane CLI-1019-K.
+- Owner 2026-11-03, "Move them all and teach the checker" (board card q-lint-collect-time-folders), asked about the
+  test files that make their temp project folder while vitest loads them, which the q-lint-collect-time-left answer
+  did not reach, since the finder skips throws inside libraries: every such place makes its folder in a hook or its
+  test, and the load-time checker (`__tests__/collect-time-throws.ts`, run by `test-collection.test.ts`) reports a
+  folder made at load. Not built yet: queued as REPO-58, after the CLI commit round. Lane CLI-1019-K.
